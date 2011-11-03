@@ -1,6 +1,6 @@
 """
 This file is part of the everest project. 
-See LICENSE.txt for licensing, AUTHORS.txt for contributor information.
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 In 1985, Susan Merritt proposed a new taxonomy for comparison-based sorting
 algorithms. At the heart of Merritt's thesis is the principle of divide and

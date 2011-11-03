@@ -42,7 +42,10 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'eveRest'
-copyright = u'2011, everestlers' # redefine copyright pylint: disable=W0622
+# redefine copyright pylint: disable=W0622
+copyright = u'Copyright (c) 2011 ' \
+             'F. Oliver Gathmann, Cenix BioScience, Dresden, Germany '
+# pylint: enable=W0622
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -165,7 +168,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'eveRestdoc'
+htmlhelp_basename = 'everestdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -179,7 +182,7 @@ htmlhelp_basename = 'eveRestdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'eveRest.tex', u'eveRest Documentation',
+  ('index', 'everest.tex', u'everest Documentation',
    u'everestlers', 'manual'),
 ]
 
@@ -213,5 +216,5 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'everest', u'everest Documentation',
-     [u'everestlers'], 1)
+     [u'F. Oliver Gathmann', 'Nikolaos Papagrigoriou', 'Tobias Rothe'], 1)
 ]

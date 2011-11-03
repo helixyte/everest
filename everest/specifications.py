@@ -1,6 +1,6 @@
 """
 This file is part of the everest project. 
-See LICENSE.txt for licensing, AUTHORS.txt for contributor information.
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 The central idea of a Specification is to separate the statement of how to match
 a candidate, from the candidate object that it is matched against.

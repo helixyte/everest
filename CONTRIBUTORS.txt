@@ -1,0 +1,9 @@
+F. Oliver Gathmann - main developer
+Cenix BioScience, Dresden, Germany
+
+Nikolaos Papagrigoriou - initial architecture and prototype
+Amadeus, Munich, Germany
+
+Tobias Rothe - Flex filter
+Cenix BioScience, Dresden, Germany
+ 
