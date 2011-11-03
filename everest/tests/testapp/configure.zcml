@@ -1,0 +1,48 @@
+<configure
+    xmlns="http://namespaces.repoze.org/bfg"
+>
+
+    <!-- Include special directives. -->
+    <include
+        package="repoze.bfg.includes" />
+
+    <include
+        package="everest.includes" />
+
+    <!-- Representer classes. -->
+    <utility
+        component="everest.representers.xml.XmlResourceRepresenter"
+        provides="everest.representers.interfaces.IRepresenter"
+        name="application/xml" />
+
+    <utility
+        component="everest.representers.csv.CsvResourceRepresenter"
+        provides="everest.representers.interfaces.IRepresenter"
+        name="application/csv" />
+
+    <!-- Resource declarations. -->
+
+    <resource
+        interface='.interfaces.IFoo'
+        collection=".resources.FooCollection"
+        aggregate=".models.FooEntityAggregate"
+        member=".resources.FooMember"
+        entity=".models.FooEntity"/>
+
+    <resource
+        interface='.interfaces.IBar'
+        collection=".resources.BarCollection"
+        aggregate=".models.BarEntityAggregate"
+        member=".resources.BarMember"
+        entity=".models.BarEntity"/>
+
+    <representer
+        for=".resources.FooMember"
+        content_type="everest.mime.XmlMime"
+        configuration=".representer_config.XML_MYRESOURCE" />
+
+    <representer
+        for=".resources.FooMember"
+        content_type="everest.mime.CsvMime" />
+
+</configure>

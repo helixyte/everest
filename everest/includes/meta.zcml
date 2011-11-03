@@ -1,0 +1,31 @@
+<!-- 
+This file is part of the everest project. 
+See LICENSE.txt for licensing, AUTHORS.txt for contributor information.
+-->
+
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:meta="http://namespaces.zope.org/meta"
+>
+
+    <meta:directives
+        namespace="http://namespaces.repoze.org/bfg"
+    >
+        <meta:directive
+            name="resource"
+            schema="everest.directives.IResourceDirective"
+            handler="everest.directives.resource" />
+        <meta:directive
+            name="representer"
+            schema="everest.directives.IRepresenterDirective"
+            handler="everest.directives.representer" />
+        <meta:directive
+            name="collection_view"
+            schema="everest.directives.ICollectionViewDirective"
+            handler="everest.directives.collection_view" />
+        <meta:directive
+            name="member_view"
+            schema="everest.directives.IMemberViewDirective"
+            handler="everest.directives.member_view" />
+    </meta:directives>
+</configure>
