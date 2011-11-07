@@ -7,6 +7,8 @@ Representer utilities.
 Created on May 18, 2011.
 """
 
+from StringIO import StringIO
+from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
@@ -37,3 +39,47 @@ def get_data_element_registry(content_type):
         has been created.
     """
     return get_utility(IDataElementRegistry, content_type.mime_string)
+
+
+def data_element_tree_to_string(data_element):
+    """
+    Creates a string representation of the given data element tree.
+    """
+    def __dump(data_el, stream, offset):
+        name = data_el.__class__.__name__
+        stream.write("%s(" % name)
+        offset = offset + len(name) + 1
+        first_attr = True
+        attrs = \
+            data_el.mapper.get_mapped_attributes(data_el.mapped_class)
+        for attr in attrs.values():
+            if first_attr:
+                first_attr = False
+            else:
+                stream.write(',\n' + ' ' * offset)
+            if attr.kind == ResourceAttributeKinds.TERMINAL:
+                stream.write("%s=%s" % (attr.name,
+                                        str(data_el.get_terminal(attr)))
+                             )
+            else:
+                nested_el = data_el.get_nested(attr)
+                if attr.kind == ResourceAttributeKinds.COLLECTION:
+                    stream.write('%s=[' % attr.name)
+                    first_member = True
+                    for member_el in nested_el.get_members():
+                        if first_member:
+                            stream.write('\n' + ' ' * (offset + 2))
+                            first_member = False
+                        else:
+                            stream.write(',\n' + ' ' * (offset + 2))
+                        __dump(member_el, stream, offset + 2)
+                    stream.write('\n' + ' ' * (offset + 2) + ']')
+                else:
+                    stream.write("%s=" % attr.name)
+                    __dump(nested_el, stream, offset)
+        stream.write(')')
+    stream = StringIO()
+    __dump(data_element, stream, 0)
+    return stream.getvalue()
+
+

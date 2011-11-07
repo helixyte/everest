@@ -15,8 +15,6 @@ from everest.visitors import QueryFilterGenerationVisitor
 from everest.visitors import SortOrderGenerationVisitor
 from everest.visitors import SortOrderKeyFunctionGenerationVisitor
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.expression import over
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -211,15 +209,17 @@ class MemoryAggregateImpl(AggregateImpl):
     def __check_existing(self, entity):
         ents = self._get_entities()
         found = [ent for ent in ents
-                 if ent.id==entity.id or ent.slug==entity.slug]
+               if ent.id == entity.id or ent.slug == entity.slug]
         return len(found) > 0
 
     def __filter_by_attr(self, ents, attr, value):
         if self._filter_spec is None:
-            filtered_ents = [ent for ent in ents if getattr(ent, attr)==value]
+            filtered_ents = \
+                [ent for ent in ents if getattr(ent, attr) == value]
         else:
-            filtered_ents = [ent for ent in ents if getattr(ent, attr)==value
-                             if self._filter_spec.is_satisfied_by(ent)]
+            filtered_ents = \
+                [ent for ent in ents if getattr(ent, attr) == value
+                 if self._filter_spec.is_satisfied_by(ent)]
         return filtered_ents
 
 
@@ -268,17 +268,12 @@ class OrmAggregateImpl(AggregateImpl):
         AggregateImpl.__init__(self, entity_class)
         self._session = session
         self._search_mode = search_mode
-        self.__count = None
-        self.__data = None
 
     def count(self):
         if self.__defaults_empty:
             cnt = 0
         else:
-            if self.__count is None:
-                self.__load()
-#                self.__count = self.__get_filtered_query(None).count()
-            cnt = self.__count
+            cnt = self.__get_filtered_query(None).count()
         return cnt
 
     def get_by_id(self, id_key):
@@ -301,9 +296,17 @@ class OrmAggregateImpl(AggregateImpl):
         if self.__defaults_empty:
             yield
         else:
-            if self.__data is None:
-                self.__load()
-            for obj in self.__data:
+            # We need a flush here because we may have newly added entities
+            # in the aggregate which need to get an ID *before* we build the
+            # query expression.
+            self._session.flush()
+            if self._slice_key is None:
+                query = self.__get_ordered_query(None)
+            else:
+                query = self.__get_ordered_query(self._slice_key)
+                query = query.slice(self._slice_key.start,
+                                    self._slice_key.stop)
+            for obj in iter(query):
                 yield obj
 
     def add(self, entity):
@@ -312,21 +315,14 @@ class OrmAggregateImpl(AggregateImpl):
     def remove(self, entity):
         raise NotImplementedError('Abstract method.')
 
-    def _reset_count(self):
-        self.__count = None
-
-    def _reset_data(self):
-        self.__data = None
-
     def _apply_filter(self):
-        self.__count = None
-        self.__data = None
+        pass
 
     def _apply_order(self):
-        self.__data = None
+        pass
 
     def _apply_slice(self):
-        self.__data = None
+        pass
 
     def _query_generator(self, query, key): # pylint: disable=W0613
         return query
@@ -363,24 +359,6 @@ class OrmAggregateImpl(AggregateImpl):
     def __defaults_empty(self):
         return self._filter_spec is None and self._search_mode
 
-    def __load(self):
-        # We need a flush here because we may have newly added entities
-        # in the aggregate which need to get an ID *before* we build the
-        # query expression.
-        self._session.flush()
-        if self._slice_key is None:
-            query = self.__get_ordered_query(None)
-        else:
-            query = self.__get_ordered_query(self._slice_key)
-            query = query.slice(self._slice_key.start, self._slice_key.stop)
-        query = query.add_columns(over(func.count(1)).label('_count'))
-        res = [tup[0] for tup in query.all()]
-        if len(res) > 0:
-            self.__count = tup._count # pylint:disable-msg=W0212,W0631
-        else:
-            self.__count = 0
-        self.__data = res
-
 
 class OrmRootAggregateImpl(OrmAggregateImpl):
     """
@@ -396,13 +374,9 @@ class OrmRootAggregateImpl(OrmAggregateImpl):
 
     def add(self, entity):
         self._session.add(entity)
-        self._reset_count()
-        self._reset_data()
 
     def remove(self, entity):
         self._session.delete(entity)
-        self._reset_count()
-        self._reset_data()
 
     def _get_base_query(self):
         return self._session.query(self._entity_class)
@@ -431,6 +405,20 @@ class OrmRelationAggregateImpl(OrmAggregateImpl):
 
     def remove(self, entity):
         self.__relation.relatee.remove(entity)
+
+    def count(self):
+        # We need a flush here because we may have newly added entities
+        # in the aggregate which need to get an ID *before* we build the
+        # relation filter spec.
+        self._session.flush()
+        return OrmAggregateImpl.count(self)
+
+    def iterator(self):
+        # We need a flush here because we may have newly added entities
+        # in the aggregate which need to get an ID *before* we build the
+        # relation filter spec.
+        self._session.flush()
+        return OrmAggregateImpl.iterator(self)
 
     def get_filter_spec(self):
         #: Overridden to handle absolute vs. relative specs.

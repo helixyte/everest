@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 1, 2011.
 """
 
-from ConfigParser import SafeConfigParser
 from everest.configuration import Configurator
 from everest.db import Session
 from everest.db import initialize_db_engine
@@ -21,16 +20,16 @@ from everest.entities.base import Entity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
 from everest.interfaces import IResourceReferenceConverter
-from everest.resources.base import Collection
-from everest.resources.base import Member
-from everest.resources.descriptors import collection_attribute
-from everest.resources.descriptors import member_attribute
-from everest.resources.descriptors import terminal_attribute
 from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.attributes import get_resource_class_attributes
 from everest.representers.base import DataElementGenerator
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import SimpleDataElementRegistry
+from everest.resources.base import Collection
+from everest.resources.base import Member
+from everest.resources.descriptors import collection_attribute
+from everest.resources.descriptors import member_attribute
+from everest.resources.descriptors import terminal_attribute
 from everest.resources.service import Service
 from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
@@ -69,17 +68,7 @@ def setup():
     # Module level setup.
     reset_db_engine()
     reset_metadata()
-    ini_parser = SafeConfigParser()
-    ini_parser.read(BaseTestCase.ini_file_path)
-    ini_data = dict(db_user=ini_parser.get('DEFAULT', 'db_user'),
-                    db_password=ini_parser.get('DEFAULT',
-                                                 'db_password'),
-                    db_server=ini_parser.get('DEFAULT', 'db_server'),
-                    db_port=ini_parser.get('DEFAULT', 'db_port'),
-                    db_name='testing',
-                    )
-    db_string = 'postgresql+psycopg2://%(db_user)s:%(db_password)' \
-                's@%(db_server)s:%(db_port)s/%(db_name)s' % ini_data
+    db_string = 'sqlite://'
     engine = initialize_db_engine(db_string)
     DescriptorsTestCase.metadata = create_metadata()
     DescriptorsTestCase.metadata.bind = engine
@@ -536,7 +525,8 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
+                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
             with create_object(stage):
                 context = self._create_member()
                 self.assert_equal(len(iter(context.children).next().children),
@@ -555,7 +545,7 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (#STAGING_CONTEXT_MANAGERS.TRANSIENT,
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
                       STAGING_CONTEXT_MANAGERS.PERSISTENT,
                       ):
             with create_object(stage):

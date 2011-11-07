@@ -13,6 +13,8 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 import logging
 import transaction
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.pool import StaticPool
 
 
 __docformat__ = 'reStructuredText en'
@@ -41,7 +43,16 @@ class _DbEngineManager(object):
 
     @classmethod
     def initialize(cls, db_string):
-        cls.__engine = create_engine(db_string)
+        info = make_url(db_string)
+        if info.drivername == 'sqlite' \
+           and info.database in ('', None, ':memory:'):
+            # Ensure that all threads ensure a single connection when on 
+            # an sqlite memory db.
+            create_args = dict(connect_args={'check_same_thread':False},
+                               poolclass=StaticPool)
+        else:
+            create_args = dict()
+        cls.__engine = create_engine(db_string, **create_args) # ** pylint: disable=W0142
         return cls.__engine
 
     @classmethod

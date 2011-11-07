@@ -19,6 +19,7 @@ from everest.representers.interfaces import ICustomDataElement
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IExplicitDataElement
 from everest.representers.interfaces import ILinkedDataElement
+from everest.representers.utils import data_element_tree_to_string
 from everest.representers.utils import get_data_element_registry
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -30,7 +31,6 @@ from everest.url import url_to_resource
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import inspect
-
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionResourceRepresenter',
@@ -63,6 +63,9 @@ class DataElement(object):
         """
         inst = cls()
         return inst
+
+    def __str__(self):
+        return data_element_tree_to_string(self)
 
     @classmethod
     def create_from_resource(cls, resource):
@@ -568,7 +571,7 @@ class DataElementParser(object):
                             rc = url_to_resource(url)
                         else:
                             rc = self.extract_member_resource(rc_data_el,
-                                                              nesting_level+1)
+                                                              nesting_level + 1)
                         value = rc.get_entity()
                     else:
                         if ILinkedDataElement in provided_by(rc_data_el):
@@ -577,7 +580,7 @@ class DataElementParser(object):
                         else:
                             rc = \
                               self.extract_collection_resource(rc_data_el,
-                                                               nesting_level+1)
+                                                               nesting_level + 1)
                         value = [mb.get_entity() for mb in rc]
             else:
                 raise ValueError('Invalid resource attribute kind.')
@@ -594,7 +597,7 @@ class DataElementParser(object):
         agg = get_transient_aggregate(coll_cls)
         coll = coll_cls.create_from_aggregate(agg)
         for member_el in rc_data_el.get_members():
-            mb = self.extract_member_resource(member_el, nesting_level+1)
+            mb = self.extract_member_resource(member_el, nesting_level + 1)
             coll.add(mb)
         return coll
 
@@ -640,7 +643,7 @@ class DataElementGenerator(object):
                 mb_data_el = mb_de_cls.create_from_resource(member)
                 self._inject_member_content(mb_data_el, member,
                                             mapped_attrs.values(),
-                                            nesting_level+1)
+                                            nesting_level + 1)
                 coll_data_el.add_member(mb_data_el)
         return coll_data_el
 
@@ -680,12 +683,12 @@ class DataElementGenerator(object):
             else:
                 if attr.kind == ResourceAttributeKinds.MEMBER:
                     rc_data_el = self._inject_member_resource(value,
-                                                              nesting_level+1,
+                                                              nesting_level + 1,
                                                               None)
                 else:
                     rc_data_el = \
                             self._inject_collection_resource(value,
-                                                             nesting_level+1,
+                                                             nesting_level + 1,
                                                              None)
             data_element.set_nested(attr, rc_data_el)
 
@@ -725,7 +728,7 @@ class DataElementGenerator(object):
         """
         return attr.ignore is True \
                 or (attr.kind == ResourceAttributeKinds.COLLECTION
-                    and nesting_level>0 and not attr.ignore is False)
+                    and nesting_level > 0 and not attr.ignore is False)
 
 
 class ResourceRepresenter(Representer):
