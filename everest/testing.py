@@ -9,7 +9,6 @@ from ConfigParser import SafeConfigParser
 from everest import db
 from everest.configuration import Configurator
 from everest.db import get_db_engine
-from everest.db import initialize_db
 from everest.db import is_db_engine_initialized
 from everest.entities.utils import get_persistent_aggregate
 from everest.resources.utils import get_collection
@@ -17,35 +16,29 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.root import RootBuilder
 from functools import update_wrapper
-from lxml import etree
 from nose.tools import make_decorator
-from paste.deploy import loadapp # pylint: disable=E0611,F0401
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
-from webtest import TestApp
 import nose.plugins
 import os
 import sys
 import time
-import transaction
 import unittest
+from sqlalchemy.engine import create_engine
+from everest.db import set_db_engine
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['EverestNosePlugin',
+__all__ = ['DummyContext',
+           'DummyModule',
+           'EverestAppNosePlugin',
            'BaseTestCase',
            'DbTestCase',
-           'FunctionalTestCase',
            'ModelTestCase',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
+           'elapsed',
+           'no_autoflush',
            ]
-
-
-REMOTE_USER = 'it'
-
-
-def create_extra_environ():
-    return dict(REMOTE_USER=REMOTE_USER)
 
 
 class EverestAppNosePlugin(nose.plugins.Plugin):
@@ -94,7 +87,7 @@ class EverestAppNosePlugin(nose.plugins.Plugin):
     def begin(self):
         """Called before any tests are collected or run
 
-        Loads the application, and in turn its configuration.
+        Sets the application name and initialization file path.
         """
         path = os.getcwd()
         # Store app name and path to the config file in our testing base class.
@@ -149,6 +142,17 @@ class BaseTestCase(Pep8CompliantTestCase):
             self.__ini_parser.read(self.ini_file_path)
         return self.__ini_parser
 
+    def _get_db_info_from_ini_file(self):
+        # Extract DB initialization strings from the ini file.
+        ini_parser = self._read_ini_file()
+        db_string = ini_parser.get('app:%s' % self.app_name, 'db_string')
+        if ini_parser.has_option('app:%s' % self.app_name, 'db_echo'):
+            db_echo = ini_parser.getboolean('app:%s' % self.app_name,
+                                            'db_echo')
+        else:
+            db_echo = False
+        return db_string, db_echo
+
     def _test_attributes(self, test_object, attribute_map):
         """
         Utility method to test whether the test object attributes match the
@@ -175,13 +179,11 @@ class DbTestCase(BaseTestCase):
     def set_up(self):
         # Initialize the engine, if necessary. Note that this should only
         # be done once per process.
-        do_initialize = not is_db_engine_initialized()
-        if do_initialize:
-            # Extract DB initialization strings from the ini file.
-            ini_parser = self._read_ini_file()
-            db_string = ini_parser.get('app:%s' % self.app_name, 'db_string')
-            db_echo = ini_parser.getboolean('app:%s' % self.app_name, 'db_echo')
-            engine = initialize_db(db_string, db_echo)
+        if not is_db_engine_initialized():
+            db_string, db_echo = self._get_db_info_from_ini_file()
+            engine = create_engine(db_string)
+            engine.echo = db_echo
+            set_db_engine(engine)
         else:
             engine = get_db_engine()
         # We set up an outer transaction that allows us to roll back all
@@ -244,7 +246,7 @@ class ModelTestCase(DbTestCase):
         # session.
         self.__autoflush_flag = db.Session.autoflush #pylint:disable=E1101
         db.Session.configure(autoflush=self.autoflush_default)
-        DbTestCase.set_up(self)
+        super(ModelTestCase, self).set_up()
         # Create a new testing registry.
         reg = Registry('testing')
         # Configure the registry.
@@ -257,7 +259,7 @@ class ModelTestCase(DbTestCase):
         self.config.begin()
 
     def tear_down(self):
-        DbTestCase.tear_down(self)
+        super(ModelTestCase, self).tear_down()
         db.Session.configure(autoflush=self.__autoflush_flag)
         self.config.unhook_zca()
         self.config.end()
@@ -284,7 +286,7 @@ class ResourceTestCase(ModelTestCase):
     _request = None
 
     def set_up(self):
-        ModelTestCase.set_up(self)
+        super(ResourceTestCase, self).set_up()
         #
         root_builder = RootBuilder()
         self._request.root = root_builder(self._request.environ)
@@ -300,8 +302,7 @@ class ResourceTestCase(ModelTestCase):
                                      host_url=base_url,
                                      path_url=app_url,
                                      url=app_url,
-                                     registry=self.config.registry,
-                                     environ=create_extra_environ())
+                                     registry=self.config.registry)
         # Configure authentication.
         self.config.testing_securitypolicy("it")
         self.config.begin(request=self._request)
@@ -327,55 +328,6 @@ class ResourceTestCase(ModelTestCase):
         coll = get_collection(get_collection_class(member))
         coll.add(member)
         return member
-
-
-class FunctionalTestCase(BaseTestCase):
-    """
-    A basic test class for client side actions.
-    """
-
-    NAMESPACES = {
-        'atom': 'http://www.w3.org/2005/Atom',
-        'opensearch': 'http://a9.com/-/spec/opensearch/1.1/',
-        'app': 'http://www.w3.org/2007/app',
-    }
-
-    find_elements = etree.XPath('*[local-name() = $name]',
-                                namespaces=NAMESPACES)
-    find_entry_contents = etree.XPath('/atom:feed/atom:entry/atom:content',
-                                      namespaces=NAMESPACES)
-    count_entries = etree.XPath('count(/atom:feed/atom:entry)',
-                                namespaces=NAMESPACES)
-
-    config = None
-    app = None
-
-    def set_up(self):
-        db.Session.remove()
-        reg = Registry('testing')
-        self.config = Configurator(registry=reg, package=self.app_name)
-        self.config.testing_securitypolicy("it")
-        self.config.hook_zca()
-        self.config.begin()
-        wsgiapp = self._load_wsgiapp()
-        self.app = TestApp(wsgiapp,
-                           extra_environ=create_extra_environ())
-
-    def tear_down(self):
-        transaction.abort()
-        db.Session.remove()
-        self.config.unhook_zca()
-        self.config.end()
-
-    def _load_wsgiapp(self):
-        wsgiapp = loadapp('config:' + self.ini_file_path,
-                          name=self.app_name)
-        return wsgiapp
-
-    def _parse_body(self, body):
-        if isinstance(body, unicode):
-            body = body.encode('utf-8')
-        return etree.XML(body)
 
 
 class DummyModule(object):

@@ -300,12 +300,7 @@ class OrmAggregateImpl(AggregateImpl):
             # in the aggregate which need to get an ID *before* we build the
             # query expression.
             self._session.flush()
-            if self._slice_key is None:
-                query = self.__get_ordered_query(None)
-            else:
-                query = self.__get_ordered_query(self._slice_key)
-                query = query.slice(self._slice_key.start,
-                                    self._slice_key.stop)
+            query = self._get_data_query()
             for obj in iter(query):
                 yield obj
 
@@ -335,6 +330,15 @@ class OrmAggregateImpl(AggregateImpl):
 
     def _get_base_query(self):
         raise NotImplementedError('Abstract method.')
+
+    def _get_data_query(self):
+        if self._slice_key is None:
+            query = self.__get_ordered_query(None)
+        else:
+            query = self.__get_ordered_query(self._slice_key)
+            query = query.slice(self._slice_key.start,
+                                self._slice_key.stop)
+        return query
 
     def __get_filtered_query(self, key):
         query = self._query_generator(self._get_base_query(), key)

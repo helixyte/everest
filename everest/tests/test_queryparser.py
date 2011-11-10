@@ -104,15 +104,15 @@ class QueryParserTestCase(BaseTestCase):
         self.assert_equal(list(crit.value), [5e-05])
 
     def test_one_criterion_query_with_url(self):
-        url = 'http://everest.cenix-bioscience.com/species/human'
+        url = 'http://everest.org/species/human'
         expr = 'species:equal-to:%s' % url
         result = self.parser(expr)
         value = result.criteria[0].value[0]
         self.assert_equal(value, url)
 
     def test_multiple_criterion_query_with_url(self):
-        url1 = 'http://everest.cenix-bioscience.com/species/human'
-        url2 = 'http://everest.cenix-bioscience.com/species/rat'
+        url1 = 'http://everest.org/species/human'
+        url2 = 'http://everest.org/species/rat'
         expr = 'species:equal-to:%s,%s' % (url1, url2)
         result = self.parser(expr)
         value1 = result.criteria[0].value[0]

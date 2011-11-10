@@ -63,7 +63,7 @@ class AtomResourceRepresenter(ResourceRepresenter):
 class AtomDataElementGenerator(DataElementGenerator):
 
     # FIXME: Make the hypermedia type configurable. pylint: disable=W0511
-    VND_MIME = 'application/vnd.cenix+xml'
+    VND_MIME = 'application/vnd.everest+xml'
 
     def _inject_member_resource(self, member, nesting_level, mapping_info):
         # Build a representer for the content. Only XML content is supported

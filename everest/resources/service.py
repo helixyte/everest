@@ -7,7 +7,6 @@ Service class.
 Created on Jul 27, 2011.
 """
 
-from everest.resources.base import RELATION_BASE_URL
 from everest.resources.base import Resource
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection
@@ -29,7 +28,7 @@ class Service(Resource):
     """
     implements(IService)
 
-    relation = RELATION_BASE_URL
+    relation = 'everest.org'
 
     def __init__(self, name):
         Resource.__init__(self)

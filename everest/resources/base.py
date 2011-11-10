@@ -31,11 +31,8 @@ __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
            'Member',
            'Resource',
-           'RELATION_BASE_URL',
            ]
 
-
-RELATION_BASE_URL = 'http://relations.cenix-bioscience.com'
 
 class Resource(object):
     """

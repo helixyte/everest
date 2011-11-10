@@ -9,7 +9,7 @@ Created on Nov 3, 2011.
 
 import os
 
-from ez_setup import use_setuptools
+from distribute_setup import use_setuptools
 use_setuptools()
 
 from setuptools import setup
@@ -29,7 +29,6 @@ install_requirements = [
     'transaction>=1.0.0,<=1.0.99',
     'odict>=1.2.6,<=1.2.99',
     'pyparsing>=1.5.5,<=1.5.99',
-    'psycopg2>=2.4.2,<=2.4.99',
     'repoze.who>=2.0a2,<=2.0.99',
     'python-ldap>=2.3.11,<=2.3.99',
     'Paste>=1.7.3,<=1.7.99',
@@ -41,7 +40,6 @@ install_requirements = [
     'PasteScript',
     'rfc3339',
     'lxml>=2.3,<=2.3.99',
-    'xlrd',
     'WSGIFilter',
     'iso8601'
     ]
@@ -50,7 +48,6 @@ tests_requirements = install_requirements + [
     'nose>=1.0.0,<=1.0.99',
     'nosexcover>=1.0.4,<=1.0.99',
     'coverage==3.4',
-    'lxml',
     'webtest>=1.2.1,<=1.2.99',
     'pytz',
     ]

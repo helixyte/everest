@@ -7,9 +7,9 @@ Created on Jun 1, 2011.
 
 from everest.configuration import Configurator
 from everest.db import Session
-from everest.db import initialize_db_engine
 from everest.db import reset_db_engine
 from everest.db import reset_metadata
+from everest.db import set_db_engine
 from everest.entities.aggregates import MemoryRelationAggregateImpl
 from everest.entities.aggregates import MemoryRootAggregateImpl
 from everest.entities.aggregates import OrmRelationAggregateImpl
@@ -49,6 +49,7 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy.engine import create_engine
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -69,10 +70,10 @@ def setup():
     reset_db_engine()
     reset_metadata()
     db_string = 'sqlite://'
-    engine = initialize_db_engine(db_string)
+    engine = create_engine(db_string)
+    set_db_engine(engine)
     DescriptorsTestCase.metadata = create_metadata()
     DescriptorsTestCase.metadata.bind = engine
-    DescriptorsTestCase.metadata.drop_all()
     DescriptorsTestCase.metadata.create_all()
     #
     Session.remove()
@@ -445,7 +446,8 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
+                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
             with create_object(stage):
                 context = self._create_member()
                 self.assert_equal(context.text, MyEntity.DEFAULT_TEXT)
@@ -459,7 +461,8 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
+                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
             with create_object(stage):
                 context = self._create_member()
                 self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
@@ -494,7 +497,8 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
+                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
             with create_object(stage):
                 context = self._create_member()
                 self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
@@ -509,7 +513,8 @@ class DescriptorsTestCase(BaseTestCase):
             gen = self._make_data_element_generator()
             data_el = gen.run(member)
             del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
+        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
+                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
             with create_object(stage):
                 context = self._create_member()
                 self.assert_equal(len(context.children), 1)
@@ -539,7 +544,8 @@ class DescriptorsTestCase(BaseTestCase):
         with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
             member = self._create_member()
             new_child = MyEntityChild()
-            new_child_member = MyEntityChildMember.create_from_entity(new_child)
+            new_child_member = \
+                    MyEntityChildMember.create_from_entity(new_child)
             member.children.add(new_child_member)
             self.assert_equal(len(member.children), 2)
             gen = self._make_data_element_generator()

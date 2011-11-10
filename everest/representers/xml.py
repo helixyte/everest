@@ -45,7 +45,6 @@ __all__ = ['DateTimeConverter',
            ]
 
 XML_NS_OPEN_SEARCH = 'http://a9.com/-/spec/opensearch/1.1/'
-XML_NS_SHARED = 'http://schemata.cenix-bioscience.com/shared'
 XML_NS_XSI = 'http://www.w3.org/2001/XMLSchema-instance'
 
 # begin interface pylint:disable=W0232, E0213
@@ -396,10 +395,7 @@ class XmlDataElementRegistry(DataElementRegistry):
 
     def _initialize(self):
         # Create and register the linked data element class.
-        configuration = XmlRepresenterConfiguration(
-                            dict(xml_prefix='sh',
-                                 xml_ns=XML_NS_SHARED,
-                                 xml_schema='everest:schemata/Shared.xsd'))
+        configuration = XmlRepresenterConfiguration()
         de_cls = \
             self.create_data_element_class(Link, configuration,
                                            base_class=XmlLinkedDataElement)

@@ -3,11 +3,11 @@ from everest.resources.base import Member
 
 
 class FooMember(Member):
-    relation = 'http://cenix-bioscience.com/relations/foomember'
+    relation = 'http://everest.org/relations/foomember'
 
 
 class BarMember(Member):
-    relation = 'http://cenix-bioscience.com/relations/barmember'
+    relation = 'http://everest.org/relations/barmember'
 
 
 class FooCollection(Collection):

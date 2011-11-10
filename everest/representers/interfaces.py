@@ -8,12 +8,6 @@ from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-
-__author__ = 'F Oliver Gathmann'
-__date__ = '$Date: 2011-10-07 12:52:11 +0200 (Fri, 07 Oct 2011) $'
-__revision__ = '$Rev: 12174 $'
-__source__ = '$URL:: http://svn/cenix/TheLMA/trunk/thelma/resources/represent#$'
-
 __all__ = ["IDeSerializer",
            "ISerializer",
            "IRepresenter"
