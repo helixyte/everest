@@ -17,7 +17,7 @@ __all__ = ['IAggregate',
            ]
 
 
-# no __init__ pylint: disable=W0232
+# begin interfaces pylint: disable=W0232, E0213, E0211
 
 class IEntity(Interface):
     """
@@ -33,6 +33,40 @@ class IAggregate(Interface):
     resource.
     """
 
+    def create(entity_class, relation=None, ** kw):
+        """
+        Factory method for creating the aggregate.
+        """
+
+    def clone():
+        """
+        Creates a clone of this aggregate.
+        """
+
+    def count():
+        """
+        """
+
+    def get_by_id(id_key):
+        """
+        """
+
+    def get_by_slug(slug):
+        """
+        """
+
+    def iterator():
+        """
+        """
+
+    def add(entity):
+        """
+        """
+
+    def remove(entity):
+        """
+        """
+
 
 class IRootAggregateImplementation(Interface):
     """
@@ -45,4 +79,4 @@ class IRelationAggregateImplementation(Interface):
     Marker interface for aggregate implementations.
     """
 
-# pylint: enable=W0232
+# pylint: enable=W0232, E0213, E0211
