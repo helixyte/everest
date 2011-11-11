@@ -3,6 +3,7 @@ everest.views.utils
 
 FOG Feb 4, 2011.
 """
+
 from everest.mime import CSV_MIME
 
 __docformat__ = 'reStructuredText en'
@@ -22,4 +23,4 @@ def accept_csv_only(context, request): # pylint: disable-msg=W0613
     CSV renderer that should only be invoked if this has been explicitly
     requested in the ACCEPT header by the client.
     """
-    return CSV_MIME in request.accept.best_matches()
+    return CSV_MIME in [acc.lower() for acc in request.accept]

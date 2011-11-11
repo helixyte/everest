@@ -45,10 +45,10 @@ install_requirements = [
     ]
 
 tests_requirements = install_requirements + [
-    'nose>=1.0.0,<=1.0.99',
+    'nose>=1.1.0,<=1.1.99',
     'nosexcover>=1.0.4,<=1.0.99',
     'coverage==3.4',
-    'webtest>=1.2.1,<=1.2.99',
+    'webtest>=1.3.1,<=1.3.99',
     'pytz',
     ]
 
