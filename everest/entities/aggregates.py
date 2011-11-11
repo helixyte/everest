@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Aggregate implementations.
@@ -179,9 +179,8 @@ class MemoryAggregateImpl(AggregateImpl):
                              'have a slug (`slug` attribute).')
         entity_id = entity.id
         entity_slug = entity.slug
-        is_blank = entity_id is None and entity_slug is None
-        if not is_blank:
-            if not entity_id is None and entity_slug is None:
+        if not entity_id is None:
+            if entity_slug is None:
                 raise ValueError('Entities added to a memory aggregate which '
                                  'specify an ID also need to specify a slug.')
             elif self.__check_existing(entity):
