@@ -80,4 +80,3 @@ setup(name='everest',
       tests_require=tests_requirements,
       test_suite="everest",
       )
-
