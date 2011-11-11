@@ -8,20 +8,23 @@ Created on Jun 17, 2011.
 """
 
 from everest.configuration import Configurator
+from everest.entities.aggregates import MemoryRootAggregateImpl
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
+from everest.tests.testapp.entities import FooEntity
+from everest.tests.testapp.entities import FooEntityAggregate
 from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp.models import FooEntity
-from everest.tests.testapp.models import FooEntityAggregate
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
+from zope.interface import implements # pylint: disable=E0611,F0401
+from everest.entities.utils import get_aggregate
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -73,6 +76,30 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         config = Configurator(reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll, agg)
+
+    def test_custom_memory_aggregate_class(self):
+        class MyMemoryAggregate(MemoryRootAggregateImpl):
+            implements(IAggregate)
+        reg = get_current_registry()
+        # Load the configuration.
+        config = Configurator(reg)
+        config.add_resource(IFoo, FooMember, FooEntity,
+                            collection_root_name="foos",
+                            aggregate=MyMemoryAggregate)
+        member = object.__new__(FooMember)
+        coll_cls = reg.queryAdapter(member, ICollectionResource,
+                                    'collection-class')
+        coll = object.__new__(coll_cls)
+        agg = get_aggregate(coll)
+        entity = object.__new__(FooEntity)
+        entity.id = 1
+        agg.add(entity)
+        self.assert_true(agg.count() == 1)
+        self.assert_true(list(agg.iterator())[0] is entity)
+        self.assert_true(agg.get_by_id(1) is entity)
+        self.assert_true(agg.get_by_slug('1') is entity)
+        agg.remove(entity)
+        self.assert_true(agg.count() == 0)
 
     def __check(self, reg, member, ent, coll, agg):
         # Check if adapters were registered correctly.

@@ -46,7 +46,7 @@ def get_aggregate(collection, relation=None, **kw):
         entity and second the name of the attribute in the parent that
         references the aggregate
     :return: aggregate instance
-        (object providing :class:`everest.models.interfaces.IAggregate`)
+        (object providing :class:`everest.entities.interfaces.IAggregate`)
     """
     # FIXME: optimize this pylint:disable=W0511
     if isinstance(collection, type(Interface)):
@@ -89,7 +89,7 @@ def get_entity_class_for_member(member):
     :type collection: class implementing or instance providing
         :class:`everest.resources.interfaces.IMemberResource`
     :return: entity class
-        (class implementing `everest.models.interfaces.IEntity`)
+        (class implementing `everest.entities.interfaces.IEntity`)
     """
     return get_adapter(member, IEntity)
 
@@ -103,7 +103,7 @@ def get_aggregate_class_for_collection(collection):
     :type collection: class implementing or instance providing or subclass of
         :class:`everest.resources.interfaces.ICollectionResource`
     :return: entity class
-        (class implementing `everest.models.interfaces.IAggregate`)
+        (class implementing `everest.entities.interfaces.IAggregate`)
     """
     return get_adapter(collection, IAggregate)
 

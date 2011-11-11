@@ -114,7 +114,7 @@ class Member(Resource):
         :type name: :class:`string`
         :param entity: the associated entity (domain object)
         :type entity: an object implementing an interface derived from
-                :class:`everest.models.interfaces.IEntity`
+                :class:`everest.entities.interfaces.IEntity`
         """
         if self.__class__ is Member:
             raise NotImplementedError('Abstract class')
@@ -159,7 +159,7 @@ class Member(Resource):
         """
         Returns the entity this resource is wrapped around.
 
-        :return: an object of a :class:`everest.models.base.Entity` subclass
+        :return: an object of a :class:`everest.entities.base.Entity` subclass
         """
         return self.__entity
 
@@ -267,9 +267,9 @@ class Collection(Resource):
         :param name: the name of the collection
         :type name: :class:`string`
         :param aggregate: the associated aggregate
-        :type aggregate: :class:`everest.models.aggregates.Aggregate` -
+        :type aggregate: :class:`everest.entities.aggregates.Aggregate` -
                 an object implementing an interface derived from
-                :class:`everest.models.interfaces.IAggregate`
+                :class:`everest.entities.interfaces.IAggregate`
         """
         if self.__class__ is Collection:
             raise NotImplementedError('Abstract class')
@@ -288,7 +288,7 @@ class Collection(Resource):
 
         :param aggregate: aggregate containing the entities exposed by this
               collection resource
-        :type aggregate: :class:`everest.models.aggregates.Aggregate` instance
+        :type aggregate: :class:`everest.entities.aggregates.Aggregate` instance
         """
         return cls(aggregate)
 

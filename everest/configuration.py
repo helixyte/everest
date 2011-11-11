@@ -62,9 +62,8 @@ class Configurator(BfgConfigurator):
         if aggregate is None:
             aggregate = type('%sAggregate' % entity.__name__,
                              (Aggregate,), {})
-        elif not issubclass(aggregate, Aggregate):
-            raise ValueError('The entity aggregate must be a subclass '
-                             'of Aggregate.')
+        elif not IAggregate in provided_by(object.__new__(aggregate)):
+            raise ValueError('The entity aggregate must implement IAggregate.')
         # Override the root name and title the collection, if requested.
         if not collection_root_name is None:
             collection.root_name = collection_root_name

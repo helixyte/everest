@@ -35,7 +35,7 @@ class AggregateImpl(object):
         :param entity_class: the entity class (type) of the entities in this
             aggregate.
         :type entity_class: a class implementing
-            :class:`everest.models.interfaces.IEntity`
+            :class:`everest.entities.interfaces.IEntity`
         """
         if self.__class__ is AggregateImpl:
             raise NotImplementedError('Abstract class.')

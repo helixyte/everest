@@ -25,13 +25,13 @@
     <resource
         interface='.interfaces.IFoo'
         member=".resources.FooMember"
-        entity=".models.FooEntity"
+        entity=".entities.FooEntity"
         collection_root_name="my-foo-collection"/>
 
     <resource
         interface='.interfaces.IBar'
         member=".resources.BarMember"
-        entity=".models.BarEntity"
+        entity=".entities.BarEntity"
         collection_root_name="my-bar-collection"/>
 
     <representer
