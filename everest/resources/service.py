@@ -28,12 +28,35 @@ class Service(Resource):
     """
     implements(IService)
 
-    relation = 'everest.org'
+    @property
+    def relation(self):
+        return self.__name__
 
     def __init__(self, name):
         Resource.__init__(self)
         self.__name__ = name
+        self.__registered_interfaces = set()
         self.__collections = {}
+        self.__started = False
+
+    def register(self, iresource):
+        """
+        Registers the given resource interface with this service.
+        """
+        if self.__started:
+            raise RuntimeError("Can not register new resource interface when "
+                               "the service has been started.")
+        self.__registered_interfaces.add(iresource)
+
+    def start(self):
+        """
+        Starts the service.
+        
+        This adds all registered resource interfaces to the service.
+        """
+        self.__started = True
+        for irc in self.__registered_interfaces:
+            self.add(irc)
 
     def __getitem__(self, key):
         """

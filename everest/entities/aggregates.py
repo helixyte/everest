@@ -10,11 +10,12 @@ Created on Sep 25, 2011.
 from everest.db import Session
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
+from everest.interfaces import IKeyFunctionOrderSpecificationVisitor
+from everest.interfaces import IOrderSpecificationVisitor
+from everest.interfaces import IQueryFilterSpecificationVisitor
 from everest.staging import StagingContextManagerBase
-from everest.visitors import QueryFilterGenerationVisitor
-from everest.visitors import SortOrderGenerationVisitor
-from everest.visitors import SortOrderKeyFunctionGenerationVisitor
 from sqlalchemy.orm.exc import NoResultFound
+from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -42,9 +43,9 @@ class AggregateImpl(object):
         #: Entity class (type) of the entities in this aggregate.
         self._entity_class = entity_class
         #: Specifications for querying
-        #: (:class:`everest.specifications.Specifications`).
+        #: (:class:`everest.specifications.FilterSpecifications`).
         self._filter_spec = None
-        #: Specifications for querying (:class:`everest.ordering.Order`).
+        #: Specifications for querying (:class:`everest.ordering.OrderSpecification`).
         self._order_spec = None
         #: Key for slicing. (:type:`slice`).
         self._slice_key = None
@@ -158,7 +159,7 @@ class MemoryAggregateImpl(AggregateImpl):
             ents = [ent for ent in ents
                     if self._filter_spec.is_satisfied_by(ent)]
         if not self._order_spec is None:
-            visitor = SortOrderKeyFunctionGenerationVisitor()
+            visitor = get_utility(IKeyFunctionOrderSpecificationVisitor)()
             self._order_spec.accept(visitor)
             key_func = visitor.get_key_function()
             ents = sorted(ents, key=key_func)
@@ -323,10 +324,12 @@ class OrmAggregateImpl(AggregateImpl):
         return query
 
     def _filter_visitor_factory(self):
-        return QueryFilterGenerationVisitor(self._entity_class)
+        visitor_cls = get_utility(IQueryFilterSpecificationVisitor)
+        return visitor_cls(self._entity_class)
 
     def _order_visitor_factory(self):
-        return SortOrderGenerationVisitor(self._entity_class)
+        visitor_cls = get_utility(IOrderSpecificationVisitor)
+        return visitor_cls(self._entity_class)
 
     def _get_base_query(self):
         raise NotImplementedError('Abstract method.')

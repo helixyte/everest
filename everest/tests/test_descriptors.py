@@ -19,7 +19,6 @@ from everest.entities.aggregates import TransientStagingContextManager
 from everest.entities.base import Entity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
-from everest.interfaces import IResourceReferenceConverter
 from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.attributes import get_resource_class_attributes
 from everest.representers.base import DataElementGenerator
@@ -33,12 +32,9 @@ from everest.resources.descriptors import terminal_attribute
 from everest.resources.service import Service
 from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
-from everest.specifications import specification_factory
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.testing import BaseTestCase
 from everest.testing import Pep8CompliantTestCase
-from everest.url import ResourceReferenceConverter
-from repoze.bfg.interfaces import IRequest
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
 from repoze.bfg.testing import setUp as testing_set_up
@@ -350,8 +346,7 @@ class DescriptorsTestCase(BaseTestCase):
         # Set up registry and request.
         reg = Registry('testing')
         config = Configurator(reg)
-        reg.registerUtility(# pylint: disable=E1101
-                            specification_factory, IFactory, 'specifications')
+        config.setup_registry()
         reg.registerUtility(# pylint: disable=E1101
                             OrmRootAggregateImpl,
                             IRootAggregateImplementation)
@@ -380,9 +375,6 @@ class DescriptorsTestCase(BaseTestCase):
         reg.registerUtility(# pylint: disable=E1101
                             TransientStagingContextManager,
                             IFactory, STAGING_CONTEXT_MANAGERS.TRANSIENT)
-        reg.registerAdapter(# pylint: disable=E1101
-                            ResourceReferenceConverter,
-                            (IRequest,), IResourceReferenceConverter)
         config.add_resource(IMyEntityParent, MyEntityParentMember,
                             MyEntityParent,
                             collection_root_name='my-entity-parents')

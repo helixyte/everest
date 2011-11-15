@@ -5,151 +5,33 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 11, 2011.
 """
 
+from everest.interfaces import ICqlFilterSpecificationVisitor
+from everest.interfaces import ICqlOrderSpecificationVisitor
+from everest.interfaces import IKeyFunctionOrderSpecificationVisitor
+from everest.interfaces import IQueryFilterSpecificationVisitor
 from everest.resources.interfaces import IResource
-from everest.specifications import ValueBoundSpecification
+from everest.specifications import ValueBoundFilterSpecification
 from everest.url import resource_to_url
 from odict import odict
 from sqlalchemy.sql import operators
+from zope.interface import implements # pylint: disable=E0611,F0401
 import sqlalchemy
+from everest.interfaces import IQueryOrderSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['FilterCqlGenerationVisitor',
-           'QueryFilterGenerationVisitor',
-           'SortOrderCqlGenerationVisitor',
-           'SpecificationVisitor',
+__all__ = ['CqlFilterSpecificationVisitor',
+           'CqlOrderSpecificationVisitor',
+           'KeyFunctionOrderSpecificationVisitor',
+           'OrderSpecificationVisitor',
+           'QueryFilterSpecificationVisitor',
            ]
 
 
-class SpecificationVisitor(object):
-    """
-    Abstract base class for all specification visitors
-    """
-
-    def __init__(self):
-        if self.__class__ is SpecificationVisitor:
-            raise NotImplementedError('Abstract class')
-
-    def visit_conjuction(self, spec):
-        """
-        Visit a conjuction specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ConjuctionSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_disjuction(self, spec):
-        """
-        Visit a disjuction specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.DisjuctionSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_negation(self, spec):
-        """
-        Visit a negation specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.NegationSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_starts_with(self, spec):
-        """
-        Visit a value starts with specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueStartsWithSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_ends_with(self, spec):
-        """
-        Visit a value ends with specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueEndsWithSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_contains(self, spec):
-        """
-        Visit a value contains specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueContainsSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_contained(self, spec):
-        """
-        Visit a value contained specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueContainedSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_equal_to(self, spec):
-        """
-        Visit a value equal to specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueEqualToSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_less_than(self, spec):
-        """
-        Visit a value less than specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueLessThanSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_greater_than(self, spec):
-        """
-        Visit a value greater than specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueGreaterThanSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_less_than_or_equal_to(self, spec):
-        """
-        Visit a value less than or equal to specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueLessThanOrEqualToSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_greater_than_or_equal_to(self, spec):
-        """
-        Visit a value greater than or equal to specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueGreaterThanOrEqualToSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_value_in_range(self, spec):
-        """
-        Visit a value in range specification
-
-        :param spec: a specification instance
-        :type spec: :class:`everest.specifications.ValueInRangeSpecification`
-        """
-        raise NotImplementedError('Abstract method')
-
-
-class FilterCqlGenerationVisitor(SpecificationVisitor):
+class CqlFilterSpecificationVisitor(object):
     # FIXME: pylint: disable=W0511
     #        Write more tests and improve implementation
+
+    implements(ICqlFilterSpecificationVisitor)
 
     STARTS_WITH = 'starts-with'
     ENDS_WITH = 'ends-with'
@@ -166,10 +48,7 @@ class FilterCqlGenerationVisitor(SpecificationVisitor):
     __cql_and = '~'
     __cql_range_format = '%(from_value)s-%(to_value)s'
 
-    __cql = None
-
     def __init__(self):
-        SpecificationVisitor.__init__(self)
         self.__cql = self._create_data_dict()
 
     def visit_conjuction(self, spec):
@@ -179,7 +58,7 @@ class FilterCqlGenerationVisitor(SpecificationVisitor):
         pass
 
     def visit_negation(self, spec):
-        if not isinstance(spec.wrapped_spec, ValueBoundSpecification):
+        if not isinstance(spec.wrapped_spec, ValueBoundFilterSpecification):
             raise ValueError('Only value bound specifications can be negated '
                              'in CQL expressions: %s' % spec)
         self.__negate(spec.wrapped_spec)
@@ -283,34 +162,23 @@ class FilterCqlGenerationVisitor(SpecificationVisitor):
         return result
 
 
-filter_cql_generation_visitor = FilterCqlGenerationVisitor()
+class QueryFilterSpecificationVisitor(object):
+    # FIXME: Not visiting conjuction/disjuction pylint: disable=W0511  
+    # FIXME: duplicate to CqlFilterSpecificationVisitor pylint: disable=W0511
+    # FIXME: review visitor patter implementation pylint: disable=W0511
 
-
-class QueryFilterGenerationVisitor(SpecificationVisitor):
-    # FIXME: pylint: disable=W0511
-    #        Not visiting conjuction/disjuction smells like a bad implementation
-    # FIXME: pylint: disable=W0511
-    #        This class is almost duplicate to FilterCqlGenerationVisitor
-
-    """
-    Implementation of the visitor pattern should be reviewed for efficiency and
-    more tests should be written.
-    """
-
-    __klass = None
-    __clause_factories = {}
-    __expr = None
+    implements(IQueryFilterSpecificationVisitor)
 
     def __init__(self, klass, clause_factories=None):
         """
-        Constructs a QueryFilterGenerationVisitor
+        Constructs a QueryFilterSpecificationVisitor
 
         :param klass: a class that is mapped to a selectable using SQLAlchemy
         """
-        SpecificationVisitor.__init__(self)
         self.__klass = klass
-        if clause_factories is not None:
-            self.__clause_factories = clause_factories # FIXME: explain...
+        if clause_factories is None:
+            clause_factories = {}
+        self.__clause_factories = clause_factories # FIXME: explain...
         self.__expr = self._create_data_dict()
 
     def visit_conjuction(self, spec):
@@ -320,7 +188,7 @@ class QueryFilterGenerationVisitor(SpecificationVisitor):
         pass
 
     def visit_negation(self, spec):
-        if not isinstance(spec.wrapped_spec, ValueBoundSpecification):
+        if not isinstance(spec.wrapped_spec, ValueBoundFilterSpecification):
             raise ValueError('Only value bound specifications can be negated '
                              'in CQL expressions: %s' % spec)
         self.__negate(spec.wrapped_spec)
@@ -367,7 +235,8 @@ class QueryFilterGenerationVisitor(SpecificationVisitor):
         for attr_name, ops in self.__expr.iteritems():
             for oper_name, values in ops.iteritems():
                 if (attr_name, oper_name) in self.__clause_factories:
-                    expr = self.__clause_factories[(attr_name, oper_name)](values)
+                    expr = \
+                        self.__clause_factories[(attr_name, oper_name)](values)
                 else:
                     op = getattr(self, '_%s_op' % oper_name)
                     attr = getattr(self.__klass, attr_name)
@@ -478,51 +347,20 @@ class QueryFilterGenerationVisitor(SpecificationVisitor):
         del self.__expr[name][old_oper]
 
 
-class SortOrderVisitor(object):
-    """
-    Abstract base class for all sort order visitors
-    """
+class QueryOrderSpecificationVisitor(object):
 
-    def __init__(self):
-        if self.__class__ is SortOrderVisitor:
-            raise NotImplementedError('Abstract class')
-
-    def visit_simple(self, order):
-        """
-        Visit a simple order
-
-        :param order: an order instance
-        :type order: :class:`everest.sorting.SimpleOrder`
-        """
-        raise NotImplementedError('Abstract method')
-
-    def visit_natural(self, order):
-        """
-        Visit a natural order
-
-        :param spec: an order instance
-        :type spec: :class:`everest.sorting.NaturalOrder`
-        """
-        raise NotImplementedError('Abstract method')
-
-
-class SortOrderGenerationVisitor(SortOrderVisitor):
-
-    __klass = None
-    __order_conditions = {}
-    __order = None
-    __joins = None
+    implements(IQueryOrderSpecificationVisitor)
 
     def __init__(self, klass, order_conditions=None):
         """
-        Constructs a QueryFilterGenerationVisitor
+        Constructs a QueryFilterSpecificationVisitor
 
         :param klass: a class that is mapped to a selectable using SQLAlchemy
         """
-        SortOrderVisitor.__init__(self)
         self.__klass = klass
-        if order_conditions is not None:
-            self.__order_conditions = order_conditions
+        if order_conditions is None:
+            order_conditions = {}
+        self.__order_conditions = order_conditions
         self.__order = []
         self.__joins = []
 
@@ -541,7 +379,7 @@ class SortOrderGenerationVisitor(SortOrderVisitor):
         else:
             self.__order[-1] = self.__get_attr(order.wrapped.attr_name).asc()
 
-    def visit_conjuction(self, order):
+    def visit_conjunction(self, order):
         pass
 
     def get_order(self):
@@ -560,9 +398,11 @@ class SortOrderGenerationVisitor(SortOrderVisitor):
             return getattr(self.__klass, attr_name)
 
 
-class SortOrderKeyFunctionGenerationVisitor(SortOrderVisitor):
+class KeyFunctionOrderSpecificationVisitor(object):
+
+    implements(IKeyFunctionOrderSpecificationVisitor)
+
     def __init__(self):
-        SortOrderVisitor.__init__(self)
         self.__order = []
 
     def visit_simple(self, order):
@@ -579,21 +419,24 @@ class SortOrderKeyFunctionGenerationVisitor(SortOrderVisitor):
                                                     key=key_func,
                                                     reverse=True))
 
+    def visit_conjunction(self, order):
+        raise NotImplementedError('Not implemented.')
+
     def get_key_function(self):
         return lambda entities: zip([order_func(entities)
                                      for order_func in self.__order])
 
 
-class SortOrderCqlGenerationVisitor(SortOrderVisitor):
+class CqlOrderSpecificationVisitor(object):
 
-    __order = None
+    implements(ICqlOrderSpecificationVisitor)
+
     __cql_and = '~'
     __cql_asc_op = 'asc'
     __cql_desc_op = 'desc'
     __cql_sep = ':'
 
     def __init__(self):
-        SortOrderVisitor.__init__(self)
         self.__order = []
 
     def visit_simple(self, order):
@@ -612,7 +455,7 @@ class SortOrderCqlGenerationVisitor(SortOrderVisitor):
             self.__order[-1] = self.__switch_op(self.__order[-1],
                                                 self.__cql_asc_op)
 
-    def visit_conjuction(self, order):
+    def visit_conjunction(self, order):
         pass
 
     def get_cql(self):
@@ -623,6 +466,3 @@ class SortOrderCqlGenerationVisitor(SortOrderVisitor):
 
     def __to_cql_name(self, attr_name):
         return attr_name.replace('_', '-')
-
-
-sort_order_cql_generation_visitor = SortOrderCqlGenerationVisitor()

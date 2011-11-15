@@ -7,10 +7,10 @@ Utilities for entity classes.
 Created on Nov 3, 2011.
 """
 
-from .interfaces import IAggregate
-from .interfaces import IEntity
-from .interfaces import IRelationAggregateImplementation
-from .interfaces import IRootAggregateImplementation
+from everest.entities.interfaces import IAggregate
+from everest.entities.interfaces import IEntity
+from everest.entities.interfaces import IRelationAggregateImplementation
+from everest.entities.interfaces import IRootAggregateImplementation
 from everest.resources.interfaces import IMemberResource
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401

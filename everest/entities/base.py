@@ -7,11 +7,13 @@ Entity base classes.
 Created on May 12, 2011.
 """
 
-from .interfaces import IAggregate
-from .interfaces import IEntity
-from .interfaces import IRelationAggregateImplementation
-from .interfaces import IRootAggregateImplementation
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from everest.entities.aggregates import MemoryRelationAggregateImpl
+from everest.entities.aggregates import MemoryRootAggregateImpl
+from everest.entities.interfaces import IAggregate
+from everest.entities.interfaces import IEntity
+from everest.entities.interfaces import IRelationAggregateImplementation
+from everest.entities.interfaces import IRootAggregateImplementation
+from zope.component import queryUtility as query_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -89,10 +91,11 @@ class Aggregate(object):
             # If no implementation is given, we use whichever implementation
             # is registered for the current staging area.
             if not kw.get('relation') is None:
-                ifc = IRelationAggregateImplementation
+                impl_cls = query_utility(IRelationAggregateImplementation,
+                                         default=MemoryRelationAggregateImpl)
             else:
-                ifc = IRootAggregateImplementation
-            impl_cls = get_utility(ifc)
+                impl_cls = query_utility(IRootAggregateImplementation,
+                                         default=MemoryRootAggregateImpl)
         impl = impl_cls.create(entity_class, **kw)
         return cls(impl)
 
@@ -181,9 +184,9 @@ class Aggregate(object):
         """
         Filters the aggregate by the given filter specification.
 
-        :param spec: an instance of a Specification
+        :param spec: an instance of a FilterSpecification
         :type filter_spec: instance of
-            :class:`everest.specifications.Specification`
+            :class:`everest.specifications.FilterSpecification`
         """
         self.__implementation.filter(filter_spec)
 
@@ -198,7 +201,7 @@ class Aggregate(object):
         Orders the aggregate according to the given order specification.
 
         :param order_spec: order specification
-        :type order_spec: instance of :class:`everest.sorting.Order`
+        :type order_spec: instance of :class:`everest.ordering.OrderSpecification`
         """
         return self.__implementation.order(order_spec)
 

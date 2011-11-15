@@ -389,7 +389,7 @@ class Collection(Resource):
         :param data_element: data element (hierarchical) to create a resource
             from
         :type data_element: object implementing
-         `:class:everest.resources.representers.interfaces.IExplicitDataElement`
+         `:class:everest.resources.interfaces.IExplicitDataElement`
         """
         mb_cls = get_member_class(self.__class__)
         attrs = data_element.mapper.get_mapped_attributes(mb_cls)

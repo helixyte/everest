@@ -6,27 +6,27 @@ Created on Jul 10, 2011.
 """
 
 from everest.db import reset_metadata
-from everest.sorting import sort_order_factory
-from everest.specifications import specification_factory
+from everest.specifications import FilterSpecificationFactory
+from everest.specifications import OrderSpecificationFactory
 from everest.testing import BaseTestCase
-from everest.visitors import FilterCqlGenerationVisitor
-from everest.visitors import QueryFilterGenerationVisitor
-from everest.visitors import SortOrderCqlGenerationVisitor
-from everest.visitors import SortOrderGenerationVisitor
+from everest.visitors import CqlFilterSpecificationVisitor
+from everest.visitors import CqlOrderSpecificationVisitor
+from everest.visitors import OrderSpecificationVisitor
+from everest.visitors import QueryFilterSpecificationVisitor
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CompositeFilterCqlGenerationVisitorTestCase',
-           'CompositeQueryFilterGenerationVisitorTestCase',
-           'ManyValueBoundQueryFilterGenerationVisitorTestCase',
-           'NegationFilterCqlGenerationVisitorTestCase',
-           'NegationQueryFilterGenerationVisitorTestCase',
-           'QueryOrderGenerationVisitorTestCase',
-           'SortOrderFilterCqlGenerationVisitorTestCase',
-           'ValueBoundFilterCqlGenerationVisitorTestCase',
-           'ValueBoundQueryFilterGenerationVisitorTestCase',
+__all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
+           'CompositeQueryFilterSpecificationVisitorTestCase',
+           'ManyValueBoundQueryFilterSpecificationVisitorTestCase',
+           'NegationCqlFilterSpecificationVisitorTestCase',
+           'NegationQueryFilterSpecificationVisitorTestCase',
+           'QueryOrderSpecificationSpecificationVisitorTestCase',
+           'OrderSpecificationCqlFilterSpecificationVisitorTestCase',
+           'ValueBoundCqlFilterSpecificationVisitorTestCase',
+           'ValueBoundQueryFilterSpecificationVisitorTestCase',
            ]
 
 
@@ -60,19 +60,19 @@ def teardown():
 
 # FIXME: Clean up code duplication below # pylint:disable-msg=W0511
 
-class FilterCqlGenerationVisitorTestCase(BaseTestCase):
+class CqlFilterSpecificationVisitorTestCase(BaseTestCase):
     visitor = None
     specs_factory = None
 
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = FilterCqlGenerationVisitor()
-        self.specs_factory = specification_factory
+        self.visitor = CqlFilterSpecificationVisitor()
+        self.specs_factory = FilterSpecificationFactory()
 
 
-class ValueBoundFilterCqlGenerationVisitorTestCase(
-                                        FilterCqlGenerationVisitorTestCase):
+class ValueBoundCqlFilterSpecificationVisitorTestCase(
+                                        CqlFilterSpecificationVisitorTestCase):
 
     def test_visit_value_starts_with(self):
         expected_cql = 'name:starts-with:"Ni"'
@@ -135,8 +135,8 @@ class ValueBoundFilterCqlGenerationVisitorTestCase(
         self.assert_equal(self.visitor.get_cql(), expected_cql)
 
 
-class CompositeFilterCqlGenerationVisitorTestCase(
-                                        FilterCqlGenerationVisitorTestCase):
+class CompositeCqlFilterSpecificationVisitorTestCase(
+                                        CqlFilterSpecificationVisitorTestCase):
 
     def test_visit_conjuction(self):
         expected_cql = 'age:greater-than:34~name:equal-to:"Nikos"'
@@ -170,8 +170,8 @@ class CompositeFilterCqlGenerationVisitorTestCase(
         self.assert_equal(self.visitor.get_cql(), expected_cql)
 
 
-class NegationFilterCqlGenerationVisitorTestCase(
-                                        FilterCqlGenerationVisitorTestCase):
+class NegationCqlFilterSpecificationVisitorTestCase(
+                                        CqlFilterSpecificationVisitorTestCase):
 
     def test_visit_value_not_starts_with(self):
         expected_cql = 'name:not-starts-with:"Ni"'
@@ -235,18 +235,18 @@ class NegationFilterCqlGenerationVisitorTestCase(
         self.assert_equal(self.visitor.get_cql(), expected_cql)
 
 
-class QueryFilterGenerationVisitorTestCase(BaseTestCase):
+class QueryFilterSpecificationVisitorTestCase(BaseTestCase):
     visitor = None
     specs_factory = None
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = QueryFilterGenerationVisitor(Person)
-        self.specs_factory = specification_factory
+        self.visitor = QueryFilterSpecificationVisitor(Person)
+        self.specs_factory = FilterSpecificationFactory()
 
 
-class ValueBoundQueryFilterGenerationVisitorTestCase(
-                                    QueryFilterGenerationVisitorTestCase):
+class ValueBoundQueryFilterSpecificationVisitorTestCase(
+                                    QueryFilterSpecificationVisitorTestCase):
 
     def test_visit_value_starts_with(self):
         expected_expr = Person.name.startswith('Ni')
@@ -312,8 +312,8 @@ class ValueBoundQueryFilterGenerationVisitorTestCase(
                           str(expected_expr))
 
 
-class CompositeQueryFilterGenerationVisitorTestCase(
-                                    QueryFilterGenerationVisitorTestCase):
+class CompositeQueryFilterSpecificationVisitorTestCase(
+                                    QueryFilterSpecificationVisitorTestCase):
 
     def test_visit_conjuction(self):
         expected_expr = sa.and_(Person.age > 34, Person.name == 'Nikos')
@@ -348,8 +348,8 @@ class CompositeQueryFilterGenerationVisitorTestCase(
                           str(expected_expr))
 
 
-class NegationQueryFilterGenerationVisitorTestCase(
-                                    QueryFilterGenerationVisitorTestCase):
+class NegationQueryFilterSpecificationVisitorTestCase(
+                                    QueryFilterSpecificationVisitorTestCase):
 
     def test_visit_value_not_starts_with(self):
         expected_expr = sa.not_(Person.name.startswith('Ni'))
@@ -416,8 +416,8 @@ class NegationQueryFilterGenerationVisitorTestCase(
                           str(expected_expr))
 
 
-class ManyValueBoundQueryFilterGenerationVisitorTestCase(
-                                        QueryFilterGenerationVisitorTestCase):
+class ManyValueBoundQueryFilterSpecificationVisitorTestCase(
+                                        QueryFilterSpecificationVisitorTestCase):
 
     def test_visit_value_contained_in_list(self):
         many_ages = range(1000)
@@ -428,15 +428,15 @@ class ManyValueBoundQueryFilterGenerationVisitorTestCase(
                           str(expected_expr))
 
 
-class QueryOrderGenerationVisitorTestCase(BaseTestCase):
+class QueryOrderSpecificationSpecificationVisitorTestCase(BaseTestCase):
     visitor = None
     order_factory = None
 
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = SortOrderGenerationVisitor(Person)
-        self.order_factory = sort_order_factory
+        self.visitor = OrderSpecificationVisitor(Person)
+        self.order_factory = OrderSpecificationFactory()
 
     def test_simple_order_by_one_attribute(self):
         expected_expr = [Person.age.asc()]
@@ -497,15 +497,15 @@ class QueryOrderGenerationVisitorTestCase(BaseTestCase):
         self.assert_equal(str(orm_order[1]), str(expected_expr[1]))
 
 
-class SortOrderFilterCqlGenerationVisitorTestCase(BaseTestCase):
+class OrderSpecificationCqlFilterSpecificationVisitorTestCase(BaseTestCase):
     visitor = None
     order_factory = None
 
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = SortOrderCqlGenerationVisitor()
-        self.order_factory = sort_order_factory
+        self.visitor = CqlOrderSpecificationVisitor()
+        self.order_factory = OrderSpecificationFactory()
 
     def test_simple_order_by_one_attribute(self):
         expected_cql = 'my-name:asc'

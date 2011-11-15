@@ -10,10 +10,10 @@ from everest.testing import BaseTestCase
 from everest.orderparser import order_parser
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderParserTestCase',
+__all__ = ['OrderSpecificationParserTestCase',
            ]
 
-class OrderParserTestCase(BaseTestCase):
+class OrderSpecificationParserTestCase(BaseTestCase):
     parser = None
 
     def set_up(self):

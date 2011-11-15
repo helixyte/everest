@@ -6,33 +6,39 @@ Created on Jun 28, 2011.
 """
 
 from cgi import parse_qsl
-from everest.interfaces import IResourceReferenceConverter
+from everest.filtering import IFilterSpecificationBuilder
+from everest.filtering import IFilterSpecificationDirector
+from everest.interfaces import ICqlFilterSpecificationVisitor
+from everest.interfaces import ICqlOrderSpecificationVisitor
+from everest.interfaces import IResourceUrlConverter
+from everest.ordering import IOrderSpecificationBuilder
+from everest.ordering import IOrderSpecificationDirector
 from everest.orderparser import order_parser
 from everest.queryparser import query_parser
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.specifications import IFilterSpecificationFactory
+from everest.specifications import IOrderSpecificationFactory
 from repoze.bfg.threadlocal import get_current_request
 from repoze.bfg.traversal import find_model
 from repoze.bfg.traversal import traversal_path
 from repoze.bfg.url import model_url
 from urllib import unquote
 from urlparse import urlparse
-from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.component.interfaces import IFactory # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ResourceReferenceConverter',
+__all__ = ['ResourceUrlConverter',
            'UrlPartsConverter',
            'resource_to_url',
            'url_to_resource',
            ]
 
 
-class ResourceReferenceConverter(object):
+class ResourceUrlConverter(object):
     """
     Performs URL <-> resource instance conversion.
 
@@ -40,7 +46,7 @@ class ResourceReferenceConverter(object):
     supported in query strings.
     """
 
-    implements(IResourceReferenceConverter)
+    implements(IResourceUrlConverter)
 
     def __init__(self, request):
         # The request is needed for access to app URL, registry, traversal.
@@ -108,14 +114,14 @@ class ResourceReferenceConverter(object):
 def resource_to_url(resource, request=None):
     if request is None:
         request = get_current_request()
-    cnv = get_adapter(request, IResourceReferenceConverter)
+    cnv = get_adapter(request, IResourceUrlConverter)
     return cnv.resource_to_url(resource)
 
 
 def url_to_resource(url, request=None):
     if request is None:
         request = get_current_request()
-    cnv = get_adapter(request, IResourceReferenceConverter)
+    cnv = get_adapter(request, IResourceUrlConverter)
     return cnv.url_to_resource(url)
 
 
@@ -127,10 +133,10 @@ class UrlPartsConverter(object):
         Extracts the "query" parameter from the given request and converts
         the given query string into a filter specification.
         """
-        spec_factory = get_utility(IFactory, 'specifications')
-        builder = create_object('filter_builder', spec_factory)
+        spec_factory = get_utility(IFilterSpecificationFactory)
+        builder = get_utility(IFilterSpecificationBuilder)(spec_factory)
         parser = query_parser.parseString
-        director = create_object('filter_director', parser, builder)
+        director = get_utility(IFilterSpecificationDirector)(parser, builder)
         director.construct(unquote(filter_string))
         if director.has_errors():
             errors = '\n'.join(director.get_errors())
@@ -139,16 +145,16 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_filter_string(cls, filter_specification):
-        filter_visitor = create_object('filter_cql_generation_visitors')
+        filter_visitor = get_utility(ICqlFilterSpecificationVisitor)()
         filter_specification.accept(filter_visitor)
         return filter_visitor.get_cql()
 
     @classmethod
     def make_order_specification(cls, order_string):
-        order_factory = get_utility(IFactory, 'sort_orders')
-        builder = create_object('sort_order_builder', order_factory)
+        order_factory = get_utility(IOrderSpecificationFactory)
+        builder = get_utility(IOrderSpecificationBuilder)(order_factory)
         parser = order_parser.parseString
-        director = create_object('sort_order_director', parser, builder)
+        director = get_utility(IOrderSpecificationDirector)(parser, builder)
         director.construct(unquote(order_string))
         if director.has_errors():
             errors = '\n'.join(director.get_errors())
@@ -157,7 +163,7 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_order_string(cls, order_specification):
-        order_visitor = create_object('sort_order_cql_generation_visitors')
+        order_visitor = get_utility(ICqlOrderSpecificationVisitor)()
         order_specification.accept(order_visitor)
         return order_visitor.get_cql()
 
