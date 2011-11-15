@@ -5,26 +5,29 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 5, 2011.
 """
 
+from everest.interfaces import IFilterSpecificationBuilder
+from everest.interfaces import IFilterSpecificationDirector
 from everest.resources.interfaces import IResource
 from everest.url import url_to_resource
 from pyparsing import ParseException
+from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import logging
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['FilterDirector',
-           'FilterBuilder',
-           'SpecificationFilterBuilder',
+__all__ = ['FilterSpecificationBuilder',
+           'FilterSpecificationDirector',
            ]
 
 
-class FilterDirector(object):
+class FilterSpecificationDirector(object):
     """
+    Coordinates a query specification parser and a filter specification 
+    builder.
     """
 
-    __builder = None
-    __parser = None
-    __errors = None
+    implements(IFilterSpecificationDirector)
+
     __logger = logging.getLogger(__name__)
 
     def __init__(self, parser, builder):
@@ -79,95 +82,16 @@ class FilterDirector(object):
         return isinstance(v, basestring) and len(v) == 0
 
 
-class FilterBuilder(object):
+class FilterSpecificationBuilder(object):
     """
-    Abstract base class for all Filter Builders
-
-    Based on the Builder Design Pattern
+    Filter specification builder.
     """
 
-    def build_equal_to(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_not_equal_to(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_starts_with(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_not_starts_with(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_ends_with(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_not_ends_with(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_contains(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_not_contains(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_less_than_or_equal_to(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_less_than(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_greater_than_or_equal_to(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_greater_than(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_in_range(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-    def build_not_in_range(self, attr_name, attr_values):
-        """
-        """
-        pass
-
-
-class SpecificationFilterBuilder(FilterBuilder):
-    """
-    Concrete builder that creates a specification
-    """
-
-    __specification = None
-    __factory = None
+    implements(IFilterSpecificationBuilder)
 
     def __init__(self, factory):
-        FilterBuilder.__init__(self)
         self.__factory = factory
+        self.__specification = None
 
     def build_equal_to(self, attr_name, attr_values):
         self.__append_spec(

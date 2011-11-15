@@ -5,13 +5,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 
-from everest.sorting import BubbleSorter
-from everest.sorting import SimpleOrder
+from everest.ordering import BubbleSorter
+from everest.specifications import SimpleOrderSpecification
 from everest.testing import BaseTestCase
 import random
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderTestCase',
+__all__ = ['OrderSpecificationTestCase',
            ]
 
 
@@ -30,7 +30,7 @@ class Person(object):
         return str_format % params
 
 
-class OrderTestCase(BaseTestCase):
+class OrderSpecificationTestCase(BaseTestCase):
     person_a1 = None
     person_a2 = None
     person_b1 = None
@@ -46,13 +46,13 @@ class OrderTestCase(BaseTestCase):
         pass
 
     def create_asc_order(self, attr_name):
-        return SimpleOrder(attr_name)
+        return SimpleOrderSpecification(attr_name)
 
     def create_desc_order(self, attr_name):
         return self.create_asc_order(attr_name).reverse()
 
 
-class SimpleOrderTestCase(OrderTestCase):
+class SimpleOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
         order = self.create_asc_order('age')
@@ -63,7 +63,7 @@ class SimpleOrderTestCase(OrderTestCase):
         self.assert_false(order.lt(self.person_b1, self.person_a1))
 
 
-class ReverseOrderTestCase(OrderTestCase):
+class ReverseOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
         order = self.create_desc_order('age')
@@ -74,7 +74,7 @@ class ReverseOrderTestCase(OrderTestCase):
         self.assert_false(order.lt(self.person_a1, self.person_b1))
 
 
-class ConjuctionOrderTestCase(OrderTestCase):
+class ConjuctionOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
         order = self.create_asc_order('name').and_(self.create_asc_order('age'))
@@ -117,7 +117,7 @@ class SorterTestCase(BaseTestCase):
         pass
 
     def create_asc_order(self, attr_name):
-        return SimpleOrder(attr_name)
+        return SimpleOrderSpecification(attr_name)
 
     def create_desc_order(self, attr_name):
         return self.create_asc_order(attr_name).reverse()

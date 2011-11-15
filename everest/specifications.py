@@ -11,36 +11,47 @@ especially http://www.martinfowler.com/apsupp/spec.pdf
 Created on Jul 5, 2011.
 """
 
+from everest.interfaces import IFilterSpecificationFactory
+from everest.interfaces import IOrderSpecificationFactory
+from zope.interface import implements # pylint: disable=E0611,F0401
+import re
+
 __docformat__ = 'reStructuredText en'
-__all__ = ['Specification',
-           'LeafSpecification',
-           'ValueBoundSpecification',
-           'CompositeSpecification',
-           'ConjuctionSpecification',
-           'DisjuctionSpecification',
-           'NegationSpecification',
-           'ValueStartsWithSpecification',
-           'ValueEndsWithSpecification',
-           'ValueContainsSpecification',
-           'ValueContainedSpecification'
-           'ValueEqualToSpecification',
-           'ValueGreaterThanSpecification',
-           'ValueLessThanSpecification',
-           'ValueGreaterThanOrEqualToSpecification',
-           'ValueLessThanOrEqualToSpecification',
-           'ValueInRangeSpecification',
-           'AbstractSpecificationFactory',
-           'SpecificationFactory',
+__all__ = ['CompositeFilterSpecification',
+           'ConjuctionFilterSpecification',
+           'ConjuctionOrderSpecification',
+           'DisjuctionFilterSpecification',
+           'FilterSpecification',
+           'FilterSpecificationFactory',
+           'LeafFilterSpecification',
+           'NaturalOrderSpecification',
+           'NegationFilterSpecification',
+           'ObjectOrderSpecification',
+           'OrderSpecification',
+           'OrderSpecificationFactory',
+           'ReverseOrderSpecification',
+           'SimpleOrderSpecification',
+           'ValueBoundFilterSpecification',
+           'ValueContainedFilterSpecification'
+           'ValueContainsFilterSpecification',
+           'ValueEndsWithFilterSpecification',
+           'ValueEqualToFilterSpecification',
+           'ValueGreaterThanFilterSpecification',
+           'ValueGreaterThanOrEqualToFilterSpecification',
+           'ValueInRangeFilterSpecification',
+           'ValueLessThanFilterSpecification',
+           'ValueLessThanOrEqualToFilterSpecification',
+           'ValueStartsWithFilterSpecification',
            ]
 
 
-class Specification(object):
+class FilterSpecification(object):
     """
     Abstract base class for all specifications
     """
 
     def __init__(self):
-        if self.__class__ is Specification:
+        if self.__class__ is FilterSpecification:
             raise NotImplementedError('Abstract class')
 
     def is_satisfied_by(self, candidate):
@@ -65,60 +76,60 @@ class Specification(object):
         It is a double-dispatch operation. "Double-dispatch" simply means the
         operation that gets executed depends on the kind of request and the
         types of two receivers. Its meaning depends on two types: the Visitor's
-        and the Specifications's. Double-dispatching lets visitors request
-        different operations on each concrete Specification.
+        and the FilterSpecifications's. Double-dispatching lets visitors request
+        different operations on each concrete FilterSpecification.
 
         The above is an abstract from GoF book on design patterns.
 
         :param visitor: a visitor that packages related operations
-        :type visitor: :class:`everest.visitors.SpecificationVisitor`
+        :type visitor: :class:`everest.visitors.FilterSpecificationVisitor`
         """
         raise NotImplementedError('Abstract method')
 
     def and_(self, other):
         """
-        Factory Method to create a ConjuctionSpecification
+        Factory Method to create a ConjuctionFilterSpecification
 
         :param other: the other specification
-        :type other: :class:`Specification`
+        :type other: :class:`FilterSpecification`
         :returns: a new conjuction specification
-        :rtype: :class:`ConjuctionSpecification`
+        :rtype: :class:`ConjuctionFilterSpecification`
         """
-        return ConjuctionSpecification(self, other)
+        return ConjuctionFilterSpecification(self, other)
 
     def or_(self, other):
         """
-        Factory Method to create a DisjuctionSpecification
+        Factory Method to create a DisjuctionFilterSpecification
 
         :param other: the other specification
-        :type other: :class:`Specification`
+        :type other: :class:`FilterSpecification`
         :returns: a new disjuction specification
-        :rtype: :class:`DisjuctionSpecification`
+        :rtype: :class:`DisjuctionFilterSpecification`
         """
-        return DisjuctionSpecification(self, other)
+        return DisjuctionFilterSpecification(self, other)
 
     def not_(self):
         """
-        Factory Method to create a NegationSpecification
+        Factory Method to create a NegationFilterSpecification
 
         :returns: a new negation specification
-        :rtype: :class:`NegationSpecification`
+        :rtype: :class:`NegationFilterSpecification`
         """
-        return NegationSpecification(self)
+        return NegationFilterSpecification(self)
 
 
-class LeafSpecification(Specification): # still abstract pylint:disable=W0223
+class LeafFilterSpecification(FilterSpecification): # still abstract pylint:disable=W0223
     """
     Abstract base class for leaf specifications
     """
 
     def __init__(self):
-        if self.__class__ is LeafSpecification:
+        if self.__class__ is LeafFilterSpecification:
             raise NotImplementedError('Abstract class')
-        Specification.__init__(self)
+        FilterSpecification.__init__(self)
 
 
-class ValueBoundSpecification(LeafSpecification): # still abstract pylint:disable=W0223
+class ValueBoundFilterSpecification(LeafFilterSpecification): # still abstract pylint:disable=W0223
     """
     Abstract base class for value bound specifications
     """
@@ -128,22 +139,22 @@ class ValueBoundSpecification(LeafSpecification): # still abstract pylint:disabl
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueBoundSpecification
+        Constructs a ValueBoundFilterSpecification
 
         :param attr_name: the candidate's attribute name
         :type attr_name: str
         :param attr_value: the value that satisfies the specification
         :type from_value: object
         """
-        LeafSpecification.__init__(self)
-        if self.__class__ is ValueBoundSpecification:
+        LeafFilterSpecification.__init__(self)
+        if self.__class__ is ValueBoundFilterSpecification:
             raise NotImplementedError('Abstract class')
         self.__attr_name = attr_name
         self.__attr_value = attr_value
 
     def __eq__(self, other):
         """Equality operator"""
-        return (isinstance(other, ValueBoundSpecification) and
+        return (isinstance(other, ValueBoundFilterSpecification) and
                 self.attr_name == other.attr_name and
                 self.attr_value == other.attr_value)
 
@@ -168,7 +179,7 @@ class ValueBoundSpecification(LeafSpecification): # still abstract pylint:disabl
         return getattr(candidate, self.attr_name)
 
 
-class CompositeSpecification(Specification):
+class CompositeFilterSpecification(FilterSpecification):
     """
     Abstract base class for composite specifications
     """
@@ -178,16 +189,16 @@ class CompositeSpecification(Specification):
 
     def __init__(self, left_spec, right_spec):
         """
-        Constructs a CompositeSpecification
+        Constructs a CompositeFilterSpecification
 
         :param left_spec: the left part of the composite specification
-        :type left_spec: :class:`Specification`
+        :type left_spec: :class:`FilterSpecification`
         :param right_spec: the right part of the composite specification
-        :type right_spec: :class:`Specification`
+        :type right_spec: :class:`FilterSpecification`
         """
-        if self.__class__ is CompositeSpecification:
+        if self.__class__ is CompositeFilterSpecification:
             raise NotImplementedError('Abstract class')
-        Specification.__init__(self)
+        FilterSpecification.__init__(self)
         self.__left_spec = left_spec
         self.__right_spec = right_spec
 
@@ -219,20 +230,20 @@ class CompositeSpecification(Specification):
         raise NotImplementedError('Abstract method')
 
 
-class ConjuctionSpecification(CompositeSpecification):
+class ConjuctionFilterSpecification(CompositeFilterSpecification):
     """
     Concrete conjuction specification
     """
 
     def __init__(self, left_spec, right_spec):
         """
-        Constructs a ConjuctionSpecification
+        Constructs a ConjuctionFilterSpecification
         """
-        CompositeSpecification.__init__(self, left_spec, right_spec)
+        CompositeFilterSpecification.__init__(self, left_spec, right_spec)
 
     def __eq__(self, other):
         """Equality operator"""
-        return (isinstance(other, ConjuctionSpecification) and
+        return (isinstance(other, ConjuctionFilterSpecification) and
                 self.left_spec == other.left_spec and
                 self.right_spec == other.right_spec)
 
@@ -254,20 +265,20 @@ class ConjuctionSpecification(CompositeSpecification):
         visitor.visit_conjuction(self)
 
 
-class DisjuctionSpecification(CompositeSpecification):
+class DisjuctionFilterSpecification(CompositeFilterSpecification):
     """
     Concrete disjuction specification
     """
 
     def __init__(self, left_spec, right_spec):
         """
-        Constructs a DisjuctionSpecification
+        Constructs a DisjuctionFilterSpecification
         """
-        CompositeSpecification.__init__(self, left_spec, right_spec)
+        CompositeFilterSpecification.__init__(self, left_spec, right_spec)
 
     def __eq__(self, other):
         """Equality operator"""
-        return (isinstance(other, DisjuctionSpecification) and
+        return (isinstance(other, DisjuctionFilterSpecification) and
                 self.left_spec == other.left_spec and
                 self.right_spec == other.right_spec)
 
@@ -289,7 +300,7 @@ class DisjuctionSpecification(CompositeSpecification):
         visitor.visit_disjuction(self)
 
 
-class NegationSpecification(Specification):
+class NegationFilterSpecification(FilterSpecification):
     """
     Concrete negation specification
     """
@@ -298,17 +309,17 @@ class NegationSpecification(Specification):
 
     def __init__(self, wrapped_spec):
         """
-        Constructs a NegationSpecification
+        Constructs a NegationFilterSpecification
 
         :param wrapped: the wrapped specification
-        :type wrapped: :class:`Specification`
+        :type wrapped: :class:`FilterSpecification`
         """
-        Specification.__init__(self)
+        FilterSpecification.__init__(self)
         self.__wrapped_spec = wrapped_spec
 
     def __eq__(self, other):
         """Equality operator"""
-        return (isinstance(other, NegationSpecification) and
+        return (isinstance(other, NegationFilterSpecification) and
                 self.wrapped_spec == other.wrapped_spec)
 
     def __ne__(self, other):
@@ -338,16 +349,16 @@ class NegationSpecification(Specification):
         return self.__wrapped_spec
 
 
-class ValueStartsWithSpecification(ValueBoundSpecification):
+class ValueStartsWithFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value starts with specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueStartsWithSpecification
+        Constructs a ValueStartsWithFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -368,16 +379,16 @@ class ValueStartsWithSpecification(ValueBoundSpecification):
         visitor.visit_value_starts_with(self)
 
 
-class ValueEndsWithSpecification(ValueBoundSpecification):
+class ValueEndsWithFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value ends with specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueEndsWithSpecification
+        Constructs a ValueEndsWithFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -398,16 +409,16 @@ class ValueEndsWithSpecification(ValueBoundSpecification):
         visitor.visit_value_ends_with(self)
 
 
-class ValueContainsSpecification(ValueBoundSpecification):
+class ValueContainsFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value contains specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueContainsSpecification
+        Constructs a ValueContainsFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -425,18 +436,18 @@ class ValueContainsSpecification(ValueBoundSpecification):
         visitor.visit_value_contains(self)
 
 
-class ValueContainedSpecification(ValueBoundSpecification):
+class ValueContainedFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value contained in a list of values specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueContainedSpecification
+        Constructs a ValueContainedFilterSpecification
 
         :type attr_value: any sequence
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -456,19 +467,19 @@ class ValueContainedSpecification(ValueBoundSpecification):
         visitor.visit_value_contained(self)
 
 
-class ValueEqualToSpecification(ValueBoundSpecification):
+class ValueEqualToFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value equal to specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueEqualToSpecification
+        Constructs a ValueEqualToFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def __str__(self):
-        return '<ValueEqualToSpecification: %s == %s>' % (self.attr_name,
+        return '<ValueEqualToFilterSpecification: %s == %s>' % (self.attr_name,
                                                           self.attr_value)
 
     def is_satisfied_by(self, candidate):
@@ -485,16 +496,16 @@ class ValueEqualToSpecification(ValueBoundSpecification):
         visitor.visit_value_equal_to(self)
 
 
-class ValueGreaterThanSpecification(ValueBoundSpecification):
+class ValueGreaterThanFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value greater than specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueGreaterThanSpecification
+        Constructs a ValueGreaterThanFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -511,16 +522,16 @@ class ValueGreaterThanSpecification(ValueBoundSpecification):
         visitor.visit_value_greater_than(self)
 
 
-class ValueLessThanSpecification(ValueBoundSpecification):
+class ValueLessThanFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value less than specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueLessThanSpecification
+        Constructs a ValueLessThanFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -537,16 +548,16 @@ class ValueLessThanSpecification(ValueBoundSpecification):
         visitor.visit_value_less_than(self)
 
 
-class ValueGreaterThanOrEqualToSpecification(ValueBoundSpecification):
+class ValueGreaterThanOrEqualToFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value greater than or equal to specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueGreaterThanOrEqualToSpecification
+        Constructs a ValueGreaterThanOrEqualToFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -564,16 +575,16 @@ class ValueGreaterThanOrEqualToSpecification(ValueBoundSpecification):
         visitor.visit_value_greater_than_or_equal_to(self)
 
 
-class ValueLessThanOrEqualToSpecification(ValueBoundSpecification):
+class ValueLessThanOrEqualToFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete value less than or equal to specification
     """
 
     def __init__(self, attr_name, attr_value):
         """
-        Constructs a ValueLessThanOrEqualToSpecification
+        Constructs a ValueLessThanOrEqualToFilterSpecification
         """
-        ValueBoundSpecification.__init__(self, attr_name, attr_value)
+        ValueBoundFilterSpecification.__init__(self, attr_name, attr_value)
 
     def is_satisfied_by(self, candidate):
         """
@@ -591,14 +602,14 @@ class ValueLessThanOrEqualToSpecification(ValueBoundSpecification):
         visitor.visit_value_less_than_or_equal_to(self)
 
 
-class ValueInRangeSpecification(ValueBoundSpecification):
+class ValueInRangeFilterSpecification(ValueBoundFilterSpecification):
     """
     Concrete specification for a range of values
     """
 
     def __init__(self, attr_name, from_value, to_value):
         """
-        Constructs a ValueInRangeSpecification
+        Constructs a ValueInRangeFilterSpecification
 
         :param attr_name: the candidate's attribute name
         :type attr_name: str
@@ -607,7 +618,7 @@ class ValueInRangeSpecification(ValueBoundSpecification):
         :param to_value: the upper limit of the range
         :type to_value: object
         """
-        ValueBoundSpecification.__init__(self, attr_name, (from_value, to_value))
+        ValueBoundFilterSpecification.__init__(self, attr_name, (from_value, to_value))
 
     def is_satisfied_by(self, candidate):
         """
@@ -631,101 +642,242 @@ class ValueInRangeSpecification(ValueBoundSpecification):
         return self.attr_value[1]
 
 
-class AbstractSpecificationFactory(object):
+class FilterSpecificationFactory(object):
     """
-    Abstract base class for all specification factories
+    Filter specification factory.
     """
 
+    implements(IFilterSpecificationFactory)
+
+    def create_equal_to(self, attr_name, attr_value):
+        return ValueEqualToFilterSpecification(attr_name, attr_value)
+
+    def create_starts_with(self, attr_name, attr_value):
+        return ValueStartsWithFilterSpecification(attr_name, attr_value)
+
+    def create_ends_with(self, attr_name, attr_value):
+        return ValueEndsWithFilterSpecification(attr_name, attr_value)
+
+    def create_contains(self, attr_name, attr_value):
+        return ValueContainsFilterSpecification(attr_name, attr_value)
+
+    def create_contained(self, attr_name, attr_value):
+        return ValueContainedFilterSpecification(attr_name, attr_value)
+
+    def create_greater_than_or_equal_to(self, attr_name, attr_value):
+        return ValueGreaterThanOrEqualToFilterSpecification(attr_name,
+                                                            attr_value)
+
+    def create_greater_than(self, attr_name, attr_value):
+        return ValueGreaterThanFilterSpecification(attr_name, attr_value)
+
+    def create_less_than_or_equal_to(self, attr_name, attr_value):
+        return ValueLessThanOrEqualToFilterSpecification(attr_name, attr_value)
+
+    def create_less_than(self, attr_name, attr_value):
+        return ValueLessThanFilterSpecification(attr_name, attr_value)
+
+    def create_in_range(self, attr_name, from_value, to_value):
+        return ValueInRangeFilterSpecification(attr_name, from_value, to_value)
+
+    def create_conjunction(self, left_spec, right_spec):
+        return ConjuctionFilterSpecification(left_spec, right_spec)
+
+    def create_disjunction(self, left_spec, right_spec):
+        return DisjuctionFilterSpecification(left_spec, right_spec)
+
+    def create_negation(self, wrapped):
+        return NegationFilterSpecification(wrapped)
+
+
+class OrderSpecification(object):
+
     def __init__(self):
-        if self.__class__ is AbstractSpecificationFactory:
+        if self.__class__ is OrderSpecification:
             raise NotImplementedError('Abstract class')
 
-    def create_equal_to(self, attr_name, attr_value):
+    def accept(self, visitor):
         raise NotImplementedError('Abstract method')
 
-    def create_starts_with(self, attr_name, attr_value):
+    def eq(self, x, y):
         raise NotImplementedError('Abstract method')
 
-    def create_ends_with(self, attr_name, attr_value):
+    def lt(self, x, y):
         raise NotImplementedError('Abstract method')
 
-    def create_contains(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
+    def ne(self, x, y):
+        return not self.eq(x, y)
 
-    def create_contained(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
+    def le(self, x, y):
+        return self.lt(x, y) or self.eq(x, y)
 
-    def create_greater_than_or_equal_to(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
+    def gt(self, x, y):
+        return not self.le(x, y)
 
-    def create_greater_than(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
+    def ge(self, x, y):
+        return not self.lt(x, y)
 
-    def create_less_than_or_equal_to(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
+    def and_(self, other):
+        return ConjuctionOrderSpecification(self, other)
 
-    def create_less_than(self, attr_name, attr_value):
-        raise NotImplementedError('Abstract method')
-
-    def create_in_range(self, attr_name, from_value, to_value):
-        raise NotImplementedError('Abstract method')
-
-    def create_conjunction(self, left_spec, right_spec):
-        raise NotImplementedError('Abstract method')
-
-    def create_disjunction(self, left_spec, right_spec):
-        raise NotImplementedError('Abstract method')
-
-    def create_negation(self, wrapped):
-        raise NotImplementedError('Abstract method')
+    def reverse(self):
+        return ReverseOrderSpecification(self)
 
 
-class SpecificationFactory(AbstractSpecificationFactory):
+class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
+
+    __attr_name = None
+
+    def __init__(self, attr_name):
+        if self.__class__ is ObjectOrderSpecification:
+            raise NotImplementedError('Abstract class')
+        OrderSpecification.__init__(self)
+        self.__attr_name = attr_name
+
+    def __repr__(self):
+        str_format = '<%s attr_name: %s>'
+        params = (self.__class__.__name__, self.attr_name)
+        return str_format % params
+
+    @property
+    def attr_name(self):
+        return self.__attr_name
+
+    def _get_value(self, obj):
+        return getattr(obj, self.attr_name)
+
+
+class SimpleOrderSpecification(ObjectOrderSpecification):
+
+    def __init__(self, attr_name):
+        ObjectOrderSpecification.__init__(self, attr_name)
+
+    def eq(self, x, y):
+        return self._get_value(x) == self._get_value(y)
+
+    def lt(self, x, y):
+        return self._get_value(x) < self._get_value(y)
+
+    def accept(self, visitor):
+        visitor.visit_simple(self)
+
+
+class ReverseOrderSpecification(OrderSpecification):
+
+    __order = None
+
+    def __init__(self, order):
+        OrderSpecification.__init__(self)
+        self.__order = order
+
+    def __repr__(self):
+        str_format = '<%s wrapped_order: %s>'
+        params = (self.__class__.__name__, self.__order)
+        return str_format % params
+
+    def eq(self, x, y):
+        return self.__order.eq(y, x)
+
+    def lt(self, x, y):
+        return self.__order.lt(y, x)
+
+    def ne(self, x, y):
+        return self.__order.ne(y, x)
+
+    def le(self, x, y):
+        return self.__order.le(y, x)
+
+    def gt(self, x, y):
+        return self.__order.gt(y, x)
+
+    def ge(self, x, y):
+        return self.__order.ge(y, x)
+
+    def accept(self, visitor):
+        self.__order.accept(visitor)
+        visitor.visit_reverse(self)
+
+    @property
+    def wrapped(self):
+        return self.__order
+
+
+class NaturalOrderSpecification(ObjectOrderSpecification):
     """
-    Concrete specification factory
+    See http://www.codinghorror.com/blog/2007/12/sorting-for-humans-natural-sort-order.html
     """
 
-    def __init__(self):
-        AbstractSpecificationFactory.__init__(self)
+    def __init__(self, attr_name):
+        ObjectOrderSpecification.__init__(self, attr_name)
 
-    def create_equal_to(self, attr_name, attr_value):
-        return ValueEqualToSpecification(attr_name, attr_value)
+    def eq(self, x, y):
+        return self._get_natural_value(x) == self._get_natural_value(y)
 
-    def create_starts_with(self, attr_name, attr_value):
-        return ValueStartsWithSpecification(attr_name, attr_value)
+    def lt(self, x, y):
+        return self._get_natural_value(x) < self._get_natural_value(y)
 
-    def create_ends_with(self, attr_name, attr_value):
-        return ValueEndsWithSpecification(attr_name, attr_value)
+    def accept(self, visitor):
+        visitor.visit_natural(self)
 
-    def create_contains(self, attr_name, attr_value):
-        return ValueContainsSpecification(attr_name, attr_value)
+    def _get_natural_value(self, obj):
+        value = self._get_value(obj)
+        if isinstance(value, basestring):
+            return [self.__convert(c) for c in re.split(r'([0-9]+)', value)]
+        else:
+            return value
 
-    def create_contained(self, attr_name, attr_value):
-        return ValueContainedSpecification(attr_name, attr_value)
-
-    def create_greater_than_or_equal_to(self, attr_name, attr_value):
-        return ValueGreaterThanOrEqualToSpecification(attr_name, attr_value)
-
-    def create_greater_than(self, attr_name, attr_value):
-        return ValueGreaterThanSpecification(attr_name, attr_value)
-
-    def create_less_than_or_equal_to(self, attr_name, attr_value):
-        return ValueLessThanOrEqualToSpecification(attr_name, attr_value)
-
-    def create_less_than(self, attr_name, attr_value):
-        return ValueLessThanSpecification(attr_name, attr_value)
-
-    def create_in_range(self, attr_name, from_value, to_value):
-        return ValueInRangeSpecification(attr_name, from_value, to_value)
-
-    def create_conjunction(self, left_spec, right_spec):
-        return ConjuctionSpecification(left_spec, right_spec)
-
-    def create_disjunction(self, left_spec, right_spec):
-        return DisjuctionSpecification(left_spec, right_spec)
-
-    def create_negation(self, wrapped):
-        return NegationSpecification(wrapped)
+    def __convert(self, txt):
+        return int(txt) if txt.isdigit() else txt
 
 
-specification_factory = SpecificationFactory()
+class ConjuctionOrderSpecification(OrderSpecification):
+
+    __left = None
+    __right = None
+
+    def __init__(self, left, right):
+        OrderSpecification.__init__(self)
+        self.__left = left
+        self.__right = right
+
+    def __repr__(self):
+        str_format = '<%s left: %s, right: %s>'
+        params = (self.__class__.__name__, self.left, self.right)
+        return str_format % params
+
+    def eq(self, x, y):
+        return self.left.eq(x, y) and self.right.eq(x, y)
+
+    def lt(self, x, y):
+        return self.right.lt(x, y) if self.left.eq(x, y) else self.left.lt(x, y)
+
+    @property
+    def left(self):
+        return self.__left
+
+    @property
+    def right(self):
+        return self.__right
+
+    def accept(self, visitor):
+        self.__left.accept(visitor)
+        self.__right.accept(visitor)
+        visitor.visit_conjunction(self)
+
+
+class OrderSpecificationFactory(object):
+    """
+    Order specification factory.
+    """
+
+    implements(IOrderSpecificationFactory)
+
+    def create_simple(self, attr_name):
+        return SimpleOrderSpecification(attr_name)
+
+    def create_natural(self, attr_name):
+        # FIXME: implement. # pylint: disable-msg=W0511
+        raise NotImplementedError('TBD')
+
+    def create_starts_with(self, attr_name):
+        return NaturalOrderSpecification(attr_name)

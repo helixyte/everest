@@ -25,16 +25,16 @@
     <resource
         interface='.interfaces.IFoo'
         collection=".resources.FooCollection"
-        aggregate=".models.FooEntityAggregate"
+        aggregate=".entities.FooEntityAggregate"
         member=".resources.FooMember"
-        entity=".models.FooEntity"/>
+        entity=".entities.FooEntity"/>
 
     <resource
         interface='.interfaces.IBar'
         collection=".resources.BarCollection"
-        aggregate=".models.BarEntityAggregate"
+        aggregate=".entities.BarEntityAggregate"
         member=".resources.BarMember"
-        entity=".models.BarEntity"/>
+        entity=".entities.BarEntity"/>
 
     <representer
         for=".resources.FooMember"

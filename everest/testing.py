@@ -10,22 +10,23 @@ from everest import db
 from everest.configuration import Configurator
 from everest.db import get_db_engine
 from everest.db import is_db_engine_initialized
+from everest.db import set_db_engine
 from everest.entities.utils import get_persistent_aggregate
+from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
-from everest.root import RootBuilder
 from functools import update_wrapper
 from nose.tools import make_decorator
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
+from sqlalchemy.engine import create_engine
+from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 import nose.plugins
 import os
 import sys
 import time
 import unittest
-from sqlalchemy.engine import create_engine
-from everest.db import set_db_engine
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DummyContext',
@@ -288,8 +289,9 @@ class ResourceTestCase(ModelTestCase):
     def set_up(self):
         super(ResourceTestCase, self).set_up()
         #
-        root_builder = RootBuilder()
-        self._request.root = root_builder(self._request.environ)
+        srvc = get_utility(IService)
+        srvc.start()
+        self._request.root = srvc
 
     def _custom_configure(self):
         # Build a dummy request.

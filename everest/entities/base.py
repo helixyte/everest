@@ -7,11 +7,13 @@ Entity base classes.
 Created on May 12, 2011.
 """
 
-from .interfaces import IAggregate
-from .interfaces import IEntity
-from .interfaces import IRelationAggregateImplementation
-from .interfaces import IRootAggregateImplementation
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from everest.entities.aggregates import MemoryRelationAggregateImpl
+from everest.entities.aggregates import MemoryRootAggregateImpl
+from everest.entities.interfaces import IAggregate
+from everest.entities.interfaces import IEntity
+from everest.entities.interfaces import IRelationAggregateImplementation
+from everest.entities.interfaces import IRootAggregateImplementation
+from zope.component import queryUtility as query_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -69,7 +71,7 @@ class Aggregate(object):
     retrieving, adding and removing entities.
 
     The actual work is delegated to an instance of
-    :class:`everest.models.aggregates.AggregateImpl` to allow for runtime
+    :class:`everest.entities.aggregates.AggregateImpl` to allow for runtime
     selection of implementations.
     """
     implements(IAggregate)
@@ -77,7 +79,7 @@ class Aggregate(object):
     def __init__(self, implementation):
         if self.__class__ is Aggregate:
             raise NotImplementedError('Abstract class')
-        self._implementation = implementation
+        self.__implementation = implementation
 
     @classmethod
     def create(cls, entity_class, **kw):
@@ -89,30 +91,13 @@ class Aggregate(object):
             # If no implementation is given, we use whichever implementation
             # is registered for the current staging area.
             if not kw.get('relation') is None:
-                ifc = IRelationAggregateImplementation
+                impl_cls = query_utility(IRelationAggregateImplementation,
+                                         default=MemoryRelationAggregateImpl)
             else:
-                ifc = IRootAggregateImplementation
-            impl_cls = get_utility(ifc)
+                impl_cls = query_utility(IRootAggregateImplementation,
+                                         default=MemoryRootAggregateImpl)
         impl = impl_cls.create(entity_class, **kw)
         return cls(impl)
-
-    def relate(self, relation):
-        """
-        Defines this aggregate as a relation.
-
-        :param relation: relation object
-        :type relation: :class:`everest.resources.base.ResourceRelation`
-            instance.
-        """
-        self._implementation.relate(relation)
-
-    @property
-    def is_relation(self):
-        """
-        Checks if this aggregate has been declared as a relation on some
-        other entity (cf. :method:`relate`).
-        """
-        return self._implementation.is_relation
 
     def clone(self):
         """
@@ -120,9 +105,9 @@ class Aggregate(object):
 
         :return: A copy of the aggregate object.
         """
-        impl_clone = self._implementation.clone()
+        impl_clone = self.__implementation.clone()
         agg = object.__new__(self.__class__)
-        agg._implementation = impl_clone
+        agg.__implementation = impl_clone
         return agg
 
     def count(self):
@@ -133,7 +118,7 @@ class Aggregate(object):
 
         :returns: number of aggregate members (:class:`int`)
         """
-        return self._implementation.count()
+        return self.__implementation.count()
 
     def get_by_id(self, id_key):
         """
@@ -148,7 +133,7 @@ class Aggregate(object):
 
         Returns a single entity from the underlying aggregate by ID.
         """
-        return self._implementation.get_by_id(id_key)
+        return self.__implementation.get_by_id(id_key)
 
     def get_by_slug(self, slug):
         """
@@ -158,7 +143,7 @@ class Aggregate(object):
         :type id_key: `str`
         :returns: entity or `None`
         """
-        return self._implementation.get_by_slug(slug)
+        return self.__implementation.get_by_slug(slug)
 
     def iterator(self):
         """
@@ -169,7 +154,7 @@ class Aggregate(object):
 
         :returns: an iterator for the aggregate entities
         """
-        return self._implementation.iterator()
+        return self.__implementation.iterator()
 
     def add(self, entity):
         """
@@ -179,10 +164,10 @@ class Aggregate(object):
 
         :param entity: entity (domain object) to add
         :type entity: object implementing
-          :class:`everest.models.interfaces.IEntity`
+          :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: if an entity with the same ID exists
         """
-        self._implementation.add(entity)
+        self.__implementation.add(entity)
 
     def remove(self, entity):
         """
@@ -190,41 +175,41 @@ class Aggregate(object):
 
         :param entity: entity (domain object) to remove
         :type entity: object implementing
-          :class:`everest.models.interfaces.IEntity`
+          :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: entity was not found
         """
-        self._implementation.remove(entity)
+        self.__implementation.remove(entity)
 
     def filter(self, filter_spec):
         """
         Filters the aggregate by the given filter specification.
 
-        :param spec: an instance of a Specification
+        :param spec: an instance of a FilterSpecification
         :type filter_spec: instance of
-            :class:`everest.specifications.Specification`
+            :class:`everest.specifications.FilterSpecification`
         """
-        self._implementation.filter(filter_spec)
+        self.__implementation.filter(filter_spec)
 
     def get_filter_spec(self):
         """
         Returns the filter specification for this aggregate.
         """
-        return self._implementation.get_filter_spec()
+        return self.__implementation.get_filter_spec()
 
     def order(self, order_spec):
         """
         Orders the aggregate according to the given order specification.
 
         :param order_spec: order specification
-        :type order_spec: instance of :class:`everest.sorting.Order`
+        :type order_spec: instance of :class:`everest.ordering.OrderSpecification`
         """
-        return self._implementation.order(order_spec)
+        return self.__implementation.order(order_spec)
 
     def get_order_spec(self):
         """
         Returns the order specification for this aggregate.
         """
-        return self._implementation.get_order_spec()
+        return self.__implementation.get_order_spec()
 
     def slice(self, slice_key):
         """
@@ -235,10 +220,10 @@ class Aggregate(object):
 
         :param slice slice_key: slice to apply.
         """
-        return self._implementation.slice(slice_key)
+        return self.__implementation.slice(slice_key)
 
     def get_slice_key(self):
         """
         Returns the slice key for this aggregate.
         """
-        return self._implementation.get_slice_key()
+        return self.__implementation.get_slice_key()

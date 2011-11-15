@@ -10,16 +10,9 @@ class FooEntity(Entity):
         self.entity = BarEntity()
         self.entity_collection = [BarEntity() for dummy in range(5)]
 
-    @property
-    def slug(self):
-        return "%s%s" % (self.__class__.__name__, self.id)
-
 
 class BarEntity(Entity):
-
-    @property
-    def slug(self):
-        return "%s%s" % (self.__class__.__name__, self.id)
+    pass
 
 
 class FooEntityAggregate(Aggregate):

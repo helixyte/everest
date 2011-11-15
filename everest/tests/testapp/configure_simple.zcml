@@ -19,20 +19,20 @@
         component="everest.representers.csv.CsvResourceRepresenter"
         provides="everest.representers.interfaces.IRepresenter"
         name="application/csv" />
-
+        
     <!-- Resource declarations. -->
 
     <resource
         interface='.interfaces.IFoo'
         member=".resources.FooMember"
-        entity=".models.FooEntity"
+        entity=".entities.FooEntity"
         collection_root_name="my-foo-collection"/>
 
     <resource
         interface='.interfaces.IBar'
         member=".resources.BarMember"
-        entity=".models.BarEntity"
-        collection_root_name="my-bar-collection"/>
+        entity=".entities.BarEntity"
+        expose="false"/>
 
     <representer
         for=".resources.FooMember"

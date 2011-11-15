@@ -122,7 +122,7 @@ def as_member(entity, parent=None):
     :param entity: a domain object for which a resource adapter has been
         registered
     :type entity: an object implementing
-        :class:`everest.models.interfaces.IEntity`
+        :class:`everest.entities.interfaces.IEntity`
     :param parent: optional parent collection resource to make the new member
         a child of
     :type parent: an object implementing

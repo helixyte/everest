@@ -7,7 +7,8 @@ Resource relation classes.
 Created on Sep 30, 2011.
 """
 
-from everest.utils import get_factory
+from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from everest.specifications import IFilterSpecificationFactory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceRelation',
@@ -44,7 +45,7 @@ class ResourceRelation(object):
     def make_relation_spec(self):
         # Build a relation spec we need to build an absolute URL for this
         # relation aggregate.
-        spec_fac = get_factory('specifications')
+        spec_fac = get_utility(IFilterSpecificationFactory)
         if not self.relatee_attribute is None:
             # Simple 1:n case: Build a related.attr_name == resource
             # specification.
@@ -71,7 +72,7 @@ class ResourceRelation(object):
             if filter_spec is None:
                 spec = rel_spec
             else:
-                spec_fac = get_factory('specifications')
+                spec_fac = get_utility(IFilterSpecificationFactory)
                 spec = spec_fac.create_conjunction((rel_spec, filter_spec))
         else:
             spec = filter_spec

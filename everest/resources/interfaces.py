@@ -157,14 +157,14 @@ class IMemberResource(IResource):
     Interface for member resources.
     """
 
-    #: The entity class (subclass of :class:`everest.models.base.Entity`)
+    #: The entity class (subclass of :class:`everest.entities.base.Entity`)
     #: associated with this member attribute. The entity class must
     #: implement an interface inheriting from
-    #: :class:`everest.models.interface.IEntity`.
+    #: :class:`everest.entities.interface.IEntity`.
     entity_class = Attribute('The entity class associated with this member '
                              'resource. Instances implement an interface '
                              'derived from '
-                             ':class:`everest.models.interfaces.IEntity`')
+                             ':class:`everest.entities.interfaces.IEntity`')
 
     def create_from_entity(entity):
         """
@@ -172,7 +172,7 @@ class IMemberResource(IResource):
 
         :param entity: entity (holds value state)
         :type entity: object implementing
-            :class:`everest.models.interfaces.IEntity`
+            :class:`everest.entities.interfaces.IEntity`
         """
 
     def get_entity():
@@ -180,7 +180,7 @@ class IMemberResource(IResource):
         Returns the entity (domain object) associated with this resource.
 
         :returns: instance implementing an interface derived from
-          :class:`everest.models.interfaces.IEntity`
+          :class:`everest.entities.interfaces.IEntity`
         """
 
 

@@ -13,14 +13,18 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['initialize_db',
-           'get_db_engine',
+__all__ = ['get_db_engine',
            'get_metadata',
            'initialize_db_engine',
            'initialize_metadata',
            'is_db_engine_initialized',
+           'is_metadata_initialized',
+           'reset_db_engine',
+           'reset_metadata',
+           'set_db_engine',
+           'set_metadata',
            'Session',
-           'metadata']
+           ]
 
 #cache_opt = { # FIXME: move to config file # pylint: disable=W0511
 #    'cache.regions': 'short_term',
@@ -68,6 +72,7 @@ get_db_engine = _DbEngineManager.get
 is_db_engine_initialized = _DbEngineManager.is_initialized
 reset_db_engine = _DbEngineManager.reset
 
+
 class _MetaDataManager(_SingletonManager):
     @classmethod
     def reset(cls):
@@ -78,6 +83,7 @@ set_metadata = _MetaDataManager.set
 is_metadata_initialized = _MetaDataManager.is_initialized
 get_metadata = _MetaDataManager.get
 reset_metadata = _MetaDataManager.reset
+
 
 #: The scoped session maker. Instantiate this to obtain a thread local
 #: session instance.
