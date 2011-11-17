@@ -41,7 +41,7 @@ class Resource(object):
 
     implements(IResource)
 
-    #: Authentication specifier.
+    #: Authentication specifier. Override as needed.
     __acl__ = [
         (Allow, Authenticated, 'view'),
         (Allow, Authenticated, 'create'),
@@ -52,7 +52,8 @@ class Resource(object):
     __parent__ = None
     #: The name of the resource. This has to be unique within the parent.
     __name__ = None
-    #: The relation identifier to show in links to this resource.
+    #: The relation identifier to show in links to this resource. Needs to 
+    #: be specified in derived classes.
     relation = None
     #: Descriptive title for this resource.
     title = ''

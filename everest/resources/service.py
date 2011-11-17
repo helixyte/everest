@@ -28,13 +28,12 @@ class Service(Resource):
     """
     implements(IService)
 
-    @property
-    def relation(self):
-        return self.__name__
+    relation = 'service'
 
-    def __init__(self, name):
+    def __init__(self):
         Resource.__init__(self)
-        self.__name__ = name
+        # Setting the __name__ to None ensures a leading slash in model paths.
+        self.__name__ = None
         self.__registered_interfaces = set()
         self.__collections = {}
         self.__started = False

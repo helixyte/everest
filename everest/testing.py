@@ -252,6 +252,7 @@ class ModelTestCase(DbTestCase):
         reg = Registry('testing')
         # Configure the registry.
         self.config = Configurator(registry=reg, package=self.app_name)
+        self.config.setup_registry()
         self.config.hook_zca()
         self._custom_configure()
         self.config.load_zcml('configure.zcml')
