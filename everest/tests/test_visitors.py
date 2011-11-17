@@ -11,7 +11,7 @@ from everest.specifications import OrderSpecificationFactory
 from everest.testing import BaseTestCase
 from everest.visitors import CqlFilterSpecificationVisitor
 from everest.visitors import CqlOrderSpecificationVisitor
-from everest.visitors import OrderSpecificationVisitor
+from everest.visitors import QueryOrderSpecificationVisitor
 from everest.visitors import QueryFilterSpecificationVisitor
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
@@ -435,7 +435,7 @@ class QueryOrderSpecificationSpecificationVisitorTestCase(BaseTestCase):
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = OrderSpecificationVisitor(Person)
+        self.visitor = QueryOrderSpecificationVisitor(Person)
         self.order_factory = OrderSpecificationFactory()
 
     def test_simple_order_by_one_attribute(self):
