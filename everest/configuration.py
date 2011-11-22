@@ -166,6 +166,11 @@ class Configurator(BfgConfigurator):
                              (Aggregate,), {})
         elif not IAggregate in provided_by(object.__new__(aggregate)):
             raise ValueError('The entity aggregate must implement IAggregate.')
+        if expose:
+            srvc = self.registry.queryUtility(IService) # pylint: disable=E1103
+            if srvc is None:
+                raise ValueError('Need a IService utility to expose a '
+                                 'resource.')
         # Override the root name and title the collection, if requested.
         if not collection_root_name is None:
             collection.root_name = collection_root_name
@@ -230,11 +235,6 @@ class Configurator(BfgConfigurator):
         directly_provides(collection, interface)
         if expose:
             # Registers the given interface with the service.
-            srvc = self.registry.queryUtility(IService) # pylint: disable=E1103
-            if srvc is None:
-                # No custom service registered - use default class.
-                srvc = Service('service')
-                self.registry.registerUtility(srvc, IService) # pylint: disable=E1103
             srvc.register(interface)
 
     def add_representer(self, resource, content_type, configuration=None,
@@ -292,7 +292,7 @@ class Configurator(BfgConfigurator):
         register_utility = self.registry.registerUtility # pylint: disable=E1103
         register_adapter = self.registry.registerAdapter # pylint: disable=E1103
         if service is None:
-            service = Service('service')
+            service = Service()
         register_utility(service, IService)
         # Filter specification utilities.
         if filter_specification_factory is None:
