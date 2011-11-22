@@ -7,6 +7,12 @@
     <include
         package="everest.includes" />
 
+    <!-- Renderers. -->
+
+    <renderer
+        name="csv"
+        factory="everest.renderers.renderer_factory" />
+
     <!-- Representers. -->
 
     <utility
@@ -19,19 +25,20 @@
     <resource
         interface='.interfaces.IFoo'
         collection=".resources.FooCollection"
-        aggregate=".entities.FooEntityAggregate"
         member=".resources.FooMember"
-        entity=".entities.FooEntity"/>
-
-    <resource
-        interface='.interfaces.IBar'
-        collection=".resources.BarCollection"
-        aggregate=".entities.BarEntityAggregate"
-        member=".resources.BarMember"
-        entity=".entities.BarEntity"/>
+        entity=".entities.FooEntity"
+        collection_root_name="foos" />
 
     <representer
         for=".resources.FooCollection"
         content_type="everest.mime.CsvMime" />
+        
+    <!-- Views. -->
+
+    <collection_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        renderer="csv"
+        request_method="GET" />
 
 </configure>

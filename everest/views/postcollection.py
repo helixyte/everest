@@ -5,16 +5,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
+from everest.exceptions import WarningException
 from everest.representers.utils import as_representer
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.url import resource_to_url
+from everest.utils import get_traceback
 from everest.views.base import CollectionView
-from webob.exc import HTTPBadRequest
-from webob.exc import HTTPConflict
 from webob.exc import HTTPCreated
-from webob.exc import HTTPException
 from zope.component import createObject as create_object # pylint: disable=E0611,F0401
-import logging
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PostCollectionView',
@@ -34,39 +32,48 @@ class PostCollectionView(CollectionView):
     See http://bitworking.org/projects/atom/rfc5023.html#post-to-create
     """
 
-    __logger = logging.getLogger(__name__)
-
     def __init__(self, collection, request):
         CollectionView.__init__(self, collection, request)
 
     def __call__(self):
-        self.__logger.debug('POST Request received on %s' % self.request.url)
-        self.__logger.debug('POST Request body:\n%s' % self.request.body)
+        self._logger.debug('POST Request received on %s' % self.request.url)
+        self._logger.debug('POST Request body:\n%s' % self.request.body)
 
-        try:
-            member = self.__create_member(self.request.body)
-        except HTTPException, err:
-            return self.request.get_response(err)
+        if len(self.request.body) == 0:
+            result = self._handle_empty_body()
         else:
-            self.context.add(member)
-            self.request.response_status = self._status(HTTPCreated)
-            self.request.response_headerlist = [
-                ('Location', resource_to_url(member, request=self.request))
-                ]
-        return {'context': member}
+            try:
+                member = self._create_member()
+            except WarningException, err:
+                result = self._handle_warning_exception(err.message)
+            except Exception, err:
+                result = self._handle_unknown_exception(err.message,
+                                                        get_traceback())
+            else:
+                if self.context.get(member.__name__) is not None:
+                    result = self._handle_conflict(member.__name__)
+                else:
+                    self.context.add(member)
+                    self.request.response_status = self._status(HTTPCreated)
+                    self.request.response_headerlist = [
+                        ('Location',
+                         resource_to_url(member, request=self.request))
+                        ]
+                    result = {'context': member}
+        return result
 
-    def __create_member(self, request_body):
-        if len(request_body) == 0:
-            raise HTTPBadRequest("Request's body is empty!").exception
-        # Create representation and deserialize request.
+    def _create_member(self):
+        """
+        Create a new member resource from the incoming request.
+        
+        If this method raises a :class:`everest.exceptions.WarningException`,
+        a 307 response is generated with the LOCATION header pointing to a
+        new URL that allows the client to resubmit the same request without
+        triggering the warning.
+        
+        :returns: :class:`everest.resources.base.Member` instance.
+        """
         rpr = as_representer(self.context, self.request.content_type)
         with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            try:
-                member = rpr.from_string(request_body)
-            except Exception, err:
-                self.__logger.debug('POST Request errors:\n%s' % err)
-                raise HTTPBadRequest(err).exception
-        if self.context.get(member.__name__) is not None:
-            raise HTTPConflict('Member already exists!').exception
-        else:
-            return member
+            member = rpr.from_string(self.request.body)
+        return member

@@ -6,7 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 <configure
     xmlns="http://namespaces.repoze.org/bfg"
 >
-    <!-- The meta config file for special directives. -->
+
+    <!-- Load BFG directives. -->
+    <include
+        package="repoze.bfg.includes" />
+
+    <!-- Load everest directives. -->
     <include
         file="meta.zcml" />
 </configure>

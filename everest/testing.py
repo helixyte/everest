@@ -18,9 +18,11 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
+from paste.deploy import loadapp # pylint: disable=E0611,F0401
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
 from sqlalchemy.engine import create_engine
+from webtest import TestApp as _TestApp
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 import nose.plugins
 import os
@@ -29,71 +31,54 @@ import time
 import unittest
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['DummyContext',
-           'DummyModule',
-           'EverestAppNosePlugin',
-           'BaseTestCase',
+__all__ = ['BaseTestCase',
            'DbTestCase',
+           'DummyContext',
+           'DummyModule',
+           'EverestTestApp',
+           'EverestTestAppNosePlugin',
+           'FunctionalTestCase',
            'ModelTestCase',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
+           'TestApp',
            'elapsed',
            'no_autoflush',
            ]
 
 
-class EverestAppNosePlugin(nose.plugins.Plugin):
+class EverestTestAppNosePlugin(nose.plugins.Plugin):
     """
     Nose plugin extension.
 
-    For use with nose to allow a project to be configured before nose
-    proceeds to scan the project for doc tests and unit tests. This
-    prevents modules from being loaded without a configured everest
-    application environment.
-
-    Based on the Pylons plugin for Nose.
+    Provides a nose option that configures a test application configuration
+    file.
     """
-    name = None
 
     def __init__(self, *args, **kw):
-        if self.__class__ is EverestAppNosePlugin:
-            raise NotImplementedError('Please create a custom nose plugin '
-                                      'for your app that derives from '
-                                      'EverestAppNosePlugin and has a '
-                                      '"name" class attribute.')
-        self.conf = None
-        self.ini_file = None
-        self.enable_opt = '%s_config' % self.name
         nose.plugins.Plugin.__init__(self, *args, **kw)
+        self.__opt_name = 'app-ini-file'
+        self.__dest_opt_name = self.__opt_name.replace('-', '_')
 
-    def add_options(self, parser, env=None):
-        """Add command-line options for this plugin"""
+    def options(self, parser, env=None):
+        """Add command-line options for this plugin."""
         if env is None:
             env = os.environ
-        env_opt = 'NOSE_WITH_%s' % self.name.upper()
-        env_opt.replace('-', '_')
-        parser.add_option("--with-%s" % self.name,
-                          dest=self.enable_opt, type="string",
-                          default="",
-                          help=".ini file to setup the everest application's "
-                               "environment.")
+        env_opt_name = 'NOSE_%s' % self.__dest_opt_name.upper()
+        parser.add_option("--%s" % self.__opt_name,
+                          dest=self.__dest_opt_name,
+                          type="string",
+                          default=env.get(env_opt_name),
+                          help=".ini file providing the environment for the "
+                               "test web application.")
 
     def configure(self, options, conf):
         """Configure the plugin"""
-        self.conf = conf
-        if hasattr(options, self.enable_opt):
-            self.enabled = bool(getattr(options, self.enable_opt))
-            self.ini_file = getattr(options, self.enable_opt)
-
-    def begin(self):
-        """Called before any tests are collected or run
-
-        Sets the application name and initialization file path.
-        """
-        path = os.getcwd()
-        # Store app name and path to the config file in our testing base class.
-        BaseTestCase.app_name = self.name
-        BaseTestCase.ini_file_path = os.path.join(path, self.ini_file)
+        super(EverestTestAppNosePlugin, self).configure(options, conf)
+        opt_val = getattr(options, self.__dest_opt_name, None)
+        if opt_val:
+            self.enabled = True
+            TestApp.app_ini_file_path = opt_val
 
 
 class Pep8CompliantTestCase(unittest.TestCase):
@@ -128,42 +113,71 @@ class Pep8CompliantTestCase(unittest.TestCase):
         self.tear_down()
 
 
+class TestApp(_TestApp):
+    """    
+    Test web application. 
+    
+    Extends the base class with facilities to access to a global application 
+    initialization file that can be configured through nose.
+    """
+    #: Name of the application to test. This specifies the section name to 
+    #: look for in the initialization file. Please set to your app's name in
+    #: a derived class.
+    app_name = None
+
+    #: Name of the package to load the application from. Please set to your
+    #: app's package in a derived class.
+    package_name = None
+
+    #: Application initialization file path. Set from the nose plugin
+    #: :class:`EverestTestAppNosePlugin`.
+    app_ini_file_path = None
+
+    __ini_parser = None
+
+    @classmethod
+    def read_ini_file(cls):
+        """
+        Returns a parser for the application ini file that was configured
+        through the :method:`set_app_ini_file_path` method.
+        """
+        if cls.__ini_parser is None:
+            if cls.app_ini_file_path is None:
+                raise ValueError('You need to configure an application '
+                                 'initialization file path (e.g., through '
+                                 'the EverestAppNosePlugin).')
+            cls.__ini_parser = SafeConfigParser()
+            cls.__ini_parser.read(cls.app_ini_file_path)
+        return cls.__ini_parser
+
+
+class EverestTestApp(TestApp):
+    """
+    Test app class for everest tests.
+    """
+    app_name = 'everest'
+    package_name = 'everest'
+
+
 class BaseTestCase(Pep8CompliantTestCase):
     """
     Base class for all everest unit test case classes.
     """
-    app_name = None      # Set by nose plugin
-    ini_file_path = None # Set by nose plugin
 
-    __ini_parser = None
-
-    def _read_ini_file(self):
-        if self.__ini_parser is None:
-            self.__ini_parser = SafeConfigParser()
-            self.__ini_parser.read(self.ini_file_path)
-        return self.__ini_parser
-
-    def _get_db_info_from_ini_file(self):
-        # Extract DB initialization strings from the ini file.
-        ini_parser = self._read_ini_file()
-        db_string = ini_parser.get('app:%s' % self.app_name, 'db_string')
-        if ini_parser.has_option('app:%s' % self.app_name, 'db_echo'):
-            db_echo = ini_parser.getboolean('app:%s' % self.app_name,
-                                            'db_echo')
-        else:
-            db_echo = False
-        return db_string, db_echo
+    #: The class of the test application (subclass of :class:`TestApp`).
+    #: Override to make your test case load settings from custom sections 
+    #: of your application initialization file.
+    test_app_cls = EverestTestApp
 
     def _test_attributes(self, test_object, attribute_map):
         """
         Utility method to test whether the test object attributes match the
         expected ones (given the dictionary).
 
-        :param test_object: and Entity subclass object
+        :param test_object: a test object
         :param attribute_map: a dictionary with key = attribute name
                 and value = expected value for this attribute
         """
-
         for attr_name, wanted_value in attribute_map.iteritems():
             self.assert_equal(getattr(test_object, attr_name), wanted_value)
 
@@ -205,6 +219,17 @@ class DbTestCase(BaseTestCase):
         self._connection.close()
         # Remove the session we created.
         db.Session.remove()
+
+    def _get_db_info_from_ini_file(self):
+        # Extract DB initialization strings from the ini file.
+        ini_parser = self.test_app_cls.read_ini_file()
+        ini_marker = 'app:%s' % self.test_app_cls.app_name
+        db_string = ini_parser.get(ini_marker, 'db_string')
+        if ini_parser.has_option(ini_marker, 'db_echo'):
+            db_echo = ini_parser.getboolean(ini_marker, 'db_echo')
+        else:
+            db_echo = False
+        return db_string, db_echo
 
     def _test_model_attributes(self, model_class, attribute_map,
                                test_attributes=True):
@@ -251,13 +276,15 @@ class ModelTestCase(DbTestCase):
         # Create a new testing registry.
         reg = Registry('testing')
         # Configure the registry.
-        self.config = Configurator(registry=reg, package=self.app_name)
+        self.config = Configurator(registry=reg,
+                                   package=self.test_app_cls.package_name)
         self.config.hook_zca()
         self._custom_configure()
         self.config.load_zcml('configure.zcml')
 
     def _custom_configure(self):
         self.config.begin()
+        self.config.setup_registry()
 
     def tear_down(self):
         super(ModelTestCase, self).tear_down()
@@ -288,14 +315,14 @@ class ResourceTestCase(ModelTestCase):
 
     def set_up(self):
         super(ResourceTestCase, self).set_up()
-        #
+        # Set the request root.
         srvc = get_utility(IService)
         srvc.start()
         self._request.root = srvc
 
     def _custom_configure(self):
         # Build a dummy request.
-        ini_parser = self._read_ini_file()
+        ini_parser = self.test_app_cls.read_ini_file()
         host = ini_parser.get('server:main', 'host')
         port = ini_parser.getint('server:main', 'port')
         base_url = 'http://%s:%d' % (host, port)
@@ -305,9 +332,8 @@ class ResourceTestCase(ModelTestCase):
                                      path_url=app_url,
                                      url=app_url,
                                      registry=self.config.registry)
-        # Configure authentication.
-        self.config.testing_securitypolicy("it")
         self.config.begin(request=self._request)
+        self.config.setup_registry()
 
     def _get_member(self, icollection, key=None):
         coll = get_root_collection(icollection)
@@ -330,6 +356,48 @@ class ResourceTestCase(ModelTestCase):
         coll = get_collection(get_collection_class(member))
         coll.add(member)
         return member
+
+
+class FunctionalTestCase(BaseTestCase):
+    """
+    A basic test class for client side actions.
+    """
+
+    config = None
+    app = None
+
+    def set_up(self):
+        reg = Registry('testing')
+        self.config = Configurator(registry=reg,
+                                   package=self.test_app_cls.package_name)
+        self.config.hook_zca()
+        self.config.begin()
+        self._custom_configure()
+        wsgiapp = self._load_wsgiapp()
+        self.app = TestApp(wsgiapp,
+                           extra_environ=self._create_extra_environment())
+
+    def tear_down(self):
+        self.config.unhook_zca()
+        self.config.end()
+
+    def _custom_configure(self):
+        """
+        Called from :method:`set_up` after the configurator has been set up
+        and hooked with the ZCA site manager, but before the WSGI app is 
+        loaded.
+        
+        This default implementation does nothing and is meant to be overridden.
+        """
+        pass
+
+    def _load_wsgiapp(self):
+        wsgiapp = loadapp('config:' + self.test_app_cls.app_ini_file_path,
+                          name=self.test_app_cls.app_name)
+        return wsgiapp
+
+    def _create_extra_environment(self):
+        return {}
 
 
 class DummyModule(object):

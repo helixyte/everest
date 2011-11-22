@@ -4,43 +4,20 @@
 
     <!-- Include special directives. -->
     <include
-        package="repoze.bfg.includes" />
-
-    <include
         package="everest.includes" />
 
-    <!-- Representer classes. -->
-    <utility
-        component="everest.representers.xml.XmlResourceRepresenter"
-        provides="everest.representers.interfaces.IRepresenter"
-        name="application/xml" />
-
-    <utility
-        component="everest.representers.csv.CsvResourceRepresenter"
-        provides="everest.representers.interfaces.IRepresenter"
-        name="application/csv" />
-        
     <!-- Resource declarations. -->
 
     <resource
         interface='.interfaces.IFoo'
         member=".resources.FooMember"
         entity=".entities.FooEntity"
-        collection_root_name="my-foo-collection"/>
+        collection_root_name="foos"/>
 
     <resource
         interface='.interfaces.IBar'
         member=".resources.BarMember"
         entity=".entities.BarEntity"
         expose="false"/>
-
-    <representer
-        for=".resources.FooMember"
-        content_type="everest.mime.XmlMime"
-        configuration=".representer_config.XML_MYRESOURCE" />
-
-    <representer
-        for=".resources.FooMember"
-        content_type="everest.mime.CsvMime" />
 
 </configure>

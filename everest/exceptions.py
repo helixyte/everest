@@ -19,7 +19,11 @@ class NotAnEmailAddress(ValidationError): # pylint: disable=W0232
 
 class UnsupportedOperationException(Exception):
     """
-    Usually raised to indicate that the requested operation is not supported. 
-    It is particularly used in the implementation of the Composite Design 
-    Pattern.
+    Raise this to indicate that the requested operation is not supported.
+    """
+
+
+class WarningException(Exception):
+    """
+    Raise this to make the server respond with a warning message.
     """

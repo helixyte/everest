@@ -17,8 +17,10 @@ from everest.entities.utils import get_aggregate
 from everest.filtering import IFilterSpecificationBuilder
 from everest.filtering import IFilterSpecificationDirector
 from everest.interfaces import IResourceUrlConverter
+from everest.mime import CsvMime
 from everest.ordering import IOrderSpecificationBuilder
 from everest.ordering import IOrderSpecificationDirector
+from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -29,6 +31,7 @@ from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.entities import FooEntityAggregate
+from everest.tests.testapp.interfaces import IBar
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
@@ -40,7 +43,6 @@ from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
 from zope.interface import implements # pylint: disable=E0611,F0401
-from everest.tests.testapp.interfaces import IBar
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -108,7 +110,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         srvc = reg.queryUtility(IService)
         self.assert_true(not srvc is None)
         srvc.start()
-        self.assert_true(isinstance(srvc.get('my-foo-collection'), Collection))
+        self.assert_true(isinstance(srvc.get('foos'), Collection))
         self.assert_true(isinstance(srvc.get(coll_cls), Collection))
         self.assert_true(srvc.get(IBar) is None)
 
@@ -128,10 +130,16 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         self.assert_true(reg.queryAdapter(coll, IAggregate) is None)
         self.assert_true(reg.queryAdapter(ent, IMemberResource) is None)
         self.assert_true(reg.queryAdapter(agg, ICollectionResource) is None)
+        self.assert_true(
+                reg.queryAdapter(coll, IRepresenter, CsvMime.mime_string)
+                is None)
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll, agg)
+        self.assert_false(
+                reg.queryAdapter(coll, IRepresenter, CsvMime.mime_string)
+                is None)
 
     def test_custom_memory_aggregate_class(self):
         class MyMemoryAggregate(MemoryRootAggregateImpl):
