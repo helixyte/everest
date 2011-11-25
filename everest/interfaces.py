@@ -19,6 +19,8 @@ __all__ = ['IAtomMime',
            'ICsvMime',
            'ICsvRequest',
            'IFilterSpecificationVisitor',
+           'IHtmlRequest',
+           'IHtmlMime',
            'IJsonMime',
            'IJsonRequest',
            'IKeyFunctionOrderSpecificationVisitor',
@@ -46,6 +48,9 @@ class ICsvRequest(Interface):
 class IXlsRequest(Interface):
     """Marker interface for an Excel request."""
 
+class IHtmlRequest(Interface):
+    """Marker interface for a HTML request."""
+
 class IJsonMime(Interface):
     """Marker interface for a JSON mime type."""
 
@@ -69,6 +74,12 @@ class ICsvMime(Interface):
 
 class IXlsMime(Interface):
     """Marker interface for an Excel mime type."""
+
+class IHtmlMime(Interface):
+    """Marker interface for a HTML mime type."""
+
+class ITextPlainMime(Interface):
+    """Marker interface for a Plain Text mime type."""
 
 class IFilterSpecificationFactory(Interface):
     """
@@ -414,5 +425,10 @@ class IStagingContextManager(Interface):
         """Enters the context."""
     def __exit__():
         """Exits the context."""
+
+class IMessage(Interface):
+    """
+    Marker interface for messages.
+    """
 
 # pylint: enable=E0213,W0232,E0211

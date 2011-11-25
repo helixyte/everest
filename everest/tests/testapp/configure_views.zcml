@@ -33,6 +33,10 @@
         for=".resources.FooCollection"
         content_type="everest.mime.CsvMime" />
         
+    <representer
+        for=".resources.FooMember"
+        content_type="everest.mime.CsvMime" />
+        
     <!-- Views. -->
 
     <collection_view

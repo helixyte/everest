@@ -8,6 +8,7 @@ Created on Sep 25, 2011.
 """
 
 from everest.db import Session
+from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
 from everest.interfaces import IKeyFunctionOrderSpecificationVisitor
@@ -204,6 +205,21 @@ class MemoryAggregateImpl(AggregateImpl):
         pass
 
     def _get_entities(self):
+        """
+        Returns the entities held by this memory aggregate.
+        
+        :returns:  list of objects implementing 
+            :class:`everest.entities.interfaces.IEntity`
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def _set_entities(self, entities):
+        """
+        Sets the entities held by this memory aggregate.
+        
+        :param entities: list of objects implementing 
+            :class:`everest.entities.interfaces.IEntity`
+        """
         raise NotImplementedError('Abstract method.')
 
     def __check_existing(self, entity):
@@ -224,7 +240,7 @@ class MemoryAggregateImpl(AggregateImpl):
 
 
 class MemoryRootAggregateImpl(MemoryAggregateImpl):
-    implements(IRootAggregateImplementation)
+    implements(IAggregate, IRootAggregateImplementation)
 
     def __init__(self, entity_class):
         MemoryAggregateImpl.__init__(self, entity_class)
@@ -234,12 +250,20 @@ class MemoryRootAggregateImpl(MemoryAggregateImpl):
     def create(cls, entity_class, **kw):
         return cls(entity_class)
 
+    def clone(self):
+        clone = super(MemoryRootAggregateImpl, self).clone()
+        clone.__entities = self.__entities # access private pylint: disable=W0212
+        return clone
+
     def _get_entities(self):
         return self.__entities
 
+    def _set_entities(self, entities):
+        self.__entities = entities
+
 
 class MemoryRelationAggregateImpl(MemoryAggregateImpl):
-    implements(IRelationAggregateImplementation)
+    implements(IAggregate, IRelationAggregateImplementation)
 
     def __init__(self, entity_class, relation):
         MemoryAggregateImpl.__init__(self, entity_class)
@@ -250,8 +274,16 @@ class MemoryRelationAggregateImpl(MemoryAggregateImpl):
     def create(cls, entity_class, relation=None, **kw):
         return cls(entity_class, relation)
 
+    def clone(self):
+        clone = super(MemoryRelationAggregateImpl, self).clone()
+        clone.__relation = self.__relation # access private pylint: disable=W0212
+        return clone
+
     def _get_entities(self):
         return self.__relation.relatee
+
+    def _set_entities(self, entities):
+        self.__relation.relatee = entities
 
     def get_filter_spec(self):
         #: Overridden to handle absolute vs. relative specs.

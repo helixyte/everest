@@ -372,8 +372,8 @@ class FunctionalTestCase(BaseTestCase):
                                    package=self.test_app_cls.package_name)
         self.config.hook_zca()
         self.config.begin()
-        self._custom_configure()
         wsgiapp = self._load_wsgiapp()
+        self._custom_configure()
         self.app = TestApp(wsgiapp,
                            extra_environ=self._create_extra_environment())
 

@@ -42,7 +42,6 @@ from repoze.bfg.testing import DummyRequest
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
-from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -143,7 +142,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
 
     def test_custom_memory_aggregate_class(self):
         class MyMemoryAggregate(MemoryRootAggregateImpl):
-            implements(IAggregate)
+            pass
         reg = self._registry
         # Load the configuration.
         config = Configurator(registry=reg)

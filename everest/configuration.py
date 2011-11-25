@@ -13,6 +13,7 @@ from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
+from everest.entities.system import Message
 from everest.filtering import FilterSpecificationBuilder
 from everest.filtering import FilterSpecificationDirector
 from everest.interfaces import ICqlFilterSpecificationVisitor
@@ -20,6 +21,7 @@ from everest.interfaces import ICqlOrderSpecificationVisitor
 from everest.interfaces import IFilterSpecificationBuilder
 from everest.interfaces import IFilterSpecificationDirector
 from everest.interfaces import IFilterSpecificationFactory
+from everest.interfaces import IMessage
 from everest.interfaces import IOrderSpecificationBuilder
 from everest.interfaces import IOrderSpecificationDirector
 from everest.interfaces import IOrderSpecificationFactory
@@ -37,6 +39,7 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
 from everest.resources.service import Service
+from everest.resources.system import MessageMember
 from everest.specifications import FilterSpecificationFactory
 from everest.specifications import OrderSpecificationFactory
 from everest.url import ResourceUrlConverter
@@ -210,7 +213,7 @@ class Configurator(BfgConfigurator):
         else:
             mb_factory = entity_adapter
         register_adapter(mb_factory, (interface,), IMemberResource,
-                                      info=_info)
+                         info=_info)
         # Register the aggregate -> collection resource adapter.
         if aggregate_adapter is None:
             agg_factory = collection.create_from_aggregate
@@ -345,6 +348,10 @@ class Configurator(BfgConfigurator):
         if url_converter is None:
             url_converter = ResourceUrlConverter
         register_adapter(url_converter, (IRequest,), IResourceUrlConverter)
+        # Register system resources.
+        self.add_resource(IMessage, MessageMember, Message,
+                          aggregate=MemoryRootAggregateImpl,
+                          collection_root_name='_messages')
 
     def __find_interface(self, cls, base_interface):
         # Finds the first interface provided by `cls` that is a

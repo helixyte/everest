@@ -391,7 +391,7 @@ class DescriptorsTestCase(BaseTestCase):
         testing_set_up(registry=reg, request=self._request)
         # Set up the service.
         with create_object(STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            service = Service('service')
+            service = Service()
             service.add(IMyEntity)
             service.add(IMyEntityParent)
             self._request.root = service

@@ -12,8 +12,11 @@ from everest.interfaces import IAtomRequest
 from everest.interfaces import IAtomServiceMime
 from everest.interfaces import ICsvMime
 from everest.interfaces import ICsvRequest
+from everest.interfaces import IHtmlMime
+from everest.interfaces import IHtmlRequest
 from everest.interfaces import IJsonMime
 from everest.interfaces import IJsonRequest
+from everest.interfaces import ITextPlainMime
 from everest.interfaces import IXlsMime
 from everest.interfaces import IXlsRequest
 from everest.interfaces import IXmlMime
@@ -79,12 +82,25 @@ class XlsMime(object):
 
 XLS_MIME = XlsMime.mime_string
 
-MIME_REQUEST = {JSON_MIME: IJsonRequest,
-                ATOM_MIME: IAtomRequest,
-                ATOM_FEED_MIME: IAtomRequest,
-                ATOM_ENTRY_MIME: IAtomRequest,
-                ATOM_SERVICE_MIME: IAtomRequest,
-                XML_MIME: IXmlRequest,
-                CSV_MIME: ICsvRequest,
-                XLS_MIME: IXlsRequest,
+class HtmlMime(object):
+    implements(IHtmlMime)
+    mime_string = 'text/html'
+
+HTML_MIME = HtmlMime.mime_string
+
+class TextPlainMime(object):
+    implements(ITextPlainMime)
+    mime_string = 'text/plain'
+
+TEXT_PLAIN_MIME = TextPlainMime.mime_string
+
+MIME_REQUEST = {JSON_MIME : IJsonRequest,
+                ATOM_MIME : IAtomRequest,
+                ATOM_FEED_MIME : IAtomRequest,
+                ATOM_ENTRY_MIME : IAtomRequest,
+                ATOM_SERVICE_MIME : IAtomRequest,
+                XML_MIME : IXmlRequest,
+                CSV_MIME : ICsvRequest,
+                XLS_MIME : IXlsRequest,
+                HTML_MIME : IHtmlRequest,
                 }

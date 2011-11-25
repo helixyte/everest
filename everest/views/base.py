@@ -5,12 +5,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.j
 """
 
+from everest.entities.system import Message
+from everest.messaging import UserMessageHandler
+from everest.resources.system import MessageMember
 from everest.views.interfaces import IResourceView
-from webob.exc import HTTPBadRequest
-from zope.interface import implements # pylint: disable=E0611,F0401
 from paste.httpexceptions import HTTPTemporaryRedirect
-import logging
+from webob.exc import HTTPBadRequest
 from webob.exc import HTTPConflict
+from zope.interface import implements
+import logging
+import os
+import re
 
 __docformat__ = "reStructuredText en"
 __all__ = ['ResourceView',
@@ -19,22 +24,42 @@ __all__ = ['ResourceView',
            ]
 
 
+class HttpWarningResubmit(HTTPTemporaryRedirect):
+    """
+    Special 307 HTTP Temporary Redirect exception which transports 
+    """
+    explanation = 'Your request triggered warnings. You may resubmit ' \
+                  'the request under the given location to ignore ' \
+                  'the warnings.'
+    template = '%(explanation)s\r\n' \
+               'Location: <a href="%(location)s">%(location)s</a>\r\n' \
+               'Warning Message: %(detail)s\r\n' \
+               '<!-- %(comment)s -->'
+
+
 class ResourceView(object):
     """
-    Abstract base class for all resource views
+    Abstract base class for all resource views.
+    
+    Resource views know how to handle a number of things that can go wrong
+    in a REST request.
     """
 
     implements(IResourceView)
 
     __context = None
     __request = None
+    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
 
     def __init__(self, context, request):
         if self.__class__ is ResourceView:
             raise NotImplementedError('Abstract class')
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.__context = context
         self.__request = request
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self.__message_handler = UserMessageHandler()
+        UserMessageHandler.register(self.__message_handler, request)
+        request.add_finished_callback(UserMessageHandler.unregister)
 
     @property
     def context(self):
@@ -44,32 +69,102 @@ class ResourceView(object):
     def request(self):
         return self.__request
 
-    def _status(self, wsgi_http_exc_class):
-        return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
-
     def _handle_empty_body(self):
-        err = HTTPBadRequest("Request's body is empty!").exception
-        return self.request.get_response(err)
-
-    def _handle_warning_exception(self, message):
-        # Warning exceptions trigger a special 307 "Temporary Redirect"
-        # response.
-        resubmit_url = None
-        http_exc = HTTPTemporaryRedirect(message,
-                                         location=resubmit_url)
-        return self.request.get_response(http_exc.exception)
+        """
+        Handles requests with an empty body.
+        
+        Respond with a 400 "Bad Request".
+        """
+        http_exc = HTTPBadRequest("Request's body is empty!")
+        return self.request.get_response(http_exc)
 
     def _handle_unknown_exception(self, message, traceback):
-        # Any other exception is responded to with a 400 "Bad Request".
+        """
+        Handles requests that triggered an unknown exception.
+        
+        Respond with a 400 "Bad Request".
+        """
         self._logger.debug('POST Request errors\n'
                            'Error message: %s\nTraceback:%s' %
                            (message, traceback))
-        err = HTTPBadRequest(message).exception
-        return self.request.get_response(err)
+        http_exc = HTTPBadRequest(message)
+        return self.request.get_response(http_exc)
 
     def _handle_conflict(self, name):
+        """
+        Handles requests that triggered a conflict.
+        
+        Respond with a 409 "Conflict"
+        """
         err = HTTPConflict('Member "%s" already exists!' % name).exception
         return self.request.get_response(err)
+
+    def _handle_user_messages(self):
+        """
+        Handles user messages that were sent during request processing.
+        
+        Respond with a 307 "Temporary Redirect" including a HTTP Warning 
+        header with code 299 that contains the user concatenated user
+        messages. If the request has an explicit "ignore-message" parameter 
+        pointing to an identical message from a previous request, None is
+        returned, indicating that the request should be processed as if no
+        warning had occurred.
+        """
+        text = os.linesep.join(self.__message_handler.get_messages())
+        ignore_guid = self.request.params.get('ignore-message')
+        coll = self.request.root['_messages']
+        modify_response = True
+        if ignore_guid:
+            ignore_mb = coll.get(ignore_guid)
+            if not ignore_mb is None and ignore_mb.text == text:
+                modify_response = False
+        if modify_response:
+            msg = Message(text)
+            msg_mb = MessageMember(msg)
+            coll.add(msg_mb)
+            # Figure out the new location URL.
+            qs = self.__get_new_query_string(self.request.query_string,
+                                             msg.slug)
+            resubmit_url = "%s?%s" % (self.request.path_url, qs)
+            headers = [('Location', resubmit_url),
+                       ('Warning', '299 %s' % text),
+#                       ('Content-Type', cnt_type),
+                       ]
+            http_exc = HttpWarningResubmit(text, headers=headers)
+            response = self.request.get_response(http_exc)
+        else:
+            response = None
+        return response
+
+    def _has_user_messages(self):
+        """
+        Check if user messages have been sent during request processing. 
+        """
+        return self.__message_handler.has_messages()
+
+    def _status(self, wsgi_http_exc_class):
+        """
+        Convenience method to obtain a status string from the given HTTP
+        exception class.
+        """
+        return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
+
+    def __get_new_query_string(self, old_query_string, new_guid):
+        # In absence of a function to manipulate the URL query string in place
+        # (the request URL params are read-only), resorting to explicit
+        # string manipulation seems the safest thing to do.
+        if old_query_string:
+            # Make sure to *replace* any given ignore message.
+            match = self.__guid_pattern.match(old_query_string)
+            if match:
+                cur_guid = match.groups()[0]
+                qs = re.sub(cur_guid, new_guid, old_query_string)
+            else:
+                qs = "%s&ignore-message=%s" % (old_query_string,
+                                               new_guid)
+        else:
+            qs = "ignore-message=%s" % new_guid
+        return qs
 
 
 class CollectionView(ResourceView):

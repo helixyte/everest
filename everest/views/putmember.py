@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
-from everest.exceptions import WarningException
 from everest.representers.utils import as_representer
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.url import resource_to_url
@@ -21,7 +20,7 @@ __all__ = ['PutMemberView',
 
 class PutMemberView(MemberView):
     """
-    A View for processing PUT requests
+    View for PUT requests on member resources.
 
     The client sends a PUT request to store a representation of a Member
     Resource. If the request is successful, the server responds with a status
@@ -36,34 +35,27 @@ class PutMemberView(MemberView):
     def __call__(self):
         self._logger.debug('PUT Request received on %s' % self.request.url)
         self._logger.debug('PUT Request body:\n%s' % self.request.body)
-
         if len(self.request.body) == 0:
-            result = self._handle_empty_body()
+            # Empty body - return 400 Bad Request.
+            response = self._handle_empty_body()
         else:
             initial_url = resource_to_url(self.context, request=self.request)
             try:
                 self._update_member()
-            except WarningException, err:
-                result = self._handle_warning_exception(err.message)
-            except Exception, err:
-                result = self._handle_unknown_exception(err.message,
-                                                        get_traceback())
+            except Exception, err: # catch Exception pylint: disable=W0703
+                response = self._handle_unknown_exception(err.message,
+                                                          get_traceback())
             else:
-                current_url = resource_to_url(self.context,
-                                              request=self.request)
-                # FIXME: pylint:disable=W0511
-                #        Return HTTPConflict if the new location exists.
-                if initial_url != current_url:
-                    self.request.response_status = \
-                                self._status(HTTPMovedPermanently)
-                    self.request.response_headerlist = \
-                                [('Location', current_url)]
-                # We return the representation of the updated member to
-                # assist the client in doing the right thing. 
-                # Not all clients give access to the Response headers and we 
-                # cannot find the new location when HTTP/1.1 301 is returned.
-                result = {'context': self.context}
-        return result
+                if self._has_user_messages():
+                    # Some user messages were collected during the call - 
+                    # possibly return a 307 reponse with a warning.
+                    response = self._handle_user_messages()
+                    if response is None:
+                        # User message ignored - return 301 Created.
+                        response = self.__handle_updated(initial_url)
+                else:
+                    response = self.__handle_updated(initial_url)
+        return response
 
     def _update_member(self):
         """
@@ -73,3 +65,17 @@ class PutMemberView(MemberView):
         with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
             new_member_data = rpr.data_from_representation(self.request.body)
         self.context.update_from_data(new_member_data)
+
+    def __handle_updated(self, initial_url):
+        current_url = resource_to_url(self.context, request=self.request)
+        # FIXME: pylint:disable=W0511
+        #        Return HTTPConflict if the new location exists.
+        if initial_url != current_url:
+            self.request.response_status = self._status(HTTPMovedPermanently)
+            self.request.response_headerlist = [('Location', current_url)]
+        # We return the representation of the updated member to
+        # assist the client in doing the right thing. 
+        # Not all clients give access to the Response headers and we 
+        # cannot find the new location when HTTP/1.1 301 is returned.
+        return {'context' : self.context}
+

@@ -51,11 +51,13 @@ class Service(Resource):
         """
         Starts the service.
         
-        This adds all registered resource interfaces to the service.
+        This adds all registered resource interfaces to the service. Multiple
+        calls to this method will only perform the startup once.
         """
-        self.__started = True
-        for irc in self.__registered_interfaces:
-            self.add(irc)
+        if not self.__started:
+            self.__started = True
+            for irc in self.__registered_interfaces:
+                self.add(irc)
 
     def __getitem__(self, key):
         """

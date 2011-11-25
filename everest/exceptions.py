@@ -21,9 +21,3 @@ class UnsupportedOperationException(Exception):
     """
     Raise this to indicate that the requested operation is not supported.
     """
-
-
-class WarningException(Exception):
-    """
-    Raise this to make the server respond with a warning message.
-    """
