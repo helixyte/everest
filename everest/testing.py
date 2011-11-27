@@ -278,13 +278,13 @@ class ModelTestCase(DbTestCase):
         # Configure the registry.
         self.config = Configurator(registry=reg,
                                    package=self.test_app_cls.package_name)
+        self.config.setup_registry()
         self.config.hook_zca()
         self._custom_configure()
         self.config.load_zcml('configure.zcml')
 
     def _custom_configure(self):
         self.config.begin()
-        self.config.setup_registry()
 
     def tear_down(self):
         super(ModelTestCase, self).tear_down()
@@ -333,7 +333,6 @@ class ResourceTestCase(ModelTestCase):
                                      url=app_url,
                                      registry=self.config.registry)
         self.config.begin(request=self._request)
-        self.config.setup_registry()
 
     def _get_member(self, icollection, key=None):
         coll = get_root_collection(icollection)
