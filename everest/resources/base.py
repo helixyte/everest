@@ -7,7 +7,7 @@ Resource base classes.
 Created on Nov 3, 2011.
 """
 
-from everest.entities.utils import get_entity_class_for_member
+from everest.entities.utils import get_entity_class
 from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
@@ -119,7 +119,7 @@ class Member(Resource):
         """
         if self.__class__ is Member:
             raise NotImplementedError('Abstract class')
-        if not isinstance(entity, get_entity_class_for_member(self)):
+        if not isinstance(entity, get_entity_class(self)):
             raise ValueError(
                     'Invalid entity class "%s" for %s resource class.'
                     % (entity.__class__.__name__, self.__class__.__name__))

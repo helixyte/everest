@@ -8,7 +8,7 @@ Created on May 18, 2011.
 """
 
 from StringIO import StringIO
-from everest.entities.utils import get_entity_class_for_member
+from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_transient_aggregate
 from everest.mime import CsvMime
 from everest.representers.attributes import CollectionAttributeMapper
@@ -586,7 +586,7 @@ class DataElementParser(object):
                 raise ValueError('Invalid resource attribute kind.')
             if not value is None:
                 data[attr.entity_name] = value
-        entity = get_entity_class_for_member(mb_cls).create_from_data(data)
+        entity = get_entity_class(mb_cls).create_from_data(data)
         return mb_cls.create_from_entity(entity)
 
     def extract_collection_resource(self, rc_data_el, nesting_level=0):

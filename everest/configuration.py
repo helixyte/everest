@@ -182,62 +182,75 @@ class Configurator(BfgConfigurator):
                              'service (=root), a root name is required.')
         if not collection_title is None:
             collection.title = collection_title
-        # Find interfaces the given classes are required to implement.
-#        coll_i_cls = self.__find_interface(collection, IResource)
-#        mb_i_cls = self.__find_interface(member, IResource)
-#        agg_i_cls = self.__find_interface(aggregate, IEntity)
-#        ent_i_cls = self.__find_interface(entity, IEntity)
+        # Shortcuts to ease pylint.
         register_adapter = self.registry.registerAdapter # pylint: disable=E1103
         register_utility = self.registry.registerUtility # pylint: disable=E1103
-        # Register the collection -> member class adapter.
-        register_adapter(lambda coll: member,
-                                      (interface,), IMemberResource,
-                                      name='member-class',
-                                      info=_info)
-        # Register the member -> collection class adapter.
-        register_adapter(lambda member: collection,
-                                      (interface,), ICollectionResource,
-                                      name='collection-class',
-                                      info=_info)
-        # Register the collection -> aggregate class adapter.
-        register_adapter(lambda coll: aggregate,
-                                      (interface,), IAggregate,
-                                      info=_info)
-        # Register the member -> entity class utility.
-        register_adapter(lambda member: entity,
-                                      (interface,), IEntity,
-                                      info=_info)
-        # Register the entity -> member resource adapter.
+        # Register the entity instance -> member instance adapter.
         if entity_adapter is None:
             mb_factory = member.create_from_entity
         else:
             mb_factory = entity_adapter
         register_adapter(mb_factory, (interface,), IMemberResource,
                          info=_info)
-        # Register the aggregate -> collection resource adapter.
+        # Register the aggregate instance -> collection instance adapter.
         if aggregate_adapter is None:
             agg_factory = collection.create_from_aggregate
         else:
             agg_factory = aggregate_adapter
         register_adapter(agg_factory, (interface,), ICollectionResource,
+                        info=_info)
+        # Register adapter object implementing interface -> member class
+        register_adapter(lambda obj: member,
+                         required=(interface,),
+                         provided=IMemberResource,
+                         name='member-class',
                          info=_info)
-        # Register utility collection -> collection class
-        register_utility(collection, interface, name='collection-class',
+        # Register adapter object implementing interface -> collection class
+        register_adapter(lambda obj: collection,
+                         required=(interface,),
+                         provided=ICollectionResource,
+                         name='collection-class',
                          info=_info)
-        # Register utility member -> member class
-        register_utility(member, interface, name='member-class',
+        # Register adapter object implementing interface -> member class
+        register_adapter(lambda obj: entity,
+                         required=(interface,),
+                         provided=IEntity,
+                         name='entity-class',
                          info=_info)
-        #
-        class_implements(member, interface)
-        class_implements(collection, interface)
-        class_implements(entity, interface)
-        class_implements(aggregate, interface)
+        # Register adapter object implementing interface -> collection class
+        register_adapter(lambda obj: aggregate,
+                         required=(interface,),
+                         provided=IAggregate,
+                         name='aggregate-class',
+                         info=_info)
+        # Register utility interface -> member class
+        register_utility(member, interface, name='member-class', info=_info)
+        # Register utility interface -> collection class
+        register_utility(collection, interface,
+                         name='collection-class', info=_info)
+        # Register utility interface -> entity class
+        register_utility(entity, interface, name='entity-class', info=_info)
+        # Register utility interface -> aggregate class
+        register_utility(aggregate, interface,
+                         name='aggregate-class', info=_info)
+        # Attach the marker interface to the registered resource classes, if
+        # necessary.
+        if not interface in provided_by(member):
+            class_implements(member, interface)
+        if not interface in provided_by(collection):
+            class_implements(collection, interface)
+        if not interface in provided_by(entity):
+            class_implements(entity, interface)
+        if not interface in provided_by(aggregate):
+            class_implements(aggregate, interface)
         # This enables us to pass the collection  or member class instead of
         # an interface or instance to the various adapters.
         directly_provides(member, interface)
         directly_provides(collection, interface)
+#        directly_provides(entity, interface)
+#        directly_provides(aggregate, interface)
+        # Expose (=register with the service) if requested.
         if expose:
-            # Registers the given interface with the service.
             srvc.register(interface)
 
     def add_representer(self, resource, content_type, configuration=None,

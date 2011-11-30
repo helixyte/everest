@@ -11,16 +11,16 @@ from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
-from everest.resources.interfaces import IMemberResource
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.interface import Interface # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_aggregate',
            'get_aggregate_class_for_collection',
-           'get_entity_class_for_member',
+           'get_entity_class',
            'get_persistent_aggregate',
            'get_transient_aggregate',
            'slug_from_string',
@@ -28,18 +28,18 @@ __all__ = ['get_aggregate',
            ]
 
 
-def get_aggregate(collection, relation=None, **kw):
+def get_aggregate(rc, relation=None, **kw):
     """
     Returns an instance of the aggregate registered for the given
-    collection.
+    registered resource.
 
     The entity class to manage by the aggregate is assumed to be the
     entity class registered with the member resource registered for the
     given collection resource or interface.
 
-    :param collection: collection
-    :type collection: class implementing or instance providing or subclass of
-        :class:`everest.resources.interfaces.ICollectionResource`
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
     :param related_to: indicates that the aggregate is defined as a subset
         of the root aggregate through a relation
     :type related_to: tuple containing two elements, first the related parent
@@ -48,17 +48,16 @@ def get_aggregate(collection, relation=None, **kw):
     :return: aggregate instance
         (object providing :class:`everest.entities.interfaces.IAggregate`)
     """
-    # FIXME: optimize this pylint:disable=W0511
-    if isinstance(collection, type(Interface)):
-        # If we were passed an interface, translate to the registered class.
-        collection = get_utility(collection, 'collection-class')
-    agg_cls = get_adapter(collection, IAggregate)
-    mb_cls = get_adapter(collection, IMemberResource, 'member-class')
-    entity_cls = get_adapter(mb_cls, IEntity)
+    if IInterface in provided_by(rc):
+        agg_cls = get_utility(rc, name='aggregate-class')
+        entity_cls = get_utility(rc, name='entity-class')
+    else:
+        agg_cls = get_adapter(rc, IAggregate, name='aggregate-class')
+        entity_cls = get_adapter(rc, IEntity, name='entity-class')
     return agg_cls.create(entity_cls, relation=relation, **kw)
 
 
-def get_transient_aggregate(collection, relation=None, **kw):
+def get_transient_aggregate(rc, relation=None, **kw):
     if relation is None:
         impl_cls = get_utility(IRootAggregateImplementation,
                                STAGING_CONTEXT_MANAGERS.TRANSIENT)
@@ -66,10 +65,10 @@ def get_transient_aggregate(collection, relation=None, **kw):
         impl_cls = get_utility(IRelationAggregateImplementation,
                                STAGING_CONTEXT_MANAGERS.TRANSIENT)
     kw['implementation'] = impl_cls
-    return get_aggregate(collection, relation=relation, **kw)
+    return get_aggregate(rc, relation=relation, **kw)
 
 
-def get_persistent_aggregate(collection, relation=None, **kw):
+def get_persistent_aggregate(rc, relation=None, **kw):
     if relation is None:
         impl_cls = get_utility(IRootAggregateImplementation,
                                STAGING_CONTEXT_MANAGERS.PERSISTENT)
@@ -77,35 +76,24 @@ def get_persistent_aggregate(collection, relation=None, **kw):
         impl_cls = get_utility(IRelationAggregateImplementation,
                                STAGING_CONTEXT_MANAGERS.PERSISTENT)
     kw['implementation'] = impl_cls
-    return get_aggregate(collection, relation=relation, **kw)
+    return get_aggregate(rc, relation=relation, **kw)
 
 
-def get_entity_class_for_member(member):
+def get_entity_class(rc):
     """
-    Returns the entity class registered for the given member resource or
-    interface.
+    Returns the entity class registered for the given registered resource.
 
-    :param member: member resource
-    :type collection: class implementing or instance providing
-        :class:`everest.resources.interfaces.IMemberResource`
+    :param member: registered resource
+    :type collection: class implementing or instance providing a registered
+        resource interface.
     :return: entity class
         (class implementing `everest.entities.interfaces.IEntity`)
     """
-    return get_adapter(member, IEntity)
-
-
-def get_aggregate_class_for_collection(collection):
-    """
-    Returns the aggregate class registered for the given collection resource
-    or interface.
-
-    :param collection: collection resource
-    :type collection: class implementing or instance providing or subclass of
-        :class:`everest.resources.interfaces.ICollectionResource`
-    :return: entity class
-        (class implementing `everest.entities.interfaces.IAggregate`)
-    """
-    return get_adapter(collection, IAggregate)
+    if IInterface in provided_by(rc):
+        ent_cls = get_utility(rc, name='entity-class')
+    else:
+        ent_cls = get_adapter(rc, IEntity, name='entity-class')
+    return ent_cls
 
 
 def slug_from_string(string):

@@ -71,7 +71,7 @@ def setup():
     DescriptorsTestCase.metadata = create_metadata()
     DescriptorsTestCase.metadata.bind = engine
     DescriptorsTestCase.metadata.create_all()
-    #
+    # 
     Session.remove()
 
 

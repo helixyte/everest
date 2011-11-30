@@ -13,6 +13,7 @@ from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 
@@ -136,7 +137,7 @@ def collection_view(_context,
                   **kw):
     reg = get_current_registry()
     for rc in for_:
-        if IInterface.providedBy(rc):
+        if IInterface in provided_by(rc):
             rc = reg.getUtility(rc, 'collection-class')
         bfg_view(_context, context=rc, **kw)
 
@@ -154,7 +155,7 @@ def member_view(_context,
                   **kw):
     reg = get_current_registry()
     for rc in for_:
-        if IInterface.providedBy(rc):
+        if IInterface in provided_by(rc):
             rc = reg.getUtility(rc, 'member-class')
         bfg_view(_context, context=rc, **kw)
 

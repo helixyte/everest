@@ -96,12 +96,13 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         # Check adapters.
         ent = FooEntity()
         member = object.__new__(FooMember)
-        coll_cls = reg.queryUtility(IFoo, 'collection-class')
+        coll_cls = reg.queryUtility(IFoo, name='collection-class')
         self.assert_true(not coll_cls is None)
         self.assert_true(not coll_cls.root_name is None)
         self.assert_true(not coll_cls.title is None)
         coll = object.__new__(coll_cls)
-        agg_cls = reg.queryAdapter(coll, IAggregate)
+        agg_cls = reg.queryAdapter(coll, IAggregate,
+                                   name='aggregate-class')
         self.assert_true(not agg_cls is None)
         agg = object.__new__(agg_cls)
         self.__check(reg, member, ent, coll, agg)
@@ -121,24 +122,30 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         agg = object.__new__(FooEntityAggregate)
         coll = object.__new__(FooCollection)
         # Make sure no adapters are in the registry.
-        self.assert_true(reg.queryAdapter(member, ICollectionResource,
-                                          'member-class') is None)
         self.assert_true(reg.queryAdapter(coll, IMemberResource,
-                                          'collection-class') is None)
-        self.assert_true(reg.queryAdapter(member, IEntity) is None)
-        self.assert_true(reg.queryAdapter(coll, IAggregate) is None)
+                                          name='member-class')
+                         is None)
+        self.assert_true(reg.queryAdapter(member, ICollectionResource,
+                                          name='collection-class')
+                         is None)
+        self.assert_true(reg.queryAdapter(member, IEntity,
+                                          name='entity-class')
+                         is None)
+        self.assert_true(reg.queryAdapter(coll, IAggregate,
+                                          name='aggregate-class')
+                         is None)
         self.assert_true(reg.queryAdapter(ent, IMemberResource) is None)
         self.assert_true(reg.queryAdapter(agg, ICollectionResource) is None)
-        self.assert_true(
-                reg.queryAdapter(coll, IRepresenter, CsvMime.mime_string)
-                is None)
+        self.assert_true(reg.queryAdapter(coll, IRepresenter,
+                                          name=CsvMime.mime_string)
+                         is None)
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll, agg)
-        self.assert_false(
-                reg.queryAdapter(coll, IRepresenter, CsvMime.mime_string)
-                is None)
+        self.assert_false(reg.queryAdapter(coll, IRepresenter,
+                                           name=CsvMime.mime_string)
+                          is None)
 
     def test_custom_memory_aggregate_class(self):
         class MyMemoryAggregate(MemoryRootAggregateImpl):
@@ -151,7 +158,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                             aggregate=MyMemoryAggregate)
         member = object.__new__(FooMember)
         coll_cls = reg.queryAdapter(member, ICollectionResource,
-                                    'collection-class')
+                                    name='collection-class')
         coll = object.__new__(coll_cls)
         agg = get_aggregate(coll)
         self.assert_true(isinstance(agg, MyMemoryAggregate))
@@ -166,33 +173,36 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         self.assert_true(agg.count() == 0)
 
     def __check(self, reg, member, ent, coll, agg):
-        # Check if adapters were registered correctly.
-        self.assert_true(reg.queryAdapter(coll, IMemberResource,
-                                          'member-class')
-                         is FooMember)
-        self.assert_true(reg.queryAdapter(member, ICollectionResource,
-                                          'collection-class')
-                         is type(coll))
-        self.assert_true(reg.queryAdapter(member, IEntity) is FooEntity)
-        self.assert_true(reg.queryAdapter(coll, IAggregate)
-                         is type(agg))
-        self.assert_true(isinstance(reg.queryAdapter(ent, IMemberResource),
-                                    FooMember))
-        self.assert_true(isinstance(reg.queryAdapter(agg, ICollectionResource),
-                                    type(coll)))
-        # Check class lookup for member and collection adapters as well.
-        self.assert_true(reg.queryAdapter(type(coll), IMemberResource,
-                                          'member-class')
-                         is FooMember)
-        self.assert_true(reg.queryAdapter(FooMember, ICollectionResource,
-                                          'collection-class')
-                         is type(coll))
-        self.assert_true(reg.queryAdapter(FooMember, IEntity)
-                         is FooEntity)
-        self.assert_true(reg.queryAdapter(type(coll), IAggregate)
-                         is type(agg))
-        # Check utilities for interface -> class translation.
-        self.assert_true(reg.queryUtility(IFoo, 'member-class')
-                         is FooMember)
-        self.assert_true(reg.queryUtility(IFoo, 'collection-class')
-                         is type(coll))
+        for idx, obj in enumerate((member, coll, ent, agg)):
+            self.assert_equal(reg.queryAdapter(obj, IMemberResource,
+                                              name='member-class'),
+                              type(member))
+            self.assert_equal(reg.queryAdapter(obj, ICollectionResource,
+                                              name='collection-class'),
+                              type(coll))
+            self.assert_equal(reg.queryAdapter(obj, IEntity,
+                                              name='entity-class'),
+                              type(ent))
+            self.assert_equal(reg.queryAdapter(obj, IAggregate,
+                                              name='aggregate-class'),
+                              type(agg))
+            if idx < 2: # lookup with class only for member/collection.
+                self.assert_equal(reg.queryAdapter(type(obj), IMemberResource,
+                                                  name='member-class'),
+                                  type(member))
+                self.assert_equal(reg.queryAdapter(type(obj),
+                                                   ICollectionResource,
+                                                  name='collection-class'),
+                                  type(coll))
+                self.assert_equal(reg.queryAdapter(type(obj), IEntity,
+                                                   name='entity-class'),
+                                  type(ent))
+                self.assert_equal(reg.queryAdapter(type(obj), IAggregate,
+                                                   name='aggregate-class'),
+                                  type(agg))
+        # Check instance adapters.
+        self.assert_false(
+                    reg.queryAdapter(ent, IMemberResource)
+                    is None)
+        self.assert_false(reg.queryAdapter(agg, ICollectionResource)
+                          is None)

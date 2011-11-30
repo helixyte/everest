@@ -11,7 +11,7 @@ from everest.entities.utils import get_aggregate
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.relation import ResourceRelation
 from everest.resources.utils import as_member
-from everest.resources.utils import get_root_collection_for_member
+from everest.resources.utils import get_root_collection
 from everest.utils import id_generator
 from repoze.bfg.traversal import find_root
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
@@ -120,7 +120,7 @@ class member_attribute(_relation_attribute):
             if not obj is None:
                 if not self.is_nested:
                     member = as_member(obj)
-                    coll = get_root_collection_for_member(member)
+                    coll = get_root_collection(member)
                     member.__parent__ = coll
                 else:
                     member = as_member(obj, parent=resource)

@@ -18,8 +18,8 @@ from urlparse import urlparse
 from urlparse import urlunparse
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
@@ -29,7 +29,7 @@ __all__ = ['as_member',
            'get_member_class',
            'get_resource_url',
            'get_root_collection',
-           'get_root_collection_for_member',
+           'get_root_collection',
            'get_transient_collection',
            'is_resource_url',
            'provides_collection_resource',
@@ -38,81 +38,75 @@ __all__ = ['as_member',
            ]
 
 
-def get_collection(collection):
+def get_collection(rc):
     """
-    Returns a new collection for the given collection.
+    Returns a new collection for the given registered resource.
 
-    :param collection: collection resource
-    :type collection: class implementing or instance providing or subclass of
-        :class:`everest.resources.interfaces.ICollectionResource`
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
     :returns: an object implementing
         :class:`everest.resources.interfaces.ICollection`
     """
-    agg = get_aggregate(collection)
+    agg = get_aggregate(rc)
     return get_adapter(agg, ICollectionResource)
 
 
-def get_transient_collection(collection):
+def get_transient_collection(rc):
     """
     Returns a collection that uses a transient aggregate for the given
     collection interface.
     """
-    agg = get_transient_aggregate(collection)
+    agg = get_transient_aggregate(rc)
     return get_adapter(agg, ICollectionResource)
 
 
-def get_root_collection(collection):
+def get_root_collection(rc):
     """
-    Returns a clone of the root collection for the given collection interface.
+    Returns a clone of the root collection for the given registered resource.
 
-    :param collection: collection interface
-    :type collection: subclass of
-        :class:`everest.resources.interfaces.ICollectionResource`
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
     """
-    if isinstance(collection, type(Interface)):
-        # If we were passed an interface, translate to the registered class.
-        collection = get_utility(collection, 'collection-class')
+    if IInterface in provided_by(rc):
+        rc = get_utility(rc, name='collection-class')
+    else:
+        rc = get_adapter(rc, ICollectionResource, name='collection-class')
     req = get_current_request()
-    return req.root[collection]
+    return req.root[rc]
 
 
-def get_root_collection_for_member(member):
+def get_member_class(rc):
     """
-    Returns a new collection for the given member.
+    Returns the registered member class for the given resource.
 
-    :param member: member resource
-    :type member: class implementing or instance providing or subclass of
-        :class:`everest.resources.interfaces.IMemberResource`
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
     """
-    if isinstance(member, type(Interface)):
-        # If we were passed an interface, translate to the registered class.
-        member = get_utility(member, 'member-class')
-    coll = get_adapter(member, ICollectionResource, 'collection-class')
-    return get_root_collection(coll)
+    if IInterface in provided_by(rc):
+        member_class = get_utility(rc, name='member-class')
+    else:
+        member_class = get_adapter(rc, IMemberResource, name='member-class')
+    return member_class
 
 
-def get_member_class(adaptee):
-    """
-    Returns the registered member resource class for the given marker
-    interface or collection resource class or instance.
-
-    :param collection: object to look up
-    :type collection: marker interface or class implementing or instance
-         providing :class:`everest.resources.interfaces.IMemberResource`
-    """
-    return get_adapter(adaptee, IMemberResource, 'member-class')
-
-
-def get_collection_class(adaptee):
+def get_collection_class(rc):
     """
     Returns the registered collection resource class for the given marker
     interface or member resource class or instance.
 
-    :param adaptee: object to look up
-    :type collection: marker interface or instance implementing
-        :class:`everest.resources.interfaces.IMemberResource`
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
     """
-    return get_adapter(adaptee, ICollectionResource, 'collection-class')
+    if IInterface in provided_by(rc):
+        coll_class = get_utility(rc, name='collection-class')
+    else:
+        coll_class = get_adapter(rc, ICollectionResource,
+                                 name='collection-class')
+    return coll_class
 
 
 def as_member(entity, parent=None):

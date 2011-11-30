@@ -11,8 +11,9 @@ from everest.resources.base import Resource
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Service',
@@ -78,7 +79,7 @@ class Service(Resource):
                 yield value
 
     def add(self, collection):
-        if isinstance(collection, type(Interface)):
+        if IInterface in provided_by(collection):
             collection = get_utility(collection, 'collection-class')
         if collection in self.__collections:
             raise ValueError('Root collection for collection interface %s '
@@ -93,7 +94,7 @@ class Service(Resource):
         self.__collections[coll.__name__] = coll
 
     def remove(self, collection):
-        if isinstance(collection, type(Interface)):
+        if IInterface in provided_by(collection):
             collection = get_utility(collection, 'collection-class')
         if not collection in self.__collections:
             raise ValueError('Root collection for collection interface %s '

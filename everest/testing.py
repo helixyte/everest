@@ -14,7 +14,6 @@ from everest.db import set_db_engine
 from everest.entities.utils import get_persistent_aggregate
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection
-from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
@@ -352,7 +351,7 @@ class ResourceTestCase(ModelTestCase):
 
     def _create_member(self, member_cls, entity):
         member = member_cls.create_from_entity(entity)
-        coll = get_collection(get_collection_class(member))
+        coll = get_collection(member_cls)
         coll.add(member)
         return member
 
