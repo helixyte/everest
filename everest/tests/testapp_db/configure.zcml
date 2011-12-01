@@ -1,0 +1,78 @@
+<configure
+    xmlns="http://namespaces.repoze.org/bfg"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Utilities -->
+
+    <utility
+        component="everest.entities.aggregates.OrmRootAggregateImpl"
+        provides="everest.entities.interfaces.IRootAggregateImplementation" />
+
+    <utility
+        component="everest.entities.aggregates.OrmRelationAggregateImpl"
+        provides="everest.entities.interfaces.IRelationAggregateImplementation" />
+
+    <utility
+        component="everest.entities.aggregates.OrmRootAggregateImpl"
+        provides="everest.entities.interfaces.IRootAggregateImplementation"
+        name="PERSISTENT" />
+
+    <utility
+        component="everest.entities.aggregates.OrmRelationAggregateImpl"
+        provides="everest.entities.interfaces.IRelationAggregateImplementation"
+        name="PERSISTENT" />
+
+    <utility
+        component="everest.entities.aggregates.MemoryRootAggregateImpl"
+        provides="everest.entities.interfaces.IRootAggregateImplementation"
+        name="TRANSIENT" />
+
+    <utility
+        component="everest.entities.aggregates.MemoryRelationAggregateImpl"
+        provides="everest.entities.interfaces.IRelationAggregateImplementation"
+        name="TRANSIENT" />
+
+    <utility
+        component="everest.entities.aggregates.PersistentStagingContextManager"
+        provides="zope.component.IFactory"
+        name="PERSISTENT" />
+
+    <utility
+        component="everest.entities.aggregates.TransientStagingContextManager"
+        provides="zope.component.IFactory"
+        name="TRANSIENT" />
+
+    <!-- Representers. -->
+
+    <!-- Resource declarations. -->
+
+    <resource
+        interface='.interfaces.IMyEntityParent'
+        member=".resources.MyEntityParentMember"
+        entity=".entities.MyEntityParent"
+        collection_root_name="my-entity-parents"/>
+
+    <resource
+        interface='.interfaces.IMyEntity'
+        member=".resources.MyEntityMember"
+        entity=".entities.MyEntity"
+        collection_root_name="my-entities" />
+
+    <resource
+        interface='.interfaces.IMyEntityChild'
+        member=".resources.MyEntityChildMember"
+        entity=".entities.MyEntityChild"
+        collection_root_name="my-entity-children" />
+
+    <resource
+        interface='.interfaces.IMyEntityGrandchild'
+        member=".resources.MyEntityGrandchildMember"
+        entity=".entities.MyEntityGrandchild"
+        collection_root_name="my-entity-grandchildren" />
+
+</configure>
