@@ -13,7 +13,7 @@ from pyparsing import delimitedList
 from pyparsing import oneOf
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['order_parser',
+__all__ = ['parse_order',
            ]
 
 
@@ -21,6 +21,9 @@ colon = Literal(':')
 tilde = Literal('~')
 identifier = Word(alphas, alphas + '-').setName('identifier')
 direction = oneOf("asc desc").setName('direction')
-sort_order = Group(identifier('name') + colon.suppress() + \
+order_criterion = Group(identifier('name') + colon.suppress() + \
                    direction('operator')).setResultsName('order')
-order_parser = Group(delimitedList(sort_order, tilde)).setResultsName('order')
+order_criteria = \
+    Group(delimitedList(order_criterion, tilde)).setResultsName('order')
+
+parse_order = order_criteria.parseString

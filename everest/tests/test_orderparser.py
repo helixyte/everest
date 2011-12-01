@@ -7,17 +7,18 @@ Created on Feb 4, 2011.
 
 from pyparsing import ParseException
 from everest.testing import BaseTestCase
-from everest.orderparser import order_parser
+from everest.orderparser import parse_order
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderSpecificationParserTestCase',
            ]
 
+
 class OrderSpecificationParserTestCase(BaseTestCase):
     parser = None
 
     def set_up(self):
-        self.parser = order_parser.parseString
+        self.parser = parse_order
 
     def tear_down(self):
         pass

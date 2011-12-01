@@ -7,19 +7,19 @@ Created on Feb 4, 2011.
 
 from pyparsing import ParseException
 from everest.testing import BaseTestCase
-from everest.queryparser import query_parser
+from everest.queryparser import parse_query
+from datetime import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['QueryParserTestCase',
            ]
 
 
-
 class QueryParserTestCase(BaseTestCase):
     parser = None
 
     def set_up(self):
-        self.parser = query_parser.parseString
+        self.parser = parse_query
 
     def tear_down(self):
         pass
@@ -173,3 +173,73 @@ class QueryParserTestCase(BaseTestCase):
         self.assert_equal(crit4.name, 'discount')
         self.assert_equal(crit4.operator, 'equal-to')
         self.assert_equal(list(crit4.value), [-20, -30])
+
+    def test_float_and_int(self):
+        expr = 'age:less-than:12~height:less-than:5.2'
+        result = self.parser(expr)
+        crit1 = result.criteria[0]
+        crit2 = result.criteria[1]
+        self.assert_true(isinstance(crit1.value[0], int))
+        self.assert_true(isinstance(crit2.value[0], float))
+
+    def test_valid_dotted_names(self):
+        expr = 'user.age:less-than:12'
+        result = self.parser(expr)
+        crit = result.criteria[0]
+        self.assert_equal(crit.name, 'user.age')
+        expr = 'user.address.street:equal-to:Main'
+        result = self.parser(expr)
+        crit = result.criteria[0]
+        self.assert_equal(crit.name, 'user.address.street')
+
+    def test_invalid_dotted_names(self):
+        expr = 'user.age.:less-than:12'
+        self.assert_raises(ParseException, self.parser, expr)
+        expr = '.user.age:less-than:12'
+        self.assert_raises(ParseException, self.parser, expr)
+        expr = 'user..age:less-than:12'
+        self.assert_raises(ParseException, self.parser, expr)
+
+    def test_valid_date(self):
+        expr = 'birthday:equal-to:"1966-04-21T15:23:01Z"'
+        result = self.parser(expr)
+        crit = result.criteria[0]
+        self.assert_true(isinstance(crit.value[0], datetime))
+        dt = crit.value[0]
+        self.assert_equal(dt.year, 1966)
+        self.assert_equal(dt.month, 4)
+        self.assert_equal(dt.day, 21)
+        self.assert_equal(dt.hour, 15)
+        self.assert_equal(dt.minute, 23)
+        self.assert_equal(dt.second, 1)
+
+    def test_invalid_dates(self):
+        # Violations of the regex.
+        expr = 'birthday:equal-to:"19661-04-21T15:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"19661-041-21T15:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-211T15:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-21T151:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-21T15:231:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        # Violations of the allowed values.
+        expr = 'birthday:equal-to:"1966-13-21T15:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-32T15:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-21T24:23:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))
+        expr = 'birthday:equal-to:"1966-04-21T15:61:00Z"'
+        result = self.parser(expr)
+        self.assert_false(isinstance(result.criteria[0].value[0], datetime))

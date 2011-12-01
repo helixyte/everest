@@ -13,8 +13,8 @@ from everest.interfaces import ICqlOrderSpecificationVisitor
 from everest.interfaces import IResourceUrlConverter
 from everest.ordering import IOrderSpecificationBuilder
 from everest.ordering import IOrderSpecificationDirector
-from everest.orderparser import order_parser
-from everest.queryparser import query_parser
+from everest.orderparser import parse_order
+from everest.queryparser import parse_query
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.specifications import IFilterSpecificationFactory
@@ -135,7 +135,7 @@ class UrlPartsConverter(object):
         """
         spec_factory = get_utility(IFilterSpecificationFactory)
         builder = get_utility(IFilterSpecificationBuilder)(spec_factory)
-        parser = query_parser.parseString
+        parser = parse_query.parseString
         director = get_utility(IFilterSpecificationDirector)(parser, builder)
         director.construct(unquote(filter_string))
         if director.has_errors():
@@ -153,7 +153,7 @@ class UrlPartsConverter(object):
     def make_order_specification(cls, order_string):
         order_factory = get_utility(IOrderSpecificationFactory)
         builder = get_utility(IOrderSpecificationBuilder)(order_factory)
-        parser = order_parser.parseString
+        parser = parse_order
         director = get_utility(IOrderSpecificationDirector)(parser, builder)
         director.construct(unquote(order_string))
         if director.has_errors():
