@@ -8,9 +8,9 @@ Created on Nov 3, 2011.
 """
 
 from everest.entities.utils import get_entity_class
-from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
+from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource

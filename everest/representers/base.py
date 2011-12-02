@@ -14,13 +14,13 @@ from everest.mime import CsvMime
 from everest.representers.attributes import CollectionAttributeMapper
 from everest.representers.attributes import LinkAttributeMapper
 from everest.representers.attributes import MemberAttributeMapper
-from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.interfaces import ICustomDataElement
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IExplicitDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.utils import data_element_tree_to_string
 from everest.representers.utils import get_data_element_registry
+from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink

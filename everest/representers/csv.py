@@ -14,7 +14,6 @@ from csv import reader
 from csv import register_dialect
 from csv import writer
 from everest.mime import CsvMime
-from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.base import DataElementGenerator
 from everest.representers.base import DataElementParser
 from everest.representers.base import RepresentationGenerator
@@ -25,6 +24,7 @@ from everest.representers.base import SimpleDataElement
 from everest.representers.base import SimpleDataElementRegistry
 from everest.representers.base import SimpleLinkedDataElement
 from everest.representers.utils import get_data_element_registry
+from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource

@@ -9,11 +9,11 @@ from everest.db import Session
 from everest.db import reset_db_engine
 from everest.db import reset_metadata
 from everest.db import set_db_engine
-from everest.representers.attributes import ResourceAttributeKinds
-from everest.representers.attributes import get_resource_class_attributes
 from everest.representers.base import DataElementGenerator
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import SimpleDataElementRegistry
+from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.base import Collection
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.utils import get_collection

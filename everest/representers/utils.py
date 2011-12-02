@@ -8,9 +8,9 @@ Created on May 18, 2011.
 """
 
 from StringIO import StringIO
-from everest.representers.attributes import ResourceAttributeKinds
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
+from everest.resources.attributes import ResourceAttributeKinds
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 
