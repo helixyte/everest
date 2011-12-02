@@ -147,7 +147,7 @@ class UrlPartsConverter(object):
     def make_filter_string(cls, filter_specification):
         filter_visitor = get_utility(ICqlFilterSpecificationVisitor)()
         filter_specification.accept(filter_visitor)
-        return filter_visitor.get_cql()
+        return filter_visitor.get_expression()
 
     @classmethod
     def make_order_specification(cls, order_string):
@@ -165,7 +165,7 @@ class UrlPartsConverter(object):
     def make_order_string(cls, order_specification):
         order_visitor = get_utility(ICqlOrderSpecificationVisitor)()
         order_specification.accept(order_visitor)
-        return order_visitor.get_cql()
+        return order_visitor.get_expression()
 
     @classmethod
     def make_slice_key(cls, start_string, size_string):

@@ -108,7 +108,7 @@ class CqlFilterSpecificationVisitor(object):
                           )
                       )
 
-    def get_cql(self):
+    def get_expression(self):
         """
         :returns: a representation of the specification composite as a string
         :rtype: str
@@ -229,7 +229,7 @@ class QueryFilterSpecificationVisitor(object):
     def get_expression(self):
         """
         :returns: a representation of the specification in a SQL Expression
-        :rtype: :class:`sqlaclhemy.sql._BinaryExpression`
+        :rtype: :class:`sqlalchemy.sql._BinaryExpression`
         """
         full_expr = None
         for attr_name, ops in self.__expr.iteritems():
@@ -382,7 +382,7 @@ class QueryOrderSpecificationVisitor(object):
     def visit_conjunction(self, order):
         pass
 
-    def get_order(self):
+    def get_expression(self):
         return self.__order[:]
 
     def get_joins(self):
@@ -458,7 +458,7 @@ class CqlOrderSpecificationVisitor(object):
     def visit_conjunction(self, order):
         pass
 
-    def get_cql(self):
+    def get_expression(self):
         return self.__cql_and.join(self.__order)
 
     def __switch_op(self, val, new_op):

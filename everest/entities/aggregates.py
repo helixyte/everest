@@ -390,7 +390,7 @@ class OrmAggregateImpl(AggregateImpl):
             joins = visitor.get_joins()
             if len(joins) > 0:
                 query = query.outerjoin(*joins) # pylint: disable=W0142
-            query = query.order_by(*visitor.get_order())
+            query = query.order_by(*visitor.get_expression())
         return query
 
     @property

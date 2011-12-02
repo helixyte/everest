@@ -16,7 +16,6 @@ from everest.visitors import QueryFilterSpecificationVisitor
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 
-
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
            'CompositeQueryFilterSpecificationVisitorTestCase',
@@ -58,366 +57,337 @@ def teardown():
     reset_metadata()
 
 
-# FIXME: Clean up code duplication below # pylint:disable-msg=W0511
-
-class CqlFilterSpecificationVisitorTestCase(BaseTestCase):
+class VisitorTestCase(BaseTestCase):
     visitor = None
     specs_factory = None
+    _spec_map = None
 
     def set_up(self):
-        if Person.metadata is None:
-            setup()
-        self.visitor = CqlFilterSpecificationVisitor()
-        self.specs_factory = FilterSpecificationFactory()
+        self.visitor = self._make_visitor()
+        self.specs_factory = self._make_specs_factory()
+
+    def _get_spec(self, name):
+        return self._get_spec_map()[name]
+
+    def _get_spec_map(self):
+        if self._spec_map is None:
+            self._spec_map = self._init_spec_map()
+        return self._spec_map
+
+    def _run_visitor(self, spec_name):
+        spec = self._get_spec(spec_name)
+        spec.accept(self.visitor)
+        return self.visitor.get_expression()
+
+    def _make_visitor(self):
+        raise NotImplementedError('Abstract method.')
+
+    def _make_specs_factory(self):
+        raise NotImplementedError('Abstract method.')
+
+    def _init_spec_map(self):
+        raise NotImplementedError('Abstract method.')
 
 
-class ValueBoundCqlFilterSpecificationVisitorTestCase(
-                                        CqlFilterSpecificationVisitorTestCase):
+class FilterVisitorTestCase(VisitorTestCase):
+
+    def _make_visitor(self):
+        raise NotImplementedError('Abstract method.')
+
+    def _make_specs_factory(self):
+        return FilterSpecificationFactory()
+
+    def _init_spec_map(self):
+        sm = {}
+        sm['starts-with'] = \
+            self.specs_factory.create_starts_with('name', 'Ni')
+        sm['ends-with'] = \
+            self.specs_factory.create_ends_with('name', 'os')
+        sm['contains'] = \
+            self.specs_factory.create_contains('name', 'iko')
+        sm['contained'] = \
+            self.specs_factory.create_contained('age', [22, 33, 44, 55])
+        sm['equal-to'] = \
+            self.specs_factory.create_equal_to('name', 'Nikos')
+        sm['less-than'] = \
+            self.specs_factory.create_less_than('age', 34)
+        sm['less-than-or-equal-to'] = \
+            self.specs_factory.create_less_than_or_equal_to('age', 34)
+        sm['greater-than'] = \
+            self.specs_factory.create_greater_than('age', 34)
+        sm['greater-than-or-equal-to'] = \
+            self.specs_factory.create_greater_than_or_equal_to('age', 34)
+        sm['in-range'] = \
+            self.specs_factory.create_in_range('age', 30, 40)
+        left_spec = self.specs_factory.create_greater_than('age', 34)
+        right_spec = self.specs_factory.create_equal_to('name', 'Nikos')
+        sm['conjunction'] = left_spec.and_(right_spec)
+        spec1 = self.specs_factory.create_equal_to('age', 34)
+        spec2 = self.specs_factory.create_equal_to('age', 44)
+        sm['disjunction'] = spec1.or_(spec2)
+        spec_a1 = self.specs_factory.create_equal_to('age', 34)
+        spec_a2 = self.specs_factory.create_equal_to('age', 44)
+        spec_a = spec_a1.or_(spec_a2)
+        spec_b1 = self.specs_factory.create_equal_to('name', 'Nikos')
+        spec_b2 = self.specs_factory.create_equal_to('name', 'Oliver')
+        spec_b = spec_b1.or_(spec_b2)
+        sm['conjunction-with-disjunction'] = spec_a.and_(spec_b)
+        sm['not-starts-with'] = sm['starts-with'].not_()
+        sm['not-ends-with'] = sm['ends-with'].not_()
+        sm['not-contains'] = sm['contains'].not_()
+        sm['not-contained'] = sm['contained'].not_()
+        sm['not-equal-to'] = sm['equal-to'].not_()
+        sm['not-less-than'] = sm['less-than'].not_()
+        sm['not-less-than-or-equal-to'] = sm['less-than-or-equal-to'].not_()
+        sm['not-greater-than'] = sm['greater-than'].not_()
+        sm['not-greater-than-or-equal-to'] = \
+                    sm['greater-than-or-equal-to'].not_()
+        sm['not-in-range'] = sm['in-range'].not_()
+        return sm
+
+
+class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
+
+    def _make_visitor(self):
+        return CqlFilterSpecificationVisitor()
 
     def test_visit_value_starts_with(self):
         expected_cql = 'name:starts-with:"Ni"'
-        spec = self.specs_factory.create_starts_with('name', 'Ni')
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('starts-with')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_ends_with(self):
         expected_cql = 'name:ends-with:"os"'
-        spec = self.specs_factory.create_ends_with('name', 'os')
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('ends-with')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_contains(self):
         expected_cql = 'name:contains:"iko"'
-        spec = self.specs_factory.create_contains('name', 'iko')
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('contains')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_contained(self):
         expected_cql = 'age:equal-to:22,33,44,55'
-        spec = self.specs_factory.create_contained('age', [22, 33, 44, 55])
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('contained')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_equal_to(self):
         expected_cql = 'name:equal-to:"Nikos"'
-        spec = self.specs_factory.create_equal_to('name', 'Nikos')
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_less_than(self):
         expected_cql = 'age:less-than:34'
-        spec = self.specs_factory.create_less_than('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('less-than')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_less_or_equals(self):
         expected_cql = 'age:less-than-or-equal-to:34'
-        spec = self.specs_factory.create_less_than_or_equal_to('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('less-than-or-equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_greater_than(self):
         expected_cql = 'age:greater-than:34'
-        spec = self.specs_factory.create_greater_than('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('greater-than')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_greater_or_equals(self):
         expected_cql = 'age:greater-than-or-equal-to:34'
-        spec = self.specs_factory.create_greater_than_or_equal_to('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('greater-than-or-equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_in_range(self):
         expected_cql = 'age:between:30-40'
-        spec = self.specs_factory.create_in_range('age', 30, 40)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
-
-
-class CompositeCqlFilterSpecificationVisitorTestCase(
-                                        CqlFilterSpecificationVisitorTestCase):
+        expr = self._run_visitor('in-range')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_conjuction(self):
         expected_cql = 'age:greater-than:34~name:equal-to:"Nikos"'
-        left_spec = self.specs_factory.create_greater_than('age', 34)
-        right_spec = self.specs_factory.create_equal_to('name', 'Nikos')
-        spec = left_spec.and_(right_spec)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('conjunction')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_disjuction(self):
         expected_cql = 'age:equal-to:34,44'
-        spec1 = self.specs_factory.create_equal_to('age', 34)
-        spec2 = self.specs_factory.create_equal_to('age', 44)
-        spec = spec1.or_(spec2)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('disjunction')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_conjuction_with_disjuction(self):
         expected_cql = 'age:equal-to:34,44~name:equal-to:"Nikos","Oliver"'
-
-        specA1 = self.specs_factory.create_equal_to('age', 34)
-        specA2 = self.specs_factory.create_equal_to('age', 44)
-        specA = specA1.or_(specA2)
-
-        specB1 = self.specs_factory.create_equal_to('name', 'Nikos')
-        specB2 = self.specs_factory.create_equal_to('name', 'Oliver')
-        specB = specB1.or_(specB2)
-
-        spec = specA.and_(specB)
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
-
-
-class NegationCqlFilterSpecificationVisitorTestCase(
-                                        CqlFilterSpecificationVisitorTestCase):
+        expr = self._run_visitor('conjunction-with-disjunction')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_starts_with(self):
         expected_cql = 'name:not-starts-with:"Ni"'
-        spec = self.specs_factory.create_starts_with('name', 'Ni').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-starts-with')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_ends_with(self):
         expected_cql = 'name:not-ends-with:"os"'
-        spec = self.specs_factory.create_ends_with('name', 'os').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-ends-with')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_contains(self):
         expected_cql = 'name:not-contains:"iko"'
-        spec = self.specs_factory.create_contains('name', 'iko').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-contains')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_contained(self):
         expected_cql = 'age:not-equal-to:22,33,44,55'
-        spec = self.specs_factory.create_contained('age',
-                                                   [22, 33, 44, 55]).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-contained')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_equal_to(self):
         expected_cql = 'name:not-equal-to:"Nikos"'
-        spec = self.specs_factory.create_equal_to('name', 'Nikos').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_less_than(self):
         expected_cql = 'age:greater-than-or-equal-to:34'
-        spec = self.specs_factory.create_less_than('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-less-than')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_less_or_equals(self):
         expected_cql = 'age:greater-than:34'
-        spec = self.specs_factory.create_less_than_or_equal_to('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-less-than-or-equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_greater_than(self):
         expected_cql = 'age:less-than-or-equal-to:34'
-        spec = self.specs_factory.create_greater_than('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-greater-than')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_greater_or_equals(self):
         expected_cql = 'age:less-than:34'
-        spec = self.specs_factory.create_greater_than_or_equal_to('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-greater-than-or-equal-to')
+        self.assert_equal(expr, expected_cql)
 
     def test_visit_value_not_in_range(self):
         expected_cql = 'age:not-between:30-40'
-        spec = self.specs_factory.create_in_range('age', 30, 40).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('not-in-range')
+        self.assert_equal(expr, expected_cql)
 
 
-class QueryFilterSpecificationVisitorTestCase(BaseTestCase):
-    visitor = None
-    specs_factory = None
+class QueryFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = QueryFilterSpecificationVisitor(Person)
-        self.specs_factory = FilterSpecificationFactory()
+        VisitorTestCase.set_up(self)
 
-
-class ValueBoundQueryFilterSpecificationVisitorTestCase(
-                                    QueryFilterSpecificationVisitorTestCase):
+    def _make_visitor(self):
+        return QueryFilterSpecificationVisitor(Person)
 
     def test_visit_value_starts_with(self):
         expected_expr = Person.name.startswith('Ni')
-        spec = self.specs_factory.create_starts_with('name', 'Ni')
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('starts-with')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_ends_with(self):
         expected_expr = Person.name.endswith('os')
-        spec = self.specs_factory.create_ends_with('name', 'os')
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('ends-with')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_contains(self):
         expected_expr = Person.name.contains('iko')
-        spec = self.specs_factory.create_contains('name', 'iko')
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('contains')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_equal_to(self):
         expected_expr = Person.name == 'Nikos'
-        spec = self.specs_factory.create_equal_to('name', 'Nikos')
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_less_than(self):
         expected_expr = Person.age < 34
-        spec = self.specs_factory.create_less_than('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('less-than')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def _test_visit_value_less_or_equals(self):
         expected_expr = Person.age <= 34
-        spec = self.specs_factory.create_less_than_or_equal_to('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('less-than-or-equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_greater_than(self):
         expected_expr = Person.age > 34
-        spec = self.specs_factory.create_greater_than('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('greater-than')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_greater_or_equals(self):
         expected_expr = Person.age >= 34
-        spec = self.specs_factory.create_greater_than_or_equal_to('age', 34)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('greater-than-or-equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_in_range(self):
         expected_expr = Person.age.between(30, 40)
-        spec = self.specs_factory.create_in_range('age', 30, 40)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
-
-
-class CompositeQueryFilterSpecificationVisitorTestCase(
-                                    QueryFilterSpecificationVisitorTestCase):
+        expr = self._run_visitor('in-range')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_conjuction(self):
         expected_expr = sa.and_(Person.age > 34, Person.name == 'Nikos')
-        left_spec = self.specs_factory.create_greater_than('age', 34)
-        right_spec = self.specs_factory.create_equal_to('name', 'Nikos')
-        spec = left_spec.and_(right_spec)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('conjunction')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_disjuction(self):
-        expected_expr = sa.or_(Person.name.startswith('Nikos'),
-                               Person.name.startswith('Oliver'))
-        spec1 = self.specs_factory.create_starts_with('name', 'Nikos')
-        spec2 = self.specs_factory.create_starts_with('name', 'Oliver')
-        spec = spec1.or_(spec2)
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expected_expr = sa.or_(Person.age == 34, Person.age == 44)
+        expr = self._run_visitor('disjunction')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_conjuction_with_list_equality(self):
         expected_expr = sa.and_(Person.age.in_([34, 44]),
                                 Person.name.in_(['Nikos', 'Oliver']))
 
-        specA = self.specs_factory.create_contained('age', [34, 44])
-        specB = self.specs_factory.create_contained('name', ['Nikos', 'Oliver'])
+        spec_a = self.specs_factory.create_contained('age', [34, 44])
+        spec_b = self.specs_factory.create_contained('name', ['Nikos', 'Oliver'])
 
-        spec = specA.and_(specB)
+        spec = spec_a.and_(spec_b)
         spec.accept(self.visitor)
 
         self.assert_equal(str(self.visitor.get_expression()),
                           str(expected_expr))
-
-
-class NegationQueryFilterSpecificationVisitorTestCase(
-                                    QueryFilterSpecificationVisitorTestCase):
 
     def test_visit_value_not_starts_with(self):
         expected_expr = sa.not_(Person.name.startswith('Ni'))
-        spec = self.specs_factory.create_starts_with('name', 'Ni').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-starts-with')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_ends_with(self):
         expected_expr = sa.not_(Person.name.endswith('os'))
-        spec = self.specs_factory.create_ends_with('name', 'os').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-ends-with')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_contains(self):
         expected_expr = sa.not_(Person.name.contains('iko'))
-        spec = self.specs_factory.create_contains('name', 'iko').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-contains')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_equal_to(self):
         expected_expr = sa.not_(Person.name == 'Nikos')
-        spec = self.specs_factory.create_equal_to('name', 'Nikos').not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_less_than(self):
         expected_expr = sa.not_(Person.age < 34)
-        spec = self.specs_factory.create_less_than('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-less-than')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_less_or_equals(self):
         expected_expr = sa.not_(Person.age <= 34)
-        spec = self.specs_factory.create_less_than_or_equal_to('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-less-than-or-equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_greater_than(self):
         expected_expr = sa.not_(Person.age > 34)
-        spec = self.specs_factory.create_greater_than('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-greater-than')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_greater_or_equals(self):
         expected_expr = sa.not_(Person.age >= 34)
-        spec = \
-          self.specs_factory.create_greater_than_or_equal_to('age', 34).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
+        expr = self._run_visitor('not-greater-than-or-equal-to')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_not_in_range(self):
         expected_expr = sa.not_(Person.age.between(30, 40))
-        spec = self.specs_factory.create_in_range('age', 30, 40).not_()
-        spec.accept(self.visitor)
-        self.assert_equal(str(self.visitor.get_expression()),
-                          str(expected_expr))
-
-
-class ManyValueBoundQueryFilterSpecificationVisitorTestCase(
-                                        QueryFilterSpecificationVisitorTestCase):
+        expr = self._run_visitor('not-in-range')
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_visit_value_contained_in_list(self):
         many_ages = range(1000)
@@ -428,125 +398,119 @@ class ManyValueBoundQueryFilterSpecificationVisitorTestCase(
                           str(expected_expr))
 
 
-class QueryOrderSpecificationSpecificationVisitorTestCase(BaseTestCase):
-    visitor = None
-    order_factory = None
+class OrderVisitorTestCase(VisitorTestCase):
+
+    def _make_visitor(self):
+        raise NotImplementedError('Abstract method.')
+
+    def _make_specs_factory(self):
+        return OrderSpecificationFactory()
+
+    def _init_spec_map(self):
+        sm = {}
+        sm['one-asc'] = self.specs_factory.create_simple('name')
+        sm['one-desc'] = self.specs_factory.create_simple('name').reverse()
+        sm['two-asc-asc'] = \
+            self.specs_factory.create_simple('name').and_(
+                                    self.specs_factory.create_simple('age')
+                                    )
+        sm['two-desc-asc'] = \
+            self.specs_factory.create_simple('name').reverse().and_(
+                                    self.specs_factory.create_simple('age')
+                                    )
+        sm['two-asc-desc'] = \
+            self.specs_factory.create_simple('name').and_(
+                              self.specs_factory.create_simple('age').reverse()
+                              )
+        sm['two-desc-desc'] = \
+            self.specs_factory.create_simple('name').reverse().and_(
+                              self.specs_factory.create_simple('age').reverse()
+                              )
+        return sm
+
+
+class QueryOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
+
+    def _make_visitor(self):
+        return QueryOrderSpecificationVisitor(Person)
 
     def set_up(self):
         if Person.metadata is None:
             setup()
-        self.visitor = QueryOrderSpecificationVisitor(Person)
-        self.order_factory = OrderSpecificationFactory()
+        OrderVisitorTestCase.set_up(self)
 
     def test_simple_order_by_one_attribute(self):
-        expected_expr = [Person.age.asc()]
-        order = self.order_factory.create_simple('age')
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
+        expected_expr = [Person.name.asc()]
+        expr = self._run_visitor('one-asc')
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
 
     def test_simple_reversed_order_by_one_attribute(self):
-        expected_expr = [Person.age.desc()]
-        order = self.order_factory.create_simple('age').reverse()
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
+        expected_expr = [Person.name.desc()]
+        expr = self._run_visitor('one-desc')
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
 
     def test_simple_order_by_two_attributes(self):
-        expected_expr = [Person.age.asc(), Person.name.asc()]
-        order = self.order_factory.create_simple('age').and_(
-                                    self.order_factory.create_simple('name')
-                                    )
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(len(orm_order), len(expected_expr))
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
-        self.assert_equal(str(orm_order[1]), str(expected_expr[1]))
+        expected_expr = [Person.name.asc(), Person.age.asc()]
+        expr = self._run_visitor('two-asc-asc')
+        self.assert_equal(len(expr), len(expected_expr))
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr[1]), str(expected_expr[1]))
 
     def test_simple_order_by_two_attributes_left_reversed(self):
-        expected_expr = [Person.age.desc(), Person.name.asc()]
-        order = self.order_factory.create_simple('age').reverse().and_(
-                                    self.order_factory.create_simple('name')
-                                    )
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(len(orm_order), len(expected_expr))
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
-        self.assert_equal(str(orm_order[1]), str(expected_expr[1]))
+        expected_expr = [Person.name.desc(), Person.age.asc()]
+        expr = self._run_visitor('two-desc-asc')
+        self.assert_equal(len(expr), len(expected_expr))
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr[1]), str(expected_expr[1]))
 
     def test_simple_order_by_two_attributes_right_reversed(self):
-        expected_expr = [Person.age.asc(), Person.name.desc()]
-        order = self.order_factory.create_simple('age').and_(
-                            self.order_factory.create_simple('name').reverse()
-                            )
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(len(orm_order), len(expected_expr))
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
-        self.assert_equal(str(orm_order[1]), str(expected_expr[1]))
+        expected_expr = [Person.name.asc(), Person.age.desc()]
+        expr = self._run_visitor('two-asc-desc')
+        self.assert_equal(len(expr), len(expected_expr))
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr[1]), str(expected_expr[1]))
 
     def test_simple_order_by_two_attributes_both_reversed(self):
-        expected_expr = [Person.age.desc(), Person.name.desc()]
-        order = self.order_factory.create_simple('age').reverse().and_(
-                            self.order_factory.create_simple('name').reverse()
-                            )
-        order.accept(self.visitor)
-        orm_order = self.visitor.get_order()
-        self.assert_equal(len(orm_order), len(expected_expr))
-        self.assert_equal(str(orm_order[0]), str(expected_expr[0]))
-        self.assert_equal(str(orm_order[1]), str(expected_expr[1]))
+        expected_expr = [Person.name.desc(), Person.age.desc()]
+        expr = self._run_visitor('two-desc-desc')
+        self.assert_equal(len(expr), len(expected_expr))
+        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr[1]), str(expected_expr[1]))
 
 
-class OrderSpecificationCqlFilterSpecificationVisitorTestCase(BaseTestCase):
+class CqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
     visitor = None
     order_factory = None
 
-    def set_up(self):
-        if Person.metadata is None:
-            setup()
-        self.visitor = CqlOrderSpecificationVisitor()
-        self.order_factory = OrderSpecificationFactory()
+    def _make_visitor(self):
+        return CqlOrderSpecificationVisitor()
 
     def test_simple_order_by_one_attribute(self):
-        expected_cql = 'my-name:asc'
-        order = self.order_factory.create_simple('my_name')
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expected_cql = 'name:asc'
+        expr = self._run_visitor('one-asc')
+        self.assert_equal(expr, expected_cql)
 
     def test_simple_reversed_order_by_one_attribute(self):
         expected_cql = 'name:desc'
-        order = self.order_factory.create_simple('name').reverse()
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('one-desc')
+        self.assert_equal(expr, expected_cql)
 
     def test_simple_order_by_two_attributes(self):
         expected_cql = 'name:asc~age:asc'
-        order = self.order_factory.create_simple('name').and_(
-                                        self.order_factory.create_simple('age')
-                                        )
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('two-asc-asc')
+        self.assert_equal(expr, expected_cql)
 
     def test_simple_order_by_two_attributes_left_reversed(self):
         expected_cql = 'name:desc~age:asc'
-        order = self.order_factory.create_simple('name').reverse().and_(
-                                        self.order_factory.create_simple('age')
-                                        )
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('two-desc-asc')
+        self.assert_equal(expr, expected_cql)
 
     def test_simple_order_by_two_attributes_right_reversed(self):
         expected_cql = 'name:asc~age:desc'
-        order = self.order_factory.create_simple('name').and_(
-                              self.order_factory.create_simple('age').reverse()
-                              )
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('two-asc-desc')
+        self.assert_equal(expr, expected_cql)
 
     def test_simple_order_by_two_attributes_both_reversed(self):
         expected_cql = 'name:desc~age:desc'
-        order = self.order_factory.create_simple('name').reverse().and_(
-                              self.order_factory.create_simple('age').reverse()
-                              )
-        order.accept(self.visitor)
-        self.assert_equal(self.visitor.get_cql(), expected_cql)
+        expr = self._run_visitor('two-desc-desc')
+        self.assert_equal(expr, expected_cql)
