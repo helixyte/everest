@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 2, 2011.
@@ -92,9 +92,17 @@ class Pep8CompliantTestCase(unittest.TestCase):
 
     assert_equal = unittest.TestCase.assertEqual
 
+    assert_equals = unittest.TestCase.assertEquals
+
     assert_not_equal = unittest.TestCase.assertNotEqual
 
-    assert_equals = unittest.TestCase.assertEquals
+    assert_almost_equal = unittest.TestCase.assertAlmostEqual
+
+    assert_not_almost_equal = unittest.TestCase.assertNotAlmostEqual
+
+    assert_is_none = unittest.TestCase.assertIsNone
+
+    assert_is_not_none = unittest.TestCase.assertIsNotNone
 
     assert_raises = unittest.TestCase.assertRaises
 
@@ -114,13 +122,13 @@ class Pep8CompliantTestCase(unittest.TestCase):
 
 
 class TestApp(_TestApp):
-    """    
-    Test web application. 
-    
-    Extends the base class with facilities to access to a global application 
+    """
+    Test web application.
+
+    Extends the base class with facilities to access to a global application
     initialization file that can be configured through nose.
     """
-    #: Name of the application to test. This specifies the section name to 
+    #: Name of the application to test. This specifies the section name to
     #: look for in the initialization file. Please set to your app's name in
     #: a derived class.
     app_name = None
@@ -165,7 +173,7 @@ class BaseTestCase(Pep8CompliantTestCase):
     """
 
     #: The class of the test application (subclass of :class:`TestApp`).
-    #: Override to make your test case load settings from custom sections 
+    #: Override to make your test case load settings from custom sections
     #: of your application initialization file.
     test_app_cls = EverestTestApp
 
@@ -383,9 +391,9 @@ class FunctionalTestCase(BaseTestCase):
     def _custom_configure(self):
         """
         Called from :method:`set_up` after the configurator has been set up
-        and hooked with the ZCA site manager, but before the WSGI app is 
+        and hooked with the ZCA site manager, but before the WSGI app is
         loaded.
-        
+
         This default implementation does nothing and is meant to be overridden.
         """
         pass
