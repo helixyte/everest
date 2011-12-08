@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 5, 2011.
 """
 
-#from iso8601.iso8601 import ISO8601_REGEX
 from iso8601.iso8601 import parse_date
 from pyparsing import CaselessKeyword
 from pyparsing import CharsNotIn
@@ -27,7 +26,7 @@ from pyparsing import replaceWith
 from pyparsing import srange
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['parse_query',
+__all__ = ['parse_filter',
            ]
 
 # Adapted from the iso8601 package to *require* a full yyyy-mm-ddThh:mm:ssZ
@@ -118,4 +117,4 @@ criterion = Group(identifier('name') + colon.suppress() +
                   )
 criteria = Group(delimitedList(criterion, tilde)).setResultsName('criteria')
 
-parse_query = criteria.parseString
+parse_filter = criteria.parseString

@@ -186,7 +186,7 @@ class Aggregate(object):
 
         :param spec: an instance of a FilterSpecification
         :type filter_spec: instance of
-            :class:`everest.specifications.FilterSpecification`
+            :class:`everest.querying.specifications.FilterSpecification`
         """
         self.__implementation.filter(filter_spec)
 

@@ -14,19 +14,22 @@ from everest.entities.interfaces import IEntity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
 from everest.entities.utils import get_aggregate
-from everest.filtering import IFilterSpecificationBuilder
-from everest.filtering import IFilterSpecificationDirector
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime
-from everest.ordering import IOrderSpecificationBuilder
-from everest.ordering import IOrderSpecificationDirector
+from everest.querying.filtering import ICqlFilterSpecificationVisitor
+from everest.querying.filtering import IFilterSpecificationBuilder
+from everest.querying.filtering import IFilterSpecificationDirector
+from everest.querying.filtering import ISqlFilterSpecificationVisitor
+from everest.querying.ordering import ICqlOrderSpecificationVisitor
+from everest.querying.ordering import IOrderSpecificationBuilder
+from everest.querying.ordering import IOrderSpecificationDirector
+from everest.querying.specifications import IFilterSpecificationFactory
+from everest.querying.specifications import IOrderSpecificationFactory
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
-from everest.specifications import IFilterSpecificationFactory
-from everest.specifications import IOrderSpecificationFactory
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
 from everest.tests.testapp.entities import FooEntity
@@ -35,9 +38,6 @@ from everest.tests.testapp.interfaces import IBar
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
-from everest.visitors import ICqlFilterSpecificationVisitor
-from everest.visitors import ICqlOrderSpecificationVisitor
-from everest.visitors import IQueryFilterSpecificationVisitor
 from repoze.bfg.testing import DummyRequest
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
@@ -72,7 +72,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                           is None)
         self.assert_false(reg.queryUtility(ICqlFilterSpecificationVisitor)
                           is None)
-        self.assert_false(reg.queryUtility(IQueryFilterSpecificationVisitor)
+        self.assert_false(reg.queryUtility(ISqlFilterSpecificationVisitor)
                           is None)
         self.assert_false(reg.queryUtility(IOrderSpecificationFactory)
                           is None)

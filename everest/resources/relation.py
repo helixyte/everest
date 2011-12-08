@@ -8,7 +8,7 @@ Created on Sep 30, 2011.
 """
 
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from everest.specifications import IFilterSpecificationFactory
+from everest.querying.specifications import IFilterSpecificationFactory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceRelation',

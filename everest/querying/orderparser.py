@@ -24,6 +24,6 @@ direction = oneOf("asc desc").setName('direction')
 order_criterion = Group(identifier('name') + colon.suppress() + \
                    direction('operator')).setResultsName('order')
 order_criteria = \
-    Group(delimitedList(order_criterion, tilde)).setResultsName('order')
+    Group(delimitedList(order_criterion, tilde)).setResultsName('criteria')
 
 parse_order = order_criteria.parseString

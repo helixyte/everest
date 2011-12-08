@@ -5,10 +5,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 
-from everest.ordering import BubbleSorter
-from everest.specifications import SimpleOrderSpecification
+from everest.querying.ordering import BubbleSorter
+from everest.querying.specifications import AscendingOrderSpecification
 from everest.testing import BaseTestCase
 import random
+from everest.querying.specifications import DescendingOrderSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderSpecificationTestCase',
@@ -46,13 +47,13 @@ class OrderSpecificationTestCase(BaseTestCase):
         pass
 
     def create_asc_order(self, attr_name):
-        return SimpleOrderSpecification(attr_name)
+        return AscendingOrderSpecification(attr_name)
 
     def create_desc_order(self, attr_name):
-        return self.create_asc_order(attr_name).reverse()
+        return DescendingOrderSpecification(attr_name)
 
 
-class SimpleOrderSpecificationTestCase(OrderSpecificationTestCase):
+class AscendingOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
         order = self.create_asc_order('age')
@@ -77,19 +78,23 @@ class ReverseOrderSpecificationTestCase(OrderSpecificationTestCase):
 class ConjuctionOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
-        order = self.create_asc_order('name').and_(self.create_asc_order('age'))
+        order = \
+            self.create_asc_order('name').and_(self.create_asc_order('age'))
         self.assert_true(order.lt(self.person_a1, self.person_b1))
 
     def test_order_is_not_satisfied(self):
-        order = self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = \
+            self.create_asc_order('name').and_(self.create_desc_order('age'))
         self.assert_false(order.lt(self.person_b1, self.person_a1))
 
     def test_reverse_order_is_satisfied(self):
-        order = self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = \
+            self.create_asc_order('name').and_(self.create_desc_order('age'))
         self.assert_true(order.lt(self.person_a2, self.person_a1))
 
     def test_reverse_order_is_not_satisfied(self):
-        order = self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = \
+            self.create_asc_order('name').and_(self.create_desc_order('age'))
         self.assert_false(order.lt(self.person_a1, self.person_a2))
 
 
@@ -117,10 +122,10 @@ class SorterTestCase(BaseTestCase):
         pass
 
     def create_asc_order(self, attr_name):
-        return SimpleOrderSpecification(attr_name)
+        return AscendingOrderSpecification(attr_name)
 
     def create_desc_order(self, attr_name):
-        return self.create_asc_order(attr_name).reverse()
+        return DescendingOrderSpecification(attr_name)
 
     def get_persons_ordered_by_name_and_age(self):
         return [self.andrew11, self.bill22, self.john33, self.john44,

@@ -14,22 +14,28 @@ from everest.entities.interfaces import IEntity
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
 from everest.entities.system import Message
-from everest.filtering import FilterSpecificationBuilder
-from everest.filtering import FilterSpecificationDirector
-from everest.interfaces import ICqlFilterSpecificationVisitor
-from everest.interfaces import ICqlOrderSpecificationVisitor
-from everest.interfaces import IFilterSpecificationBuilder
-from everest.interfaces import IFilterSpecificationDirector
-from everest.interfaces import IFilterSpecificationFactory
 from everest.interfaces import IMessage
-from everest.interfaces import IOrderSpecificationBuilder
-from everest.interfaces import IOrderSpecificationDirector
-from everest.interfaces import IOrderSpecificationFactory
-from everest.interfaces import IQueryFilterSpecificationVisitor
-from everest.interfaces import IQueryOrderSpecificationVisitor
 from everest.interfaces import IResourceUrlConverter
-from everest.ordering import OrderSpecificationBuilder
-from everest.ordering import OrderSpecificationDirector
+from everest.querying.filtering import CqlFilterSpecificationVisitor
+from everest.querying.filtering import FilterSpecificationBuilder
+from everest.querying.filtering import FilterSpecificationDirector
+from everest.querying.filtering import SqlFilterSpecificationVisitor
+from everest.querying.interfaces import ICqlFilterSpecificationVisitor
+from everest.querying.interfaces import ICqlOrderSpecificationVisitor
+from everest.querying.interfaces import IFilterSpecificationBuilder
+from everest.querying.interfaces import IFilterSpecificationDirector
+from everest.querying.interfaces import IFilterSpecificationFactory
+from everest.querying.interfaces import IOrderSpecificationBuilder
+from everest.querying.interfaces import IOrderSpecificationDirector
+from everest.querying.interfaces import IOrderSpecificationFactory
+from everest.querying.interfaces import ISqlFilterSpecificationVisitor
+from everest.querying.interfaces import ISqlOrderSpecificationVisitor
+from everest.querying.ordering import CqlOrderSpecificationVisitor
+from everest.querying.ordering import OrderSpecificationBuilder
+from everest.querying.ordering import OrderSpecificationDirector
+from everest.querying.ordering import SqlOrderSpecificationVisitor
+from everest.querying.specifications import FilterSpecificationFactory
+from everest.querying.specifications import OrderSpecificationFactory
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
@@ -40,13 +46,7 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
-from everest.specifications import FilterSpecificationFactory
-from everest.specifications import OrderSpecificationFactory
 from everest.url import ResourceUrlConverter
-from everest.visitors import CqlFilterSpecificationVisitor
-from everest.visitors import CqlOrderSpecificationVisitor
-from everest.visitors import QueryFilterSpecificationVisitor
-from everest.visitors import QueryOrderSpecificationVisitor
 from repoze.bfg.configuration import Configurator as BfgConfigurator
 from repoze.bfg.interfaces import IRequest
 from repoze.bfg.path import caller_package
@@ -326,9 +326,9 @@ class Configurator(BfgConfigurator):
         register_utility(cql_filter_specification_visitor,
                          ICqlFilterSpecificationVisitor)
         if query_filter_specification_visitor is None:
-            query_filter_specification_visitor = QueryFilterSpecificationVisitor
+            query_filter_specification_visitor = SqlFilterSpecificationVisitor
         register_utility(query_filter_specification_visitor,
-                         IQueryFilterSpecificationVisitor)
+                         ISqlFilterSpecificationVisitor)
         # Order specification utilitites.
         if order_specification_factory is None:
             order_specification_factory = OrderSpecificationFactory()
@@ -345,9 +345,9 @@ class Configurator(BfgConfigurator):
         register_utility(cql_order_specification_visitor,
                          ICqlOrderSpecificationVisitor)
         if query_order_specification_visitor is None:
-            query_order_specification_visitor = QueryOrderSpecificationVisitor
+            query_order_specification_visitor = SqlOrderSpecificationVisitor
         register_utility(query_order_specification_visitor,
-                         IQueryOrderSpecificationVisitor)
+                         ISqlOrderSpecificationVisitor)
         # Aggregate utilities.
         if root_aggregate_implementation is None:
             root_aggregate_implementation = MemoryRootAggregateImpl

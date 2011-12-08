@@ -6,19 +6,19 @@ Created on Jun 28, 2011.
 """
 
 from cgi import parse_qsl
-from everest.filtering import IFilterSpecificationBuilder
-from everest.filtering import IFilterSpecificationDirector
-from everest.interfaces import ICqlFilterSpecificationVisitor
-from everest.interfaces import ICqlOrderSpecificationVisitor
 from everest.interfaces import IResourceUrlConverter
-from everest.ordering import IOrderSpecificationBuilder
-from everest.ordering import IOrderSpecificationDirector
-from everest.orderparser import parse_order
-from everest.queryparser import parse_query
+from everest.querying.interfaces import ICqlFilterSpecificationVisitor
+from everest.querying.interfaces import ICqlOrderSpecificationVisitor
+from everest.querying.interfaces import IFilterSpecificationBuilder
+from everest.querying.interfaces import IFilterSpecificationDirector
+from everest.querying.ordering import IOrderSpecificationBuilder
+from everest.querying.ordering import IOrderSpecificationDirector
+from everest.querying.orderparser import parse_order
+from everest.querying.filterparser import parse_filter
+from everest.querying.specifications import IFilterSpecificationFactory
+from everest.querying.specifications import IOrderSpecificationFactory
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from everest.specifications import IFilterSpecificationFactory
-from everest.specifications import IOrderSpecificationFactory
 from repoze.bfg.threadlocal import get_current_request
 from repoze.bfg.traversal import find_model
 from repoze.bfg.traversal import traversal_path
@@ -135,37 +135,37 @@ class UrlPartsConverter(object):
         """
         spec_factory = get_utility(IFilterSpecificationFactory)
         builder = get_utility(IFilterSpecificationBuilder)(spec_factory)
-        parser = parse_query.parseString
-        director = get_utility(IFilterSpecificationDirector)(parser, builder)
+        director = get_utility(IFilterSpecificationDirector)(parse_filter,
+                                                             builder)
         director.construct(unquote(filter_string))
         if director.has_errors():
             errors = '\n'.join(director.get_errors())
             raise ValueError(errors)
-        return builder.get_specification()
+        return builder.specification
 
     @classmethod
     def make_filter_string(cls, filter_specification):
         filter_visitor = get_utility(ICqlFilterSpecificationVisitor)()
         filter_specification.accept(filter_visitor)
-        return filter_visitor.get_expression()
+        return str(filter_visitor.expression)
 
     @classmethod
     def make_order_specification(cls, order_string):
         order_factory = get_utility(IOrderSpecificationFactory)
         builder = get_utility(IOrderSpecificationBuilder)(order_factory)
-        parser = parse_order
-        director = get_utility(IOrderSpecificationDirector)(parser, builder)
+        director = get_utility(IOrderSpecificationDirector)(parse_order,
+                                                            builder)
         director.construct(unquote(order_string))
         if director.has_errors():
             errors = '\n'.join(director.get_errors())
             raise ValueError(errors)
-        return builder.get_sort_order()
+        return builder.specification
 
     @classmethod
     def make_order_string(cls, order_specification):
         order_visitor = get_utility(ICqlOrderSpecificationVisitor)()
         order_specification.accept(order_visitor)
-        return order_visitor.get_expression()
+        return str(order_visitor.expression)
 
     @classmethod
     def make_slice_key(cls, start_string, size_string):

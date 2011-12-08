@@ -11,9 +11,9 @@ from everest.db import Session
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
-from everest.interfaces import IKeyFunctionOrderSpecificationVisitor
-from everest.interfaces import IOrderSpecificationVisitor
-from everest.interfaces import IQueryFilterSpecificationVisitor
+from everest.querying.interfaces import IKeyFunctionOrderSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.querying.interfaces import ISqlFilterSpecificationVisitor
 from everest.staging import StagingContextManagerBase
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
@@ -44,7 +44,7 @@ class AggregateImpl(object):
         #: Entity class (type) of the entities in this aggregate.
         self._entity_class = entity_class
         #: Specifications for querying
-        #: (:class:`everest.specifications.FilterSpecifications`).
+        #: (:class:`everest.querying.specifications.FilterSpecifications`).
         self._filter_spec = None
         #: Specifications for querying (:class:`everest.ordering.OrderSpecification`).
         self._order_spec = None
@@ -162,7 +162,7 @@ class MemoryAggregateImpl(AggregateImpl):
         if not self._order_spec is None:
             visitor = get_utility(IKeyFunctionOrderSpecificationVisitor)()
             self._order_spec.accept(visitor)
-            key_func = visitor.get_key_function()
+            key_func = visitor.expression
             ents = sorted(ents, key=key_func)
         if not self._slice_key is None:
             ents = ents[self._slice_key]
@@ -355,7 +355,7 @@ class OrmAggregateImpl(AggregateImpl):
         return query
 
     def _filter_visitor_factory(self):
-        visitor_cls = get_utility(IQueryFilterSpecificationVisitor)
+        visitor_cls = get_utility(ISqlFilterSpecificationVisitor)
         return visitor_cls(self._entity_class)
 
     def _order_visitor_factory(self):
@@ -379,7 +379,7 @@ class OrmAggregateImpl(AggregateImpl):
         if not self._filter_spec is None:
             visitor = self._filter_visitor_factory()
             self._filter_spec.accept(visitor)
-            query = query.filter(visitor.get_expression())
+            query = query.filter(visitor.expression)
         return query
 
     def __get_ordered_query(self, key):
@@ -390,7 +390,7 @@ class OrmAggregateImpl(AggregateImpl):
             joins = visitor.get_joins()
             if len(joins) > 0:
                 query = query.outerjoin(*joins) # pylint: disable=W0142
-            query = query.order_by(*visitor.get_expression())
+            query = query.order_by(*visitor.expression)
         return query
 
     @property
@@ -466,7 +466,7 @@ class OrmRelationAggregateImpl(OrmAggregateImpl):
         rel_spec = self.__relation.make_relation_spec()
         visitor = self._filter_visitor_factory()
         rel_spec.accept(visitor)
-        expr = visitor.get_expression()
+        expr = visitor.expression
         return self._session.query(self._entity_class).filter(expr)
 
 #        # Identify the target model class for the relationship and

@@ -6,22 +6,25 @@ Created on Feb 4, 2011.
 """
 
 from datetime import datetime, timedelta
-from everest.specifications import ConjuctionFilterSpecification
-from everest.specifications import DisjuctionFilterSpecification
-from everest.specifications import LeafFilterSpecification
-from everest.specifications import NegationFilterSpecification
-from everest.specifications import ValueContainedFilterSpecification
-from everest.specifications import ValueContainsFilterSpecification
-from everest.specifications import ValueEndsWithFilterSpecification
-from everest.specifications import ValueEqualToFilterSpecification
-from everest.specifications import ValueGreaterThanOrEqualToFilterSpecification
-from everest.specifications import ValueGreaterThanFilterSpecification
-from everest.specifications import ValueInRangeFilterSpecification
-from everest.specifications import ValueLessThanOrEqualToFilterSpecification
-from everest.specifications import ValueLessThanFilterSpecification
-from everest.specifications import ValueStartsWithFilterSpecification
+from everest.querying.specifications import ConjuctionFilterSpecification
+from everest.querying.specifications import DisjuctionFilterSpecification
+from everest.querying.specifications import FilterSpecification
+from everest.querying.specifications import NegationFilterSpecification
+from everest.querying.specifications import ValueContainedFilterSpecification
+from everest.querying.specifications import ValueContainsFilterSpecification
+from everest.querying.specifications import ValueEndsWithFilterSpecification
+from everest.querying.specifications import ValueEqualToFilterSpecification
+from everest.querying.specifications import ValueGreaterThanFilterSpecification
+from everest.querying.specifications import ValueInRangeFilterSpecification
+from everest.querying.specifications import ValueLessThanFilterSpecification
+from everest.querying.specifications import ValueStartsWithFilterSpecification
+from everest.querying.specifications import \
+    ValueGreaterThanOrEqualToFilterSpecification
+from everest.querying.specifications import \
+    ValueLessThanOrEqualToFilterSpecification
 from everest.testing import BaseTestCase
 from nose.tools import raises
+from everest.querying.base import Operator
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjuctionFilterSpecification',
@@ -52,22 +55,48 @@ class Candidate(object):
         return 'Candidate -> %s' % ', '.join(attrs)
 
 
-class AlwaysTrueFilterSpecification(LeafFilterSpecification):
-    def is_satisfied_by(self, candidate):
+class AlwaysTrueOperator(Operator):
+    name = 'true'
+    literal = 'T'
+
+    @staticmethod
+    def apply(arg):
         return True
+
+
+class AlwaysFalseOperator(Operator):
+    name = 'false'
+    literal = 'F'
+
+    @staticmethod
+    def apply(arg):
+        return False
+
+
+class AlwaysTrueFilterSpecification(FilterSpecification):
+
+    operator = AlwaysTrueOperator
+
+    def __init__(self):
+        FilterSpecification.__init__(self)
+
+    def is_satisfied_by(self, candidate):
+        return self.operator.apply(candidate)
 
     def accept(self, visitor):
         pass
 
 
-class AlwaysFalseFilterSpecification(LeafFilterSpecification):
+class AlwaysFalseFilterSpecification(FilterSpecification):
+    operator = AlwaysFalseOperator
     def is_satisfied_by(self, candidate):
         return False
 
     def accept(self, visitor):
         pass
 
-class ValueBoundFilterSpecificationTestCase(BaseTestCase):
+
+class CriterionFilterSpecificationTestCase(BaseTestCase):
     candidate = None
 
     TEXT_VALUE = 'Beta-2'
@@ -114,7 +143,8 @@ class ValueBoundFilterSpecificationTestCase(BaseTestCase):
         raise NotImplementedError('Abstract method')
 
 
-class TestValueEqualToFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueEqualToFilterSpecification(
+                                        CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueEqualToFilterSpecification(attr_name, attr_value)
@@ -144,7 +174,7 @@ class TestValueEqualToFilterSpecification(ValueBoundFilterSpecificationTestCase)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueGreaterThanFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueGreaterThanFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueGreaterThanFilterSpecification(attr_name, attr_value)
@@ -174,7 +204,7 @@ class TestValueGreaterThanFilterSpecification(ValueBoundFilterSpecificationTestC
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueLessThanFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueLessThanFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueLessThanFilterSpecification(attr_name, attr_value)
@@ -204,7 +234,7 @@ class TestValueLessThanFilterSpecification(ValueBoundFilterSpecificationTestCase
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueGreaterThanOrEqualToFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueGreaterThanOrEqualToFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueGreaterThanOrEqualToFilterSpecification(attr_name, attr_value)
@@ -243,7 +273,7 @@ class TestValueGreaterThanOrEqualToFilterSpecification(ValueBoundFilterSpecifica
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueLessThanOrEqualToFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueLessThanOrEqualToFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueLessThanOrEqualToFilterSpecification(attr_name, attr_value)
@@ -282,11 +312,12 @@ class TestValueLessThanOrEqualToFilterSpecification(ValueBoundFilterSpecificatio
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueInRangeFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueInRangeFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         from_value, to_value = attr_value
-        return ValueInRangeFilterSpecification(attr_name, from_value, to_value)
+        return ValueInRangeFilterSpecification(attr_name,
+                                               (from_value, to_value))
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec((self.LESS_THAN_TEXT_VALUE,
@@ -319,7 +350,7 @@ class TestValueInRangeFilterSpecification(ValueBoundFilterSpecificationTestCase)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueStartsWithFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueStartsWithFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueStartsWithFilterSpecification(attr_name, attr_value)
@@ -351,7 +382,7 @@ class TestValueStartsWithFilterSpecification(ValueBoundFilterSpecificationTestCa
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueEndsWithFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueEndsWithFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueEndsWithFilterSpecification(attr_name, attr_value)
@@ -383,7 +414,7 @@ class TestValueEndsWithFilterSpecification(ValueBoundFilterSpecificationTestCase
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueContainsFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueContainsFilterSpecification(CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueContainsFilterSpecification(attr_name, attr_value)
@@ -415,7 +446,8 @@ class TestValueContainsFilterSpecification(ValueBoundFilterSpecificationTestCase
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueContainedFilterSpecification(ValueBoundFilterSpecificationTestCase):
+class TestValueContainedFilterSpecification(
+                                        CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         return ValueContainedFilterSpecification(attr_name, attr_value)
