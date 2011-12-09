@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 WSGI filter to process result messages for flex clients.
@@ -96,28 +96,39 @@ class FlexFilter(Filter):
             return app_iter
 
     def filter(self, environ, headers, data, status):
-#        status = '200'
-        root = etree.HTML(data)
-        message = \
-          escape(etree.tostring(root.find('.//body'), method="text").strip())
-        if not message:
-            message = root.find('.//title').text
-        details = ""
-        code_node = root.find('.//code')
-        if code_node  is not None and code_node.text  is not None:
-            details = escape(code_node.text)
+        if status.startswith('307'):
+            response = '''
+                        <error>
+                          <code>%s</code>
+                          <location>%s</location>
+                          <message>%s</message>
+                        </error>
+                        ''' % (status, header_value(headers, 'Location'),
+                               header_value(headers, 'Warning'))
+            replace_header(headers, 'Content-Length', len(response))
+            return response
+        else:
+            root = etree.HTML(data)
+            message = \
+              escape(etree.tostring(root.find('.//body'), method="text").strip())
+            if not message:
+                message = root.find('.//title').text
+            details = ""
+            code_node = root.find('.//code')
+            if code_node  is not None and code_node.text  is not None:
+                details = escape(code_node.text)
 
-            #shorten a bit
-            pos = details.find(',')
-            if pos != -1:
-                details = details[:pos]
-        response = '''
-                    <error>
-                      <code>%s</code>
-                      <message>%s</message>
-                      <details>%s</details>
-                    </error>
-                    ''' % (status, message, details)
-        replace_header(headers, 'Content-Length', len(response))
-        return response
+                #shorten a bit
+                pos = details.find(',')
+                if pos != -1:
+                    details = details[:pos]
+            response = '''
+                        <error>
+                          <code>%s</code>
+                          <message>%s</message>
+                          <details>%s</details>
+                        </error>
+                        ''' % (status, message, details)
+            replace_header(headers, 'Content-Length', len(response))
+            return response
 

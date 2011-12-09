@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
@@ -29,7 +29,8 @@ __all__ = ['IAtomMime',
            'IXmlMime',
            'IXmlRequest',
            'IXlsMime',
-           'IXlsRequest'
+           'IXlsRequest',
+           'IZipMime'
            ]
 
 # no self, no __init__, no args  pylint: disable=E0213,W0232,E0211
@@ -45,11 +46,14 @@ class IXmlRequest(Interface):
 class ICsvRequest(Interface):
     """Marker interface for an request."""
 
+class IHtmlRequest(Interface):
+    """Marker interface for a HTML request."""
+
 class IXlsRequest(Interface):
     """Marker interface for an Excel request."""
 
-class IHtmlRequest(Interface):
-    """Marker interface for a HTML request."""
+class IZipRequest(Interface):
+    """Marker interface for an Zip compressed request."""
 
 class IJsonMime(Interface):
     """Marker interface for a JSON mime type."""
@@ -74,6 +78,9 @@ class ICsvMime(Interface):
 
 class IXlsMime(Interface):
     """Marker interface for an Excel mime type."""
+
+class IZipMime(Interface):
+    """Marker interface for an Zip compressed mime type."""
 
 class IHtmlMime(Interface):
     """Marker interface for a HTML mime type."""
@@ -232,7 +239,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a conjuction filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ConjuctionFilterSpecification`
         """
 
@@ -241,7 +248,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a disjuction filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.DisjuctionFilterSpecification`
         """
 
@@ -258,7 +265,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value starts-with filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueStartsWithFilterSpecification`
         """
 
@@ -267,7 +274,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value ends-with filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueEndsWithFilterSpecification`
         """
 
@@ -276,7 +283,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value contains filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueContainsFilterSpecification`
         """
 
@@ -285,7 +292,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value contained filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueContainedFilterSpecification`
         """
 
@@ -294,7 +301,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value equal-to filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueEqualToFilterSpecification`
         """
 
@@ -303,7 +310,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value less-than filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueLessThanFilterSpecification`
         """
 
@@ -312,7 +319,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value greater-than filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueGreaterThanFilterSpecification`
         """
 
@@ -321,7 +328,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value less-than-or-equal-to filter specification.
 
         :param spec: filter specification
-        :type spec:  
+        :type spec:
           :class:`everest.specifications.ValueLessThanOrEqualToFilterSpecification`
         """
 
@@ -330,7 +337,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value greater-than-or-equal-to filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
           :class:`everest.specifications.ValueGreaterThanOrEqualToFilterSpecification`
         """
 
@@ -339,7 +346,7 @@ class IFilterSpecificationVisitor(Interface):
         Visit a value in-range filter specification.
 
         :param spec: filter specification
-        :type spec: 
+        :type spec:
             :class:`everest.specifications.ValueInRangeFilterSpecification`
         """
 
@@ -357,7 +364,7 @@ class IQueryFilterSpecificationVisitor(IFilterSpecificationVisitor):
 
 class IOrderSpecificationVisitor(Interface):
     """
-    Interface for order specification visitors that generate a query 
+    Interface for order specification visitors that generate a query
     expression.
     """
 

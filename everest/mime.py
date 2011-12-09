@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Aug 17, 2011.
@@ -21,6 +21,8 @@ from everest.interfaces import IXlsMime
 from everest.interfaces import IXlsRequest
 from everest.interfaces import IXmlMime
 from everest.interfaces import IXmlRequest
+from everest.interfaces import IZipRequest
+from everest.interfaces import IZipMime
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
@@ -30,6 +32,7 @@ __all__ = ['JSON_MIME',
            'ATOM_ENTRY_MIME',
            'XML_MIME',
            'CSV_MIME',
+           'ZIP_MIME',
            'MIME_REQUEST',
            ]
 
@@ -76,12 +79,6 @@ class CsvMime(object):
 
 CSV_MIME = CsvMime.mime_string
 
-class XlsMime(object):
-    implements(IXlsMime)
-    mime_string = 'application/vnd.xls'
-
-XLS_MIME = XlsMime.mime_string
-
 class HtmlMime(object):
     implements(IHtmlMime)
     mime_string = 'text/html'
@@ -94,6 +91,18 @@ class TextPlainMime(object):
 
 TEXT_PLAIN_MIME = TextPlainMime.mime_string
 
+class XlsMime(object):
+    implements(IXlsMime)
+    mime_string = 'application/vnd.xls'
+
+XLS_MIME = XlsMime.mime_string
+
+class ZipMime(object):
+    implements(IZipMime)
+    mime_string = 'application/zip'
+
+ZIP_MIME = ZipMime.mime_string
+
 MIME_REQUEST = {JSON_MIME : IJsonRequest,
                 ATOM_MIME : IAtomRequest,
                 ATOM_FEED_MIME : IAtomRequest,
@@ -101,6 +110,7 @@ MIME_REQUEST = {JSON_MIME : IJsonRequest,
                 ATOM_SERVICE_MIME : IAtomRequest,
                 XML_MIME : IXmlRequest,
                 CSV_MIME : ICsvRequest,
-                XLS_MIME : IXlsRequest,
                 HTML_MIME : IHtmlRequest,
+                XLS_MIME : IXlsRequest,
+                ZIP_MIME : IZipRequest,
                 }
