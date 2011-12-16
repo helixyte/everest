@@ -11,9 +11,9 @@ from everest.db import Session
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
-from everest.querying.interfaces import IKeyFunctionOrderSpecificationVisitor
+from everest.querying.base import EXPRESSION_KINDS
+from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.querying.interfaces import ISqlFilterSpecificationVisitor
 from everest.staging import StagingContextManagerBase
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
@@ -43,10 +43,13 @@ class AggregateImpl(object):
             raise NotImplementedError('Abstract class.')
         #: Entity class (type) of the entities in this aggregate.
         self._entity_class = entity_class
-        #: Specifications for querying
-        #: (:class:`everest.querying.specifications.FilterSpecifications`).
+        #: Specification for filtering
+        #: (:class:`everest.querying.specifications.FilterSpecification`).
+        #: Attribute names in this specification are relative to the entity. 
         self._filter_spec = None
-        #: Specifications for querying (:class:`everest.ordering.OrderSpecification`).
+        #: Specification for ordering
+        #: (:class:`everest.querying.specifications.OrderSpecification`).
+        #: Attribute names in this specification are relative to the entity. 
         self._order_spec = None
         #: Key for slicing. (:type:`slice`).
         self._slice_key = None
@@ -80,26 +83,32 @@ class AggregateImpl(object):
     def remove(self, entity):
         raise NotImplementedError('Abstract method')
 
-    def filter(self, filter_spec):
+    def _get_filter(self):
+        return self._filter_spec
+
+    def _set_filter(self, filter_spec):
         self._filter_spec = filter_spec
         self._apply_filter()
 
-    def get_filter_spec(self):
-        return self._filter_spec
+    filter = property(_get_filter, _set_filter)
 
-    def order(self, order_spec):
+    def _get_order(self):
+        return self._order_spec
+
+    def _set_order(self, order_spec):
         self._order_spec = order_spec
         self._apply_order()
 
-    def get_order_spec(self):
-        return self._order_spec
+    order = property(_get_order, _set_order)
 
-    def slice(self, slice_key):
+    def _get_slice(self):
+        return self._slice_key
+
+    def _set_slice(self, slice_key):
         self._slice_key = slice_key
         self._apply_slice()
 
-    def get_slice_key(self):
-        return self._slice_key
+    slice = property(_get_slice, _set_slice)
 
     def _apply_filter(self):
         """
@@ -124,12 +133,13 @@ class MemoryAggregateImpl(AggregateImpl):
     """
     In-memory implementation for aggregates.
 
-    :note: Iteration and search in memory aggregates is very slow. Also,
+    :note: Filtering and ordering in memory aggregates is very slow. Also,
         when "blank" entities without an ID and a slug are added to a
         memory aggregate, they can not be retrieved using the
-        :method:`get` method, since there is no mechanism to autogenerate
-        ids and/or slugs.
+        :method:`get_by_id` or :method:`get_by_slug` methods since there 
+        is no mechanism to autogenerate IDs or slugs.
     """
+
     def __init__(self, entity_class):
         if self.__class__ is MemoryAggregateImpl:
             raise NotImplementedError('Abstract class.')
@@ -157,13 +167,15 @@ class MemoryAggregateImpl(AggregateImpl):
     def iterator(self):
         ents = self._get_entities()
         if not self._filter_spec is None:
-            ents = [ent for ent in ents
-                    if self._filter_spec.is_satisfied_by(ent)]
+            visitor = get_utility(IFilterSpecificationVisitor,
+                                  name=EXPRESSION_KINDS.EVAL)()
+            self._filter_spec.accept(visitor)
+            ents = visitor.expression(ents)
         if not self._order_spec is None:
-            visitor = get_utility(IKeyFunctionOrderSpecificationVisitor)()
+            visitor = get_utility(IOrderSpecificationVisitor,
+                                  name=EXPRESSION_KINDS.EVAL)()
             self._order_spec.accept(visitor)
-            key_func = visitor.expression
-            ents = sorted(ents, key=key_func)
+            ents = visitor.expression(ents)
         if not self._slice_key is None:
             ents = ents[self._slice_key]
         for ent in ents:
@@ -351,15 +363,17 @@ class OrmAggregateImpl(AggregateImpl):
     def _apply_slice(self):
         pass
 
-    def _query_generator(self, query, key): # pylint: disable=W0613
+    def _query_generator(self, query, key): # unused pylint: disable=W0613
         return query
 
     def _filter_visitor_factory(self):
-        visitor_cls = get_utility(ISqlFilterSpecificationVisitor)
+        visitor_cls = get_utility(IFilterSpecificationVisitor,
+                                  name=EXPRESSION_KINDS.SQL)
         return visitor_cls(self._entity_class)
 
     def _order_visitor_factory(self):
-        visitor_cls = get_utility(IOrderSpecificationVisitor)
+        visitor_cls = get_utility(IOrderSpecificationVisitor,
+                                  name=EXPRESSION_KINDS.SQL)
         return visitor_cls(self._entity_class)
 
     def _get_base_query(self):

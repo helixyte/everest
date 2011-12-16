@@ -35,12 +35,14 @@ def create_metadata():
         Table('my_entity_parent', metadata,
               Column('my_entity_parent_id', Integer, primary_key=True),
               Column('text', String),
+              Column('text_ent', String),
               )
     # 1:1 MyEntity <=> MyEntityParent
     my_entity_tbl = \
         Table('my_entity', metadata,
               Column('my_entity_id', Integer, primary_key=True),
               Column('text', String),
+              Column('text_ent', String),
               Column('number', Integer),
               Column('my_entity_parent_id', Integer,
                      ForeignKey(my_entity_parent_tbl.c.my_entity_parent_id),
@@ -50,6 +52,7 @@ def create_metadata():
     my_entity_child_tbl = \
         Table('my_entity_child', metadata,
               Column('text', String),
+              Column('text_ent', String),
               Column('my_entity_child_id', Integer, primary_key=True),
               Column('my_entity_id', Integer,
                      ForeignKey(my_entity_tbl.c.my_entity_id),
@@ -59,6 +62,7 @@ def create_metadata():
     my_entity_grandchild_tbl = \
         Table('my_entity_grandchild', metadata,
               Column('text', String),
+              Column('text_ent', String),
               Column('my_entity_grandchild_id', Integer, primary_key=True),
               )
     my_entity_child_children_tbl = \

@@ -20,11 +20,9 @@ from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
 from everest.querying.base import SpecificationVisitor
-from everest.querying.interfaces import ICqlOrderSpecificationVisitor
-from everest.querying.interfaces import IKeyFunctionOrderSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationBuilder
 from everest.querying.interfaces import IOrderSpecificationDirector
-from everest.querying.interfaces import ISqlOrderSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
 from operator import add as add_operator
 from operator import and_ as and_operator
@@ -32,6 +30,7 @@ from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BubbleSorter',
+           'EvalOrderSpecificationVisitor',
            'OrderSpecificationBuilder',
            'OrderSpecificationDirector',
            'Sorter',
@@ -162,9 +161,9 @@ class CqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     Order specification visitor building a CQL expression.
     """
 
-    implements(ICqlOrderSpecificationVisitor)
+    implements(IOrderSpecificationVisitor)
 
-    def _conjunction_op(self, spec, *expressions): # unused pylint:disable=W0613
+    def _conjunction_op(self, spec, *expressions):
         res = reduce(and_operator, expressions)
         return res
 
@@ -185,7 +184,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     Order specification visitor building a SQL expression.
     """
 
-    implements(ISqlOrderSpecificationVisitor)
+    implements(IOrderSpecificationVisitor)
 
     def __init__(self, klass, order_conditions=None):
         """
@@ -203,7 +202,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     def get_joins(self):
         return self.__joins[:]
 
-    def _conjunction_op(self, spec, *expressions): # unused pylint:disable=W0613
+    def _conjunction_op(self, spec, *expressions):
         return reduce(add_operator, expressions)
 
     def _asc_op(self, spec):
@@ -225,21 +224,19 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         return attr
 
 
-class KeyFunctionOrderSpecificationVisitor(OrderSpecificationVisitor):
+class EvalOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
-    Order specification visitor building a key function.
+    Order specification visitor building an evaluator for in-memory 
+    ordering.
     """
 
-    implements(IKeyFunctionOrderSpecificationVisitor)
+    implements(IOrderSpecificationVisitor)
 
-    def _conjunction_op(self, spec, *expressions): # unused pylint:disable=W0613
-        return lambda entities: zip([order_func(entities)
-                                     for order_func in expressions])
+    def _conjunction_op(self, spec, *expressions):
+        return lambda entities: sorted(entities, cmp=spec.cmp)
 
     def _asc_op(self, spec):
-        key_func = lambda ent:getattr(ent, spec.attr_name)
-        return lambda entities: sorted(entities, key=key_func)
+        return lambda entities: sorted(entities, cmp=spec.cmp)
 
     def _desc_op(self, spec):
-        key_func = lambda ent:getattr(ent, spec.attr_name)
-        return lambda entities: sorted(entities, key=key_func, reverse=True)
+        return lambda entities: sorted(entities, cmp=spec.cmp)

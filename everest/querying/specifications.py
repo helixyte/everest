@@ -73,7 +73,7 @@ class FilterSpecification(Specification):
 
     def is_satisfied_by(self, candidate):
         """
-        Tells if a candidate object matches this specification.
+        Tells if the given candidate object matches this specification.
 
         :param candidate: the candidate object
         :type candidate: object
@@ -84,7 +84,7 @@ class FilterSpecification(Specification):
 
     def and_(self, other):
         """
-        Generative method to create a ConjuctionFilterSpecification
+        Generative method to create a :class:`ConjuctionFilterSpecification`.
 
         :param other: the other specification
         :type other: :class:`FilterSpecification`
@@ -95,7 +95,7 @@ class FilterSpecification(Specification):
 
     def or_(self, other):
         """
-        Generative method to create a DisjuctionFilterSpecification
+        Generative method to create a :class:`DisjuctionFilterSpecification`
 
         :param other: the other specification
         :type other: :class:`FilterSpecification`
@@ -106,7 +106,7 @@ class FilterSpecification(Specification):
 
     def not_(self):
         """
-        Generative method to create a NegationFilterSpecification
+        Generative method to create a :class:`NegationFilterSpecification`
 
         :returns: a new negation specification
         :rtype: :class:`NegationFilterSpecification`
@@ -114,9 +114,10 @@ class FilterSpecification(Specification):
         return NegationFilterSpecification(self)
 
 
-class LeafFilterSpecification(FilterSpecification): # still abstract pylint:disable=W0223
+class LeafFilterSpecification(FilterSpecification): # still abstract pylint: disable=W0223
     """
-    Abstract base class for leaf specifications
+    Abstract base class for specifications that represent leaves in a 
+    specification tree.
     """
 
     def __init__(self):
@@ -125,12 +126,12 @@ class LeafFilterSpecification(FilterSpecification): # still abstract pylint:disa
         FilterSpecification.__init__(self)
 
     def accept(self, visitor):
-        visitor.visit(self)
+        visitor.visit_nullary(self)
 
 
 class CriterionFilterSpecification(LeafFilterSpecification):
     """
-    Abstract base class for value bound specifications
+    Abstract base class for specifications representing filter criteria.
     """
 
     def __init__(self, attr_name, attr_value):
@@ -151,13 +152,11 @@ class CriterionFilterSpecification(LeafFilterSpecification):
         self.__attr_value = attr_value
 
     def __eq__(self, other):
-        """Equality operator"""
         return (isinstance(other, CriterionFilterSpecification)
                 and self.attr_name == other.attr_name
                 and self.attr_value == other.attr_value)
 
     def __ne__(self, other):
-        """Inequality operator"""
         return not (self == other)
 
     def __str__(self):
@@ -184,7 +183,8 @@ class CriterionFilterSpecification(LeafFilterSpecification):
 
 class CompositeFilterSpecification(FilterSpecification):
     """
-    Abstract base class for composite specifications
+    Abstract base class for specifications that are composed of two other
+    specifications.
     """
 
     def __init__(self, left_spec, right_spec):
@@ -208,22 +208,17 @@ class CompositeFilterSpecification(FilterSpecification):
         return str_format % params
 
     def __eq__(self, other):
-        """Equality operator"""
         return (isinstance(other, self.__class__)
                 and self.left_spec == other.left_spec
                 and self.right_spec == other.right_spec)
 
     def __ne__(self, other):
-        """Inequality operator"""
         return not (self == other)
 
     def accept(self, visitor):
-        """
-        Template Method - DO NOT OVERRIDE
-        """
         self.left_spec.accept(visitor)
         self.right_spec.accept(visitor)
-        visitor.visit_last_two(self)
+        visitor.visit_binary(self)
 
     @property
     def left_spec(self):
@@ -240,7 +235,7 @@ class CompositeFilterSpecification(FilterSpecification):
 
 class ConjuctionFilterSpecification(CompositeFilterSpecification):
     """
-    Concrete conjuction specification
+    Concrete conjuction specification.
     """
 
     operator = CONJUNCTION
@@ -248,7 +243,7 @@ class ConjuctionFilterSpecification(CompositeFilterSpecification):
 
 class DisjuctionFilterSpecification(CompositeFilterSpecification):
     """
-    Concrete disjuction specification
+    Concrete disjuction specification.
     """
 
     operator = DISJUNCTION
@@ -256,7 +251,7 @@ class DisjuctionFilterSpecification(CompositeFilterSpecification):
 
 class NegationFilterSpecification(FilterSpecification):
     """
-    Concrete negation specification
+    Concrete negation specification.
     """
 
     operator = NEGATION
@@ -291,7 +286,7 @@ class NegationFilterSpecification(FilterSpecification):
 
     def accept(self, visitor):
         self.wrapped_spec.accept(visitor)
-        visitor.visit_last(self)
+        visitor.visit_unary(self)
 
     @property
     def wrapped_spec(self):
@@ -451,6 +446,9 @@ class OrderSpecification(Specification):
     def le(self, x, y):
         raise NotImplementedError('Abstract method')
 
+    def cmp(self, x, y):
+        raise NotImplementedError('Abstract method')
+
     def ne(self, x, y):
         return not self.eq(x, y)
 
@@ -493,8 +491,11 @@ class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
         res = self.operator.apply(self._get_value(x), self._get_value(y))
         return res == -1 or res == 0
 
+    def cmp(self, x, y):
+        return self.operator.apply(self._get_value(x), self._get_value(y))
+
     def accept(self, visitor):
-        visitor.visit(self)
+        visitor.visit_nullary(self)
 
     def _get_value(self, obj):
         return getattr(obj, self.attr_name)
@@ -560,6 +561,14 @@ class ConjuctionOrderSpecification(OrderSpecification):
             res = self.left.le(x, y)
         return res
 
+    def cmp(self, x, y):
+        left_cmp = self.left.cmp(x, y)
+        if left_cmp == 0:
+            res = self.right.cmp(x, y)
+        else:
+            res = left_cmp
+        return res
+
     @property
     def left(self):
         return self.__left
@@ -571,7 +580,7 @@ class ConjuctionOrderSpecification(OrderSpecification):
     def accept(self, visitor):
         self.__left.accept(visitor)
         self.__right.accept(visitor)
-        visitor.visit_last_two(self)
+        visitor.visit_binary(self)
 
 
 class OrderSpecificationFactory(object):

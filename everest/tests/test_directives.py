@@ -16,11 +16,8 @@ from everest.entities.interfaces import IRootAggregateImplementation
 from everest.entities.utils import get_aggregate
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime
-from everest.querying.filtering import ICqlFilterSpecificationVisitor
 from everest.querying.filtering import IFilterSpecificationBuilder
 from everest.querying.filtering import IFilterSpecificationDirector
-from everest.querying.filtering import ISqlFilterSpecificationVisitor
-from everest.querying.ordering import ICqlOrderSpecificationVisitor
 from everest.querying.ordering import IOrderSpecificationBuilder
 from everest.querying.ordering import IOrderSpecificationDirector
 from everest.querying.specifications import IFilterSpecificationFactory
@@ -42,6 +39,9 @@ from repoze.bfg.testing import DummyRequest
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
+from everest.querying.base import EXPRESSION_KINDS
+from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.querying.interfaces import IFilterSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -70,9 +70,14 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                           is None)
         self.assert_false(reg.queryUtility(IFilterSpecificationDirector)
                           is None)
-        self.assert_false(reg.queryUtility(ICqlFilterSpecificationVisitor)
+        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.CQL)
                           is None)
-        self.assert_false(reg.queryUtility(ISqlFilterSpecificationVisitor)
+        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.SQL)
+                          is None)
+        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.EVAL)
                           is None)
         self.assert_false(reg.queryUtility(IOrderSpecificationFactory)
                           is None)
@@ -80,7 +85,14 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                           is None)
         self.assert_false(reg.queryUtility(IOrderSpecificationDirector)
                           is None)
-        self.assert_false(reg.queryUtility(ICqlOrderSpecificationVisitor)
+        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.CQL)
+                          is None)
+        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.SQL)
+                          is None)
+        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
+                                           name=EXPRESSION_KINDS.EVAL)
                           is None)
         self.assert_false(reg.queryUtility(IRootAggregateImplementation)
                           is None)

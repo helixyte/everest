@@ -7,14 +7,15 @@ Created on Jun 28, 2011.
 
 from cgi import parse_qsl
 from everest.interfaces import IResourceUrlConverter
-from everest.querying.interfaces import ICqlFilterSpecificationVisitor
-from everest.querying.interfaces import ICqlOrderSpecificationVisitor
+from everest.querying.base import EXPRESSION_KINDS
+from everest.querying.filterparser import parse_filter
 from everest.querying.interfaces import IFilterSpecificationBuilder
 from everest.querying.interfaces import IFilterSpecificationDirector
+from everest.querying.interfaces import IFilterSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import IOrderSpecificationBuilder
 from everest.querying.ordering import IOrderSpecificationDirector
 from everest.querying.orderparser import parse_order
-from everest.querying.filterparser import parse_filter
 from everest.querying.specifications import IFilterSpecificationFactory
 from everest.querying.specifications import IOrderSpecificationFactory
 from everest.resources.interfaces import ICollectionResource
@@ -145,7 +146,8 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_filter_string(cls, filter_specification):
-        filter_visitor = get_utility(ICqlFilterSpecificationVisitor)()
+        filter_visitor = get_utility(IFilterSpecificationVisitor,
+                                     name=EXPRESSION_KINDS.CQL)()
         filter_specification.accept(filter_visitor)
         return str(filter_visitor.expression)
 
@@ -163,7 +165,8 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_order_string(cls, order_specification):
-        order_visitor = get_utility(ICqlOrderSpecificationVisitor)()
+        order_visitor = get_utility(IOrderSpecificationVisitor,
+                                    name=EXPRESSION_KINDS.CQL)()
         order_specification.accept(order_visitor)
         return str(order_visitor.expression)
 

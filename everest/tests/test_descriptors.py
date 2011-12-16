@@ -9,15 +9,19 @@ from everest.db import Session
 from everest.db import reset_db_engine
 from everest.db import reset_metadata
 from everest.db import set_db_engine
+from everest.querying.filtering import SqlFilterSpecificationVisitor
+from everest.querying.specifications import FilterSpecificationFactory
 from everest.representers.base import DataElementGenerator
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import SimpleDataElementRegistry
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.base import Collection
+from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
@@ -71,7 +75,8 @@ class AttributesTestCase(Pep8CompliantTestCase):
     def test_names(self):
         self.assert_equal(
                     get_resource_class_attributes(MyEntityMember).keys(),
-                    ['id', 'parent', 'children', 'text', 'number'])
+                    ['id', 'parent', 'children', 'text',
+                     'text_rc', 'number', 'parent_text'])
 
     def test_types(self):
         attrs = get_resource_class_attributes(MyEntityMember).values()
@@ -92,10 +97,10 @@ class AttributesTestCase(Pep8CompliantTestCase):
         self.assert_equal(attrs[3].kind, ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attrs[3].entity_name, 'text')
         self.assert_equal(attrs[3].value_type, str)
-        self.assert_equal(attrs[4].name, 'number')
-        self.assert_equal(attrs[4].kind, ResourceAttributeKinds.TERMINAL)
-        self.assert_equal(attrs[4].entity_name, 'number')
-        self.assert_equal(attrs[4].value_type, int)
+        self.assert_equal(attrs[5].name, 'number')
+        self.assert_equal(attrs[5].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[5].entity_name, 'number')
+        self.assert_equal(attrs[5].value_type, int)
 
     def test_inheritance(self):
         class MyEntityDerivedMember(MyEntityMember):
@@ -116,6 +121,7 @@ class DescriptorsTestCase(ResourceTestCase):
     _transaction = None
     _request = None
 
+    TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
 
     def _custom_configure(self):
@@ -284,9 +290,35 @@ class DescriptorsTestCase(ResourceTestCase):
                 context.update_from_data(data_el)
                 self.assert_equal(len(context.children), 2)
 
-#    def test_nested_access(self):
-#        entity = MyEntity()
-#        member = MyEntityMember.create_from_entity(entity)
+    def test_filter_specification_visitor(self):
+        coll = get_collection(IMyEntity)
+        mb_cls = get_member_class(coll)
+        for spec, expected in zip(self._make_filter_specs(),
+                        [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
+                         ('text_ent', MyEntity.text_ent.__eq__(
+                                                        self.TEST_TEXT)),
+                         ('parent.text_ent',
+                          MyEntity.parent.has(
+                                    MyEntityParent.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                         ('children.text_ent',
+                          MyEntity.children.any(
+                                    MyEntityChild.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                         ('parent.text_ent',
+                          MyEntity.parent.has(
+                                    MyEntityParent.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                         ],
+                                  ):
+            new_attr_name, expr = expected
+            visitor = ResourceToEntityFilterSpecificationVisitor(mb_cls)
+            spec.accept(visitor)
+            new_spec = visitor.expression
+            self.assert_equal(new_spec.attr_name, new_attr_name)
+            visitor = SqlFilterSpecificationVisitor(MyEntity)
+            new_spec.accept(visitor)
+            self.assert_equal(str(visitor.expression), str(expr))
 
     def _make_data_element_generator(self):
         reg = SimpleDataElementRegistry()
@@ -305,6 +337,20 @@ class DescriptorsTestCase(ResourceTestCase):
             reg.set_data_element_class(de_cls)
         gen = DataElementGenerator(reg)
         return gen
+
+    def _make_filter_specs(self):
+        spec_fac = FilterSpecificationFactory()
+        return [# Terminal access.
+                spec_fac.create_equal_to('text', self.TEST_TEXT),
+                # Terminal access with different name in entity.
+                spec_fac.create_equal_to('text_rc', self.TEST_TEXT),
+                # Nested member access with different name in entity.
+                spec_fac.create_equal_to('parent.text_rc', self.TEST_TEXT),
+                # Nested collection access with different name in entity.
+                spec_fac.create_equal_to('children.text_rc', self.TEST_TEXT),
+                # Access with dotted entity name in rc attr declaration.
+                spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
+                ]
 
     def __create_member(self):
         my_entity = MyEntity()

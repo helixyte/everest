@@ -158,7 +158,7 @@ class Aggregate(object):
 
     def add(self, entity):
         """
-        Adds an entity to the underlying aggregate.
+        Adds an entity to the aggregate.
 
         If the entity has an ID, it must be unique within the aggregate.
 
@@ -171,7 +171,7 @@ class Aggregate(object):
 
     def remove(self, entity):
         """
-        Removes an entity from the underlying aggregate.
+        Removes an entity from the aggregate.
 
         :param entity: entity (domain object) to remove
         :type entity: object implementing
@@ -180,50 +180,62 @@ class Aggregate(object):
         """
         self.__implementation.remove(entity)
 
-    def filter(self, filter_spec):
-        """
-        Filters the aggregate by the given filter specification.
-
-        :param spec: an instance of a FilterSpecification
-        :type filter_spec: instance of
-            :class:`everest.querying.specifications.FilterSpecification`
-        """
-        self.__implementation.filter(filter_spec)
-
-    def get_filter_spec(self):
+    def _get_filter(self):
         """
         Returns the filter specification for this aggregate.
         """
-        return self.__implementation.get_filter_spec()
+        return self.__implementation.filter
 
-    def order(self, order_spec):
+    def _set_filter(self, filter_spec):
         """
-        Orders the aggregate according to the given order specification.
-
-        :param order_spec: order specification
-        :type order_spec: instance of :class:`everest.ordering.OrderSpecification`
+        Sets the filter specification for this aggregate.
+        
+        :param filter_spec: filter specification
+        :type filter_spec: instance of
+            :class:`everest.querying.specifications.FilterSpecification`
         """
-        return self.__implementation.order(order_spec)
+        self.__implementation.filter = filter_spec
 
-    def get_order_spec(self):
+    filter = property(_get_filter, _set_filter,
+                      doc="Filter specification for the aggregate.")
+
+    def _get_order(self):
         """
         Returns the order specification for this aggregate.
         """
-        return self.__implementation.get_order_spec()
+        return self.__implementation.order
 
-    def slice(self, slice_key):
+    def _set_order(self, order_spec):
         """
-        Slices the aggregate with the given slice key.
+        Sets the order specification for this aggregate.
+
+        :param order_spec: order specification
+        :type order_spec: instance of 
+            :class:`everest.querying.specifications.OrderSpecification`
+        """
+        return self.__implementation.order(order_spec)
+
+    order = property(_get_order, _set_order,
+                      doc="Order specification for the aggregate.")
+
+    def _get_slice(self):
+        """
+        Returns the slice key for this aggregate.
+        """
+        return self.__implementation.slice
+
+    def _set_slice(self, slice_key):
+        """
+        Sets the slice key for this aggregate.
 
         If specified, filter and order specs are applied before the slicing
         operation is performed.
 
         :param slice slice_key: slice to apply.
+        :type slice: `slice`
         """
-        return self.__implementation.slice(slice_key)
+        self.__implementation.slice = slice_key
 
-    def get_slice_key(self):
-        """
-        Returns the slice key for this aggregate.
-        """
-        return self.__implementation.get_slice_key()
+    slice = property(_get_slice, _set_slice,
+                      doc="Slice key for the aggregate.")
+

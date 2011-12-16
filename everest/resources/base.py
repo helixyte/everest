@@ -26,6 +26,9 @@ from zope.component import createObject as create_object # pylint: disable=E0611
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
+from everest.querying.base import SpecificationVisitorBase
+from everest.querying.interfaces import ISpecificationVisitor
+from everest.resources.attributes import get_resource_class_attributes
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -280,6 +283,13 @@ class Collection(Resource):
         if name is None:
             name = self.root_name
         self.__name__ = name
+        #: The filter specification for this resource. Attribute names in
+        #: this specification are relative to the resource.. 
+        self._filter_spec = None
+        #: The order specification for this resource. Attribute names in
+        #: this specification are relative to the resource. 
+        self._order_spec = None
+        # The underlying aggregate.
         self.__aggregate = aggregate
 
     @classmethod
@@ -430,26 +440,38 @@ class Collection(Resource):
             self.add(new_member)
 
     def _get_filter(self):
-        return self.__aggregate.get_filter_spec()
+        return self._filter_spec
 
     def _set_filter(self, filter_spec):
-        self.__aggregate.filter(filter_spec)
+        # Translate to entity filter expression before passing on to the 
+        # aggregate.
+        visitor = ResourceToEntityFilterSpecificationVisitor(
+                                                    get_member_class(self))
+        filter_spec.accept(visitor)
+        self.__aggregate.filter = visitor.expression
+        self._filter_spec = filter_spec
 
     filter = property(_get_filter, _set_filter)
 
     def _get_order(self):
-        return self.__aggregate.get_order_spec()
+        return self._order_spec
 
     def _set_order(self, order_spec):
-        self.__aggregate.order(order_spec)
+        # Translate to entity order expression before passing on to the 
+        # aggregate.
+        visitor = ResourceToEntityOrderSpecificationVisitor(
+                                                    get_member_class(self))
+        order_spec.accept(visitor)
+        self.__aggregate.order = visitor.expression
+        self._order_spec = order_spec
 
     order = property(_get_order, _set_order)
 
     def _get_slice(self):
-        return self.__aggregate.get_slice_key()
+        return self.__aggregate.slice
 
     def _set_slice(self, slice_key):
-        self.__aggregate.slice(slice_key)
+        self.__aggregate.slice = slice_key
 
     slice = property(_get_slice, _set_slice)
 
@@ -467,3 +489,68 @@ class Collection(Resource):
 
     def _create_collection(self):
         return create_object(self.__name__)
+
+
+class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
+    """
+    Base class for specification visitors that convert resource to entity 
+    attribute names.
+    """
+
+    implements(ISpecificationVisitor)
+
+    def __init__(self, rc_class):
+        SpecificationVisitorBase.__init__(self)
+        self.__rc_class = rc_class
+
+    def visit_nullary(self, spec):
+        entity_attr_name = self.__convert_to_entity_attr(spec.attr_name)
+        new_spec = self._make_new_spec(entity_attr_name, spec)
+        self._push(new_spec)
+
+    def visit_unary(self, spec):
+        last = self._pop()
+        new_spec = spec.__class__(last)
+        self._push(new_spec)
+
+    def visit_binary(self, spec):
+        right = self._pop()
+        left = self._pop()
+        new_spec = spec.__class__(left, right)
+        self._push(new_spec)
+
+    def __convert_to_entity_attr(self, rc_attr_name):
+        entity_attr_tokens = []
+        rc_class = self.__rc_class
+        for rc_attr_token in rc_attr_name.split('.'):
+            rc_attr = get_resource_class_attributes(rc_class)[rc_attr_token]
+            ent_attr_name = rc_attr.entity_name
+            if rc_attr.kind != ResourceAttributeKinds.TERMINAL:
+                # Look up the member class for the specified member or 
+                # collection resource interface.
+                rc_class = get_member_class(rc_attr.value_type)
+            entity_attr_tokens.append(ent_attr_name)
+        return '.'.join(entity_attr_tokens)
+
+    def _make_new_spec(self, new_attr_name, old_spec):
+        raise NotImplementedError('Abstract method.')
+
+
+class ResourceToEntityFilterSpecificationVisitor(
+                                        ResourceToEntitySpecificationVisitor):
+    """
+    Filter specification visitor that converts resource attribute names to
+    entity attribute names.
+    """
+    def _make_new_spec(self, new_attr_name, old_spec):
+        return old_spec.__class__(new_attr_name, old_spec.attr_value)
+
+
+class ResourceToEntityOrderSpecificationVisitor(
+                                        ResourceToEntitySpecificationVisitor):
+    """
+    Order specification visitor that converts resource attribute names to
+    entity attribute names.
+    """
+    def _make_new_spec(self, new_attr_name, old_spec):
+        return old_spec.__class__(new_attr_name)

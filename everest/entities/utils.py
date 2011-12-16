@@ -19,7 +19,6 @@ from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_aggregate',
-           'get_aggregate_class_for_collection',
            'get_entity_class',
            'get_persistent_aggregate',
            'get_transient_aggregate',

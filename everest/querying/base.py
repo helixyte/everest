@@ -5,8 +5,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 2, 2011.
 """
 
-import logging
+from everest.querying.interfaces import ISpecification
+from everest.querying.interfaces import ISpecificationBuilder
+from everest.querying.interfaces import ISpecificationDirector
+from everest.querying.interfaces import ISpecificationVisitor
 from pyparsing import ParseException
+from zope.interface import implements # pylint: disable=E0611,F0401
+import logging
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BinaryOperator',
@@ -22,17 +27,32 @@ __all__ = ['BinaryOperator',
            ]
 
 
+class EXPRESSION_KINDS(object):
+    CQL = 'CQL'
+    SQL = 'SQL'
+    EVAL = 'EVAL'
+
+
 class Operator(object):
+    """
+    Base class for querying operators.
+    """
     name = None
 
 
 class UnaryOperator(Operator):
+    """
+    Unary querying operator.
+    """
     @staticmethod
     def apply(value):
         raise NotImplementedError('Abstract method.')
 
 
 class BinaryOperator(Operator):
+    """
+    Binary querying operator.
+    """
 
     @staticmethod
     def apply(value, ref_value):
@@ -87,8 +107,8 @@ class Specification(object):
     Abstract base classs for all specifications.
     """
 
-    #: The operator for this specification. This needs to be set to a subclass 
-    #: of :class:`everest.querying.operators.Operator` in derived classes. 
+    implements(ISpecification)
+
     operator = None
 
     def __init__(self):
@@ -96,25 +116,15 @@ class Specification(object):
             raise NotImplementedError('Abstract class')
 
     def accept(self, visitor):
-        """
-        Sends a request to a visitor.
-        
-        This triggers visits of this specification and all other dependent
-        specifications which in turn dispatch appropriate visiting operations.
-
-        :param visitor: a visitor that packages related operations
-        :type visitor: :class:`everest.querying.base.SpecificationVisitor`
-        """
         raise NotImplementedError('Abstract method')
 
 
 class SpecificationDirector(object):
     """
     Abstract base class for specification directors.
-    
-    A specification director coordinates a specification parser and a 
-    specification builder.
     """
+
+    implements(ISpecificationDirector)
 
     def __init__(self, parser, builder):
         self.__parser = parser
@@ -122,11 +132,6 @@ class SpecificationDirector(object):
         self.__errors = []
 
     def construct(self, expression):
-        """
-        Constructs a specification (using the builder passed to the 
-        constructor) from the result of parsing the given expression (using
-        the parser passed to the constructor).
-        """
         try:
             self._logger.debug('Expression received: %s' % expression)
             result = self.__parser(expression)
@@ -137,17 +142,9 @@ class SpecificationDirector(object):
             self._process_parse_result(result)
 
     def has_errors(self):
-        """
-        Checks if the director encountered errors during the last call to 
-        :method:`construct`.
-        """
         return len(self.__errors) > 0
 
     def get_errors(self):
-        """
-        Returns the errors that were encountered during the last call to
-        :method:`construct`
-        """
         return self.__errors[:]
 
     def _format_identifier(self, string):
@@ -169,6 +166,8 @@ class SpecificationBuilder(object):
     """
     Base class for specification builders.
     """
+
+    implements(ISpecificationBuilder)
 
     def __init__(self, spec_factory):
         self._spec_factory = spec_factory
@@ -195,41 +194,13 @@ class SpecificationBuilder(object):
         return self.__specification
 
 
-class SpecificationVisitor(object):
+class SpecificationVisitorBase(object):
     """
-    Base class for all specification visitors.
+    Base class for specification visitors.
     """
+
     def __init__(self):
         self.__expression_stack = []
-
-    def visit(self, spec):
-        """
-        Visits the given specification with a dispatched visiting operation.
-        """
-        op = self.__get_op_func(spec.operator.name)
-        self.__expression_stack.append(op(spec))
-
-    def visit_last(self, spec):
-        """
-        Visits the given specification with a dispatched visiting operation, 
-        passing the last generated expression as additional argument.
-        """
-        op = self.__get_op_func(spec.operator.name)
-        expr = self.__expression_stack.pop()
-        self.__expression_stack.append(op(spec, expr))
-
-    def visit_last_two(self, spec):
-        """
-        Visits the given specification with a dispatched visiting operation, 
-        passing the last two generated expressions as additional argument.
-        """
-        op = self.__get_op_func(spec.operator.name)
-        right_expr = self.__expression_stack.pop()
-        left_expr = self.__expression_stack.pop()
-        self.__expression_stack.append(op(spec, left_expr, right_expr))
-
-    def _conjunction_op(self, *expressions):
-        raise NotImplementedError('Abstract method.')
 
     def _push(self, expr):
         self.__expression_stack.append(expr)
@@ -239,10 +210,36 @@ class SpecificationVisitor(object):
 
     @property
     def expression(self):
-        """
-        Returns the expression constructed by this visitor.
-        """
-        return self.__expression_stack.pop()
+        # If we have more than one expression on the stack, traversal of the 
+        # input specification tree has not finished yet.
+        assert len(self.__expression_stack) == 1
+        return self.__expression_stack[0]
+
+
+class SpecificationVisitor(SpecificationVisitorBase):
+    """
+    Base class for all specification visitors.
+    """
+
+    implements(ISpecificationVisitor)
+
+    def visit_nullary(self, spec):
+        op = self.__get_op_func(spec.operator.name)
+        self._push(op(spec))
+
+    def visit_unary(self, spec):
+        op = self.__get_op_func(spec.operator.name)
+        expr = self._pop()
+        self._push(op(spec, expr))
+
+    def visit_binary(self, spec):
+        op = self.__get_op_func(spec.operator.name)
+        right_expr = self._pop()
+        left_expr = self._pop()
+        self._push(op(spec, left_expr, right_expr))
+
+    def _conjunction_op(self, spec, *expressions):
+        raise NotImplementedError('Abstract method.')
 
     def __get_op_func(self, op_name):
         # Visitor function dispatch using the operator name.

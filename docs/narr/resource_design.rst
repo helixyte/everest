@@ -15,27 +15,24 @@ to a collection of entities of the same kind (:term:`collection resource`).
 Resources can call other resources to modify other parts of the entity model,
 thus implementing the *business logic* of the application.
 
-Following the path laid out in the excellent "REST in Practice" book,
-:mod:`everest` web service applications use the ATOM Publishing Protocol
-(AtomPub) at the core.
-
 
 Collection resources and aggregates
 ***********************************
 
 The same way that sets of member resources of the same kind are held in a
 collection resource, sets of entities of the same kind are held in an
-:term:`aggregate`. An aggregate roughly corresponds to a table in a relational
-database; it can either be
+:term:`aggregate`. In a typical setup where a relational database is used as
+persistency backend, an aggregate corresponds to a database table and the
+individual entities to the rows in this table.
 
 
 Exposing entity attributes in resources
 ***************************************
 
 There are three kinds of resource attributes in :mod:`everest`: Terminal
-attributes, member attributes, and collection attributes. A *terminal*
-resource attribute references an object of an atomic type or some other type
-the :mod:`everest` framework does not know more about. A *member* resource
+attributes, member attributes, and collection attributes. A *terminal* resource
+attribute references an object of an atomic type or some other type the
+:mod:`everest` framework does not know more about. A *member* resource
 attribute references another member resource and a *collection* resource
 attribute references another collection resource.
 
@@ -49,13 +46,8 @@ resource.
 Slugs
 *****
 
-In a member URL such as ``, the last part which identifies the member uniquely
-within its parent collection resource is called a "slug". When :mod:`everest`
-resolves a given member URL to a member object, it builds a query that looks
-up the member's entity in the collection's aggregate, using the slug as the
-search key. To be able to use the slug in query expressions, it needs to be
-declared at the entity data model level; there are two choices for implemeting
-this:
+In a member URL such as
+``, the last part which identifies the member uniquely within its parent collection resource is called a "slug". When :mod:`everest` resolves a given member URL to a member object, it builds a query that looks up the member's entity in the collection's aggregate, using the slug as the search key. To be able to use the slug in query expressions, it needs to be declared at the entity data model level; there are two choices for implemeting this:
 
  1) If you want your users to be able to customize
 the slugs for individual member resources, then you will have to add a "slug"
@@ -72,15 +64,14 @@ Nested attributes
 Handling complex entity models
 ******************************
 
-Sometimes, you need to hide the complexity of your entity model from
-the client.
+Sometimes, you need to hide the complexity of your entity model from the client.
 
-One way of doing this is to add "shortcut" attributes to your entities, e.g.
-at the ORM layer.
+One way of doing this is to add "shortcut" attributes to your entities, e.g. at
+the ORM layer.
 
 Obviously, this solution is not very elegant as it introduces unnecessary
 attributes to your entity objects.
 
 :mod:`everest` offers another approach by allowing the definition of such
-shortcuts through dotted attribute notation. The only requirement is that
-the endpoint
+shortcuts through dotted attribute notation. The only requirement is that the
+endpoint

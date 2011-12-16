@@ -16,21 +16,22 @@ from everest.entities.interfaces import IRootAggregateImplementation
 from everest.entities.system import Message
 from everest.interfaces import IMessage
 from everest.interfaces import IResourceUrlConverter
+from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
+from everest.querying.filtering import EvalFilterSpecificationVisitor
 from everest.querying.filtering import FilterSpecificationBuilder
 from everest.querying.filtering import FilterSpecificationDirector
 from everest.querying.filtering import SqlFilterSpecificationVisitor
-from everest.querying.interfaces import ICqlFilterSpecificationVisitor
-from everest.querying.interfaces import ICqlOrderSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationBuilder
 from everest.querying.interfaces import IFilterSpecificationDirector
 from everest.querying.interfaces import IFilterSpecificationFactory
+from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationBuilder
 from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationFactory
-from everest.querying.interfaces import ISqlFilterSpecificationVisitor
-from everest.querying.interfaces import ISqlOrderSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
+from everest.querying.ordering import EvalOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationBuilder
 from everest.querying.ordering import OrderSpecificationDirector
 from everest.querying.ordering import SqlOrderSpecificationVisitor
@@ -72,13 +73,15 @@ class Configurator(BfgConfigurator):
                  filter_builder=None,
                  filter_director=None,
                  cql_filter_specification_visitor=None,
-                 query_filter_specification_visitor=None,
+                 sql_filter_specification_visitor=None,
+                 eval_filter_specification_visitor=None,
                  # order specification utilities.
                  order_specification_factory=None,
                  order_builder=None,
                  order_director=None,
                  cql_order_specification_visitor=None,
-                 query_order_specification_visitor=None,
+                 sql_order_specification_visitor=None,
+                 eval_order_specification_visitor=None,
                  # aggregate utilities.
                  root_aggregate_implementation=None,
                  relation_aggregate_implementation=None,
@@ -94,12 +97,14 @@ class Configurator(BfgConfigurator):
                                  filter_builder,
                                  filter_director,
                                  cql_filter_specification_visitor,
-                                 query_filter_specification_visitor,
+                                 sql_filter_specification_visitor,
+                                 eval_filter_specification_visitor,
                                  order_specification_factory,
                                  order_builder,
                                  order_director,
                                  cql_order_specification_visitor,
-                                 query_order_specification_visitor,
+                                 sql_order_specification_visitor,
+                                 eval_order_specification_visitor,
                                  root_aggregate_implementation,
                                  relation_aggregate_implementation,
                                  url_converter)
@@ -111,13 +116,15 @@ class Configurator(BfgConfigurator):
                        filter_builder=None,
                        filter_director=None,
                        cql_filter_specification_visitor=None,
-                       query_filter_specification_visitor=None,
+                       sql_filter_specification_visitor=None,
+                       eval_filter_specification_visitor=None,
                        # order specification utilities.
                        order_specification_factory=None,
                        order_builder=None,
                        order_director=None,
                        cql_order_specification_visitor=None,
-                       query_order_specification_visitor=None,
+                       sql_order_specification_visitor=None,
+                       eval_order_specification_visitor=None,
                        # aggregate utilities.
                        root_aggregate_implementation=None,
                        relation_aggregate_implementation=None,
@@ -129,12 +136,14 @@ class Configurator(BfgConfigurator):
                              filter_builder,
                              filter_director,
                              cql_filter_specification_visitor,
-                             query_filter_specification_visitor,
+                             sql_filter_specification_visitor,
+                             eval_filter_specification_visitor,
                              order_specification_factory,
                              order_builder,
                              order_director,
                              cql_order_specification_visitor,
-                             query_order_specification_visitor,
+                             sql_order_specification_visitor,
+                             eval_order_specification_visitor,
                              root_aggregate_implementation,
                              relation_aggregate_implementation,
                              url_converter)
@@ -296,12 +305,14 @@ class Configurator(BfgConfigurator):
                         filter_builder,
                         filter_director,
                         cql_filter_specification_visitor,
-                        query_filter_specification_visitor,
+                        sql_filter_specification_visitor,
+                        eval_filter_specification_visitor,
                         order_specification_factory,
                         order_builder,
                         order_director,
                         cql_order_specification_visitor,
-                        query_order_specification_visitor,
+                        sql_order_specification_visitor,
+                        eval_order_specification_visitor,
                         root_aggregate_implementation,
                         relation_aggregate_implementation,
                         url_converter):
@@ -324,11 +335,18 @@ class Configurator(BfgConfigurator):
         if cql_filter_specification_visitor is None:
             cql_filter_specification_visitor = CqlFilterSpecificationVisitor
         register_utility(cql_filter_specification_visitor,
-                         ICqlFilterSpecificationVisitor)
-        if query_filter_specification_visitor is None:
-            query_filter_specification_visitor = SqlFilterSpecificationVisitor
-        register_utility(query_filter_specification_visitor,
-                         ISqlFilterSpecificationVisitor)
+                         IFilterSpecificationVisitor,
+                         name=EXPRESSION_KINDS.CQL)
+        if sql_filter_specification_visitor is None:
+            sql_filter_specification_visitor = SqlFilterSpecificationVisitor
+        register_utility(sql_filter_specification_visitor,
+                         IFilterSpecificationVisitor,
+                         name=EXPRESSION_KINDS.SQL)
+        if eval_filter_specification_visitor is None:
+            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
+        register_utility(sql_filter_specification_visitor,
+                         IFilterSpecificationVisitor,
+                         name=EXPRESSION_KINDS.EVAL)
         # Order specification utilitites.
         if order_specification_factory is None:
             order_specification_factory = OrderSpecificationFactory()
@@ -343,11 +361,18 @@ class Configurator(BfgConfigurator):
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         register_utility(cql_order_specification_visitor,
-                         ICqlOrderSpecificationVisitor)
-        if query_order_specification_visitor is None:
-            query_order_specification_visitor = SqlOrderSpecificationVisitor
-        register_utility(query_order_specification_visitor,
-                         ISqlOrderSpecificationVisitor)
+                         IOrderSpecificationVisitor,
+                         name=EXPRESSION_KINDS.CQL)
+        if sql_order_specification_visitor is None:
+            sql_order_specification_visitor = SqlOrderSpecificationVisitor
+        register_utility(sql_order_specification_visitor,
+                         IOrderSpecificationVisitor,
+                         name=EXPRESSION_KINDS.SQL)
+        if eval_order_specification_visitor is None:
+            eval_order_specification_visitor = EvalOrderSpecificationVisitor
+        register_utility(eval_order_specification_visitor,
+                         IOrderSpecificationVisitor,
+                         name=EXPRESSION_KINDS.EVAL)
         # Aggregate utilities.
         if root_aggregate_implementation is None:
             root_aggregate_implementation = MemoryRootAggregateImpl

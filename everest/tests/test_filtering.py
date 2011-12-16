@@ -23,11 +23,11 @@ from everest.querying.specifications import ValueStartsWithFilterSpecification
 from everest.testing import BaseTestCase
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ValueBoundFilterSpecificationBuilderTestCase',
+__all__ = ['CriterionFilterSpecificationBuilderTestCase',
            ]
 
 
-class ValueBoundFilterSpecificationBuilderTestCase(BaseTestCase):
+class CriterionFilterSpecificationBuilderTestCase(BaseTestCase):
     builder = None
 
     def set_up(self):
@@ -183,3 +183,9 @@ class CompositeFilterSpecificationBuilderTestCase(BaseTestCase):
         self.builder.build_contained(left_name, left_values)
         self.builder.build_starts_with(right_name, right_values)
         self.assert_equal(expected_spec, self.builder.specification)
+
+    def test_build_repeating_criterion_different_values_raises_error(self):
+        name, values = ('age', [34, 44])
+        self.builder.build_equal_to(name, [values[0]])
+        self.assert_raises(ValueError, self.builder.build_equal_to,
+                           name, [values[1]])

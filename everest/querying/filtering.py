@@ -5,14 +5,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 5, 2011.
 """
 
+from everest.entities.attributes import EntityAttributeKinds
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
 from everest.querying.base import SpecificationVisitor
-from everest.querying.interfaces import ICqlFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationBuilder
 from everest.querying.interfaces import IFilterSpecificationDirector
-from everest.querying.interfaces import ISqlFilterSpecificationVisitor
+from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.operators import CONTAINED
 from everest.querying.operators import CONTAINS
 from everest.querying.operators import ENDS_WITH
@@ -26,15 +26,20 @@ from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import IResource
 from everest.url import resource_to_url
 from everest.url import url_to_resource
+from functools import partial
 from operator import and_ as operator_and
 from operator import or_ as operator_or
 from sqlalchemy import and_ as sqlalchemy_and
 from sqlalchemy import not_ as sqlalchemy_not
 from sqlalchemy import or_ as sqlalchemy_or
+from sqlalchemy.orm.interfaces import MANYTOMANY
+from sqlalchemy.orm.interfaces import MANYTOONE
+from sqlalchemy.orm.interfaces import ONETOMANY
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CqlFilterSpecificationVisitor',
+           'EvalFilterSpecificationVisitor',
            'FilterSpecificationBuilder',
            'FilterSpecificationDirector',
            'FilterSpecificationVisitor',
@@ -83,10 +88,16 @@ class FilterSpecificationBuilder(SpecificationBuilder):
     
     The filter specification builder is responsible for building concrete
     specs with build methods dispatched by the director and for forming 
-    disjunction specs when multiple values are given.
+    disjunction specs when a) multiple values are given in a single criterion;
+    or b) the same combination of attribute name and operator is encountered
+    multiple times.
     """
 
     implements(IFilterSpecificationBuilder)
+
+    def __init__(self, spec_factory):
+        SpecificationBuilder.__init__(self, spec_factory)
+        self.__history = set()
 
     def build_equal_to(self, attr_name, attr_values):
         self._record_specification(
@@ -175,11 +186,20 @@ class FilterSpecificationBuilder(SpecificationBuilder):
         self._record_specification(spec)
 
     def __build_spec(self, constructor, attr_name, attr_values):
+        # Check if this (constructor, attr_name) combination has been seen
+        # before. Currently, this is handled with an exception.
+        key = (constructor, attr_name)
+        if key in self.__history:
+            raise ValueError('Can not build multiple specifications with '
+                             'the same combination of attribute name and '
+                             'filter operator.')
+        else:
+            self.__history.add(key)
         # Builds a single specification with the given spec constructor, 
-        # attribute name and attribute values. If more than one attribute 
-        # value is given, one specification is built for each value and then
-        # all specs are combined in a disjunction.
+        # attribute name and attribute values. 
         spec = None
+        # Iterate over attribute values, forming disjunctions if more than one
+        # was provided.
         for attr_value in attr_values:
             cur_spec = constructor(attr_name, attr_value)
             if spec is None:
@@ -285,7 +305,7 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
     Filter specification visitor building a CQL expression.
     """
 
-    implements(ICqlFilterSpecificationVisitor)
+    implements(IFilterSpecificationVisitor)
 
     __cql_range_format = '%(from_value)s-%(to_value)s'
 
@@ -373,70 +393,73 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
     Filter specification visitor building a SQL expression.
     """
 
-    implements(ISqlFilterSpecificationVisitor)
+    implements(IFilterSpecificationVisitor)
 
-    def __init__(self, klass, clause_factories=None):
+    def __init__(self, entity_class, clause_factories=None):
         """
         Constructs a SqlFilterSpecificationVisitor
 
-        :param klass: a class that is mapped to a selectable using SQLAlchemy
+        :param entity_class: an entity class that is mapped with SQLAlchemy
+        :param clause_factories: a map containing custom clause factory 
+          functions for selected (attribute name, operator) combinations.
         """
         FilterSpecificationVisitor.__init__(self)
-        self.__klass = klass
+        self.__entity_class = entity_class
         if clause_factories is None:
             clause_factories = {}
         self.__clause_factories = clause_factories
 
-    def visit(self, spec):
+    def visit_nullary(self, spec):
         key = (spec.attr_name, spec.operator.name)
         if key in self.__clause_factories:
             self._push(self.__clause_factories[key](spec.attr_value))
         else:
-            SpecificationVisitor.visit(self, spec)
+            FilterSpecificationVisitor.visit_nullary(self, spec)
 
     def _starts_with_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr.startswith(self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'startswith',
+                            self.__preprocess_value(spec.attr_value))
 
     def _ends_with_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr.endswith(self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'endswith',
+                            self.__preprocess_value(spec.attr_value))
 
     def _contains_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr.contains(self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'contains',
+                            self.__preprocess_value(spec.attr_value))
 
     def _contained_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr.in_(self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'in_',
+                            self.__preprocess_value(spec.attr_value))
 
     def _equal_to_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr == self.__preprocess_value(spec.attr_value)
+        return self.__build(spec.attr_name, '__eq__',
+                            self.__preprocess_value(spec.attr_value))
 
     def _less_than_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr < spec.attr_value
+        return self.__build(spec.attr_name, '__lt__',
+                            self.__preprocess_value(spec.attr_value))
 
     def _less_than_or_equal_to_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr <= spec.attr_value
+        return self.__build(spec.attr_name, '__le__',
+                            self.__preprocess_value(spec.attr_value))
 
     def _greater_than_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr > spec.attr_value
+        return self.__build(spec.attr_name, '__gt__',
+                            self.__preprocess_value(spec.attr_value))
 
     def _greater_than_or_equal_to_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
-        return attr >= spec.attr_value
+        return self.__build(spec.attr_name, '__ge__',
+                            self.__preprocess_value(spec.attr_value))
 
     def _in_range_op(self, spec):
-        attr = getattr(self.__klass, spec.attr_name)
         from_value, to_value = spec.attr_value
-        return attr.between(from_value, to_value)
+        return self.__build(spec.attr_name, 'between',
+                            self.__preprocess_value(from_value),
+                            self.__preprocess_value(to_value))
 
-    def _conjunction_op(self, spec, *expressions): # unused pylint:disable=W0613
-        return sqlalchemy_and(*expressions) # pylint: disable=W0142
+    def _conjunction_op(self, spec, *expressions):
+        return sqlalchemy_and(*expressions)
 
     def _disjunction_op(self, spec, *expressions):
         return sqlalchemy_or(*expressions)
@@ -450,3 +473,109 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         else:
             conv_value = value
         return conv_value
+
+    def __build(self, attribute_name, sql_op, *values):
+        exprs = []
+        entity_type = self.__entity_class
+        last_kind = None
+        last_ent_attr_token = None
+        for ent_attr_token in attribute_name.split('.'):
+            if last_kind == EntityAttributeKinds.TERMINAL:
+                # We should not get here - the last attribute was a terminal.
+                raise ValueError('Invalid attribute name "%s": "%s" is '
+                                 'already a terminal attribute.'
+                                 % (attribute_name, last_ent_attr_token))
+            entity_attr = getattr(entity_type, ent_attr_token)
+            kind, attr_type = self.__classify_entity_attribute(entity_attr)
+            if kind == EntityAttributeKinds.TERMINAL:
+                expr = getattr(entity_attr, sql_op)(*values)
+            elif kind == EntityAttributeKinds.ENTITY:
+                expr = entity_attr.has
+                entity_type = attr_type
+            elif kind == EntityAttributeKinds.AGGREGATE:
+                expr = entity_attr.any
+                entity_type = attr_type
+            else:
+                raise ValueError('Unknown entity attribute kind "%s".' % kind)
+            last_kind = kind
+            last_ent_attr_token = ent_attr_token
+            exprs.append(expr)
+        return reduce(lambda g, h: g(h), exprs)
+
+    def __classify_entity_attribute(self, attr):
+        # We look for an attribute "property" to identify mapped attributes
+        # (instrumented attributes and attribute proxies).
+        if not hasattr(attr, 'property'):
+            raise ValueError('Attribute "%s" is not mapped.' % attr)
+        # We detect terminals by the absence of an "argument" attribute of
+        # the attribute's property.
+        if not hasattr(attr.property, 'argument'):
+            kind = EntityAttributeKinds.TERMINAL
+            target_type = None
+        else: # We have a relationship.
+            target_type = attr.property.argument
+            if attr.property.direction == ONETOMANY:
+                if not attr.property.uselist:
+                    # 1:1
+                    kind = EntityAttributeKinds.ENTITY
+                else:
+                    kind = EntityAttributeKinds.AGGREGATE
+            elif attr.property.direction == MANYTOONE:
+                kind = EntityAttributeKinds.ENTITY
+            elif attr.property.direction == MANYTOMANY:
+                kind = EntityAttributeKinds.AGGREGATE
+            else:
+                raise ValueError('Unsupported relationship direction "%s".'
+                                 % attr.property.direction)
+        return kind, target_type
+
+
+class EvalFilterSpecificationVisitor(FilterSpecificationVisitor):
+    """
+    Filter specification visitor building an evaluator for in-memory 
+    filtering.
+    """
+
+    implements(IFilterSpecificationVisitor)
+
+    __evaluator = lambda spec, entities: [ent for ent in entities
+                                          if spec.is_satisfied_by(ent)]
+
+    def _conjunction_op(self, spec, *expressions):
+        return partial(self.__evaluator, spec)
+
+    def _disjunction_op(self, spec, *expressions):
+        return partial(self.__evaluator, spec)
+
+    def _negation_op(self, spec, expression):
+        return partial(self.__evaluator, spec)
+
+    def _starts_with_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _ends_with_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _contains_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _contained_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _equal_to_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _less_than_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _less_than_or_equal_to_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _greater_than_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _greater_than_or_equal_to_op(self, spec):
+        return partial(self.__evaluator, spec)
+
+    def _in_range_op(self, spec):
+        return partial(self.__evaluator, spec)

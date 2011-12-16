@@ -20,6 +20,7 @@ __all__ = []
 class MyEntityParentMember(Member):
     relation = 'http://test.org/my-entity-parent'
     text = terminal_attribute('text', str)
+    text_rc = terminal_attribute('text_ent', str)
 
 
 class MyEntityMember(Member):
@@ -27,7 +28,9 @@ class MyEntityMember(Member):
     parent = member_attribute('parent', IMyEntityParent)
     children = collection_attribute('children', IMyEntityChild, is_nested=True)
     text = terminal_attribute('text', str)
+    text_rc = terminal_attribute('text_ent', str)
     number = terminal_attribute('number', int)
+    parent_text = terminal_attribute('parent.text_ent', str)
 
 
 class MyEntityChildMember(Member):
@@ -35,9 +38,11 @@ class MyEntityChildMember(Member):
     children = collection_attribute('children', IMyEntityGrandchild,
                                     is_nested=True)
     text = terminal_attribute('text', str)
+    text_rc = terminal_attribute('text_ent', str)
 
 
 class MyEntityGrandchildMember(Member):
     relation = 'http://test.org/my-entity-grandchild'
     text = terminal_attribute('text', str)
+    text_rc = terminal_attribute('text_ent', str)
 

@@ -9,18 +9,33 @@ from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = [
-           'ICqlFilterSpecificationVisitor',
-           'ICqlOrderSpecificationVisitor',
-           'IFilterSpecificationVisitor',
+__all__ = ['IFilterSpecificationVisitor',
            'IFilterSpecificationFactory',
-           'IKeyFunctionOrderSpecificationVisitor',
            'IOrderSpecificationVisitor',
-           'ISqlFilterSpecificationVisitor',
            ]
 
 
 # begin interfaces pylint: disable=E0213,W0232,E0211
+
+class ISpecification(Interface):
+    """
+    Specification interface.
+    """
+
+    operator = Attribute('The operator for this specification. Subclass of '
+                         ':class:`everest.querying.operators.Operator`.')
+
+    def accept(visitor):
+        """
+        Accept the given visitor into this specification.
+        
+        This triggers visits of this specification and all other dependent
+        specifications which in turn dispatch appropriate visiting operations.
+
+        :param visitor: a visitor that packages related operations
+        :type visitor: object implementing :class:`ISpecificationVisitor`
+        """
+
 
 class IFilterSpecificationFactory(Interface):
     """
@@ -82,25 +97,46 @@ class IOrderSpecificationFactory(Interface):
 
 
 class ISpecificationDirector(Interface):
-    def construct(query):
-        "Construct a specification from the given query expression."
+    """
+    A specification director coordinates an expression parser and a 
+    specification builder to generate a specification.
+    """
+
+    def construct(expression):
+        """
+        Constructs a specification (using a specification builder) from the 
+        result of parsing the given expression (using a parser for the given
+        expression).
+        """
 
     def has_errors():
-        "Checks if the call to :method:`construct` produced any errors."
+        """
+        Checks if the director encountered errors during the last call to 
+        :method:`construct`.
+        """
 
     def get_errors():
-        "Returns any errors the call to :method:`construct` produced."
+        """
+        Returns the errors that were encountered during the last call to
+        :method:`construct`
+        """
 
 
 class IFilterSpecificationDirector(ISpecificationDirector):
     "Interface for filter specification directors."
 
 
-class IFilterSpecificationBuilder(Interface):
+class ISpecificationBuilder(Interface):
+    """
+    Specification builder interface.
+    """
+
+    specification = Attribute('The specification the builder built.')
+
+
+class IFilterSpecificationBuilder(ISpecificationBuilder):
     """
     Filter specification builder interface.
-
-    Based on the Builder Design Pattern.
     """
 
     def build_equal_to(attr_name, attr_values):
@@ -150,225 +186,140 @@ class IOrderSpecificationDirector(ISpecificationDirector):
     "Interface for order specification directors."
 
 
-class IOrderSpecificationBuilder(Interface):
+class IOrderSpecificationBuilder(ISpecificationBuilder):
     """
     Abstract base class for all order specification builders.
 
     Based on the Builder Design Pattern.
     """
 
-    def build_asc(self, attr_name):
-        """
-        """
-        pass
+    def build_asc(attr_name):
+        "Build an ascending order specification."
 
-    def build_desc(self, attr_name):
-        """
-        """
-        pass
-
-    specification = Attribute('The built order specification')
+    def build_desc(attr_name):
+        "Build an descending order specification."
 
 
-class IVisitor(Interface):
+class ISpecificationVisitor(Interface):
+    """
+    Interface for specification visitors.
+    
+    The various visiting methods dispatch to the appropriate visiting 
+    operations depending on the passed specification's operator.
+    """
 
     expression = Attribute('The expression the visitor built.')
 
+    def visit_nullary(spec):
+        """
+        Visits the given specification with a dispatched visiting operation.
+        """
+
+    def visit_unary(spec):
+        """
+        Visits the given specification, passing the expression obtained from
+        processing the last specification as an argument to the visiting
+        operation.
+        """
+
+    def visit_binary(spec):
+        """
+        Visits the given specification, passing the expressions obtained from
+        processing the last two specifications as an arguments to the visiting
+        operation.
+        """
 
 
-class IFilterSpecificationVisitor(IVisitor):
+class IFilterSpecificationVisitor(ISpecificationVisitor):
     """
     Interface for filter specification visitors.
     """
 
-    def visit_conjuction(spec):
+    def _conjunction_op(spec, *expressions):
         """
-        Visit a conjuction filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ConjuctionFilterSpecification`
+        Visiting operation for conjunction specifications.
         """
 
-    def visit_disjuction(spec):
+    def _disjunction_op(spec, *expressions):
         """
-        Visit a disjuction filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.DisjuctionFilterSpecification`
+        Visiting operation for disjunction specifications.
         """
 
-    def visit_negation(spec):
+    def _negation_op(spec, expression):
         """
-        Visit a negation filter specification.
-
-        :param spec: filter specification
-        :type spec: :class:`everest.querying.specifications.NegationFilterSpecification`
+        Visiting operation for negation specifications.
         """
 
-    def visit_value_starts_with(spec):
+    def _starts_with_op(spec):
         """
-        Visit a value starts-with filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueStartsWithFilterSpecification`
+        Visiting operation for value starts with specifications.
         """
 
-    def visit_value_ends_with(spec):
+    def _ends_with_op(spec):
         """
-        Visit a value ends-with filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueEndsWithFilterSpecification`
+        Visiting operation for value ends with specifications.
         """
 
-    def visit_value_contains(spec):
+    def _contains_op(spec):
         """
-        Visit a value contains filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueContainsFilterSpecification`
+        Visiting operation for value contains specifications.
         """
 
-    def visit_value_contained(spec):
+    def _contained_op(spec):
         """
-        Visit a value contained filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueContainedFilterSpecification`
+        Visiting operation for value contained specifications.
         """
 
-    def visit_value_equal_to(spec):
+    def _equal_to_op(spec):
         """
-        Visit a value equal-to filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueEqualToFilterSpecification`
+        Visiting operation for value equal to specifications.
         """
 
-    def visit_value_less_than(spec):
+    def _less_than_op(spec):
         """
-        Visit a value less-than filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueLessThanFilterSpecification`
+        Visiting operation for value less than specifications.
         """
 
-    def visit_value_greater_than(spec):
+    def _less_than_or_equal_to_op(spec):
         """
-        Visit a value greater-than filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueGreaterThanFilterSpecification`
+        Visiting operation for value less than or equal to specifications.
         """
 
-    def visit_value_less_than_or_equal_to(spec):
+    def _greater_than_op(spec):
         """
-        Visit a value less-than-or-equal-to filter specification.
-
-        :param spec: filter specification
-        :type spec:  
-          :class:`everest.querying.specifications.ValueLessThanOrEqualToFilterSpecification`
+        Visiting operation for value greater than specifications.
         """
 
-    def visit_value_greater_than_or_equal_to(spec):
+    def _greater_than_or_equal_to_op(spec):
         """
-        Visit a value greater-than-or-equal-to filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-          :class:`everest.querying.specifications.ValueGreaterThanOrEqualToFilterSpecification`
+        Visiting operation for value greater than or equal to specifications.
         """
 
-    def visit_value_in_range(spec):
+    def _in_range_op(spec):
         """
-        Visit a value in-range filter specification.
-
-        :param spec: filter specification
-        :type spec: 
-            :class:`everest.querying.specifications.ValueInRangeFilterSpecification`
+        Visiting operation for value in range specifications.
         """
 
 
-class ICqlFilterSpecificationVisitor(IFilterSpecificationVisitor):
-    """
-    Marker interface for filter specification visitors that generate a CQL
-    expression.
-    """
-
-
-class ISqlFilterSpecificationVisitor(IFilterSpecificationVisitor):
-    """
-    Marker interface for filter specification visitors that generate a query
-    expression.
-    """
-
-
-class IOrderSpecificationVisitor(IVisitor):
+class IOrderSpecificationVisitor(ISpecificationVisitor):
     """
     Interface for order specification visitors that generate a query 
     expression.
     """
 
-    def visit_simple(order):
+    def _conjunction_op(spec, *expressions):
         """
-        Visit simple order.
-
-        :param order: an order instance
-        :type order: :class:`everest.ordering.SimpleOrderSpecification`
+        Visiting operation for conjunction specifications.
         """
 
-    def visit_natural(order):
+    def _asc_op(attr_name):
         """
-        Visit natural order.
-
-        :param spec: an order instance
-        :type spec: :class:`everest.ordering.NaturalOrderSpecification`
+        Visiting operation for ascending order specifications.
         """
 
-    def visit_reverse(order):
+    def _desc_op(attr_name):
         """
-        Visit order in reverse.
-
-        :param spec: an order instance
-        :type spec: :class:`everest.ordering.OrderSpecification`
+        Visiting operation for descending order specifications.
         """
-
-    def visit_conjunction(order):
-        """
-        Visit conjunction with order.
-
-        :param spec: an order instance
-        :type spec: :class:`everest.ordering.OrderSpecification`
-        """
-
-
-class ICqlOrderSpecificationVisitor(IOrderSpecificationVisitor):
-    """
-    Marker interface for order specification visitors that generate a CQL
-    expression.
-    """
-
-
-class ISqlOrderSpecificationVisitor(IOrderSpecificationVisitor):
-    """
-    Marker interface for order specification visitors that generate a query
-    expression.
-    """
-
-
-class IKeyFunctionOrderSpecificationVisitor(IOrderSpecificationVisitor):
-    """
-    Marker interface for order specification visitors that generate a key
-    function to pass to __cmp__.
-    """
 
 # end interfaces pylint: enable=E0213,W0232,E0211

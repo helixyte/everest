@@ -14,14 +14,23 @@ __all__ = []
 class _MyEntity(Entity):
     DEFAULT_TEXT = 'TEXT'
 
-    def __init__(self, text=None, **kw):
+    text = None
+    text_ent = None
+
+    def __init__(self, text=None, text_ent=None, **kw):
         Entity.__init__(self, **kw)
         if text is None:
             text = self.DEFAULT_TEXT
         self.text = text
+        if text_ent is None:
+            text_ent = self.DEFAULT_TEXT
+        self.text_ent = text_ent
 
 
 class MyEntityParent(_MyEntity):
+
+    child = None
+
     def __init__(self, child=None, **kw):
         _MyEntity.__init__(self, **kw)
         self.child = child
@@ -29,6 +38,10 @@ class MyEntityParent(_MyEntity):
 
 class MyEntity(_MyEntity):
     DEFAULT_NUMBER = 1
+
+    parent = None
+    children = None
+
     def __init__(self, parent=None, children=None, number=None, **kw):
         _MyEntity.__init__(self, **kw)
         self.parent = parent
@@ -46,6 +59,10 @@ class MyEntity(_MyEntity):
 
 
 class MyEntityChild(_MyEntity):
+
+    parent = None
+    children = None
+
     def __init__(self, parent=None, children=None, **kw):
         _MyEntity.__init__(self, **kw)
         self.parent = parent
@@ -60,6 +77,9 @@ class MyEntityChild(_MyEntity):
 
 
 class MyEntityGrandchild(_MyEntity):
+
+    parent = None
+
     def __init__(self, parent=None, **kw):
         _MyEntity.__init__(self, **kw)
         self.parent = parent
