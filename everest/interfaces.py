@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
@@ -23,7 +23,8 @@ __all__ = ['IAtomMime',
            'IXmlMime',
            'IXmlRequest',
            'IXlsMime',
-           'IXlsRequest'
+           'IXlsRequest',
+           'IZipMime'
            ]
 
 # no self, no __init__, no args  pylint: disable=E0213,W0232,E0211
@@ -44,12 +45,16 @@ class ICsvRequest(Interface):
     """Marker interface for an request."""
 
 
+class IHtmlRequest(Interface):
+    """Marker interface for a HTML request."""
+
+
 class IXlsRequest(Interface):
     """Marker interface for an Excel request."""
 
 
-class IHtmlRequest(Interface):
-    """Marker interface for a HTML request."""
+class IZipRequest(Interface):
+    """Marker interface for an Zip compressed request."""
 
 
 class IJsonMime(Interface):
@@ -82,6 +87,9 @@ class ICsvMime(Interface):
 
 class IXlsMime(Interface):
     """Marker interface for an Excel mime type."""
+
+class IZipMime(Interface):
+    """Marker interface for an Zip compressed mime type."""
 
 
 class IHtmlMime(Interface):

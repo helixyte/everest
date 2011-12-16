@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Package setup file.
@@ -41,7 +41,8 @@ install_requirements = [
     'rfc3339',
     'lxml>=2.3,<=2.3.99',
     'WSGIFilter',
-    'iso8601'
+    'iso8601',
+    'WebOb>=1.2b1'
     ]
 
 tests_requirements = install_requirements + [
