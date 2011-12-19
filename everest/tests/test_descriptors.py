@@ -293,24 +293,41 @@ class DescriptorsTestCase(ResourceTestCase):
     def test_filter_specification_visitor(self):
         coll = get_collection(IMyEntity)
         mb_cls = get_member_class(coll)
-        for spec, expected in zip(self._make_filter_specs(),
-                        [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
-                         ('text_ent', MyEntity.text_ent.__eq__(
+        member = self.__create_member()
+        spec_fac = FilterSpecificationFactory()
+        specs = [
+                # Terminal access.
+                spec_fac.create_equal_to('text', self.TEST_TEXT),
+                # Terminal access with different name in entity.
+                spec_fac.create_equal_to('text_rc', self.TEST_TEXT),
+                # Nested member access with different name in entity.
+                spec_fac.create_equal_to('parent.text_rc', self.TEST_TEXT),
+                # Nested collection access with different name in entity.
+                spec_fac.create_equal_to('children.text_rc', self.TEST_TEXT),
+                # Access with dotted entity name in rc attr declaration.
+                spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
+                # Access to member.
+                spec_fac.create_equal_to('parent', member.parent.get_entity()),
+                ]
+        expecteds = [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
+                     ('text_ent', MyEntity.text_ent.__eq__(
                                                         self.TEST_TEXT)),
-                         ('parent.text_ent',
+                     ('parent.text_ent',
                           MyEntity.parent.has(
                                     MyEntityParent.text_ent.__eq__(
                                                         self.TEST_TEXT))),
-                         ('children.text_ent',
+                     ('children.text_ent',
                           MyEntity.children.any(
                                     MyEntityChild.text_ent.__eq__(
                                                         self.TEST_TEXT))),
-                         ('parent.text_ent',
+                     ('parent.text_ent',
                           MyEntity.parent.has(
                                     MyEntityParent.text_ent.__eq__(
                                                         self.TEST_TEXT))),
-                         ],
-                                  ):
+                     ('parent',
+                          MyEntity.parent.__eq__(member.parent.get_entity())),
+                     ]
+        for spec, expected in zip(specs, expecteds):
             new_attr_name, expr = expected
             visitor = ResourceToEntityFilterSpecificationVisitor(mb_cls)
             spec.accept(visitor)
@@ -337,20 +354,6 @@ class DescriptorsTestCase(ResourceTestCase):
             reg.set_data_element_class(de_cls)
         gen = DataElementGenerator(reg)
         return gen
-
-    def _make_filter_specs(self):
-        spec_fac = FilterSpecificationFactory()
-        return [# Terminal access.
-                spec_fac.create_equal_to('text', self.TEST_TEXT),
-                # Terminal access with different name in entity.
-                spec_fac.create_equal_to('text_rc', self.TEST_TEXT),
-                # Nested member access with different name in entity.
-                spec_fac.create_equal_to('parent.text_rc', self.TEST_TEXT),
-                # Nested collection access with different name in entity.
-                spec_fac.create_equal_to('children.text_rc', self.TEST_TEXT),
-                # Access with dotted entity name in rc attr declaration.
-                spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
-                ]
 
     def __create_member(self):
         my_entity = MyEntity()

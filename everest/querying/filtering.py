@@ -23,6 +23,7 @@ from everest.querying.operators import IN_RANGE
 from everest.querying.operators import LESS_OR_EQUALS
 from everest.querying.operators import LESS_THAN
 from everest.querying.operators import STARTS_WITH
+from everest.querying.utils import OrmAttributeInspector
 from everest.resources.interfaces import IResource
 from everest.url import resource_to_url
 from everest.url import url_to_resource
@@ -32,9 +33,6 @@ from operator import or_ as operator_or
 from sqlalchemy import and_ as sqlalchemy_and
 from sqlalchemy import not_ as sqlalchemy_not
 from sqlalchemy import or_ as sqlalchemy_or
-from sqlalchemy.orm.interfaces import MANYTOMANY
-from sqlalchemy.orm.interfaces import MANYTOONE
-from sqlalchemy.orm.interfaces import ONETOMANY
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -404,7 +402,7 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
           functions for selected (attribute name, operator) combinations.
         """
         FilterSpecificationVisitor.__init__(self)
-        self.__entity_class = entity_class
+        self.__inspector = OrmAttributeInspector(entity_class)
         if clause_factories is None:
             clause_factories = {}
         self.__clause_factories = clause_factories
@@ -475,59 +473,22 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         return conv_value
 
     def __build(self, attribute_name, sql_op, *values):
+        # Builds an SQL expression from the given (possibly dotted) 
+        # attribute name, SQL operation name, and values.
         exprs = []
-        entity_type = self.__entity_class
-        last_kind = None
-        last_ent_attr_token = None
-        for ent_attr_token in attribute_name.split('.'):
-            if last_kind == EntityAttributeKinds.TERMINAL:
-                # We should not get here - the last attribute was a terminal.
-                raise ValueError('Invalid attribute name "%s": "%s" is '
-                                 'already a terminal attribute.'
-                                 % (attribute_name, last_ent_attr_token))
-            entity_attr = getattr(entity_type, ent_attr_token)
-            kind, attr_type = self.__classify_entity_attribute(entity_attr)
-            if kind == EntityAttributeKinds.TERMINAL:
+        infos = self.__inspector(attribute_name)
+        count = len(infos)
+        for idx, info in enumerate(infos):
+            kind, entity_attr = info
+            if idx == count - 1:
+                # 
                 expr = getattr(entity_attr, sql_op)(*values)
             elif kind == EntityAttributeKinds.ENTITY:
                 expr = entity_attr.has
-                entity_type = attr_type
             elif kind == EntityAttributeKinds.AGGREGATE:
                 expr = entity_attr.any
-                entity_type = attr_type
-            else:
-                raise ValueError('Unknown entity attribute kind "%s".' % kind)
-            last_kind = kind
-            last_ent_attr_token = ent_attr_token
             exprs.append(expr)
         return reduce(lambda g, h: g(h), exprs)
-
-    def __classify_entity_attribute(self, attr):
-        # We look for an attribute "property" to identify mapped attributes
-        # (instrumented attributes and attribute proxies).
-        if not hasattr(attr, 'property'):
-            raise ValueError('Attribute "%s" is not mapped.' % attr)
-        # We detect terminals by the absence of an "argument" attribute of
-        # the attribute's property.
-        if not hasattr(attr.property, 'argument'):
-            kind = EntityAttributeKinds.TERMINAL
-            target_type = None
-        else: # We have a relationship.
-            target_type = attr.property.argument
-            if attr.property.direction == ONETOMANY:
-                if not attr.property.uselist:
-                    # 1:1
-                    kind = EntityAttributeKinds.ENTITY
-                else:
-                    kind = EntityAttributeKinds.AGGREGATE
-            elif attr.property.direction == MANYTOONE:
-                kind = EntityAttributeKinds.ENTITY
-            elif attr.property.direction == MANYTOMANY:
-                kind = EntityAttributeKinds.AGGREGATE
-            else:
-                raise ValueError('Unsupported relationship direction "%s".'
-                                 % attr.property.direction)
-        return kind, target_type
 
 
 class EvalFilterSpecificationVisitor(FilterSpecificationVisitor):

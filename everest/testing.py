@@ -302,7 +302,7 @@ class ModelTestCase(DbTestCase):
     def _get_entity(self, icollection, key=None):
         agg = get_persistent_aggregate(icollection)
         if key is None:
-            agg.slice(slice(0, 1))
+            agg.slice = slice(0, 1)
             entity = list(agg.iterator())[0]
         else:
             entity = agg.get_by_slug(key)

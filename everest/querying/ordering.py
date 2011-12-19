@@ -16,6 +16,7 @@ S. Merritt, "An Inverted Taxonomy of Sorting Algorithms" Comm. of the ACM,
 Created on Jul 5, 2011.
 """
 
+from everest.entities.attributes import EntityAttributeKinds
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
@@ -24,6 +25,7 @@ from everest.querying.interfaces import IOrderSpecificationBuilder
 from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
+from everest.querying.utils import OrmAttributeInspector
 from operator import add as add_operator
 from operator import and_ as and_operator
 from zope.interface import implements # pylint: disable=E0611,F0401
@@ -186,42 +188,48 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
 
     implements(IOrderSpecificationVisitor)
 
-    def __init__(self, klass, order_conditions=None):
+    def __init__(self, entity_class, order_conditions=None):
         """
         Constructs a SqlOrderSpecificationVisitor
 
         :param klass: a class that is mapped to a selectable using SQLAlchemy
         """
         OrderSpecificationVisitor.__init__(self)
-        self.__klass = klass
+        self.__inspector = OrmAttributeInspector(entity_class)
         if order_conditions is None:
             order_conditions = {}
         self.__order_conditions = order_conditions
-        self.__joins = []
+        self.__joins = set()
+
+    def visit_nullary(self, spec):
+        if spec.attr_name in self.__order_conditions:
+            conditions = self.__order_conditions[spec.attr_name]
+            self.__joins.add(conditions['join'])
+            self._push((conditions['attr'],))
+        else:
+            OrderSpecificationVisitor.visit_nullary(self, spec)
 
     def get_joins(self):
-        return self.__joins[:]
+        return self.__joins.copy()
 
     def _conjunction_op(self, spec, *expressions):
         return reduce(add_operator, expressions)
 
     def _asc_op(self, spec):
-        attr = self.__get_attr(spec.attr_name)
-        return (attr.asc(),)
+        return self.__build(spec.attr_name, 'asc')
 
     def _desc_op(self, spec):
-        attr = self.__get_attr(spec.attr_name)
-        return (attr.desc(),)
+        return self.__build(spec.attr_name, 'desc')
 
-    def __get_attr(self, attr_name):
-        if attr_name in self.__order_conditions:
-            conditions = self.__order_conditions[attr_name]
-            if conditions['join'] not in self.__joins:
-                self.__joins.append(conditions['join'])
-            attr = conditions['attr']
-        else:
-            attr = getattr(self.__klass, attr_name)
-        return attr
+    def __build(self, attribute_name, sql_op):
+        expr = ()
+        for info in self.__inspector(attribute_name):
+            kind, entity_attr = info
+            if kind != EntityAttributeKinds.TERMINAL:
+                self.__joins.add(entity_attr)
+            else:
+                expr = (getattr(entity_attr, sql_op)(),)
+        return expr
 
 
 class EvalOrderSpecificationVisitor(OrderSpecificationVisitor):

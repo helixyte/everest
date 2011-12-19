@@ -213,7 +213,7 @@ class Aggregate(object):
         :type order_spec: instance of 
             :class:`everest.querying.specifications.OrderSpecification`
         """
-        return self.__implementation.order(order_spec)
+        self.__implementation.order = order_spec
 
     order = property(_get_order, _set_order,
                       doc="Order specification for the aggregate.")
