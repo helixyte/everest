@@ -337,6 +337,10 @@ class DescriptorsTestCase(ResourceTestCase):
             new_spec.accept(visitor)
             self.assert_equal(str(visitor.expression), str(expr))
 
+    def test_nested_access(self):
+        member = self.__create_member()
+        self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
+
     def _make_data_element_generator(self):
         reg = SimpleDataElementRegistry()
         # We configure the DataElementGenerator to dump all data explicitly.

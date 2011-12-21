@@ -232,11 +232,7 @@ class DbTestCase(BaseTestCase):
         ini_parser = self.test_app_cls.read_ini_file()
         ini_marker = 'app:%s' % self.test_app_cls.app_name
         db_string = ini_parser.get(ini_marker, 'db_string')
-        if ini_parser.has_option(ini_marker, 'db_echo'):
-            db_echo = ini_parser.getboolean(ini_marker, 'db_echo')
-        else:
-            db_echo = False
-        return db_string, db_echo
+        return db_string
 
     def _test_model_attributes(self, model_class, attribute_map,
                                test_attributes=True):

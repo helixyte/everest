@@ -195,7 +195,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         :param klass: a class that is mapped to a selectable using SQLAlchemy
         """
         OrderSpecificationVisitor.__init__(self)
-        self.__inspector = OrmAttributeInspector(entity_class)
+        self.__entity_class = entity_class
         if order_conditions is None:
             order_conditions = {}
         self.__order_conditions = order_conditions
@@ -223,12 +223,15 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
 
     def __build(self, attribute_name, sql_op):
         expr = ()
-        for info in self.__inspector(attribute_name):
+        infos = OrmAttributeInspector.inspect(self.__entity_class,
+                                              attribute_name)
+        count = len(infos)
+        for idx, info in enumerate(infos):
             kind, entity_attr = info
-            if kind != EntityAttributeKinds.TERMINAL:
-                self.__joins.add(entity_attr)
-            else:
+            if idx == count - 1:
                 expr = (getattr(entity_attr, sql_op)(),)
+            elif kind == EntityAttributeKinds.ENTITY:
+                self.__joins.add(entity_attr)
         return expr
 
 

@@ -5,9 +5,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 5, 2011.
 """
 
+from pyparsing import Combine
 from pyparsing import Group
 from pyparsing import Literal
 from pyparsing import Word
+from pyparsing import ZeroOrMore
 from pyparsing import alphas
 from pyparsing import delimitedList
 from pyparsing import oneOf
@@ -19,7 +21,9 @@ __all__ = ['parse_order',
 
 colon = Literal(':')
 tilde = Literal('~')
-identifier = Word(alphas, alphas + '-').setName('identifier')
+attribute = Word(alphas, alphas + '-')
+identifier = Combine(attribute + ZeroOrMore('.' + attribute)
+                     ).setName('identifier')
 direction = oneOf("asc desc").setName('direction')
 order_criterion = Group(identifier('name') + colon.suppress() + \
                    direction('operator')).setResultsName('order')

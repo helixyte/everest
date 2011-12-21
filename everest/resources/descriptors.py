@@ -54,10 +54,27 @@ class attribute_base(object):
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
 
-    def _resolve_attribute(self, entity, attr_name):
+    def _set_nested(self, entity, attr_name, value):
+        parent, attr_name = self.__resolve_nested(entity, attr_name)
+        if parent is None:
+            raise AttributeError('Can not set attribute "%s" on None value.'
+                                 % attr_name)
+        setattr(parent, attr_name, value)
+
+    def _get_nested(self, entity, attr_name):
+        parent, attr_name = self.__resolve_nested(entity, attr_name)
+        if not parent is None:
+            attr_value = getattr(parent, attr_name)
+        else:
+            attr_value = None
+        return attr_value
+
+    def __resolve_nested(self, entity, attr_name):
         tokens = attr_name.split('.')
         for token in tokens[:-1]:
             entity = getattr(entity, token)
+            if entity is None:
+                break
         return (entity, tokens[-1])
 
 
@@ -75,15 +92,11 @@ class terminal_attribute(attribute_base):
             # Class level access.
             obj = self
         else:
-            parent, attr = self._resolve_attribute(resource.get_entity(),
-                                                   self.attr_name)
-            obj = getattr(parent, attr)
+            obj = self._get_nested(resource.get_entity(), self.attr_name)
         return obj
 
     def __set__(self, resource, value):
-        parent, attr_name = self._resolve_attribute(resource.get_entity(),
-                                                    self.attr_name)
-        setattr(parent, attr_name, value)
+        self._set_nested(resource.get_entity(), self.attr_name, value)
 
 
 class _relation_attribute(attribute_base):
@@ -114,9 +127,7 @@ class member_attribute(_relation_attribute):
     """
     def __get__(self, resource, resource_class):
         if not resource is None:
-            parent, attr_name = self._resolve_attribute(resource.get_entity(),
-                                                        self.attr_name)
-            obj = getattr(parent, attr_name)
+            obj = self._get_nested(resource.get_entity(), self.attr_name)
             if not obj is None:
                 if not self.is_nested:
                     member = as_member(obj)
@@ -132,9 +143,8 @@ class member_attribute(_relation_attribute):
         return member
 
     def __set__(self, resource, value):
-        parent, attr_name = self._resolve_attribute(resource.get_entity(),
-                                                    self.attr_name)
-        setattr(parent, attr_name, value.get_entity())
+        self._set_nested(resource.get_entity(), self.attr_name,
+                         value.get_entity())
 
 
 class collection_attribute(_relation_attribute):
@@ -154,7 +164,7 @@ class collection_attribute(_relation_attribute):
             # Create relation collection. We can not just return the
             # entity attribute here as that would load the whole entity
             # collection (Alternatively, we could use dynamic attributes).
-            rel = ResourceRelation(resource, self.attr_name,
+            rel = ResourceRelation(resource.get_entity(), self.attr_name,
                                    relatee_attribute=self.backref_attr_name,
                                    make_absolute=not self.is_nested)
             agg = get_aggregate(self.attr_type, relation=rel)
@@ -171,11 +181,10 @@ class collection_attribute(_relation_attribute):
         return coll
 
     def __set__(self, resource, value):
-        entity = resource.get_entity()
-        ent_coll = getattr(entity, self.attr_name)
+        ent_coll = self._get_nested(resource.get_entity(), self.attr_name)
         ent_coll_cls = type(ent_coll)
-        setattr(entity, self.attr_name,
-                ent_coll_cls([mb.get_entity() for mb in value]))
+        new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])
+        self._set_nested(resource.get_entity(), self.attr_name, new_ent_coll)
 
 
 class attribute_alias(object):

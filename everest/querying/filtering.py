@@ -402,7 +402,7 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
           functions for selected (attribute name, operator) combinations.
         """
         FilterSpecificationVisitor.__init__(self)
-        self.__inspector = OrmAttributeInspector(entity_class)
+        self.__entity_class = entity_class
         if clause_factories is None:
             clause_factories = {}
         self.__clause_factories = clause_factories
@@ -476,7 +476,8 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         # Builds an SQL expression from the given (possibly dotted) 
         # attribute name, SQL operation name, and values.
         exprs = []
-        infos = self.__inspector(attribute_name)
+        infos = OrmAttributeInspector.inspect(self.__entity_class,
+                                              attribute_name)
         count = len(infos)
         for idx, info in enumerate(infos):
             kind, entity_attr = info
@@ -485,10 +486,11 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
                 expr = getattr(entity_attr, sql_op)(*values)
             elif kind == EntityAttributeKinds.ENTITY:
                 expr = entity_attr.has
+                exprs.insert(0, expr)
             elif kind == EntityAttributeKinds.AGGREGATE:
                 expr = entity_attr.any
-            exprs.append(expr)
-        return reduce(lambda g, h: g(h), exprs)
+                exprs.insert(0, expr)
+        return reduce(lambda g, h: h(g), exprs, expr)
 
 
 class EvalFilterSpecificationVisitor(FilterSpecificationVisitor):

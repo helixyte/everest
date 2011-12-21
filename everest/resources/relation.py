@@ -16,7 +16,7 @@ __all__ = ['ResourceRelation',
 
 class ResourceRelation(object):
     """
-    Represents a relation between two resources (relator and relatee).
+    Represents a relation between two entities (relator and relatee).
 
     :ivar relator: relator entity
     :ivar relatee: relatee entity collection
@@ -26,44 +26,47 @@ class ResourceRelation(object):
         attribute of the entities in this relation that references the
         relator entity.
     """
-    def __init__(self, resource, relator_attribute,
+    def __init__(self, entity, relator_attribute,
                  relatee_attribute=None, make_absolute=True):
-        self.__resource = resource
+        self.__entity = entity
         self.relator_attribute = relator_attribute
         self.relatee_attribute = relatee_attribute
         self.make_absolute = make_absolute
 
     @property
     def relator(self):
-        return self.__resource.get_entity()
+        return self.__entity
 
     @property
     def relatee(self):
-        ent = self.__resource.get_entity()
-        return getattr(ent, self.relator_attribute)
+        ent = self.__entity
+        for ent_attr_token in self.relator_attribute.split('.'):
+            ent = getattr(ent, ent_attr_token)
+        return ent
 
     def make_relation_spec(self):
         # Build a relation spec we need to build an absolute URL for this
         # relation aggregate.
         spec_fac = get_utility(IFilterSpecificationFactory)
         if not self.relatee_attribute is None:
-            # Simple 1:n case: Build a related.attr_name == resource
-            # specification.
+            # Simple case: We have an attribute in the relatee that references
+            # the relator, so a single "equal_to" specification is sufficient.
+            ent = self.__entity
+            for ent_attr_token in self.relator_attribute.split('.')[:-1]:
+                ent = getattr(self.__entity, ent_attr_token)
             rel_spec = spec_fac.create_equal_to(self.relatee_attribute,
-                                                self.__resource)
+                                                ent)
         else:
-            # Complex n:m case: Iterate over the entities in the
-            # collection and union id == entity.id specifications.
-            entities = getattr(self.relator, self.relator_attribute)
+            # Complex case: Use the IDs of the related entities to form
+            # a "contained" specification. This is slow because iteration
+            # over all entities in the collection is required.
+            entities = self.relatee
             if len(entities) > 0:
                 ids = [entity.id for entity in entities]
                 rel_spec = spec_fac.create_contained('id', ids)
-#                specs = [spec_fac.create_equal_to('id', entity.id)
-#                         for entity in entities]
-#                rel_spec = reduce(spec_fac.create_disjunction, specs)
             else:
                 # Create impossible search criterion for empty collection.
-                rel_spec = spec_fac.create_equal_to('id', -1)
+                rel_spec = spec_fac.create_equal_to('id', None)
         return rel_spec
 
     def make_filter_spec(self, filter_spec):
