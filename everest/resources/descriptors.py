@@ -9,8 +9,9 @@ Created on Apr 19, 2011.
 
 from everest.entities.utils import get_aggregate
 from everest.resources.interfaces import ICollectionResource
-from everest.resources.relation import ResourceRelation
+from everest.querying.nesting import Nesting
 from everest.resources.utils import as_member
+from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.utils import id_generator
 from repoze.bfg.traversal import find_root
@@ -152,29 +153,50 @@ class collection_attribute(_relation_attribute):
     Descriptor for declaring collection attributes of a resource as attributes
     from its underlying entity.
     """
-    def __init__(self, attr_name, attr_type, backref_attr_name=None, **kw):
+    def __init__(self, attr_name, attr_type, backref_attr_name=None,
+                 is_nested=True, ** kw):
         """
         :param str backref_attr_name:
         """
-        _relation_attribute.__init__(self, attr_name, attr_type, **kw)
+        _relation_attribute.__init__(self, attr_name, attr_type,
+                                     is_nested=is_nested, **kw)
         self.backref_attr_name = backref_attr_name
+        self.__resource_backref_attr_name = None
+        self.__entity_backref_attr_name = None
+        self.__need_backref_setup = True
 
     def __get__(self, resource, resource_class):
+        if self.__need_backref_setup:
+            self.__setup_backref()
         if not resource is None:
             # Create relation collection. We can not just return the
             # entity attribute here as that would load the whole entity
             # collection (Alternatively, we could use dynamic attributes).
-            rel = ResourceRelation(resource.get_entity(), self.attr_name,
-                                   relatee_attribute=self.backref_attr_name,
-                                   make_absolute=not self.is_nested)
-            agg = get_aggregate(self.attr_type, relation=rel)
-            coll = get_adapter(agg, ICollectionResource)
-            if self.is_nested:
-                # Make URL generation relative to the resource.
-                coll.__parent__ = resource
+            parent = resource.get_entity()
+            children = None
+            for attr_token in self.attr_name.split('.'):
+                if children is None:
+                    children = getattr(parent, attr_token)
+                else:
+                    children = getattr(children, attr_token)
+                if children is None:
+                    break
+            if children is None:
+                coll = None
             else:
-                # Make URL generation relative to the app root.
-                coll.__parent__ = find_root(resource)
+                nst = Nesting(parent, children,
+                              backref_attribute=self.__entity_backref_attr_name)
+                agg = get_aggregate(self.attr_type, relation=nst)
+                coll = get_adapter(agg, ICollectionResource)
+                if self.is_nested:
+                    # Make URL generation relative to the resource.
+                    coll.set_parent(resource)
+                else:
+                    # Make URL generation relative to the app root.
+                    nst = Nesting(resource, coll,
+                                  backref_attribute=
+                                            self.__resource_backref_attr_name)
+                    coll.set_parent(find_root(resource), nesting=nst)
         else:
             # Class level access.
             coll = self
@@ -185,6 +207,18 @@ class collection_attribute(_relation_attribute):
         ent_coll_cls = type(ent_coll)
         new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])
         self._set_nested(resource.get_entity(), self.attr_name, new_ent_coll)
+
+    def __setup_backref(self):
+        attr_mb_class = get_member_class(self.attr_type)
+        if not self.backref_attr_name is None:
+            backref_rc_descr = getattr(attr_mb_class,
+                                       self.backref_attr_name, None)
+            if not backref_rc_descr is None:
+                self.__resource_backref_attr_name = self.backref_attr_name
+                self.__entity_backref_attr_name = backref_rc_descr.attr_name
+            else:
+                self.__entity_backref_attr_name = self.backref_attr_name
+        self.__need_backref_setup = False
 
 
 class attribute_alias(object):

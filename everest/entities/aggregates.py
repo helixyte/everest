@@ -279,7 +279,7 @@ class MemoryRelationAggregateImpl(MemoryAggregateImpl):
 
     def __init__(self, entity_class, relation):
         MemoryAggregateImpl.__init__(self, entity_class)
-        # Resource relation (:class:`everest.resources.base.ResourceRelation`).
+        # Parent-children relation (:class:`everest.querying.Nesting`).
         self.__relation = relation
 
     @classmethod
@@ -292,14 +292,10 @@ class MemoryRelationAggregateImpl(MemoryAggregateImpl):
         return clone
 
     def _get_entities(self):
-        return self.__relation.relatee
+        return self.__relation.children
 
     def _set_entities(self, entities):
-        self.__relation.relatee = entities
-
-    def get_filter_spec(self):
-        #: Overridden to handle absolute vs. relative specs.
-        return self.__relation.make_filter_spec(self._filter_spec)
+        self.__relation.children = entities
 
 
 class OrmAggregateImpl(AggregateImpl):
@@ -380,10 +376,8 @@ class OrmAggregateImpl(AggregateImpl):
         raise NotImplementedError('Abstract method.')
 
     def _get_data_query(self):
-        if self._slice_key is None:
-            query = self.__get_ordered_query(None)
-        else:
-            query = self.__get_ordered_query(self._slice_key)
+        query = self.__get_ordered_query(self._slice_key)
+        if not self._slice_key is None:
             query = query.slice(self._slice_key.start,
                                 self._slice_key.stop)
         return query
@@ -443,7 +437,7 @@ class OrmRelationAggregateImpl(OrmAggregateImpl):
     def __init__(self, entity_class, session, relation, search_mode=False):
         OrmAggregateImpl.__init__(self, entity_class, session,
                                   search_mode=search_mode)
-        # Resource relation (:class:`everest.resources.base.ResourceRelation`).
+        # Parent-children relation (:class:`everest.querying.Nesting`).
         self.__relation = relation
 
     @classmethod
@@ -453,10 +447,10 @@ class OrmRelationAggregateImpl(OrmAggregateImpl):
         return cls(entity_class, session, relation, search_mode=search_mode)
 
     def add(self, entity):
-        self.__relation.relatee.append(entity)
+        self.__relation.children.append(entity)
 
     def remove(self, entity):
-        self.__relation.relatee.remove(entity)
+        self.__relation.children.remove(entity)
 
     def count(self):
         # We need a flush here because we may have newly added entities
@@ -472,26 +466,13 @@ class OrmRelationAggregateImpl(OrmAggregateImpl):
         self._session.flush()
         return OrmAggregateImpl.iterator(self)
 
-    def get_filter_spec(self):
-        #: Overridden to handle absolute vs. relative specs.
-        return self.__relation.make_filter_spec(self._filter_spec)
-
     def _get_base_query(self):
-        rel_spec = self.__relation.make_relation_spec()
+        # Pre-filter the base query with the relation specification.
+        rel_spec = self.__relation.specification
         visitor = self._filter_visitor_factory()
         rel_spec.accept(visitor)
         expr = visitor.expression
         return self._session.query(self._entity_class).filter(expr)
-
-#        # Identify the target model class for the relationship and
-#        # construct a query for it.
-#        relator = self.__relation.relator
-#        mapper = object_mapper(relator)
-#        rel_property = \
-#                mapper.get_property(self.__relation.relator_attribute)
-#        model_class = rel_property.argument
-#        assert IEntity in provided_by(object.__new__(model_class))
-#        return self._session.query(model_class).with_parent(relator)
 
 
 class PersistentStagingContextManager(StagingContextManagerBase):

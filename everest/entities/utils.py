@@ -39,11 +39,7 @@ def get_aggregate(rc, relation=None, **kw):
     :param rc: registered resource
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
-    :param related_to: indicates that the aggregate is defined as a subset
-        of the root aggregate through a relation
-    :type related_to: tuple containing two elements, first the related parent
-        entity and second the name of the attribute in the parent that
-        references the aggregate
+    :param relation: 
     :return: aggregate instance
         (object providing :class:`everest.entities.interfaces.IAggregate`)
     """

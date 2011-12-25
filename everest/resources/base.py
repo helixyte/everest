@@ -8,9 +8,13 @@ Created on Nov 3, 2011.
 """
 
 from everest.entities.utils import get_entity_class
+from everest.querying.base import SpecificationVisitorBase
+from everest.querying.interfaces import IFilterSpecificationFactory
+from everest.querying.interfaces import ISpecificationVisitor
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
 from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -23,12 +27,10 @@ from repoze.bfg.security import Allow
 from repoze.bfg.security import Authenticated
 from repoze.bfg.traversal import model_path
 from zope.component import createObject as create_object # pylint: disable=E0611,F0401
+from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
-from everest.querying.base import SpecificationVisitorBase
-from everest.querying.interfaces import ISpecificationVisitor
-from everest.resources.attributes import get_resource_class_attributes
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -291,6 +293,8 @@ class Collection(Resource):
         self._order_spec = None
         # The underlying aggregate.
         self.__aggregate = aggregate
+        #
+        self.__nesting = None
 
     @classmethod
     def create_from_aggregate(cls, aggregate):
@@ -314,6 +318,10 @@ class Collection(Resource):
         """
         parser = DataElementParser()
         return parser.extract_collection_resource(data_element)
+
+    def set_parent(self, parent, nesting=None):
+        self.__parent__ = parent
+        self.__nesting = nesting
 
     def __len__(self):
         """
@@ -440,7 +448,19 @@ class Collection(Resource):
             self.add(new_member)
 
     def _get_filter(self):
-        return self._filter_spec
+        if self.__nesting is None:
+            filter_spec = self._filter_spec
+        else:
+            # If we have nesting information, we need to prepend the 
+            # relation specification to the current filter specification.
+            if self._filter_spec is None:
+                filter_spec = self.__nesting.specification
+            else:
+                spec_fac = get_utility(IFilterSpecificationFactory)
+                filter_spec = \
+                    spec_fac.create_conjunction(self.__nesting.specification,
+                                                self._filter_spec)
+        return filter_spec
 
     def _set_filter(self, filter_spec):
         # Translate to entity filter expression before passing on to the 

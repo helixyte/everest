@@ -202,9 +202,8 @@ class DbTestCase(BaseTestCase):
         # Initialize the engine, if necessary. Note that this should only
         # be done once per process.
         if not is_db_engine_initialized():
-            db_string, db_echo = self._get_db_info_from_ini_file()
+            db_string = self._get_db_info_from_ini_file()
             engine = create_engine(db_string)
-            engine.echo = db_echo
             set_db_engine(engine)
         else:
             engine = get_db_engine()
@@ -231,8 +230,7 @@ class DbTestCase(BaseTestCase):
         # Extract DB initialization strings from the ini file.
         ini_parser = self.test_app_cls.read_ini_file()
         ini_marker = 'app:%s' % self.test_app_cls.app_name
-        db_string = ini_parser.get(ini_marker, 'db_string')
-        return db_string
+        return ini_parser.get(ini_marker, 'db_string')
 
     def _test_model_attributes(self, model_class, attribute_map,
                                test_attributes=True):
