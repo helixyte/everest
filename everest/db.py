@@ -88,3 +88,15 @@ reset_metadata = _MetaDataManager.reset
 #: The scoped session maker. Instantiate this to obtain a thread local
 #: session instance.
 Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
+
+
+def commit_veto(environ, status, headers): # unused pylint: disable=W0613
+    """
+    Strict commit veto to use with the repoze.tm transaction manager.
+    
+    Unlike the default commit veto supplied with the transaction manager,
+    this will veto all commits for HTTP status codes other than 2xx unless
+    a commit is explicitly requested by setting the "x-tm" response header to
+    "commit".
+    """
+    return not status.startswith('2') and not headers.get('x-tm') == 'commit'
