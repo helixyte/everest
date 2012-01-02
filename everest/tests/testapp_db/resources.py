@@ -14,7 +14,11 @@ from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['MyEntityChildMember',
+           'MyEntityMember',
+           'MyEntityGrandchildMember',
+           'MyEntityParentMember',
+           ]
 
 
 class MyEntityParentMember(Member):
@@ -26,7 +30,8 @@ class MyEntityParentMember(Member):
 class MyEntityMember(Member):
     relation = 'http://test.org/my-entity'
     parent = member_attribute('parent', IMyEntityParent)
-    children = collection_attribute('children', IMyEntityChild, is_nested=True)
+    nested_parent = member_attribute('parent', IMyEntityParent, is_nested=True)
+    children = collection_attribute('children', IMyEntityChild)
     text = terminal_attribute('text', str)
     text_rc = terminal_attribute('text_ent', str)
     number = terminal_attribute('number', int)
@@ -36,7 +41,10 @@ class MyEntityMember(Member):
 class MyEntityChildMember(Member):
     relation = 'http://test.org/my-entity-child'
     children = collection_attribute('children', IMyEntityGrandchild,
-                                    is_nested=True)
+                                    is_nested=False,
+                                    backref_attr='parent')
+    no_backref_children = collection_attribute('children', IMyEntityGrandchild,
+                                    is_nested=False)
     text = terminal_attribute('text', str)
     text_rc = terminal_attribute('text_ent', str)
 
@@ -45,4 +53,4 @@ class MyEntityGrandchildMember(Member):
     relation = 'http://test.org/my-entity-grandchild'
     text = terminal_attribute('text', str)
     text_rc = terminal_attribute('text_ent', str)
-
+    parent = member_attribute('parent', IMyEntityChild)

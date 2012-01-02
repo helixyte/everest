@@ -13,6 +13,7 @@ from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import ISpecificationVisitor
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
+from everest.resources.attributes import ResourceAttributeControllerMixin
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.descriptors import terminal_attribute
@@ -103,7 +104,7 @@ class Resource(object):
         return uuid.uuid5(uuid.NAMESPACE_URL, self.path).urn
 
 
-class Member(Resource):
+class Member(ResourceAttributeControllerMixin, Resource):
     """
     This is an abstract class for all member resources.
     """
@@ -112,7 +113,7 @@ class Member(Resource):
 
     id = terminal_attribute('id', int)
 
-    def __init__(self, entity):
+    def __init__(self, entity, name=None):
         """
         Constructor:
 
@@ -128,18 +129,23 @@ class Member(Resource):
             raise ValueError(
                     'Invalid entity class "%s" for %s resource class.'
                     % (entity.__class__.__name__, self.__class__.__name__))
-        Resource.__init__(self)
+        super(Member, self).__init__()
         self.__entity = entity
         # Add the rel="self" link.
         self.add_link(Link(self, "self"))
+        self.__name = name
 
-    @property
-    def __name__(self):
+    def _get__name__(self):
         """
-        Member resources have a read-only __name__ attribute determined by
-        they underlying entitie's slug.
+        The name of a member resource defaults to the underlying entitie's 
+        slug.
         """
-        return self.__entity.slug
+        return self.__name or self.__entity.slug
+
+    def _set__name__(self, name):
+        self.__name = name
+
+    __name__ = property(_get__name__, _set__name__)
 
     @classmethod
     def create_from_entity(cls, entity):
@@ -215,6 +221,12 @@ class Member(Resource):
                         self_rc.update_from_data(rc_data_el)
             else:
                 raise ValueError('Invalid resource attribute kind.')
+
+    def __getitem__(self, item):
+        attr = get_resource_class_attributes(self.__class__).get(item)
+        if attr is None or not attr.is_nested:
+            raise KeyError('%s' % item)
+        return getattr(self, item)
 
     def __eq__(self, other):
         """

@@ -17,6 +17,7 @@ Created on Jul 5, 2011.
 """
 
 from everest.entities.attributes import EntityAttributeKinds
+from everest.entities.utils import slug_from_identifier
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
@@ -178,7 +179,7 @@ class CqlOrderSpecificationVisitor(OrderSpecificationVisitor):
                                   CQL_ORDER_OPERATORS.DESCENDING.name)
 
     def __preprocess_attribute(self, attr_name):
-        return attr_name.replace('_', '-')
+        return slug_from_identifier(attr_name)
 
 
 class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):

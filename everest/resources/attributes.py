@@ -11,6 +11,7 @@ from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
+from everest.resources.utils import get_member_class
 from everest.utils import OrderedDict
 
 __docformat__ = 'reStructuredText en'
@@ -63,114 +64,132 @@ class ResourceAttribute(object):
         return self.entity_name
 
 
-class _ResourceClassAttributeInspector(object):
+class MetaResourceAttributeCollector(type):
     """
-    Helper class for extracting information about resource attributes from
-    classes using .
+    Meta class for member resource classes managing declared attributes.
 
     Extracts relevant information from the resource class descriptors for
     use e.g. in the representers.
     """
 
-    __descr_cache = {}
-    __attr_cache = {}
+    def __init__(mcs, name, bases, class_dict):
+        # Skip classes that are direct subclasses of the base mixin class.
+        if name != 'ResourceAttributeControllerMixin' \
+           and not ResourceAttributeControllerMixin in bases:
+            dicts = [base.__dict__ for base in bases[::-1]] + [class_dict]
+            attr_map = mcs.__collect_attributes(dicts)
+            # Store in class namespace.
+            mcs._attributes = attr_map
+        type.__init__(mcs, name, bases, class_dict)
 
-    @staticmethod
-    def is_atomic(rc_cls, attr):
+    def __collect_attributes(mcs, dicts):
+        # Loop over the namespace of the given resource class and its base 
+        # classes looking for descriptors inheriting from
+        # :class:`everest.resources.descriptors.attribute_base`.
+        descr_map = {}
+        for base_cls_namespace in dicts:
+            for descr_name, descr in base_cls_namespace.iteritems():
+                if isinstance(descr, attribute_base):
+                    descr_map[descr_name] = descr
+        # Order by descriptor ID (=sequence in which they were declared).
+        ordered_descr_map = OrderedDict()
+        cmp_fnc = lambda item1, item2: cmp(item1[1].id, item2[1].id)
+        for item in sorted(descr_map.items(), cmp=cmp_fnc):
+            ordered_descr_map[item[0]] = item[1]
+        # Builds :class:`everest.resources.attributes.ResourceAttribute`
+        # instances from resource descriptor information. Also, sets the
+        # `resource_name` attribute in the collected descriptors.
+        attr_map = OrderedDict()
+        for attr_name, descr in ordered_descr_map.items():
+            # It would be awkward to repeat the resource attribute name 
+            # in the parameters to the descriptor, so we set it manually
+            # here.
+            descr.resource_attr = attr_name
+            if type(descr) is terminal_attribute:
+                attr_kind = ResourceAttributeKinds.TERMINAL
+                is_nested = None
+            else:
+                is_nested = descr.is_nested
+                if type(descr) is member_attribute:
+                    attr_kind = ResourceAttributeKinds.MEMBER
+                elif type(descr) is collection_attribute:
+                    attr_kind = ResourceAttributeKinds.COLLECTION
+                else:
+                    raise ValueError('Unknown resource attribute type.')
+            attr = ResourceAttribute(attr_name, attr_kind,
+                                     descr.entity_type,
+                                     entity_name=descr.entity_attr,
+                                     is_nested=is_nested)
+            attr_map[attr_name] = attr
+        return attr_map
+
+
+class ResourceAttributeControllerMixin(object):
+    __metaclass__ = MetaResourceAttributeCollector
+
+    # Populated by the meta class.
+    _attributes = None
+
+    @classmethod
+    def is_atomic(cls, attr):
         """
         Checks if the given attribute of the given resource class is an
         atomic attribute.
         """
-        descr_map = _ResourceClassAttributeInspector.__get_descrs(rc_cls)
-        return type(descr_map[attr]) is terminal_attribute
+        return cls._attributes[attr].kind == ResourceAttributeKinds.TERMINAL
 
-    @staticmethod
-    def is_member(rc_cls, attr):
+    @classmethod
+    def is_member(cls, attr):
         """
         Checks if the given attribute of the given resource class is a
         member resource attribute.
         """
-        descr_map = _ResourceClassAttributeInspector.__get_descrs(rc_cls)
-        return type(descr_map[attr]) is member_attribute
+        return cls._attributes[attr].kind == ResourceAttributeKinds.MEMBER
 
-    @staticmethod
-    def is_collection(rc_cls, attr):
+    @classmethod
+    def is_collection(cls, attr):
         """
         Checks if the given attribute of the given resource class is an
         collection resource attribute.
         """
-        descr_map = _ResourceClassAttributeInspector.__get_descrs(rc_cls)
-        return type(descr_map[attr]) is collection_attribute
+        return cls._attributes[attr].kind == ResourceAttributeKinds.COLLECTION
 
-    @staticmethod
-    def get_names(rc_cls):
+    @classmethod
+    def get_attribute_names(cls):
         """
         Returns all attribute names of the given resource class.
         """
-        return _ResourceClassAttributeInspector.__get_descrs(rc_cls).keys()
+        return cls._attributes.keys()
 
-    @staticmethod
-    def get_attributes(rc_cls):
+    @classmethod
+    def get_attributes(cls):
         """
         Returns a dictionary mapping the attribute names of the given
-        resource class to a triple containing the resource attribute kind (cf.
-        :class:`ResourceAttributeKinds`), the name of the entity attribute
-        and the type of the entity attribute.
+        resource class to :class:`ResourceAttribute` instances.
         """
-        return _ResourceClassAttributeInspector.__get_attrs(rc_cls)
+        return cls._attributes
 
-    @staticmethod
-    def __get_attrs(rc_cls):
-        # Builds :class:`everest.resources.attributes.ResourceAttribute`
-        # instances from resource descriptor information.
-        attr_map = _ResourceClassAttributeInspector.__attr_cache.get(rc_cls)
-        if attr_map is None:
-            descr_map = _ResourceClassAttributeInspector.__get_descrs(rc_cls)
-            attr_map = \
-                _ResourceClassAttributeInspector.__attr_cache[rc_cls] = \
-                OrderedDict()
-            for attr_name, descr in descr_map.items():
-                if type(descr) is terminal_attribute:
-                    attr_kind = ResourceAttributeKinds.TERMINAL
-                    is_nested = None
-                else:
-                    is_nested = descr.is_nested
-                    if type(descr) is member_attribute:
-                        attr_kind = ResourceAttributeKinds.MEMBER
-                    elif type(descr) is collection_attribute:
-                        attr_kind = ResourceAttributeKinds.COLLECTION
-                    else:
-                        raise ValueError('Unknown resource attribute type.')
-                attr = ResourceAttribute(attr_name, attr_kind,
-                                         descr.attr_type,
-                                         entity_name=descr.attr_name,
-                                         is_nested=is_nested)
-                attr_map[attr_name] = attr
-        return attr_map
 
-    @staticmethod
-    def __get_descrs(rc_cls):
-        # Loops over the namespace of the given resource class and its base 
-        # classes looking for descriptors inheriting from
-        # :class:`everest.resources.descriptors.attribute_base`.
-        descr_map = _ResourceClassAttributeInspector.__descr_cache.get(rc_cls)
-        if descr_map is None:
-            descr_map = \
-                _ResourceClassAttributeInspector.__descr_cache[rc_cls] = {}
-            for base_cls in rc_cls.__mro__[::-1]:
-                for descr_name, descr in base_cls.__dict__.iteritems():
-                    if isinstance(descr, attribute_base):
-                        descr_map[descr_name] = descr
-        # We order by descriptor ID (=sequence in which they were declared).
-        ordered_map = OrderedDict()
-        cmp_fnc = lambda item1, item2: cmp(item1[1].id, item2[1].id)
-        for item in sorted(descr_map.items(), cmp=cmp_fnc):
-            ordered_map[item[0]] = item[1]
-        return ordered_map
+def is_terminal_attribute(rc, attr_name):
+    mb_cls = get_member_class(rc)
+    return mb_cls.is_atomic(attr_name)
 
-is_atomic_attribute = _ResourceClassAttributeInspector.is_atomic
-is_member_attribute = _ResourceClassAttributeInspector.is_member
-is_collection_attribute = _ResourceClassAttributeInspector.is_collection
-get_resource_class_attribute_names = _ResourceClassAttributeInspector.get_names
-get_resource_class_attributes = _ResourceClassAttributeInspector.get_attributes
 
+def is_member_attribute(rc, attr_name):
+    mb_cls = get_member_class(rc)
+    return mb_cls.is_atomic(attr_name)
+
+
+def is_collection_attribute(rc, attr_name):
+    mb_cls = get_member_class(rc)
+    return mb_cls.is_collection(attr_name)
+
+
+def get_resource_class_attribute_names(rc):
+    mb_cls = get_member_class(rc)
+    return mb_cls.get_attribute_names()
+
+
+def get_resource_class_attributes(rc):
+    mb_cls = get_member_class(rc)
+    return mb_cls.get_attributes()

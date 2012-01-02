@@ -27,7 +27,23 @@ a colon (":") character :
 2. operator
   The operator to apply.
 3. value
-  The value to query for. Criteria values are given as literal representations
+  The value to query for. It is possible to supply multiple
+  values in a comma separated list, which will be interpreted as a Boolean
+  "OR" operation on all given values.
+
+
+Supported criterion value types are:
+
+String
+   Arbitrary string enclosed in double quotes.
+Number
+   Integer or floating point, scientific notation allowed.
+Boolean
+   Case insensitive string **true** or **false**.
+Date/Time
+   ISO 8601 encoded string enclosed in double quotes.
+Resource
+   URL referencing a resource.
 
 As an example, querying a collection resource ""
 
@@ -35,16 +51,17 @@ As an example, querying a collection resource ""
 
 name:starts-with:J
 
-
+If a query contains multiple criteria with different resource attribute names,
+the criteria are interpreted as a Boolean "AND" operation.
 
 The following table shows the available operators and data types in CQL:
 
 
-=========================  ======== ====== ========= ========
-     Operator                         Data Type
-                           -------- ------ --------- --------
-                            String  Number Date/Time Resource
-=========================  ======== ====== ========= ========
+=========================  ======== ====== ======= ========== ========
+     Operator                             Data Type
+                           -------- ------ ------- --------- --------
+                            String  Number Boolean Date/Time Resource
+=========================  ======== ====== ======= ========= ========
     ``starts-with``            x
   ``not-starts-with``          x
     ``ends-with``              x
@@ -63,7 +80,9 @@ The following table shows the available operators and data types in CQL:
 
 
 
-
+All attributes that are used to compose a query expression need to be mapped
+column properties in the ORM. Aliases are supported, CompositeProperties are 
+not. All queried entities must have an "id" attribute.
 
 It is by design that the power of CQL to express complex queries is far behind
 that of SQL.

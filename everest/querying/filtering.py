@@ -6,6 +6,7 @@ Created on Jul 5, 2011.
 """
 
 from everest.entities.attributes import EntityAttributeKinds
+from everest.entities.utils import slug_from_identifier
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
@@ -268,7 +269,7 @@ class CqlFilterExpression(CqlExpression):
 
     def _as_string(self):
         return self.__cql_format % dict(attr=self.attr_name,
-                                        op=self.op_name.replace('_', '-'),
+                                        op=slug_from_identifier(self.op_name),
                                         val=self.value)
 
     def __or__(self, other):
@@ -374,7 +375,7 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         return ~expression
 
     def __preprocess_attribute(self, attr_name):
-        return attr_name.replace('_', '-')
+        return slug_from_identifier(attr_name)
 
     def __preprocess_value(self, value):
         if isinstance(value, basestring):

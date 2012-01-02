@@ -15,13 +15,13 @@ from everest.representers.base import DataElementGenerator
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import SimpleDataElementRegistry
 from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.base import Collection
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
+from everest.resources.utils import get_root_collection
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
@@ -38,6 +38,7 @@ from everest.tests.testapp_db.resources import MyEntityChildMember
 from everest.tests.testapp_db.resources import MyEntityGrandchildMember
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
+from everest.url import resource_to_url
 from sqlalchemy.engine import create_engine
 from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 
@@ -74,12 +75,12 @@ def teardown():
 class AttributesTestCase(Pep8CompliantTestCase):
     def test_names(self):
         self.assert_equal(
-                    get_resource_class_attributes(MyEntityMember).keys(),
-                    ['id', 'parent', 'children', 'text',
+                    MyEntityMember.get_attribute_names(),
+                    ['id', 'parent', 'nested_parent', 'children', 'text',
                      'text_rc', 'number', 'parent_text'])
 
     def test_types(self):
-        attrs = get_resource_class_attributes(MyEntityMember).values()
+        attrs = MyEntityMember.get_attributes().values()
         self.assert_equal(attrs[0].name, 'id')
         self.assert_equal(attrs[0].kind, ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attrs[0].entity_name, 'id')
@@ -88,24 +89,24 @@ class AttributesTestCase(Pep8CompliantTestCase):
         self.assert_equal(attrs[1].kind, ResourceAttributeKinds.MEMBER)
         self.assert_equal(attrs[1].entity_name, 'parent')
         self.assert_equal(attrs[1].value_type, IMyEntityParent)
-        self.assert_equal(attrs[2].name, 'children')
-        self.assert_equal(attrs[2].kind,
+        self.assert_equal(attrs[3].name, 'children')
+        self.assert_equal(attrs[3].kind,
                           ResourceAttributeKinds.COLLECTION)
-        self.assert_equal(attrs[2].entity_name, 'children')
-        self.assert_equal(attrs[2].value_type, IMyEntityChild)
-        self.assert_equal(attrs[3].name, 'text')
-        self.assert_equal(attrs[3].kind, ResourceAttributeKinds.TERMINAL)
-        self.assert_equal(attrs[3].entity_name, 'text')
-        self.assert_equal(attrs[3].value_type, str)
-        self.assert_equal(attrs[5].name, 'number')
-        self.assert_equal(attrs[5].kind, ResourceAttributeKinds.TERMINAL)
-        self.assert_equal(attrs[5].entity_name, 'number')
-        self.assert_equal(attrs[5].value_type, int)
+        self.assert_equal(attrs[3].entity_name, 'children')
+        self.assert_equal(attrs[3].value_type, IMyEntityChild)
+        self.assert_equal(attrs[4].name, 'text')
+        self.assert_equal(attrs[4].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[4].entity_name, 'text')
+        self.assert_equal(attrs[4].value_type, str)
+        self.assert_equal(attrs[6].name, 'number')
+        self.assert_equal(attrs[6].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[6].entity_name, 'number')
+        self.assert_equal(attrs[6].value_type, int)
 
     def test_inheritance(self):
         class MyEntityDerivedMember(MyEntityMember):
             text = terminal_attribute('text', int)
-        attrs = get_resource_class_attributes(MyEntityDerivedMember)
+        attrs = MyEntityDerivedMember.get_attributes()
         attr = attrs['text']
         self.assert_equal(attr.kind,
                           ResourceAttributeKinds.TERMINAL)
@@ -341,25 +342,65 @@ class DescriptorsTestCase(ResourceTestCase):
         member = self.__create_member()
         self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
 
+    def test_urls(self):
+        mb = self.__create_floating_member()
+        get_root_collection(mb).add(mb)
+        self.assert_equal(resource_to_url(mb),
+                          'http://0.0.0.0:6543/my-entities/0/')
+        self.assert_equal(resource_to_url(mb.parent),
+                          'http://0.0.0.0:6543/my-entity-parents/0/')
+        self.assert_equal(resource_to_url(mb.nested_parent),
+                        'http://0.0.0.0:6543/my-entities/0/nested-parent/')
+        self.assert_equal(resource_to_url(mb.children),
+                          'http://0.0.0.0:6543/my-entities/0/children/')
+        mb_child = mb.children[0]
+        self.assert_equal(mb_child.id, 0)
+        self.assert_equal(resource_to_url(mb_child.children),
+                          'http://0.0.0.0:6543/my-entity-grandchildren/'
+                          '?q=parent:equal-to:'
+                          'http://0.0.0.0:6543/my-entities/0/children/0/')
+        self.assert_equal(resource_to_url(mb_child.no_backref_children),
+                          'http://0.0.0.0:6543/my-entity-grandchildren/'
+                          '?q=id:contained:0')
+
     def _make_data_element_generator(self):
         reg = SimpleDataElementRegistry()
-        # We configure the DataElementGenerator to dump all data explicitly.
+        # Fine tune DataElementGenerator configuration.
         repr_config = RepresenterConfiguration()
         repr_config.set_option('mapping',
                                dict(parent=dict(write_as_link=False,
                                                 ignore=False),
+                                    nested_parent=dict(write_as_link=False,
+                                                       ignore=False),
                                     children=dict(write_as_link=False,
                                                   ignore=False)))
-        for cls in (MyEntityMember, MyEntityParentMember,
-                    MyEntityChildMember, MyEntityGrandchildMember,
-                    get_collection_class(MyEntityChildMember),
+        for cls in (MyEntityMember,):
+            de_cls = reg.create_data_element_class(cls, repr_config)
+            reg.set_data_element_class(de_cls)
+        repr_config = RepresenterConfiguration()
+        repr_config.set_option('mapping',
+                               dict(children=dict(write_as_link=False,
+                                                  ignore=False),
+                                    no_backref_children=dict(ignore=True)))
+        for cls in (MyEntityChildMember,
+                    get_collection_class(MyEntityChildMember)):
+            de_cls = reg.create_data_element_class(cls, repr_config)
+            reg.set_data_element_class(de_cls)
+        repr_config = RepresenterConfiguration()
+        repr_config.set_option('mapping',
+                               dict(parent=dict(ignore=True)))
+        for cls in (MyEntityGrandchildMember,
                     get_collection_class(MyEntityGrandchildMember)):
+            de_cls = reg.create_data_element_class(cls, repr_config)
+            reg.set_data_element_class(de_cls)
+        repr_config = RepresenterConfiguration()
+        for cls in (MyEntityParentMember,):
             de_cls = reg.create_data_element_class(cls, repr_config)
             reg.set_data_element_class(de_cls)
         gen = DataElementGenerator(reg)
         return gen
 
-    def __create_member(self):
+    def __create_floating_member(self):
         my_entity = MyEntity()
         my_entity.id = 0
         member = MyEntityMember.create_from_entity(my_entity)
@@ -375,6 +416,10 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity_grandchild.id = 0
         child_member.children.add(
             MyEntityGrandchildMember.create_from_entity(my_entity_grandchild))
+        return member
+
+    def __create_member(self):
+        member = self.__create_floating_member()
         coll = get_collection(IMyEntity)
         coll.add(member)
         return member

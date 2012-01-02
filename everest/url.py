@@ -100,7 +100,10 @@ class ResourceUrlConverter(object):
             if not resource.slice is None:
                 query['start'], query['size'] = \
                     UrlPartsConverter.make_slice_strings(resource.slice)
-            url = model_url(resource, self.__request, query=query)
+            if query != {}:
+                url = model_url(resource, self.__request, query=query)
+            else:
+                url = model_url(resource, self.__request)
         elif not IMemberResource in provided_by(resource):
             raise ValueError('Can not convert non-resource object "%s to '
                              'URL".' % resource)

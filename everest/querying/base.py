@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 2, 2011.
 """
 
+from everest.entities.utils import identifier_from_slug
 from everest.querying.interfaces import ISpecification
 from everest.querying.interfaces import ISpecificationBuilder
 from everest.querying.interfaces import ISpecificationDirector
@@ -148,7 +149,7 @@ class SpecificationDirector(object):
         return self.__errors[:]
 
     def _format_identifier(self, string):
-        return string.replace('-', '_')
+        return identifier_from_slug(string)
 
     @property
     def _logger(self):
@@ -243,4 +244,4 @@ class SpecificationVisitor(SpecificationVisitorBase):
 
     def __get_op_func(self, op_name):
         # Visitor function dispatch using the operator name.
-        return getattr(self, '_%s_op' % op_name.replace('-', '_'))
+        return getattr(self, '_%s_op' % identifier_from_slug(op_name))

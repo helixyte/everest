@@ -8,7 +8,10 @@ Created on Dec 1, 2011.
 from everest.entities.base import Entity
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['MyEntity',
+           'MyEntityChild',
+           'MyEntityGrandchild',
+           'MyEntityParent', ]
 
 
 class _MyEntity(Entity):

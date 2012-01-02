@@ -109,3 +109,11 @@ def slug_from_integer(integer):
     This function converts an integer into a string slug.
     """
     return str(integer)
+
+
+def slug_from_identifier(id_string):
+    return id_string.replace('_', '-')
+
+
+def identifier_from_slug(slug):
+    return slug.replace('-', '_')
