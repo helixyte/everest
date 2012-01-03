@@ -95,12 +95,12 @@ class WarningViewsTestCase(ViewsTestCase):
         coll = root['foos']
         coll.add(FooMember(FooEntity(id=0)))
         path = '/'.join((self.path, '0'))
-        # First POST - get back a 307.
+        # First PUT - get back a 307.
         res1 = self.app.put(path, params='foo body',
                             status=307)
         self.assert_true(
                     res1.body.startswith('307 Temporary Redirect'))
-        # Second POST to redirection location - get back a 201.
+        # Second PUT to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.put(resubmit_location1, params='foo body',
                             status=200)

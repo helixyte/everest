@@ -7,8 +7,11 @@ Created on Oct 7, 2011.j
 
 from everest.entities.system import Message
 from everest.messaging import UserMessageHandler
+from everest.representers.utils import as_representer
 from everest.resources.system import MessageMember
+from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
+from paste.httpexceptions import HTTPInternalServerError
 from paste.httpexceptions import HTTPTemporaryRedirect
 from webob.exc import HTTPBadRequest
 from webob.exc import HTTPConflict
@@ -57,9 +60,66 @@ class ResourceView(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.__context = context
         self.__request = request
+        self.__representer = None
         self.__message_handler = UserMessageHandler()
         UserMessageHandler.register(self.__message_handler, request)
         request.add_finished_callback(UserMessageHandler.unregister)
+
+    def __call__(self):
+        self._logger.debug('Request received on %s' % self.request.url)
+        self._logger.debug('Request body:\n%s' % self.request.body)
+        if len(self.request.body) == 0:
+            # Empty body - return 400 Bad Request.
+            response = self._handle_empty_body()
+        else:
+            try:
+                data = self._extract_request_data()
+            except Exception, err: # catch Exception pylint: disable=W0703
+                response = self._handle_unknown_exception(err.message,
+                                                          get_traceback())
+            else:
+                if self._has_user_messages():
+                    # Some user messages were collected during the call - 
+                    # possibly return a 307 reponse with a warning.
+                    response = self._handle_user_messages()
+                    if response is None:
+                        # User message ignored - continue processing.
+                        try:
+                            response = self._process_request_data(data)
+                        except Exception, err: # catch Exception pylint: disable=W0703
+                            response = \
+                                self._handle_unknown_exception(err.message,
+                                                               get_traceback())
+                else:
+                    try:
+                        response = self._process_request_data(data)
+                    except Exception, err:  # catch Exception pylint: disable=W0703
+                        response = \
+                            self._handle_unknown_exception(err.message,
+                                                           get_traceback())
+        return response
+
+    def _extract_request_data(self):
+        """
+        Extracts the data from the representation submitted in the request
+        body and returns it.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def _process_request_data(self, data):
+        """
+        Processes the data extracted from the representation.
+        
+        Implementations of this method need to check for a conflict caused
+        by the request data (e.g., if the slug for a new member in a POST
+        request is already used) and call the :method:`_handle_conflict`
+        method in case a conflict was detected.
+        
+        :param data: data returned by the :method:`_extract_request_data` 
+          method.
+        :returns: response object or dictionary
+        """
+        raise NotImplementedError('Abstract method.')
 
     @property
     def context(self):
@@ -68,6 +128,13 @@ class ResourceView(object):
     @property
     def request(self):
         return self.__request
+
+    @property
+    def representer(self):
+        if self.__representer is None:
+            self.__representer = \
+                as_representer(self.__context, self.__request.content_type)
+        return self.__representer
 
     def _handle_empty_body(self):
         """
@@ -82,12 +149,12 @@ class ResourceView(object):
         """
         Handles requests that triggered an unknown exception.
         
-        Respond with a 400 "Bad Request".
+        Respond with a 500 "Internal Server Error".
         """
-        self._logger.debug('POST Request errors\n'
+        self._logger.debug('Request errors\n'
                            'Error message: %s\nTraceback:%s' %
                            (message, traceback))
-        http_exc = HTTPBadRequest(message)
+        http_exc = HTTPInternalServerError(message)
         return self.request.get_response(http_exc)
 
     def _handle_conflict(self, name):
@@ -167,7 +234,7 @@ class ResourceView(object):
         return qs
 
 
-class CollectionView(ResourceView):
+class CollectionView(ResourceView): # still abstract pylint: disable=W0223
     """
     Abstract base class for all collection views
     """
@@ -178,7 +245,7 @@ class CollectionView(ResourceView):
         ResourceView.__init__(self, collection, request)
 
 
-class MemberView(ResourceView):
+class MemberView(ResourceView): # still abstract pylint: disable=W0223
     """
     Abstract base class for all member views
     """

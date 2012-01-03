@@ -19,7 +19,7 @@ __all__ = ['UserMessagePostCollectionView',
 
 class UserMessagePostCollectionView(PostCollectionView):
     message = 'This is my warning message'
-    def _create_member(self):
+    def _extract_request_data(self):
         msg_notifier = get_utility(IUserMessageEventNotifier)
         msg_notifier.notify(self.message)
         foo = FooEntity()
@@ -28,7 +28,10 @@ class UserMessagePostCollectionView(PostCollectionView):
 
 class UserMessagePutMemberView(PutMemberView):
     message = 'This is my member warning message'
-    def _update_member(self):
+    def _extract_request_data(self):
         msg_notifier = get_utility(IUserMessageEventNotifier)
         msg_notifier.notify(self.message)
         return self.context
+
+    def _process_request_data(self, data):
+        return dict(context=data)

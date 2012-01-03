@@ -41,9 +41,6 @@ class Entity(object):
         """
         Returns a human-readable and URL-compatible string that is unique
         within all siblings of this entity.
-
-        Note that the slug has to be declared as a (read-only) property
-        in derived classes as well.
         """
         return str(self.id)
 
@@ -127,8 +124,10 @@ class Aggregate(object):
 
         :note: if a filter is set which matches the requested entity, it
           will not be found.
-        :param id_key: ID to look up
+        :param id_key: ID value to look up
         :type id_key: `int` or `str`
+        :raises: :class:`everest.exceptions.DuplicateException` if more than
+          one entity is found for the given ID value. 
         :returns: specified entity or `None`
 
         Returns a single entity from the underlying aggregate by ID.
@@ -139,8 +138,10 @@ class Aggregate(object):
         """
         Returns an entity by slug or `None` if the entity is not found.
 
-        :param slug: slug to look up
-        :type id_key: `str`
+        :param slug: slug value to look up
+        :type slug: `str`
+        :raises: :class:`everest.exceptions.DuplicateException` if more than
+          one entity is found for the given ID value. 
         :returns: entity or `None`
         """
         return self.__implementation.get_by_slug(slug)

@@ -347,6 +347,8 @@ class Collection(Resource):
 
         :param key: the name of the member
         :type key: :class:`string` or :class:`unicode`
+        :raises: :class:`everest.exceptions.DuplicateException` if more than
+          one member is found for the given key value. 
         :returns: object implementing
           :class:`everest.resources.interfaces.IMemberResource`
         """
@@ -397,8 +399,8 @@ class Collection(Resource):
 
     def get(self, key, default=None):
         """
-        Returns a member or a list of members by the given key or the given
-        default value if no match was found in the collection.
+        Returns a member for the given key or the given default value if no 
+        match was found in the collection.
         """
         try:
             rc = self.__getitem__(key)

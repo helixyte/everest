@@ -8,7 +8,8 @@ Created on Apr 13, 2010.
 from zope.schema import ValidationError # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['NotAnEmailAddress',
+__all__ = ['DuplicateError',
+           'NotAnEmailAddress',
            'UnsupportedOperationException',
            ]
 
@@ -21,3 +22,10 @@ class UnsupportedOperationException(Exception):
     """
     Raise this to indicate that the requested operation is not supported.
     """
+
+
+class DuplicateException(Exception):
+    """
+    Raised when more than one item was found where one was expected. 
+    """
+

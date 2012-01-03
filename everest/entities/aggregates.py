@@ -18,6 +18,8 @@ from everest.staging import StagingContextManagerBase
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
+from sqlalchemy.orm.exc import MultipleResultsFound
+from everest.exceptions import DuplicateException
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregateImpl',
@@ -150,18 +152,24 @@ class MemoryAggregateImpl(AggregateImpl):
 
     def get_by_id(self, id_key):
         ents = self._get_entities()
-        try:
-            ent = self.__filter_by_attr(ents, 'id', id_key)[0]
-        except IndexError:
+        matching_ents = self.__filter_by_attr(ents, 'id', id_key)
+        if len(matching_ents) == 1:
+            ent = matching_ents[0]
+        elif len(matching_ents) == 0:
             ent = None
+        else:
+            raise DuplicateException('Duplicates found for ID "%s".' % id_key)
         return ent
 
     def get_by_slug(self, slug):
         ents = self._get_entities()
-        try:
-            ent = self.__filter_by_attr(ents, 'slug', slug)[0]
-        except IndexError:
+        matching_ents = self.__filter_by_attr(ents, 'slug', slug)
+        if len(matching_ents) == 1:
+            ent = matching_ents[0]
+        elif len(matching_ents) == 0:
             ent = None
+        else:
+            raise DuplicateException('Duplicates found for slug "%s".' % slug)
         return ent
 
     def iterator(self):
@@ -322,6 +330,8 @@ class OrmAggregateImpl(AggregateImpl):
             ent = query.filter_by(id=id_key).one()
         except NoResultFound:
             ent = None
+        except MultipleResultsFound:
+            raise DuplicateException('Duplicates found for ID "%s".' % id_key)
         return ent
 
     def get_by_slug(self, slug):
@@ -330,6 +340,8 @@ class OrmAggregateImpl(AggregateImpl):
             ent = query.filter_by(slug=slug).one()
         except NoResultFound:
             ent = None
+        except MultipleResultsFound:
+            raise DuplicateException('Duplicates found for slug "%s".' % slug)
         return ent
 
     def iterator(self):
