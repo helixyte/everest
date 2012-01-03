@@ -595,3 +595,6 @@ class OrderSpecificationFactory(object):
 
     def create_descending(self, attr_name):
         return DescendingOrderSpecification(attr_name)
+
+    def create_conjunction(self, left_spec, right_spec):
+        return ConjuctionOrderSpecification(left_spec, right_spec)

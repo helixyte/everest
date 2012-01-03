@@ -6,10 +6,12 @@ Created on Feb 4, 2011.
 """
 
 from everest.querying.ordering import BubbleSorter
+from everest.querying.ordering import OrderSpecificationBuilder
 from everest.querying.specifications import AscendingOrderSpecification
+from everest.querying.specifications import DescendingOrderSpecification
+from everest.querying.specifications import OrderSpecificationFactory
 from everest.testing import BaseTestCase
 import random
-from everest.querying.specifications import DescendingOrderSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderSpecificationTestCase',
@@ -96,6 +98,16 @@ class ConjuctionOrderSpecificationTestCase(OrderSpecificationTestCase):
         order = \
             self.create_asc_order('name').and_(self.create_desc_order('age'))
         self.assert_false(order.lt(self.person_a1, self.person_a2))
+
+
+class OrderSpecificationBuilderTestCase(OrderSpecificationTestCase):
+
+    def test_conjunction(self):
+        builder = OrderSpecificationBuilder(OrderSpecificationFactory())
+        builder.build_asc('name')
+        builder.build_desc('age')
+        self.assert_equal(builder.specification.left.attr_name, 'name')
+        self.assert_equal(builder.specification.right.attr_name, 'age')
 
 
 class SorterTestCase(BaseTestCase):

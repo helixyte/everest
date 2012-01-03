@@ -88,11 +88,11 @@ class IOrderSpecificationFactory(Interface):
     Order specification factory interface.
     """
 
-    def create_simple(attr_name):
-        "Create a simple order specification."
+    def create_ascending(attr_name):
+        "Create an ascending order specification."
 
-    def create_natural(attr_name):
-        "Create a natural order specification."
+    def create_descending(attr_name):
+        "Create a descending order specification."
 
 
 
