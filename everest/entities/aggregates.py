@@ -11,15 +11,15 @@ from everest.db import Session
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IRelationAggregateImplementation
 from everest.entities.interfaces import IRootAggregateImplementation
+from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.staging import StagingContextManagerBase
+from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
-from sqlalchemy.orm.exc import MultipleResultsFound
-from everest.exceptions import DuplicateException
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregateImpl',
@@ -407,9 +407,8 @@ class OrmAggregateImpl(AggregateImpl):
         if not self._order_spec is None:
             visitor = self._order_visitor_factory()
             self._order_spec.accept(visitor)
-            joins = visitor.get_joins()
-            if len(joins) > 0:
-                query = query.outerjoin(*joins) # pylint: disable=W0142
+            for join in visitor.get_joins():
+                query = query.outerjoin(join)
             query = query.order_by(*visitor.expression)
         return query
 
