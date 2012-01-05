@@ -232,8 +232,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
             if idx == count - 1:
                 expr = (getattr(entity_attr, sql_op)(),)
             elif kind == EntityAttributeKinds.ENTITY:
-                # FIXME: should only add when needed # pylint: disable=W0511
-                self.__joins.add(entity_attr.property.target.alias())
+                self.__joins.add(entity_attr)
         return expr
 
 
