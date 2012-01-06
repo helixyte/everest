@@ -189,7 +189,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
 
     implements(IOrderSpecificationVisitor)
 
-    def __init__(self, entity_class, order_conditions=None):
+    def __init__(self, entity_class, custom_join_clauses=None):
         """
         Constructs a SqlOrderSpecificationVisitor
 
@@ -197,18 +197,15 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         """
         OrderSpecificationVisitor.__init__(self)
         self.__entity_class = entity_class
-        if order_conditions is None:
-            order_conditions = {}
-        self.__order_conditions = order_conditions
+        if custom_join_clauses is None:
+            custom_join_clauses = {}
+        self.__custom_join_clauses = custom_join_clauses
         self.__joins = set()
 
     def visit_nullary(self, spec):
-        if spec.attr_name in self.__order_conditions:
-            conditions = self.__order_conditions[spec.attr_name]
-            self.__joins.add(conditions['join'])
-            self._push((conditions['attr'],))
-        else:
-            OrderSpecificationVisitor.visit_nullary(self, spec)
+        OrderSpecificationVisitor.visit_nullary(self, spec)
+        if spec.attr_name in self.__custom_join_clauses:
+            self.__joins = set(self.__custom_join_clauses[spec.attr_name])
 
     def get_joins(self):
         return self.__joins.copy()

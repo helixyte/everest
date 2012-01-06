@@ -394,24 +394,24 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
 
     implements(IFilterSpecificationVisitor)
 
-    def __init__(self, entity_class, clause_factories=None):
+    def __init__(self, entity_class, custom_clause_factories=None):
         """
         Constructs a SqlFilterSpecificationVisitor
 
         :param entity_class: an entity class that is mapped with SQLAlchemy
-        :param clause_factories: a map containing custom clause factory 
+        :param custom_clause_factories: a map containing custom clause factory 
           functions for selected (attribute name, operator) combinations.
         """
         FilterSpecificationVisitor.__init__(self)
         self.__entity_class = entity_class
-        if clause_factories is None:
-            clause_factories = {}
-        self.__clause_factories = clause_factories
+        if custom_clause_factories is None:
+            custom_clause_factories = {}
+        self.__custom_clause_factories = custom_clause_factories
 
     def visit_nullary(self, spec):
         key = (spec.attr_name, spec.operator.name)
-        if key in self.__clause_factories:
-            self._push(self.__clause_factories[key](spec.attr_value))
+        if key in self.__custom_clause_factories:
+            self._push(self.__custom_clause_factories[key](spec.attr_value))
         else:
             FilterSpecificationVisitor.visit_nullary(self, spec)
 

@@ -407,8 +407,9 @@ class OrmAggregateImpl(AggregateImpl):
         if not self._order_spec is None:
             visitor = self._order_visitor_factory()
             self._order_spec.accept(visitor)
-            for join in visitor.get_joins():
-                query = query.outerjoin(join)
+            for join_expr in visitor.get_joins():
+                # FIXME: only join when needed here # pylint:disable=W0511
+                query = query.outerjoin(join_expr)
             query = query.order_by(*visitor.expression)
         return query
 
