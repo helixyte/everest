@@ -516,6 +516,10 @@ class Collection(Resource):
         agg = self.__aggregate.clone()
         clone = self.create_from_aggregate(agg)
         clone.__parent__ = self.__parent__
+        # Pass filter and order specs explicitly (may differ from the ones
+        # at the aggregate level).
+        clone._filter_spec = self._filter_spec
+        clone._order_spec = self._order_spec
         return clone
 
     def _format_name(self, name):
