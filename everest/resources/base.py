@@ -23,6 +23,8 @@ from everest.resources.interfaces import IResource
 from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
+from everest.url import resource_to_url
+from everest.url import url_to_resource
 from everest.utils import classproperty
 from repoze.bfg.security import Allow
 from repoze.bfg.security import Authenticated
@@ -209,11 +211,17 @@ class Member(ResourceAttributeControllerMixin, Resource):
                 if rc_data_el is None:
                     # Optional attribute - continue.
                     continue
+                self_rc = getattr(self, attr.name)
                 if ILinkedDataElement in provided_by(rc_data_el):
-                    # Found a link - do not do anything.
-                    continue
+                    # Found a link. Update if the URL is different.
+                    url = rc_data_el.get_url()
+                    if not self_rc is None \
+                       and resource_to_url(self_rc) == url:
+                        # 
+                        continue
+                    new_rc = url_to_resource(url)
+                    setattr(self, attr.name, new_rc)
                 else:
-                    self_rc = getattr(self, attr.name)
                     if self_rc is None:
                         new_rc = attr.value_type.create_from_data(rc_data_el)
                         setattr(self, attr.name, new_rc)

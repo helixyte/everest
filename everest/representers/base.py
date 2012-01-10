@@ -10,7 +10,6 @@ Created on May 18, 2011.
 from StringIO import StringIO
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_transient_aggregate
-from everest.mime import CsvMime
 from everest.representers.attributes import CollectionAttributeMapper
 from everest.representers.attributes import LinkAttributeMapper
 from everest.representers.attributes import MemberAttributeMapper
@@ -221,9 +220,7 @@ class SimpleLinkedDataElement(LinkedDataElement):
 
     @classmethod
     def create_from_resource(cls, resource):
-        de_reg = get_data_element_registry(CsvMime)
-        rc_de_cls = de_reg.get_data_element_class(type(resource))
-        return cls.create(rc_de_cls, resource_to_url(resource),
+        return cls.create(None, resource_to_url(resource),
                           relation=resource.relation,
                           title=resource.title)
 

@@ -236,6 +236,29 @@ class DescriptorsTestCase(ResourceTestCase):
                 context.update_from_data(data_el)
                 self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
+    def test_update_member_with_link(self):
+        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
+            member = self.__create_member()
+            new_parent = MyEntityParent()
+            new_parent.text = self.UPDATED_TEXT
+            new_parent.id = 2
+            new_parent_member = \
+                    MyEntityParentMember.create_from_entity(new_parent)
+            member.parent = new_parent_member
+            gen = self._make_data_element_generator()
+            data_el = gen.run(member,
+                              mapping_info=
+                                dict(parent=dict(write_as_link=True),
+                                     nested_parent=dict(ignore=True)))
+            del member
+        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
+            coll = get_root_collection(IMyEntityParent)
+            coll.add(new_parent_member)
+            context = self.__create_member()
+            self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
+            context.update_from_data(data_el)
+            self.assert_equal(context.parent.text, self.UPDATED_TEXT)
+
     def test_delete_child(self):
         with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
             member = self.__create_member()
