@@ -23,7 +23,7 @@ setup_requirements = []
 install_requirements = [
     'repoze.bfg>=1.3,<=1.3.99',
     'repoze.tm2>=1.0a5,<=1.0.99',
-    'sqlalchemy>=0.7.2,<=0.7.99',
+    'sqlalchemy>=0.7.4,<=0.7.99',
     'zope.sqlalchemy>=0.4,<=0.4.99',
     'z3c.batching>=1.1.0,<=1.1.99',
     'transaction>=1.0.0,<=1.0.99',
