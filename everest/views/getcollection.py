@@ -9,7 +9,7 @@ from everest.batch import Batch
 from everest.resources.base import Link
 from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
-from everest.views.base import CollectionView
+from everest.views.base import GetResourceView
 from urllib import unquote
 
 __docformat__ = "reStructuredText en"
@@ -17,7 +17,7 @@ __all__ = ['GetCollectionView',
            ]
 
 
-class GetCollectionView(CollectionView):
+class GetCollectionView(GetResourceView):
     """
     View for GET requests on collection resources.
     """
