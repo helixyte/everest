@@ -7,7 +7,7 @@ Created on Oct 14, 2011.
 
 from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.url import resource_to_url
-from everest.views.base import MemberView
+from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPOk
 from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 
@@ -16,7 +16,7 @@ __all__ = ['PutMemberView',
            ]
 
 
-class PutMemberView(MemberView):
+class PutMemberView(PutOrPostResourceView):
     """
     View for PUT requests on member resources.
 
@@ -26,9 +26,6 @@ class PutMemberView(MemberView):
 
     See http://bitworking.org/projects/atom/rfc5023.html#edit-via-PUT
     """
-
-    def __init__(self, member, request):
-        MemberView.__init__(self, member, request)
 
     def _extract_request_data(self):
         with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):

@@ -52,7 +52,6 @@ class ResourceView(object):
 
     __context = None
     __request = None
-    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
 
     def __init__(self, context, request):
         if self.__class__ is ResourceView:
@@ -61,6 +60,61 @@ class ResourceView(object):
         self.__context = context
         self.__request = request
         self.__representer = None
+
+    @property
+    def context(self):
+        return self.__context
+
+    @property
+    def request(self):
+        return self.__request
+
+    @property
+    def representer(self):
+        if self.__representer is None:
+            self.__representer = \
+                as_representer(self.__context, self.__request.content_type)
+        return self.__representer
+
+    def _handle_unknown_exception(self, message, traceback):
+        """
+        Handles requests that triggered an unknown exception.
+        
+        Respond with a 500 "Internal Server Error".
+        """
+        self._logger.debug('Request errors\n'
+                           'Error message: %s\nTraceback:%s' %
+                           (message, traceback))
+        http_exc = HTTPInternalServerError(message)
+        return self.request.get_response(http_exc)
+
+
+class GetResourceView(ResourceView): # still abstract pylint: disable=W0223
+    """
+    Abstract base class for all collection views
+    """
+
+    def __init__(self, resource, request):
+        if self.__class__ is GetResourceView:
+            raise NotImplementedError('Abstract class')
+        ResourceView.__init__(self, resource, request)
+
+    def __call__(self):
+        raise NotImplementedError('Abstract method.')
+
+
+class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W0223
+    """
+    Abstract base class for all member views
+    """
+
+    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
+
+    def __init__(self, resource, request):
+        if self.__class__ is PutOrPostResourceView:
+            raise NotImplementedError('Abstract class')
+        ResourceView.__init__(self, resource, request)
+        # Set up user message handling machinery.
         self.__message_handler = UserMessageHandler()
         UserMessageHandler.register(self.__message_handler, request)
         request.add_finished_callback(UserMessageHandler.unregister)
@@ -121,20 +175,11 @@ class ResourceView(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    @property
-    def context(self):
-        return self.__context
-
-    @property
-    def request(self):
-        return self.__request
-
-    @property
-    def representer(self):
-        if self.__representer is None:
-            self.__representer = \
-                as_representer(self.__context, self.__request.content_type)
-        return self.__representer
+    def _has_user_messages(self):
+        """
+        Check if user messages have been sent during request processing. 
+        """
+        return self.__message_handler.has_messages()
 
     def _handle_empty_body(self):
         """
@@ -144,27 +189,6 @@ class ResourceView(object):
         """
         http_exc = HTTPBadRequest("Request's body is empty!")
         return self.request.get_response(http_exc)
-
-    def _handle_unknown_exception(self, message, traceback):
-        """
-        Handles requests that triggered an unknown exception.
-        
-        Respond with a 500 "Internal Server Error".
-        """
-        self._logger.debug('Request errors\n'
-                           'Error message: %s\nTraceback:%s' %
-                           (message, traceback))
-        http_exc = HTTPInternalServerError(message)
-        return self.request.get_response(http_exc)
-
-    def _handle_conflict(self, name):
-        """
-        Handles requests that triggered a conflict.
-        
-        Respond with a 409 "Conflict"
-        """
-        err = HTTPConflict('Member "%s" already exists!' % name).exception
-        return self.request.get_response(err)
 
     def _handle_user_messages(self):
         """
@@ -203,11 +227,14 @@ class ResourceView(object):
             response = None
         return response
 
-    def _has_user_messages(self):
+    def _handle_conflict(self, name):
         """
-        Check if user messages have been sent during request processing. 
+        Handles requests that triggered a conflict.
+        
+        Respond with a 409 "Conflict"
         """
-        return self.__message_handler.has_messages()
+        err = HTTPConflict('Member "%s" already exists!' % name).exception
+        return self.request.get_response(err)
 
     def _status(self, wsgi_http_exc_class):
         """
@@ -233,25 +260,4 @@ class ResourceView(object):
             qs = "ignore-message=%s" % new_guid
         return qs
 
-
-class CollectionView(ResourceView): # still abstract pylint: disable=W0223
-    """
-    Abstract base class for all collection views
-    """
-
-    def __init__(self, collection, request):
-        if self.__class__ is CollectionView:
-            raise NotImplementedError('Abstract class')
-        ResourceView.__init__(self, collection, request)
-
-
-class MemberView(ResourceView): # still abstract pylint: disable=W0223
-    """
-    Abstract base class for all member views
-    """
-
-    def __init__(self, member, request):
-        if self.__class__ is MemberView:
-            raise NotImplementedError('Abstract class')
-        ResourceView.__init__(self, member, request)
 
