@@ -7,12 +7,11 @@ Utilities for dealing with resources.
 Created on Nov 3, 2011.
 """
 
-from everest.entities.utils import get_aggregate
-from everest.entities.utils import get_transient_aggregate
+from everest.repository import REPOSITORY_DOMAINS
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
-from repoze.bfg.threadlocal import get_current_request
+from everest.resources.interfaces import IResourceRepository
 from repoze.bfg.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
@@ -23,14 +22,11 @@ from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
-           'as_representer',
-           'get_collection',
            'get_collection_class',
            'get_member_class',
            'get_resource_url',
            'get_root_collection',
-           'get_root_collection',
-           'get_transient_collection',
+           'get_stage_collection',
            'is_resource_url',
            'provides_collection_resource',
            'provides_member_resource',
@@ -38,43 +34,30 @@ __all__ = ['as_member',
            ]
 
 
-def get_collection(rc):
-    """
-    Returns a new collection for the given registered resource.
-
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
-        a registered resource interface.
-    :returns: an object implementing
-        :class:`everest.resources.interfaces.ICollection`
-    """
-    agg = get_aggregate(rc)
-    return get_adapter(agg, ICollectionResource)
-
-
-def get_transient_collection(rc):
-    """
-    Returns a collection that uses a transient aggregate for the given
-    collection interface.
-    """
-    agg = get_transient_aggregate(rc)
-    return get_adapter(agg, ICollectionResource)
-
-
 def get_root_collection(rc):
     """
-    Returns a clone of the root collection for the given registered resource.
+    Returns a clone of the collection in the root repository matching the 
+    given registered resource.
 
     :param rc: registered resource
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    if IInterface in provided_by(rc):
-        rc = get_utility(rc, name='collection-class')
-    else:
-        rc = get_adapter(rc, ICollectionResource, name='collection-class')
-    req = get_current_request()
-    return req.root[rc]
+    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.ROOT)
+    return rc_repo.get(rc)
+
+
+def get_stage_collection(rc):
+    """
+    Returns a clone of the collection in the stage repository matching the 
+    given registered resource.
+
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
+    """
+    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.STAGE)
+    return rc_repo.get(rc)
 
 
 def get_member_class(rc):
@@ -142,6 +125,9 @@ def is_resource_url(url_string):
 
 
 def get_resource_url(resource):
+    """
+    Returns the URL for the given resource.
+    """
     path = model_path(resource)
     parsed = list(urlparse(path))
     parsed[1] = ""

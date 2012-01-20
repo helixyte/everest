@@ -7,16 +7,16 @@ Descriptors for resource classes.
 Created on Apr 19, 2011.
 """
 
-from everest.entities.utils import get_aggregate
 from everest.entities.utils import slug_from_identifier
-from everest.querying.nesting import Nesting
-from everest.resources.interfaces import ICollectionResource
+from everest.relation import Relation
+from everest.resources.repository import ResourceRepository
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
+from everest.resources.utils import get_stage_collection
 from everest.utils import id_generator
 from repoze.bfg.traversal import find_root
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
+from weakref import WeakKeyDictionary
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -156,9 +156,10 @@ class collection_attribute(_relation_attribute):
     from its underlying entity.
     """
     def __init__(self, entity_attr, entity_type, backref_attr=None,
-                 is_nested=True, ** kw):
+                 is_nested=True, **kw):
         """
-        :param str backref_attr:
+        :param str backref_attr: attribute of the members of the target
+          collection which back-references the current resource (parent).
         """
         _relation_attribute.__init__(self, entity_attr, entity_type,
                                      is_nested=is_nested, **kw)
@@ -166,43 +167,16 @@ class collection_attribute(_relation_attribute):
         self.__resource_backref_attr = None
         self.__entity_backref_attr = None
         self.__need_backref_setup = True
+        self.__cache = WeakKeyDictionary()
 
     def __get__(self, resource, resource_class):
         if self.__need_backref_setup:
             self.__setup_backref()
         if not resource is None:
-            # Create relation collection. We can not just return the
-            # entity attribute here as that would load the whole entity
-            # collection (Alternatively, we could use dynamic attributes).
-            parent = resource.get_entity()
-            children = None
-            for attr_token in self.entity_attr.split('.'):
-                if children is None:
-                    children = getattr(parent, attr_token)
-                else:
-                    children = getattr(children, attr_token)
-                if children is None:
-                    break
-            if children is None:
-                coll = None
-            else:
-                nst = Nesting(parent, children,
-                              backref_attribute=
-                                            self.__entity_backref_attr)
-                agg = get_aggregate(self.entity_type, relation=nst)
-                coll = get_adapter(agg, ICollectionResource)
-                if self.is_nested:
-                    # Make URL generation relative to the resource.
-                    coll.set_parent(resource)
-                    # Set the collection's name to the descriptor's resource
-                    # attribute name.
-                    coll.__name__ = slug_from_identifier(self.resource_attr)
-                else:
-                    # Make URL generation relative to the app root.
-                    nst = Nesting(resource, coll,
-                                  backref_attribute=
-                                            self.__resource_backref_attr)
-                    coll.set_parent(find_root(resource), nesting=nst)
+            coll = self.__cache.get(resource)
+            if coll is None:
+                coll = self.__make_collection(resource)
+                self.__cache[resource] = coll
         else:
             # Class level access.
             coll = self
@@ -225,6 +199,42 @@ class collection_attribute(_relation_attribute):
             else:
                 self.__entity_backref_attr = self.backref_attr
         self.__need_backref_setup = False
+
+    def __make_collection(self, resource):
+        # Create relation collection. We can not just return the
+        # entity attribute here as that would load the whole entity
+        # collection (Alternatively, we could use dynamic attributes).
+        parent = resource.get_entity()
+        children = self._get_nested(parent, self.entity_attr)
+        if children is None:
+            coll = None
+        else:
+            if not resource.__parent__ is None:
+                # Find the resource repository used for this resource's parent
+                # and use it to create the new collection.
+                rc_repo = \
+                        ResourceRepository.get_repository(resource.__parent__)
+                coll = rc_repo.get(self.entity_type)
+            else:
+                # This is a floating member, assume stage repository.
+                coll = get_stage_collection(self.entity_type)
+            agg = coll.get_aggregate()
+            agg.relation = Relation(parent, children,
+                                    backref_attribute=
+                                            self.__entity_backref_attr)
+            if self.is_nested:
+                # Make URL generation relative to the resource.
+                coll.set_parent(resource)
+                # Set the collection's name to the descriptor's resource
+                # attribute name.
+                coll.__name__ = slug_from_identifier(self.resource_attr)
+            else:
+                # Make URL generation relative to the app root.
+                rel = Relation(resource, coll,
+                               backref_attribute=
+                                        self.__resource_backref_attr)
+                coll.set_parent(find_root(resource), relation=rel)
+        return coll
 
 
 class attribute_alias(object):

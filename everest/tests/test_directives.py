@@ -8,20 +8,11 @@ Created on Jun 17, 2011.
 """
 
 from everest.configuration import Configurator
-from everest.entities.aggregates import MemoryRootAggregateImpl
+from everest.entities.aggregates import MemoryAggregateImpl
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.interfaces import IRelationAggregateImplementation
-from everest.entities.interfaces import IRootAggregateImplementation
-from everest.entities.utils import get_aggregate
-from everest.interfaces import IResourceUrlConverter
+from everest.entities.utils import get_root_aggregate
 from everest.mime import CsvMime
-from everest.querying.filtering import IFilterSpecificationBuilder
-from everest.querying.filtering import IFilterSpecificationDirector
-from everest.querying.ordering import IOrderSpecificationBuilder
-from everest.querying.ordering import IOrderSpecificationDirector
-from everest.querying.specifications import IFilterSpecificationFactory
-from everest.querying.specifications import IOrderSpecificationFactory
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
@@ -35,13 +26,9 @@ from everest.tests.testapp.interfaces import IBar
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
-from repoze.bfg.testing import DummyRequest
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
-from everest.querying.base import EXPRESSION_KINDS
-from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.querying.interfaces import IFilterSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -61,46 +48,6 @@ class DirectivesTestCase(Pep8CompliantTestCase):
     def tear_down(self):
         testing_tear_down()
 
-    def test_registry_setup(self):
-        reg = self._registry
-        self.assert_false(reg.queryUtility(IService) is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationFactory)
-                          is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationBuilder)
-                          is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationDirector)
-                          is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.CQL)
-                          is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.SQL)
-                          is None)
-        self.assert_false(reg.queryUtility(IFilterSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.EVAL)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationFactory)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationBuilder)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationDirector)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.CQL)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.SQL)
-                          is None)
-        self.assert_false(reg.queryUtility(IOrderSpecificationVisitor,
-                                           name=EXPRESSION_KINDS.EVAL)
-                          is None)
-        self.assert_false(reg.queryUtility(IRootAggregateImplementation)
-                          is None)
-        self.assert_false(reg.queryUtility(IRelationAggregateImplementation)
-                          is None)
-        req = DummyRequest()
-        self.assert_false(reg.queryAdapter(req, IResourceUrlConverter) is None)
-
     def test_configure_with_simple_zcml(self):
         # Load the configuration.
         self._config.load_zcml('everest.tests.testapp:configure_simple.zcml')
@@ -109,22 +56,22 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         ent = FooEntity()
         member = object.__new__(FooMember)
         coll_cls = reg.queryUtility(IFoo, name='collection-class')
-        self.assert_true(not coll_cls is None)
-        self.assert_true(not coll_cls.root_name is None)
-        self.assert_true(not coll_cls.title is None)
+        self.assert_is_not_none(coll_cls)
+        self.assert_is_not_none(coll_cls.root_name)
+        self.assert_is_not_none(coll_cls.title)
         coll = object.__new__(coll_cls)
         agg_cls = reg.queryAdapter(coll, IAggregate,
                                    name='aggregate-class')
-        self.assert_true(not agg_cls is None)
+        self.assert_is_not_none(agg_cls)
         agg = object.__new__(agg_cls)
         self.__check(reg, member, ent, coll, agg)
         # Check service.
         srvc = reg.queryUtility(IService)
-        self.assert_true(not srvc is None)
+        self.assert_is_not_none(srvc)
         srvc.start()
         self.assert_true(isinstance(srvc.get('foos'), Collection))
-        self.assert_true(isinstance(srvc.get(coll_cls), Collection))
-        self.assert_true(srvc.get(IBar) is None)
+        self.assert_is_none(srvc.get(coll_cls))
+        self.assert_is_none(srvc.get(IBar))
 
     def test_configure_with_full_zcml(self):
         reg = self._registry
@@ -134,33 +81,27 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         agg = object.__new__(FooEntityAggregate)
         coll = object.__new__(FooCollection)
         # Make sure no adapters are in the registry.
-        self.assert_true(reg.queryAdapter(coll, IMemberResource,
-                                          name='member-class')
-                         is None)
-        self.assert_true(reg.queryAdapter(member, ICollectionResource,
-                                          name='collection-class')
-                         is None)
-        self.assert_true(reg.queryAdapter(member, IEntity,
-                                          name='entity-class')
-                         is None)
-        self.assert_true(reg.queryAdapter(coll, IAggregate,
-                                          name='aggregate-class')
-                         is None)
-        self.assert_true(reg.queryAdapter(ent, IMemberResource) is None)
-        self.assert_true(reg.queryAdapter(agg, ICollectionResource) is None)
-        self.assert_true(reg.queryAdapter(coll, IRepresenter,
-                                          name=CsvMime.mime_string)
-                         is None)
+        self.assert_is_none(reg.queryAdapter(coll, IMemberResource,
+                                          name='member-class'))
+        self.assert_is_none(reg.queryAdapter(member, ICollectionResource,
+                                          name='collection-class'))
+        self.assert_is_none(reg.queryAdapter(member, IEntity,
+                                          name='entity-class'))
+        self.assert_is_none(reg.queryAdapter(coll, IAggregate,
+                                          name='aggregate-class'))
+        self.assert_is_none(reg.queryAdapter(ent, IMemberResource))
+        self.assert_is_none(reg.queryAdapter(agg, ICollectionResource))
+        self.assert_is_none(reg.queryAdapter(coll, IRepresenter,
+                                          name=CsvMime.mime_string))
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll, agg)
-        self.assert_false(reg.queryAdapter(coll, IRepresenter,
-                                           name=CsvMime.mime_string)
-                          is None)
+        self.assert_is_not_none(reg.queryAdapter(coll, IRepresenter,
+                                                 name=CsvMime.mime_string))
 
     def test_custom_memory_aggregate_class(self):
-        class MyMemoryAggregate(MemoryRootAggregateImpl):
+        class MyMemoryAggregate(MemoryAggregateImpl):
             pass
         reg = self._registry
         # Load the configuration.
@@ -172,7 +113,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         coll_cls = reg.queryAdapter(member, ICollectionResource,
                                     name='collection-class')
         coll = object.__new__(coll_cls)
-        agg = get_aggregate(coll)
+        agg = get_root_aggregate(coll)
         self.assert_true(isinstance(agg, MyMemoryAggregate))
         entity = object.__new__(FooEntity)
         entity.id = 1
@@ -213,8 +154,5 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                                                    name='aggregate-class'),
                                   type(agg))
         # Check instance adapters.
-        self.assert_false(
-                    reg.queryAdapter(ent, IMemberResource)
-                    is None)
-        self.assert_false(reg.queryAdapter(agg, ICollectionResource)
-                          is None)
+        self.assert_is_not_none(reg.queryAdapter(ent, IMemberResource))
+        self.assert_is_not_none(reg.queryAdapter(agg, ICollectionResource))

@@ -5,7 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 10, 2011.
 """
 
-from everest.db import reset_metadata
+from everest.db import setup_db
+from everest.db import teardown_db
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
@@ -40,9 +41,7 @@ class Person(object):
         self.age = age
 
 
-def setup():
-    # Module level setup.
-    reset_metadata()
+def create_metadata():
     metadata = sa.MetaData()
     person_table = sa.Table('person', metadata,
         sa.Column('id', sa.Integer, primary_key=True),
@@ -50,11 +49,15 @@ def setup():
         sa.Column('age', sa.Integer, nullable=False),
         )
     orm.mapper(Person, person_table)
+    return metadata
 
 
 def teardown():
+    if not Person.metadata is None:
+        Person.metadata.drop_all()
+        Person.metadata = None
     # Module level tear down.
-    reset_metadata()
+    teardown_db(reset_metadata=True)
 
 
 class VisitorTestCase(BaseTestCase):
@@ -270,7 +273,10 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
 class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
-            setup()
+            engine, metadata = setup_db(create_metadata, reset_metadata=True)
+            Person.metadata = metadata
+            Person.metadata.bind = engine
+            Person.metadata.create_all()
         VisitorTestCase.set_up(self)
 
     def _make_visitor(self):
@@ -430,7 +436,10 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
 
     def set_up(self):
         if Person.metadata is None:
-            setup()
+            engine, metadata = setup_db(create_metadata, reset_metadata=True)
+            Person.metadata = metadata
+            Person.metadata.bind = engine
+            Person.metadata.create_all()
         OrderVisitorTestCase.set_up(self)
 
     def test_simple_order_by_one_attribute(self):

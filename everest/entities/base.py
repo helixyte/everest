@@ -7,13 +7,8 @@ Entity base classes.
 Created on May 12, 2011.
 """
 
-from everest.entities.aggregates import MemoryRelationAggregateImpl
-from everest.entities.aggregates import MemoryRootAggregateImpl
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.interfaces import IRelationAggregateImplementation
-from everest.entities.interfaces import IRootAggregateImplementation
-from zope.component import queryUtility as query_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -34,6 +29,8 @@ class Entity(object):
     id = None
 
     def __init__(self, id=None): # redefining id pylint: disable=W0622
+        if self.__class__ is Entity:
+            raise NotImplementedError('Abstract class.')
         self.id = id
 
     @property
@@ -57,12 +54,14 @@ class Entity(object):
 
 class Aggregate(object):
     """
-    Abstract base class for all aggregates.
-
-    An aggregate provides a wrapper around a set of entities of a specific
-    type which are held in some repository. The wrapped entity set may be
-    a "root" set of all entities in the repository or a "relation" set
-    defined by a relationship to entities of some other type.
+    The aggregate class. 
+    
+    An aggregate is an accessor for a set of entities of the same type which 
+    are held in some repository. 
+    
+    The wrapped entity set may be a "root" set of all entities in the 
+    repository or a "relation" set defined by a relationship to entities of 
+    some other type.
 
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
@@ -74,26 +73,25 @@ class Aggregate(object):
     implements(IAggregate)
 
     def __init__(self, implementation):
-        if self.__class__ is Aggregate:
-            raise NotImplementedError('Abstract class')
         self.__implementation = implementation
 
+    def set_implementation(self, implementation_class):
+        """
+        Switches the implementation of this aggregate to an instance of the
+        given implementation class.
+        
+        :param implementation_class: class implementing
+          :class:`everest.entities.interfaces.IAggregateImplementation`.
+        """
+        self.__implementation = \
+            implementation_class.create(self.__implementation.entity_class)
+
     @classmethod
-    def create(cls, entity_class, **kw):
+    def create(cls, entity_class, implementation_class):
         """
-        Factory method.
+        Factory method for creating the aggregate.
         """
-        impl_cls = kw.get('implementation')
-        if impl_cls is None:
-            # If no implementation is given, we use whichever implementation
-            # is registered for the current staging area.
-            if not kw.get('relation') is None:
-                impl_cls = query_utility(IRelationAggregateImplementation,
-                                         default=MemoryRelationAggregateImpl)
-            else:
-                impl_cls = query_utility(IRootAggregateImplementation,
-                                         default=MemoryRootAggregateImpl)
-        impl = impl_cls.create(entity_class, **kw)
+        impl = implementation_class.create(entity_class)
         return cls(impl)
 
     def clone(self):
@@ -240,3 +238,10 @@ class Aggregate(object):
     slice = property(_get_slice, _set_slice,
                       doc="Slice key for the aggregate.")
 
+    def _get_relation(self):
+        return self.__implementation.relation
+
+    def _set_relation(self, relation):
+        self.__implementation.relation = relation
+
+    relation = property(_get_relation, _set_relation)

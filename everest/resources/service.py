@@ -7,13 +7,12 @@ Service class.
 Created on Jul 27, 2011.
 """
 
+from everest.repository import REPOSITORY_DOMAINS
 from everest.resources.base import Resource
+from everest.resources.interfaces import IResourceRepository
 from everest.resources.interfaces import IService
-from everest.resources.utils import get_collection
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Service',
@@ -22,10 +21,10 @@ __all__ = ['Service',
 
 class Service(Resource):
     """
-    Class for the document describing the Atompub service.
+    The service resource class.
 
-    A service is a collection of collections and always returns a
-    clone of its contents.
+    The service resource is placed at the root of the resource tree and 
+    provides traversal (=URL) access to all exposed collection resources. 
     """
     implements(IService)
 
@@ -39,14 +38,14 @@ class Service(Resource):
         self.__collections = {}
         self.__started = False
 
-    def register(self, iresource):
+    def register(self, irc):
         """
         Registers the given resource interface with this service.
         """
         if self.__started:
-            raise RuntimeError("Can not register new resource interface when "
+            raise RuntimeError("Can not register new resource interfaces when "
                                "the service has been started.")
-        self.__registered_interfaces.add(iresource)
+        self.__registered_interfaces.add(irc)
 
     def start(self):
         """
@@ -62,45 +61,44 @@ class Service(Resource):
 
     def __getitem__(self, key):
         """
-        Overrides __getitem__ to return a clone of the contained resource.
+        Overrides __getitem__ to return a clone of the requested collection.
 
-        :param key: collection interface or name.
-        :returns: instance of :class:`everest.resources.Collection`.
+        :param key: collection name.
+        :type key: str
+        :returns: object implementing
+          :class:`everest.resources.interfaces.ICollectionResource`.
         """
-        coll = self.__collections[key]
-        return coll.clone()
+        irc = self.__collections[key]
+        repo = get_utility(IResourceRepository,
+                           name=REPOSITORY_DOMAINS.ROOT)
+        coll = repo.get(irc)
+        return coll
 
     def __len__(self):
-        return len(self.__collections) / 2
+        return len(self.__collections)
 
     def __iter__(self):
-        for key, value in self.__collections.iteritems():
-            if isinstance(key, basestring):
-                yield value
+        for key in self.__collections.iterkeys():
+            yield self.__getitem__(key)
 
-    def add(self, collection):
-        if IInterface in provided_by(collection):
-            collection = get_utility(collection, 'collection-class')
-        if collection in self.__collections:
-            raise ValueError('Root collection for collection interface %s '
-                             ' already exists.' % collection.__name__)
-        coll = get_collection(collection)
+    def add(self, irc):
+        rc_repo = get_utility(IResourceRepository,
+                              name=REPOSITORY_DOMAINS.ROOT)
+        coll = rc_repo.get(irc)
         if coll.__name__ in self.__collections:
-            raise ValueError('Root collection with name %s already exists.' %
-                             coll.__name__)
-        coll.__parent__ = self
-        # Allow access by collection class and name.
-        self.__collections[collection] = coll
-        self.__collections[coll.__name__] = coll
+            raise ValueError('Root collection for collection name %s '
+                             ' already exists.' % coll.__name__)
+        # We replace the repository collection with a clone that has the
+        # service as the parent so that URL generation works.
+        coll.set_parent(self)
+        rc_repo.set(irc, coll)
+        # 
+        self.__collections[coll.__name__] = irc
 
-    def remove(self, collection):
-        if IInterface in provided_by(collection):
-            collection = get_utility(collection, 'collection-class')
-        if not collection in self.__collections:
-            raise ValueError('Root collection for collection interface %s '
-                             'is not in this service.' % collection.__name__)
-        coll = self.__collections[collection]
-        del self.__collections[coll]
+    def remove(self, irc):
+        rc_repo = get_utility(IResourceRepository,
+                              name=REPOSITORY_DOMAINS.ROOT)
+        coll = rc_repo.get(irc)
         del self.__collections[coll.__name__]
 
     def get(self, name, default=None):
@@ -109,5 +107,3 @@ class Service(Resource):
         except KeyError:
             coll = default
         return coll
-
-

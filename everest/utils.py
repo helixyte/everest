@@ -131,14 +131,14 @@ class BidirectionalLookup(object):
     def get_right(self, right_item):
         return self.__right.get(right_item)
 
-    def pop_left(self, left_item):
-        right_item = self.__left.pop(left_item)
-        self.__right.pop(right_item)
+    def pop_left(self, left_item, default=None):
+        right_item = self.__left.pop(left_item, default)
+        self.__right.pop(right_item, default)
         return right_item
 
-    def pop_right(self, right_item):
-        left_item = self.__left.pop(right_item)
-        self.__left.pop(left_item)
+    def pop_right(self, right_item, default=None):
+        left_item = self.__left.pop(right_item, default)
+        self.__left.pop(left_item, default)
         return left_item
 
     def left_keys(self):
@@ -158,3 +158,7 @@ class BidirectionalLookup(object):
 
     def right_items(self):
         return self.__right.items()
+
+    def clear(self):
+        self.__left.clear()
+        self.__right.clear()

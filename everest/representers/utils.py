@@ -8,9 +8,12 @@ Created on May 18, 2011.
 """
 
 from StringIO import StringIO
+from everest.mime import CsvMime
+from everest.mime import XmlMime
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
 from everest.resources.attributes import ResourceAttributeKinds
+from urlparse import urlparse
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 
@@ -24,7 +27,7 @@ def as_representer(resource, content_type_string):
     """
     Adapts the given resource and content type to a representer.
 
-    :param type resource: resource to adapt.
+    :param resource: resource to adapt.
     :param str content_type_string: content (MIME) type to create a
         representer for.
     """
@@ -81,5 +84,34 @@ def data_element_tree_to_string(data_element):
     stream = StringIO()
     __dump(data_element, stream, 0)
     return stream.getvalue()
+
+
+def load_from_url(resource, url, content_type_string=None):
+    parsed = urlparse(url)
+    if parsed.scheme == 'file': # pylint: disable=E1101
+        # Assume a local path.
+        rc = load_from_file(resource, parsed.path, # pylint: disable=E1101
+                            content_type_string=content_type_string)
+    else:
+        raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
+    return rc
+
+
+def load_from_file(resource, filename, content_type_string=None):
+    if content_type_string is None:
+        #
+        extensions = dict(csv=CsvMime,
+                          xml=XmlMime,
+                          )
+        ext = filename.splitext()[1]
+        try:
+            content_type_string = extensions[ext].mime_string
+        except KeyError:
+            raise ValueError('Unknown extension for representation.')
+    rpr = as_representer(resource, content_type_string)
+    fp = open(filename, 'rU')
+    with fp:
+        rc = rpr.from_stream(fp)
+    return rc
 
 

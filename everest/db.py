@@ -5,6 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 
+from repoze.bfg.settings import get_settings
+from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -13,16 +15,11 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['get_db_engine',
+__all__ = ['commit_veto',
+           'get_engine',
            'get_metadata',
-           'initialize_db_engine',
-           'initialize_metadata',
-           'is_db_engine_initialized',
-           'is_metadata_initialized',
-           'reset_db_engine',
-           'reset_metadata',
-           'set_db_engine',
-           'set_metadata',
+           'setup_db',
+           'teardown_db',
            'Session',
            ]
 
@@ -67,10 +64,10 @@ class _SingletonManager(object):
 class _DbEngineManager(_SingletonManager):
     pass
 
-set_db_engine = _DbEngineManager.set
-get_db_engine = _DbEngineManager.get
-is_db_engine_initialized = _DbEngineManager.is_initialized
-reset_db_engine = _DbEngineManager.reset
+get_engine = _DbEngineManager.get
+_set_engine = _DbEngineManager.set
+_is_engine_initialized = _DbEngineManager.is_initialized
+_reset_engine = _DbEngineManager.reset
 
 
 class _MetaDataManager(_SingletonManager):
@@ -79,10 +76,66 @@ class _MetaDataManager(_SingletonManager):
         clear_mappers()
         super(_MetaDataManager, cls).reset()
 
-set_metadata = _MetaDataManager.set
-is_metadata_initialized = _MetaDataManager.is_initialized
 get_metadata = _MetaDataManager.get
-reset_metadata = _MetaDataManager.reset
+_set_metadata = _MetaDataManager.set
+_is_metadata_initialized = _MetaDataManager.is_initialized
+_reset_metadata = _MetaDataManager.reset
+
+
+def setup_db(create_metadata_callback=None,
+             reset_metadata=False, reset_engine=False):
+    """
+    Initialization function for the database (ORM).
+    
+    :param create_metadata_callback: if no metadata have been configured before
+      or if a reset of the metadata is requested, this is called with no 
+      arguments and is expected to return a metadata instance.
+    :param bool reset_metadata: if set, previously configured metadata will be
+      replaced.
+    :param bool reset_engine: if set, a previously created DB engine will be
+      replaced. 
+    """
+    if reset_metadata:
+        if create_metadata_callback is None:
+            raise ValueError('Need to provide a callback for creating the '
+                             'ORM metadata when reset is requested.')
+        _reset_metadata()
+    if reset_engine:
+        _reset_engine()
+    if not _is_engine_initialized():
+        db_string = get_settings().get('db_string')
+        engine = create_engine(db_string)
+        _set_engine(engine)
+    else:
+        engine = get_engine()
+    if not _is_metadata_initialized():
+        # 
+        metadata = create_metadata_callback()
+        _set_metadata(metadata)
+    else:
+        metadata = get_metadata()
+        metadata.bind = engine
+    return engine, metadata
+
+
+def teardown_db(reset_metadata=False, reset_engine=False):
+    """
+    Shutdown function for the DB (ORM).
+    
+    This is only needed in a testing context when tests need to create their
+    own metadata and/or engine.
+
+    :param bool reset_metadata: if set, previously configured metadata will be
+      discarded. The next call to :func:`setup_db` will then always create new
+      metadata.
+    :param bool reset_engine: if set, a previously created DB engine will be
+      discarded. The next call to :func:`setup_db` will then always create a
+      new engine. 
+    """
+    if reset_metadata:
+        _reset_metadata()
+    if reset_engine:
+        _reset_engine()
 
 
 #: The scoped session maker. Instantiate this to obtain a thread local

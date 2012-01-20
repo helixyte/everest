@@ -9,20 +9,19 @@ Created on Sep 25, 2011.
 
 from everest.db import Session
 from everest.entities.interfaces import IAggregate
-from everest.entities.interfaces import IRelationAggregateImplementation
-from everest.entities.interfaces import IRootAggregateImplementation
+from everest.entities.interfaces import IAggregateImplementation
 from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.staging import StagingContextManagerBase
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['MemoryAggregateImpl',
+__all__ = ['AggregateImpl',
+           'MemoryAggregateImpl',
            'OrmAggregateImpl',
            ]
 
@@ -31,6 +30,7 @@ class AggregateImpl(object):
     """
     Abstract base class for all aggregate implementations.
     """
+    implements(IAggregate, IAggregateImplementation)
 
     def __init__(self, entity_class):
         """
@@ -43,8 +43,10 @@ class AggregateImpl(object):
         """
         if self.__class__ is AggregateImpl:
             raise NotImplementedError('Abstract class.')
+        #: Relation of entities in this aggregate to a parent entity.
+        self.relation = None
         #: Entity class (type) of the entities in this aggregate.
-        self._entity_class = entity_class
+        self.entity_class = entity_class
         #: Specification for filtering
         #: (:class:`everest.querying.specifications.FilterSpecification`).
         #: Attribute names in this specification are relative to the entity. 
@@ -57,11 +59,12 @@ class AggregateImpl(object):
         self._slice_key = None
 
     @classmethod
-    def create(cls, entity_class, **kw):
+    def create(cls, entity_class):
         raise NotImplementedError('Abstract method.')
 
     def clone(self):
-        clone = self.__class__.create(self._entity_class)
+        clone = self.__class__.create(self.entity_class)
+        clone.relation = self.relation
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
@@ -141,11 +144,20 @@ class MemoryAggregateImpl(AggregateImpl):
         :method:`get_by_id` or :method:`get_by_slug` methods since there 
         is no mechanism to autogenerate IDs or slugs.
     """
-
     def __init__(self, entity_class):
-        if self.__class__ is MemoryAggregateImpl:
-            raise NotImplementedError('Abstract class.')
         AggregateImpl.__init__(self, entity_class)
+        #
+        self.__entities = []
+
+    @classmethod
+    def create(cls, entity_class):
+        return cls(entity_class)
+
+    def clone(self):
+        clone = super(MemoryAggregateImpl, self).clone()
+        if self.relation is None:
+            clone.__entities = self.__entities
+        return clone
 
     def count(self):
         return len(list(self.iterator()))
@@ -190,9 +202,9 @@ class MemoryAggregateImpl(AggregateImpl):
             yield ent
 
     def add(self, entity):
-        if not isinstance(entity, self._entity_class):
+        if not isinstance(entity, self.entity_class):
             raise ValueError('Can only add entities of type "%s" to this '
-                             'aggregate.' % self._entity_class)
+                             'aggregate.' % self.entity_class)
         if not hasattr(entity, 'id'):
             raise ValueError('Entities added to a memory aggregrate have to '
                              'have an ID (`id` attribute).')
@@ -231,7 +243,11 @@ class MemoryAggregateImpl(AggregateImpl):
         :returns:  list of objects implementing 
             :class:`everest.entities.interfaces.IEntity`
         """
-        raise NotImplementedError('Abstract method.')
+        if self.relation is None:
+            ents = self.__entities
+        else:
+            ents = self.relation.children
+        return ents
 
     def _set_entities(self, entities):
         """
@@ -240,7 +256,10 @@ class MemoryAggregateImpl(AggregateImpl):
         :param entities: list of objects implementing 
             :class:`everest.entities.interfaces.IEntity`
         """
-        raise NotImplementedError('Abstract method.')
+        if self.relation is None:
+            self.__entities = entities
+        else:
+            self.relation.children = entities
 
     def __check_existing(self, entity):
         ents = self._get_entities()
@@ -259,65 +278,26 @@ class MemoryAggregateImpl(AggregateImpl):
         return filtered_ents
 
 
-class MemoryRootAggregateImpl(MemoryAggregateImpl):
-    implements(IAggregate, IRootAggregateImplementation)
-
-    def __init__(self, entity_class):
-        MemoryAggregateImpl.__init__(self, entity_class)
-        self.__entities = [] # Holds entities.
-
-    @classmethod
-    def create(cls, entity_class, **kw):
-        return cls(entity_class)
-
-    def clone(self):
-        clone = super(MemoryRootAggregateImpl, self).clone()
-        clone.__entities = self.__entities # access private pylint: disable=W0212
-        return clone
-
-    def _get_entities(self):
-        return self.__entities
-
-    def _set_entities(self, entities):
-        self.__entities = entities
-
-
-class MemoryRelationAggregateImpl(MemoryAggregateImpl):
-    implements(IAggregate, IRelationAggregateImplementation)
-
-    def __init__(self, entity_class, relation):
-        MemoryAggregateImpl.__init__(self, entity_class)
-        # Parent-children relation (:class:`everest.querying.Nesting`).
-        self.__relation = relation
-
-    @classmethod
-    def create(cls, entity_class, relation=None, **kw):
-        return cls(entity_class, relation)
-
-    def clone(self):
-        clone = super(MemoryRelationAggregateImpl, self).clone()
-        clone.__relation = self.__relation # access private pylint: disable=W0212
-        return clone
-
-    def _get_entities(self):
-        return self.__relation.children
-
-    def _set_entities(self, entities):
-        self.__relation.children = entities
-
-
 class OrmAggregateImpl(AggregateImpl):
     """
-    Base class for ORM implementations for aggregates.
+    ORM implementation for aggregates.
     """
     def __init__(self, entity_class, session, search_mode=False):
-        if self.__class__ is OrmAggregateImpl:
-            raise NotImplementedError('Abstract class.')
         AggregateImpl.__init__(self, entity_class)
         self._session = session
         self._search_mode = search_mode
 
+    @classmethod
+    def create(cls, entity_class):
+        session = Session()
+        return cls(entity_class, session)
+
     def count(self):
+        if not self.relation is None:
+            # We need a flush here because we may have newly added entities
+            # in the aggregate which need to get an ID *before* we build the
+            # relation filter spec.
+            self._session.flush()
         if self.__defaults_empty:
             cnt = 0
         else:
@@ -345,6 +325,11 @@ class OrmAggregateImpl(AggregateImpl):
         return ent
 
     def iterator(self):
+        if not self.relation is None:
+            # We need a flush here because we may have newly added entities
+            # in the aggregate which need to get an ID *before* we build the
+            # relation filter spec.
+            self._session.flush()
         if self.__defaults_empty:
             yield
         else:
@@ -357,10 +342,16 @@ class OrmAggregateImpl(AggregateImpl):
                 yield obj
 
     def add(self, entity):
-        raise NotImplementedError('Abstract method.')
+        if self.relation is None:
+            self._session.add(entity)
+        else:
+            self.relation.children.append(entity)
 
     def remove(self, entity):
-        raise NotImplementedError('Abstract method.')
+        if self.relation is None:
+            self._session.delete(entity)
+        else:
+            self.relation.children.remove(entity)
 
     def _apply_filter(self):
         pass
@@ -377,15 +368,24 @@ class OrmAggregateImpl(AggregateImpl):
     def _filter_visitor_factory(self):
         visitor_cls = get_utility(IFilterSpecificationVisitor,
                                   name=EXPRESSION_KINDS.SQL)
-        return visitor_cls(self._entity_class)
+        return visitor_cls(self.entity_class)
 
     def _order_visitor_factory(self):
         visitor_cls = get_utility(IOrderSpecificationVisitor,
                                   name=EXPRESSION_KINDS.SQL)
-        return visitor_cls(self._entity_class)
+        return visitor_cls(self.entity_class)
 
     def _get_base_query(self):
-        raise NotImplementedError('Abstract method.')
+        if self.relation is None:
+            query = self._session.query(self.entity_class)
+        else:
+            # Pre-filter the base query with the relation specification.
+            rel_spec = self.relation.specification
+            visitor = self._filter_visitor_factory()
+            rel_spec.accept(visitor)
+            expr = visitor.expression
+            query = self._session.query(self.entity_class).filter(expr)
+        return query
 
     def _get_data_query(self):
         query = self.__get_ordered_query(self._slice_key)
@@ -416,101 +416,3 @@ class OrmAggregateImpl(AggregateImpl):
     @property
     def __defaults_empty(self):
         return self._filter_spec is None and self._search_mode
-
-
-class OrmRootAggregateImpl(OrmAggregateImpl):
-    """
-    ORM implementation for root aggregates (using SQLAlchemy).
-    """
-    implements(IRootAggregateImplementation)
-
-    @classmethod
-    def create(cls, entity_class, **kw):
-        search_mode = kw.pop('search_mode', False)
-        session = Session()
-        return cls(entity_class, session, search_mode=search_mode)
-
-    def add(self, entity):
-        self._session.add(entity)
-
-    def remove(self, entity):
-        self._session.delete(entity)
-
-    def _get_base_query(self):
-        return self._session.query(self._entity_class)
-
-
-class OrmRelationAggregateImpl(OrmAggregateImpl):
-    """
-    ORM implementation for relation aggregates (using SQLAlchemy).
-    """
-    implements(IRelationAggregateImplementation)
-
-    def __init__(self, entity_class, session, relation, search_mode=False):
-        OrmAggregateImpl.__init__(self, entity_class, session,
-                                  search_mode=search_mode)
-        # Parent-children relation (:class:`everest.querying.Nesting`).
-        self.__relation = relation
-
-    @classmethod
-    def create(cls, entity_class, relation, **kw):
-        search_mode = kw.pop('search_mode', False)
-        session = Session()
-        return cls(entity_class, session, relation, search_mode=search_mode)
-
-    def add(self, entity):
-        self.__relation.children.append(entity)
-
-    def remove(self, entity):
-        self.__relation.children.remove(entity)
-
-    def count(self):
-        # We need a flush here because we may have newly added entities
-        # in the aggregate which need to get an ID *before* we build the
-        # relation filter spec.
-        self._session.flush()
-        return OrmAggregateImpl.count(self)
-
-    def iterator(self):
-        # We need a flush here because we may have newly added entities
-        # in the aggregate which need to get an ID *before* we build the
-        # relation filter spec.
-        self._session.flush()
-        return OrmAggregateImpl.iterator(self)
-
-    def _get_base_query(self):
-        # Pre-filter the base query with the relation specification.
-        rel_spec = self.__relation.specification
-        visitor = self._filter_visitor_factory()
-        rel_spec.accept(visitor)
-        expr = visitor.expression
-        return self._session.query(self._entity_class).filter(expr)
-
-
-class PersistentStagingContextManager(StagingContextManagerBase):
-    """
-    Staging context manager to use when building/modifying collections that
-    are persisted by the ORM.
-    """
-    root_aggregate_impl = OrmRootAggregateImpl
-    relation_aggregate_impl = OrmRelationAggregateImpl
-
-    def __init__(self):
-        StagingContextManagerBase.__init__(self)
-
-    def __exit__(self, exc_type, value, tb):
-        StagingContextManagerBase.__exit__(self, exc_type, value, tb)
-        #
-        Session().flush()
-
-
-class TransientStagingContextManager(StagingContextManagerBase):
-    """
-    Staging context manager to use when building/modifying collections that
-    are transiently held in memory.
-    """
-    root_aggregate_impl = MemoryRootAggregateImpl
-    relation_aggregate_impl = MemoryRelationAggregateImpl
-
-    def __init__(self):
-        StagingContextManagerBase.__init__(self)

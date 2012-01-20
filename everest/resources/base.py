@@ -29,7 +29,7 @@ from everest.utils import classproperty
 from repoze.bfg.security import Allow
 from repoze.bfg.security import Authenticated
 from repoze.bfg.traversal import model_path
-from zope.component import createObject as create_object # pylint: disable=E0611,F0401
+from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -46,7 +46,6 @@ class Resource(object):
     """
     This is the abstract base class for all resources.
     """
-
     implements(IResource)
 
     #: Authentication specifier. Override as needed.
@@ -110,7 +109,6 @@ class Member(ResourceAttributeControllerMixin, Resource):
     """
     This is an abstract class for all member resources.
     """
-
     implements(IMemberResource)
 
     id = terminal_attribute('id', int)
@@ -138,10 +136,8 @@ class Member(ResourceAttributeControllerMixin, Resource):
         self.__name = name
 
     def _get__name__(self):
-        """
-        The name of a member resource defaults to the underlying entitie's 
-        slug.
-        """
+        # The name of a member resource defaults to the slug of the underlying 
+        # entity.
         return self.__name or self.__entity.slug
 
     def _set__name__(self, name):
@@ -171,9 +167,10 @@ class Member(ResourceAttributeControllerMixin, Resource):
 
     def get_entity(self):
         """
-        Returns the entity this resource is wrapped around.
+        Returns the entity this resource manages.
 
-        :return: an object of a :class:`everest.entities.base.Entity` subclass
+        :return: an object implementing 
+            :class:`everest.entities.interfaces.IEntity`.
         """
         return self.__entity
 
@@ -258,7 +255,6 @@ class Collection(Resource):
     A collection is a set of member resources which can be filtered, sorted,
     and sliced.
     """
-
     implements(ICollectionResource)
 
     #: The title of the collection.
@@ -314,7 +310,7 @@ class Collection(Resource):
         # The underlying aggregate.
         self.__aggregate = aggregate
         #
-        self.__nesting = None
+        self.__relation = None
 
     @classmethod
     def create_from_aggregate(cls, aggregate):
@@ -339,9 +335,38 @@ class Collection(Resource):
         parser = DataElementParser()
         return parser.extract_collection_resource(data_element)
 
-    def set_parent(self, parent, nesting=None):
+    def set_parent(self, parent, relation=None):
+        """
+        Sets the traversal parent of this resource and optionally a relation
+        parent.
+        
+        The traversal parent determines the URL, the relation parent affects
+        the expressions built for filter and order operations.
+        
+        :param parent: parent resource.
+        :param relatin: relation with another resource, encapsulated in a 
+          :class:`everest.relation.Relation` instance.
+        """
         self.__parent__ = parent
-        self.__nesting = nesting
+        self.__relation = relation
+
+    def get_aggregate(self):
+        """
+        Returns the aggregate underlying this collection.
+
+        :return: an object implementing 
+            :class:`everest.entities.interfaces.IAggregate`.
+        """
+        return self.__aggregate
+
+    def create_member(self, entity):
+        """
+        Creates a new member resource from the given entity and adds it to
+        this collection.
+        """
+        member = get_adapter(entity, IMemberResource)
+        self.add(member)
+        return member
 
     def __len__(self):
         """
@@ -404,6 +429,7 @@ class Collection(Resource):
         :raise ValueError: if the member can not be found in this collection
         """
         self.__aggregate.remove(member.get_entity())
+        member.__parent__ = None
 
     def get(self, key, default=None):
         """
@@ -470,17 +496,17 @@ class Collection(Resource):
             self.add(new_member)
 
     def _get_filter(self):
-        if self.__nesting is None:
+        if self.__relation is None:
             filter_spec = self._filter_spec
         else:
             # If we have nesting information, we need to prepend the 
             # relation specification to the current filter specification.
             if self._filter_spec is None:
-                filter_spec = self.__nesting.specification
+                filter_spec = self.__relation.specification
             else:
                 spec_fac = get_utility(IFilterSpecificationFactory)
                 filter_spec = \
-                    spec_fac.create_conjunction(self.__nesting.specification,
+                    spec_fac.create_conjunction(self.__relation.specification,
                                                 self._filter_spec)
         return filter_spec
 
@@ -523,7 +549,7 @@ class Collection(Resource):
         """
         agg = self.__aggregate.clone()
         clone = self.create_from_aggregate(agg)
-        clone.__parent__ = self.__parent__
+        clone.set_parent(self.__parent__, self.__relation)
         # Pass filter and order specs explicitly (may differ from the ones
         # at the aggregate level).
         clone._filter_spec = self._filter_spec
@@ -533,16 +559,12 @@ class Collection(Resource):
     def _format_name(self, name):
         return unicode(name)
 
-    def _create_collection(self):
-        return create_object(self.__name__)
-
 
 class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
     """
     Base class for specification visitors that convert resource to entity 
     attribute names.
     """
-
     implements(ISpecificationVisitor)
 
     def __init__(self, rc_class):

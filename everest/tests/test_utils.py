@@ -57,6 +57,11 @@ class UtilsTestCase(Pep8CompliantTestCase):
         self.assert_equal(bl[2], 'b')
         self.assert_equal(bl.get('b'), 2)
         self.assert_equal(bl.get(2), 'b')
-        self.assert_true(bl.get('c') is None)
+        self.assert_is_none(bl.get('not there'))
+        self.assert_equal(bl.pop_left('not there', 5), 5)
+        self.assert_equal(bl.pop_right('not there', 5), 5)
+        bl.clear()
+        self.assert_equal(len(bl.left_keys()), 0)
+        self.assert_equal(len(bl.right_keys()), 0)
 
 

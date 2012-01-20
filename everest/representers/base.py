@@ -9,7 +9,6 @@ Created on May 18, 2011.
 
 from StringIO import StringIO
 from everest.entities.utils import get_entity_class
-from everest.entities.utils import get_transient_aggregate
 from everest.representers.attributes import CollectionAttributeMapper
 from everest.representers.attributes import LinkAttributeMapper
 from everest.representers.attributes import MemberAttributeMapper
@@ -24,6 +23,7 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
+from everest.resources.utils import get_stage_collection
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from everest.url import url_to_resource
@@ -568,16 +568,15 @@ class DataElementParser(object):
                             rc = url_to_resource(url)
                         else:
                             rc = self.extract_member_resource(rc_data_el,
-                                                              nesting_level + 1)
+                                                            nesting_level + 1)
                         value = rc.get_entity()
                     else:
                         if ILinkedDataElement in provided_by(rc_data_el):
                             url = rc_data_el.get_url()
                             rc = url_to_resource(url)
                         else:
-                            rc = \
-                              self.extract_collection_resource(rc_data_el,
-                                                               nesting_level + 1)
+                            rc = self.extract_collection_resource(rc_data_el,
+                                                            nesting_level + 1)
                         value = [mb.get_entity() for mb in rc]
             else:
                 raise ValueError('Invalid resource attribute kind.')
@@ -591,8 +590,7 @@ class DataElementParser(object):
         Extracts a collection resource from the given data element.
         """
         coll_cls = rc_data_el.mapped_class
-        agg = get_transient_aggregate(coll_cls)
-        coll = coll_cls.create_from_aggregate(agg)
+        coll = get_stage_collection(coll_cls)
         for member_el in rc_data_el.get_members():
             mb = self.extract_member_resource(member_el, nesting_level + 1)
             coll.add(mb)

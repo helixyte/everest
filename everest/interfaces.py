@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
-from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -107,14 +106,38 @@ class IResourceUrlConverter(Interface):
         """Performs URL -> resource conversion."""
 
 
-class IStagingContextManager(Interface):
-    root_aggregate_impl = Attribute("Root aggregate implementation class.")
-    relation_aggregate_impl = \
-            Attribute("Relation aggregate implementation class.")
-    def __enter__():
-        """Enters the context."""
-    def __exit__():
-        """Exits the context."""
+class IRepository(Interface):
+    """
+    Interface for object repositories.
+    
+    The repository manages accessors for resources or entities. 
+    """
+
+    def get(rc):
+        """
+        Returns a queryable accessor for the registered resource.
+        """
+
+    def set(rc, acc):
+        """
+        Sets the queryable accessor to use for the registered resource.
+        """
+
+    def clear(rc):
+        """
+        Clears the accessor for the given registered resource.
+        """
+
+    def clear_all():
+        """
+        Clears all previously set accessors.
+        """
+
+    def load_representation(rc, url):
+        """
+        Loads the representation of the specified registered resource  
+        pointed to by the given URL into the repository.
+        """
 
 
 class IMessage(Interface):

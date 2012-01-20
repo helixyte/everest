@@ -1,5 +1,5 @@
-Resource Design
-###############
+Resources
+#########
 
 Entities and resources
 **********************

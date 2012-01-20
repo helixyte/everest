@@ -3,7 +3,7 @@
 :mod:`everest` Introduction
 ===========================
 
-Over the past years, an increasing number of web application frameworks
+
 
 .. sidebar:: Representational State Transfer (REST)
 
@@ -16,16 +16,17 @@ Easy and Non-Intrusive Declaration of Resource Attributes
 
 Separation of Value State and Behavior
 
-Plugins
-
-Configuration: Overridable Defaults
-
-
 Querying Resource Collections
 
 Generating and Parsing Resource Representations
 
-Generic CRUD Operations
+URL Generation
+
+Extensible Views for CRUD Operations
 
 In the JavaScript world, Pintura seems to share many of the ideas behind
 :mod:`everest`.
+
+:mod:`everest` makes extensive use of the :mod:`Pyramid` web framework. In
+particular, it relies heavily on the Zope Component Architecture (ZCA) for
+runtime configuration of components and services.

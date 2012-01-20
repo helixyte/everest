@@ -2,17 +2,20 @@
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
+Configurators for the various subsystems of :mod:`everest`.
+
 Created on Jun 22, 2011.
 """
 
-from everest.entities.aggregates import MemoryRelationAggregateImpl
-from everest.entities.aggregates import MemoryRootAggregateImpl
+from everest.entities.aggregates import MemoryAggregateImpl
 from everest.entities.base import Aggregate
 from everest.entities.base import Entity
 from everest.entities.interfaces import IAggregate
+from everest.entities.interfaces import IAggregateImplementationRegistry
 from everest.entities.interfaces import IEntity
-from everest.entities.interfaces import IRelationAggregateImplementation
-from everest.entities.interfaces import IRootAggregateImplementation
+from everest.entities.interfaces import IEntityRepository
+from everest.entities.repository import AggregateImplementationRegistry
+from everest.entities.repository import EntityRepository
 from everest.entities.system import Message
 from everest.interfaces import IMessage
 from everest.interfaces import IResourceUrlConverter
@@ -37,6 +40,7 @@ from everest.querying.ordering import OrderSpecificationDirector
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
+from everest.repository import REPOSITORY_DOMAINS
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
@@ -44,7 +48,9 @@ from everest.resources.base import Member
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IResourceRepository
 from everest.resources.interfaces import IService
+from everest.resources.repository import ResourceRepository
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
 from everest.url import ResourceUrlConverter
@@ -62,103 +68,120 @@ __all__ = ['Configurator',
 
 class Configurator(BfgConfigurator):
     """
-    Specialized configurator for resources.
+    Configurator for everest.
     """
+
     def __init__(self,
                  registry=None,
                  package=None,
-                 service=None,
-                 # filters specification utilities.
+                 # Entity level services.
+                 aggregate_implementation_registry=None,
+                 root_entity_repository=None,
+                 stage_entity_repository=None,
                  filter_specification_factory=None,
+                 order_specification_factory=None,
+                 # Resource level services.
+                 root_resource_repository=None,
+                 stage_resource_repository=None,
+                 # Application level services.
+                 service=None,
                  filter_builder=None,
                  filter_director=None,
                  cql_filter_specification_visitor=None,
                  sql_filter_specification_visitor=None,
                  eval_filter_specification_visitor=None,
-                 # order specification utilities.
-                 order_specification_factory=None,
                  order_builder=None,
                  order_director=None,
                  cql_order_specification_visitor=None,
                  sql_order_specification_visitor=None,
                  eval_order_specification_visitor=None,
-                 # aggregate utilities.
-                 root_aggregate_implementation=None,
-                 relation_aggregate_implementation=None,
                  url_converter=None,
-                 **kw):
+                 **kw
+                 ):
         if package is None:
             package = caller_package()
-        BfgConfigurator.__init__(self, registry=registry, package=package,
-                                 **kw)
+        BfgConfigurator.__init__(self,
+                                 registry=registry, package=package, **kw)
         if registry is None:
-            self.__setup_everest(service,
-                                 filter_specification_factory,
-                                 filter_builder,
-                                 filter_director,
-                                 cql_filter_specification_visitor,
-                                 sql_filter_specification_visitor,
-                                 eval_filter_specification_visitor,
-                                 order_specification_factory,
-                                 order_builder,
-                                 order_director,
-                                 cql_order_specification_visitor,
-                                 sql_order_specification_visitor,
-                                 eval_order_specification_visitor,
-                                 root_aggregate_implementation,
-                                 relation_aggregate_implementation,
-                                 url_converter)
+            self.__setup(aggregate_implementation_registry,
+                         root_entity_repository,
+                         stage_entity_repository,
+                         filter_specification_factory,
+                         order_specification_factory,
+                         root_resource_repository,
+                         stage_resource_repository,
+                         service,
+                         filter_builder,
+                         filter_director,
+                         cql_filter_specification_visitor,
+                         sql_filter_specification_visitor,
+                         eval_filter_specification_visitor,
+                         order_builder,
+                         order_director,
+                         cql_order_specification_visitor,
+                         sql_order_specification_visitor,
+                         eval_order_specification_visitor,
+                         url_converter)
+
+    def get_registered_utility(self, *args, **kw):
+        """
+        Convenience method for obtaining a utility from the registry.
+        """
+        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
+
+    def query_registered_utilities(self, *args, **kw):
+        """
+        Convenience method for querying a utility from the registry.
+        """
+        return self.registry.queryUtility(*args, **kw) # pylint: disable=E1103
 
     def setup_registry(self,
-                       service=None,
-                       # filters specification utilities.
+                       aggregate_implementation_registry=None,
+                       root_entity_repository=None,
+                       stage_entity_repository=None,
                        filter_specification_factory=None,
-                       filter_builder=None,
-                       filter_director=None,
+                       order_specification_factory=None,
+                       root_resource_repository=None,
+                       stage_resource_repository=None,
+                       service=None,
+                       filter_specification_builder=None,
+                       filter_specification_director=None,
                        cql_filter_specification_visitor=None,
                        sql_filter_specification_visitor=None,
                        eval_filter_specification_visitor=None,
-                       # order specification utilities.
-                       order_specification_factory=None,
-                       order_builder=None,
-                       order_director=None,
+                       order_specification_builder=None,
+                       order_specification_director=None,
                        cql_order_specification_visitor=None,
                        sql_order_specification_visitor=None,
                        eval_order_specification_visitor=None,
-                       # aggregate utilities.
-                       root_aggregate_implementation=None,
-                       relation_aggregate_implementation=None,
                        url_converter=None,
                        **kw):
         BfgConfigurator.setup_registry(self, **kw)
-        self.__setup_everest(service,
-                             filter_specification_factory,
-                             filter_builder,
-                             filter_director,
-                             cql_filter_specification_visitor,
-                             sql_filter_specification_visitor,
-                             eval_filter_specification_visitor,
-                             order_specification_factory,
-                             order_builder,
-                             order_director,
-                             cql_order_specification_visitor,
-                             sql_order_specification_visitor,
-                             eval_order_specification_visitor,
-                             root_aggregate_implementation,
-                             relation_aggregate_implementation,
-                             url_converter)
+        self.__setup(aggregate_implementation_registry,
+                     root_entity_repository,
+                     stage_entity_repository,
+                     filter_specification_factory,
+                     order_specification_factory,
+                     root_resource_repository,
+                     stage_resource_repository,
+                     service,
+                     filter_specification_builder,
+                     filter_specification_director,
+                     cql_filter_specification_visitor,
+                     sql_filter_specification_visitor,
+                     eval_filter_specification_visitor,
+                     order_specification_builder,
+                     order_specification_director,
+                     cql_order_specification_visitor,
+                     sql_order_specification_visitor,
+                     eval_order_specification_visitor,
+                     url_converter)
 
     def add_resource(self, interface, member, entity,
                      collection=None, aggregate=None,
                      entity_adapter=None, aggregate_adapter=None,
                      collection_root_name=None, collection_title=None,
                      expose=True, _info=u''):
-        """
-        Adds a collection resource.
-
-        This can also be invoked through ZCML using the
-          :function:`everest.directives.resource` directive.
-        """
         if not issubclass(member, Member):
             raise ValueError('The member must be a subclass '
                              'of member.')
@@ -178,70 +201,69 @@ class Configurator(BfgConfigurator):
                              (Aggregate,), {})
         elif not IAggregate in provided_by(object.__new__(aggregate)):
             raise ValueError('The entity aggregate must implement IAggregate.')
-        if expose:
-            srvc = self.registry.queryUtility(IService) # pylint: disable=E1103
-            if srvc is None:
-                raise ValueError('Need a IService utility to expose a '
-                                 'resource.')
         # Override the root name and title the collection, if requested.
         if not collection_root_name is None:
             collection.root_name = collection_root_name
-        if expose and collection.root_name is None:
-            raise ValueError('To expose a collection resource in the '
-                             'service (=root), a root name is required.')
         if not collection_title is None:
             collection.title = collection_title
-        # Shortcuts to ease pylint.
-        register_adapter = self.registry.registerAdapter # pylint: disable=E1103
-        register_utility = self.registry.registerUtility # pylint: disable=E1103
+        if expose:
+            srvc = self.query_registered_utilities(IService)
+            if srvc is None:
+                raise ValueError('Need a IService utility to expose a '
+                                 'resource.')
+            if collection.root_name is None:
+                raise ValueError('To expose a collection resource in the '
+                                 'service (=root), a root name is required.')
         # Register the entity instance -> member instance adapter.
         if entity_adapter is None:
             mb_factory = member.create_from_entity
         else:
             mb_factory = entity_adapter
-        register_adapter(mb_factory, (interface,), IMemberResource,
-                         info=_info)
+        self._register_adapter(mb_factory, (interface,), IMemberResource,
+                               info=_info)
         # Register the aggregate instance -> collection instance adapter.
         if aggregate_adapter is None:
             agg_factory = collection.create_from_aggregate
         else:
             agg_factory = aggregate_adapter
-        register_adapter(agg_factory, (interface,), ICollectionResource,
-                        info=_info)
+        self._register_adapter(agg_factory, (interface,), ICollectionResource,
+                          info=_info)
         # Register adapter object implementing interface -> member class
-        register_adapter(lambda obj: member,
-                         required=(interface,),
-                         provided=IMemberResource,
-                         name='member-class',
-                         info=_info)
+        self._register_adapter(lambda obj: member,
+                               required=(interface,),
+                               provided=IMemberResource,
+                               name='member-class',
+                               info=_info)
         # Register adapter object implementing interface -> collection class
-        register_adapter(lambda obj: collection,
-                         required=(interface,),
-                         provided=ICollectionResource,
-                         name='collection-class',
-                         info=_info)
+        self._register_adapter(lambda obj: collection,
+                               required=(interface,),
+                               provided=ICollectionResource,
+                               name='collection-class',
+                               info=_info)
         # Register adapter object implementing interface -> member class
-        register_adapter(lambda obj: entity,
-                         required=(interface,),
-                         provided=IEntity,
-                         name='entity-class',
-                         info=_info)
+        self._register_adapter(lambda obj: entity,
+                               required=(interface,),
+                               provided=IEntity,
+                               name='entity-class',
+                               info=_info)
         # Register adapter object implementing interface -> collection class
-        register_adapter(lambda obj: aggregate,
-                         required=(interface,),
-                         provided=IAggregate,
-                         name='aggregate-class',
-                         info=_info)
+        self._register_adapter(lambda obj: aggregate,
+                               required=(interface,),
+                               provided=IAggregate,
+                               name='aggregate-class',
+                               info=_info)
         # Register utility interface -> member class
-        register_utility(member, interface, name='member-class', info=_info)
+        self._register_utility(member, interface,
+                               name='member-class', info=_info)
         # Register utility interface -> collection class
-        register_utility(collection, interface,
-                         name='collection-class', info=_info)
+        self._register_utility(collection, interface,
+                               name='collection-class', info=_info)
         # Register utility interface -> entity class
-        register_utility(entity, interface, name='entity-class', info=_info)
+        self._register_utility(entity, interface,
+                               name='entity-class', info=_info)
         # Register utility interface -> aggregate class
-        register_utility(aggregate, interface,
-                         name='aggregate-class', info=_info)
+        self._register_utility(aggregate, interface,
+                               name='aggregate-class', info=_info)
         # Attach the marker interface to the registered resource classes, if
         # necessary.
         if not interface in provided_by(member):
@@ -264,12 +286,6 @@ class Configurator(BfgConfigurator):
 
     def add_representer(self, resource, content_type, configuration=None,
                         _info=u''):
-        """
-        Adds a representer.
-
-        This can also be invoked through the
-          :function:`everest.directives.representer` directive.
-        """
         # If we were passed a class, instantiate it.
         if type(configuration) is type:
             configuration = configuration()
@@ -280,130 +296,157 @@ class Configurator(BfgConfigurator):
         # Register customized data element class for the representer
         # class registered for the given content type.
         utility_name = content_type.mime_string
-        rpr_cls = self.registry.getUtility(IRepresenter, utility_name) # pylint: disable=E1103
-        de_reg = self.registry.queryUtility(IDataElementRegistry, utility_name) # pylint: disable=E1103
+        rpr_cls = self.get_registered_utility(IRepresenter, utility_name)
+        de_reg = self.query_registered_utilities(IDataElementRegistry,
+                                                 utility_name)
         if de_reg is None:
             # A sad attempt at providing a singleton that lives as long
             # as the associated (zope) registry: The first time this is
             # called with a fresh registry, a data element registry is
             # instantiated and then registered as a utility.
             de_reg = rpr_cls.make_data_element_registry()
-            self.registry.registerUtility(de_reg, IDataElementRegistry, # pylint: disable=E1103
-                                          name=utility_name)
+            self._register_utility(de_reg, IDataElementRegistry,
+                                   name=utility_name)
         de_cls = de_reg.create_data_element_class(resource, configuration)
         de_reg.set_data_element_class(de_cls)
         # Register adapter resource, MIME name -> representer;
-        self.registry.registerAdapter(rpr_cls.create_from_resource, # pylint: disable=E1103
-                                      (resource,),
-                                      IRepresenter,
-                                      name=utility_name,
-                                      info=_info)
+        self._register_adapter(rpr_cls.create_from_resource,
+                               (resource,),
+                               IRepresenter,
+                               name=utility_name,
+                               info=_info)
 
-    def __setup_everest(self,
-                        service,
-                        filter_specification_factory,
-                        filter_builder,
-                        filter_director,
-                        cql_filter_specification_visitor,
-                        sql_filter_specification_visitor,
-                        eval_filter_specification_visitor,
-                        order_specification_factory,
-                        order_builder,
-                        order_director,
-                        cql_order_specification_visitor,
-                        sql_order_specification_visitor,
-                        eval_order_specification_visitor,
-                        root_aggregate_implementation,
-                        relation_aggregate_implementation,
-                        url_converter):
-        register_utility = self.registry.registerUtility # pylint: disable=E1103
-        register_adapter = self.registry.registerAdapter # pylint: disable=E1103
-        if service is None:
-            service = Service()
-        register_utility(service, IService)
-        # Filter specification utilities.
+    def _register_utility(self, *args, **kw):
+        return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
+
+    def _register_adapter(self, *args, **kw):
+        return self.registry.registerAdapter(*args, **kw) # pylint: disable=E1103
+
+    def __setup(self,
+                aggregate_implementation_registry,
+                root_entity_repository,
+                stage_entity_repository,
+                filter_specification_factory,
+                order_specification_factory,
+                root_resource_repository,
+                stage_resource_repository,
+                service,
+                filter_specification_builder,
+                filter_specification_director,
+                cql_filter_specification_visitor,
+                sql_filter_specification_visitor,
+                eval_filter_specification_visitor,
+                order_specification_builder,
+                order_specification_director,
+                cql_order_specification_visitor,
+                sql_order_specification_visitor,
+                eval_order_specification_visitor,
+                url_converter):
+        # Set up the two builtin entity repositories (ROOT and STAGE).    
+        if aggregate_implementation_registry is None:
+            aggregate_implementation_registry = \
+                                    AggregateImplementationRegistry()
+            aggregate_implementation_registry.register(MemoryAggregateImpl)
+            self._register_utility(aggregate_implementation_registry,
+                                   IAggregateImplementationRegistry)
+        if root_entity_repository is None:
+            root_entity_repository = \
+                    EntityRepository(implementation_registry=
+                                        aggregate_implementation_registry)
+            root_entity_repository.set_default_implementation(
+                                                        MemoryAggregateImpl)
+        self._register_utility(root_entity_repository, IEntityRepository,
+                               name=REPOSITORY_DOMAINS.ROOT)
+        if stage_entity_repository is None:
+            stage_entity_repository = \
+                    EntityRepository(implementation_registry=
+                                        aggregate_implementation_registry)
+            stage_entity_repository.set_default_implementation(
+                                                        MemoryAggregateImpl)
+        self._register_utility(stage_entity_repository, IEntityRepository,
+                               name=REPOSITORY_DOMAINS.STAGE)
+        # Set up filter and order specification factories.
         if filter_specification_factory is None:
             filter_specification_factory = FilterSpecificationFactory()
-        register_utility(filter_specification_factory,
-                         IFilterSpecificationFactory)
-        if filter_builder is None:
-            filter_builder = FilterSpecificationBuilder
-        register_utility(filter_builder, IFilterSpecificationBuilder)
-        if filter_director is None:
-            filter_director = FilterSpecificationDirector
-        register_utility(filter_director, IFilterSpecificationDirector)
-        if cql_filter_specification_visitor is None:
-            cql_filter_specification_visitor = CqlFilterSpecificationVisitor
-        register_utility(cql_filter_specification_visitor,
-                         IFilterSpecificationVisitor,
-                         name=EXPRESSION_KINDS.CQL)
-        if sql_filter_specification_visitor is None:
-            sql_filter_specification_visitor = SqlFilterSpecificationVisitor
-        register_utility(sql_filter_specification_visitor,
-                         IFilterSpecificationVisitor,
-                         name=EXPRESSION_KINDS.SQL)
-        if eval_filter_specification_visitor is None:
-            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
-        register_utility(sql_filter_specification_visitor,
-                         IFilterSpecificationVisitor,
-                         name=EXPRESSION_KINDS.EVAL)
-        # Order specification utilitites.
+        self._register_utility(filter_specification_factory,
+                               IFilterSpecificationFactory)
         if order_specification_factory is None:
             order_specification_factory = OrderSpecificationFactory()
-        register_utility(order_specification_factory,
-                         IOrderSpecificationFactory)
-        if order_builder is None:
-            order_builder = OrderSpecificationBuilder
-        register_utility(order_builder, IOrderSpecificationBuilder)
-        if order_director is None:
-            order_director = OrderSpecificationDirector
-        register_utility(order_director, IOrderSpecificationDirector)
+        self._register_utility(order_specification_factory,
+                               IOrderSpecificationFactory)
+        # Set up the two builtin resource repositories.
+        if root_resource_repository is None:
+            ent_repo = \
+                self.get_registered_utility(IEntityRepository,
+                                            name=REPOSITORY_DOMAINS.ROOT)
+            root_resource_repository = ResourceRepository(ent_repo)
+        self._register_utility(root_resource_repository, IResourceRepository,
+                               name=REPOSITORY_DOMAINS.ROOT)
+        if stage_resource_repository is None:
+            ent_repo = \
+                self.get_registered_utility(IEntityRepository,
+                                            name=REPOSITORY_DOMAINS.STAGE)
+            stage_resource_repository = ResourceRepository(ent_repo)
+        self._register_utility(stage_resource_repository,
+                               IResourceRepository,
+                               name=REPOSITORY_DOMAINS.STAGE)
+        # Set up the service.
+        if service is None:
+            service = Service()
+        self._register_utility(service, IService)
+        # Set up filter and order specification builders, directors, visitors.
+        if filter_specification_builder is None:
+            filter_specification_builder = FilterSpecificationBuilder
+        self._register_utility(filter_specification_builder,
+                              IFilterSpecificationBuilder)
+        if filter_specification_director is None:
+            filter_specification_director = FilterSpecificationDirector
+        self._register_utility(filter_specification_director,
+                              IFilterSpecificationDirector)
+        if cql_filter_specification_visitor is None:
+            cql_filter_specification_visitor = CqlFilterSpecificationVisitor
+        self._register_utility(cql_filter_specification_visitor,
+                              IFilterSpecificationVisitor,
+                              name=EXPRESSION_KINDS.CQL)
+        if sql_filter_specification_visitor is None:
+            sql_filter_specification_visitor = SqlFilterSpecificationVisitor
+        self._register_utility(sql_filter_specification_visitor,
+                              IFilterSpecificationVisitor,
+                              name=EXPRESSION_KINDS.SQL)
+        if eval_filter_specification_visitor is None:
+            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
+        self._register_utility(sql_filter_specification_visitor,
+                              IFilterSpecificationVisitor,
+                              name=EXPRESSION_KINDS.EVAL)
+        if order_specification_builder is None:
+            order_specification_builder = OrderSpecificationBuilder
+        self._register_utility(order_specification_builder,
+                              IOrderSpecificationBuilder)
+        if order_specification_director is None:
+            order_specification_director = OrderSpecificationDirector
+        self._register_utility(order_specification_director,
+                              IOrderSpecificationDirector)
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
-        register_utility(cql_order_specification_visitor,
-                         IOrderSpecificationVisitor,
-                         name=EXPRESSION_KINDS.CQL)
+        self._register_utility(cql_order_specification_visitor,
+                              IOrderSpecificationVisitor,
+                              name=EXPRESSION_KINDS.CQL)
         if sql_order_specification_visitor is None:
             sql_order_specification_visitor = SqlOrderSpecificationVisitor
-        register_utility(sql_order_specification_visitor,
-                         IOrderSpecificationVisitor,
-                         name=EXPRESSION_KINDS.SQL)
+        self._register_utility(sql_order_specification_visitor,
+                              IOrderSpecificationVisitor,
+                              name=EXPRESSION_KINDS.SQL)
         if eval_order_specification_visitor is None:
             eval_order_specification_visitor = EvalOrderSpecificationVisitor
-        register_utility(eval_order_specification_visitor,
-                         IOrderSpecificationVisitor,
-                         name=EXPRESSION_KINDS.EVAL)
-        # Aggregate utilities.
-        if root_aggregate_implementation is None:
-            root_aggregate_implementation = MemoryRootAggregateImpl
-        register_utility(root_aggregate_implementation,
-                         IRootAggregateImplementation)
-        if relation_aggregate_implementation is None:
-            relation_aggregate_implementation = MemoryRelationAggregateImpl
-        register_utility(relation_aggregate_implementation,
-                         IRelationAggregateImplementation)
+        self._register_utility(eval_order_specification_visitor,
+                              IOrderSpecificationVisitor,
+                              name=EXPRESSION_KINDS.EVAL)
         # URL converter adapter.
         if url_converter is None:
             url_converter = ResourceUrlConverter
-        register_adapter(url_converter, (IRequest,), IResourceUrlConverter)
-        # Register system resources.
+        self._register_adapter(url_converter, (IRequest,),
+                              IResourceUrlConverter)
+        # Register system resources provided as a service to the application.
         self.add_resource(IMessage, MessageMember, Message,
-                          aggregate=MemoryRootAggregateImpl,
+                          aggregate=MemoryAggregateImpl,
                           collection_root_name='_messages')
-
-    def __find_interface(self, cls, base_interface):
-        # Finds the first interface provided by `cls` that is a
-        # subclass of `base_interface`.
-        if issubclass(cls, base_interface):
-            i_cls = cls
-        else:
-            i_cls = None
-            for prov_i_cls in provided_by(object.__new__(cls)):
-                if issubclass(prov_i_cls, base_interface):
-                    i_cls = prov_i_cls
-                    break
-        if i_cls is None:
-            raise ValueError('The specified resource is neither a subclass of '
-                             '%(cls)s nor a class implementing %(cls)s.' %
-                             dict(cls=cls))
-        return i_cls

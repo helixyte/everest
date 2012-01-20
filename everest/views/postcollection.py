@@ -5,11 +5,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
-from everest.staging import STAGING_CONTEXT_MANAGERS
 from everest.url import resource_to_url
 from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPCreated
-from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PostCollectionView',
@@ -30,9 +28,7 @@ class PostCollectionView(PutOrPostResourceView):
     """
 
     def _extract_request_data(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.representer.from_string(self.request.body)
-        return member
+        return self.representer.from_string(self.request.body)
 
     def _process_request_data(self, data):
         if self.context.get(data.__name__) is not None:

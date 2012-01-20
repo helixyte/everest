@@ -8,20 +8,18 @@ Created on Nov 2, 2011.
 from ConfigParser import SafeConfigParser
 from everest import db
 from everest.configuration import Configurator
-from everest.db import get_db_engine
-from everest.db import is_db_engine_initialized
-from everest.db import set_db_engine
-from everest.entities.utils import get_persistent_aggregate
+from everest.db import get_engine
+from everest.entities.aggregates import OrmAggregateImpl
+from everest.entities.interfaces import IEntityRepository
+from everest.repository import REPOSITORY_DOMAINS
 from everest.resources.interfaces import IService
-from everest.resources.utils import get_collection
 from everest.resources.utils import get_root_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
-from sqlalchemy.engine import create_engine
-from webtest import TestApp as _TestApp
+from webtest import TestApp
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 import nose.plugins
 import os
@@ -31,22 +29,22 @@ import unittest
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
-           'DbTestCase',
            'DummyContext',
            'DummyModule',
-           'EverestTestApp',
-           'EverestTestAppNosePlugin',
+           'EntityTestCase',
+           'EverestNosePlugin',
            'FunctionalTestCase',
            'ModelTestCase',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
-           'TestApp',
+           'attribute_test',
            'elapsed',
            'no_autoflush',
+           'persistence_test',
            ]
 
 
-class EverestTestAppNosePlugin(nose.plugins.Plugin):
+class EverestNosePlugin(nose.plugins.Plugin):
     """
     Nose plugin extension.
 
@@ -73,11 +71,11 @@ class EverestTestAppNosePlugin(nose.plugins.Plugin):
 
     def configure(self, options, conf):
         """Configure the plugin"""
-        super(EverestTestAppNosePlugin, self).configure(options, conf)
+        super(EverestNosePlugin, self).configure(options, conf)
         opt_val = getattr(options, self.__dest_opt_name, None)
         if opt_val:
             self.enabled = True
-            TestApp.app_ini_file_path = opt_val
+            EverestIni.ini_file_path = opt_val
 
 
 class Pep8CompliantTestCase(unittest.TestCase):
@@ -106,11 +104,9 @@ class Pep8CompliantTestCase(unittest.TestCase):
     assert_raises = unittest.TestCase.assertRaises
 
     def set_up(self):
-        "Hook method for setting up the test fixture before exercising it."
         pass
 
     def tear_down(self):
-        "Hook method for deconstructing the test fixture after testing it."
         pass
 
     def setUp(self):
@@ -120,181 +116,102 @@ class Pep8CompliantTestCase(unittest.TestCase):
         self.tear_down()
 
 
-class TestApp(_TestApp):
+class EverestIni(object):
     """
-    Test web application.
-
-    Extends the base class with facilities to access to a global application
-    initialization file that can be configured through nose.
+    Helper class providing access to settings parsed from an ini file.
+    
+    By default, the ini file configured through the :class:`EverestNosePlugin`
+    is used.
     """
-    #: Name of the application to test. This specifies the section name to
-    #: look for in the initialization file. Please set to your app's name in
-    #: a derived class.
-    app_name = None
-
-    #: Name of the package to load the application from. Please set to your
-    #: app's package in a derived class.
-    package_name = None
-
-    #: Application initialization file path. Set from the nose plugin
-    #: :class:`EverestTestAppNosePlugin`.
-    app_ini_file_path = None
+    #: Path to the global ini file. Set through the nose plugin.
+    ini_file_path = None
 
     __ini_parser = None
 
+    def __init__(self, ini_file_path=None):
+        if ini_file_path is None:
+            self.__ini_parser = self.__check_ini_file()
+        else:
+            self.__ini_parser = SafeConfigParser()
+            self.__ini_parser.read(ini_file_path)
+            self.ini_file_path = ini_file_path
+
+    def get_settings(self, section):
+        """
+        Returns a dictionary containing the settings for the given ini file
+        section.
+        
+        :param str section: ini file section.
+        """
+        return dict(self.__ini_parser.items(section))
+
+    def get_setting(self, section, key):
+        """
+        Returns the specified setting from the given ini file section.
+        
+        :param str section: ini file section.
+        :param str key: key to look up in the section.
+        """
+        return self.__ini_parser.get(section, key)
+
     @classmethod
-    def read_ini_file(cls):
-        """
-        Returns a parser for the application ini file that was configured
-        through the :method:`set_app_ini_file_path` method.
-        """
+    def __check_ini_file(cls):
+        if cls.ini_file_path is None:
+            raise ValueError('You need to set an application '
+                             'initialization file path (e.g., through '
+                             'the EverestAppNosePlugin).')
         if cls.__ini_parser is None:
-            if cls.app_ini_file_path is None:
-                raise ValueError('You need to configure an application '
-                                 'initialization file path (e.g., through '
-                                 'the EverestAppNosePlugin).')
             cls.__ini_parser = SafeConfigParser()
-            cls.__ini_parser.read(cls.app_ini_file_path)
+            cls.__ini_parser.read(cls.ini_file_path)
         return cls.__ini_parser
-
-
-class EverestTestApp(TestApp):
-    """
-    Test app class for everest tests.
-    """
-    app_name = 'everest'
-    package_name = 'everest'
 
 
 class BaseTestCase(Pep8CompliantTestCase):
     """
     Base class for all everest unit test case classes.
     """
-
-    #: The class of the test application (subclass of :class:`TestApp`).
-    #: Override to make your test case load settings from custom sections
-    #: of your application initialization file.
-    test_app_cls = EverestTestApp
-
-    def _test_attributes(self, test_object, attribute_map):
-        """
-        Utility method to test whether the test object attributes match the
-        expected ones (given the dictionary).
-
-        :param test_object: a test object
-        :param attribute_map: a dictionary with key = attribute name
-                and value = expected value for this attribute
-        """
-        for attr_name, wanted_value in attribute_map.iteritems():
-            self.assert_equal(getattr(test_object, attr_name), wanted_value)
-
-
-class DbTestCase(BaseTestCase):
-    """
-    Test class for database related operations such as query, insert, update,
-    and delete.
-    """
-    _connection = None
-    _transaction = None
-    _session = None
+    #: The registry configurator. This must be set by derived classes.
+    config = None
+    #: The ini file parser.
+    ini = None
+    #: The name of the package where the tests reside. May be overridden in
+    #: derived classes.
+    package_name = 'everest'
+    #: The path to the application initialization (ini) file name.
+    ini_file_path = None
+    #: The section name in the ini file to look for settings. May be 
+    #: overridden in derived classes.
+    ini_section_name = 'everest'
 
     def set_up(self):
-        # Initialize the engine, if necessary. Note that this should only
-        # be done once per process.
-        if not is_db_engine_initialized():
-            db_string = self._get_db_info_from_ini_file()
-            engine = create_engine(db_string)
-            set_db_engine(engine)
-        else:
-            engine = get_db_engine()
-        # We set up an outer transaction that allows us to roll back all
-        # changes (including commits) the unittest may want to make.
-        self._connection = engine.connect()
-        self._transaction = self._connection.begin()
-        # Make sure we start with a clean session.
-        db.Session.remove()
-        # Throw out the Zope transaction manager.
-        db.Session.configure(extension=None)
-        # Create a new session for the tests.
-        self._session = db.Session(bind=self._connection)
-
-    def tear_down(self):
-        # Roll back the outer transaction and close the connection.
-        self._session.close()
-        self._transaction.rollback()
-        self._connection.close()
-        # Remove the session we created.
-        db.Session.remove()
-
-    def _get_db_info_from_ini_file(self):
-        # Extract DB initialization strings from the ini file.
-        ini_parser = self.test_app_cls.read_ini_file()
-        ini_marker = 'app:%s' % self.test_app_cls.app_name
-        return ini_parser.get(ini_marker, 'db_string')
-
-    def _test_model_attributes(self, model_class, attribute_map,
-                               test_attributes=True):
-        """
-        Utility method which creates an object of the given class with the
-        given attribute map, commits it to the backend, reloads it from the
-        backend and then tests if the attributes compare equal.
-
-        :param model_class: A model class inheriting from
-                :class:`everest.entities.base.Entity`
-        :param attribute_map: a dictionary with (key = attribute name,
-                value = expected value of the attribute)
-        """
-        # Instantiate.
-        model = model_class(**attribute_map) #pylint:disable=W0142
-        self._session.add(model)
-        self._session.commit()
-        self._session.refresh(model)
-        model_id = model.id
-        # Assure a new object is loaded to test if storing worked.
-        self._session.expunge(model)
-        del model
-        query = self._session.query(model_class)
-        fetched_model = query.filter_by(id=model_id).one()
-        if test_attributes:
-            self._test_attributes(fetched_model, attribute_map)
+        # Create and configure a new testing registry.
+        reg = Registry('testing')
+        self.ini = EverestIni(self.ini_file_path)
+        settings = self.ini.get_settings(self.ini_section_name)
+        self.config = Configurator(registry=reg,
+                                   package=self.package_name)
+        self.config.setup_registry(settings=settings)
 
 
-class ModelTestCase(DbTestCase):
+class EntityTestCase(BaseTestCase):
     """
     Test class for entity classes.
     """
 
-    __autoflush_flag = None
-    config = None
-    autoflush_default = False
-
     def set_up(self):
-        # Configure the sessionmaker to disable autoflush before we create our
-        # session.
-        self.__autoflush_flag = db.Session.autoflush #pylint:disable=E1101
-        db.Session.configure(autoflush=self.autoflush_default)
-        super(ModelTestCase, self).set_up()
-        # Create a new testing registry.
-        reg = Registry('testing')
-        # Configure the registry.
-        self.config = Configurator(registry=reg,
-                                   package=self.test_app_cls.package_name)
-        self.config.setup_registry()
+        super(EntityTestCase, self).set_up()
+        # Load config file.
         self.config.hook_zca()
-        self._custom_configure()
+        self.config.begin()
         self.config.load_zcml('configure.zcml')
 
-    def _custom_configure(self):
-        self.config.begin()
-
     def tear_down(self):
-        super(ModelTestCase, self).tear_down()
-        db.Session.configure(autoflush=self.__autoflush_flag)
         self.config.unhook_zca()
         self.config.end()
 
     def _get_entity(self, icollection, key=None):
-        agg = get_persistent_aggregate(icollection)
+        ent_repo = self.config.get_registered_utility(IEntityRepository)
+        agg = ent_repo.get(icollection)
         if key is None:
             agg.slice = slice(0, 1)
             entity = list(agg.iterator())[0]
@@ -306,41 +223,42 @@ class ModelTestCase(DbTestCase):
         return entity_cls.create_from_data(data)
 
 
-class ResourceTestCase(ModelTestCase):
+class ResourceTestCase(BaseTestCase):
     """
-    Test class for resources classes.
+    Test class for resource classes.
     """
-
-    autoflush_default = True
     _request = None
 
     def set_up(self):
         super(ResourceTestCase, self).set_up()
-        # Set the request root.
-        srvc = get_utility(IService)
-        srvc.start()
-        self._request.root = srvc
-
-    def _custom_configure(self):
         # Build a dummy request.
-        ini_parser = self.test_app_cls.read_ini_file()
-        host = ini_parser.get('server:main', 'host')
-        port = ini_parser.getint('server:main', 'port')
-        base_url = 'http://%s:%d' % (host, port)
-        app_url = base_url
+        host = self.ini.get_setting('server:main', 'host')
+        port = int(self.ini.get_setting('server:main', 'port'))
+        base_url = app_url = 'http://%s:%d' % (host, port)
         self._request = DummyRequest(application_url=app_url,
                                      host_url=base_url,
                                      path_url=app_url,
                                      url=app_url,
                                      registry=self.config.registry)
+        #
+        self.config.hook_zca()
         self.config.begin(request=self._request)
+        self.config.load_zcml('configure.zcml')
+        # Set the request root.
+        srvc = self.config.get_registered_utility(IService)
+        srvc.start()
+        self._request.root = srvc
+
+    def tear_down(self):
+        self.config.unhook_zca()
+        self.config.end()
 
     def _get_member(self, icollection, key=None):
-        coll = get_root_collection(icollection)
         if key is None:
             coll = self._get_collection(icollection, slice(0, 1))
             member = list(iter(coll))[0]
         else:
+            coll = get_root_collection(icollection)
             member = coll.get(key)
         return member
 
@@ -353,7 +271,7 @@ class ResourceTestCase(ModelTestCase):
 
     def _create_member(self, member_cls, entity):
         member = member_cls.create_from_entity(entity)
-        coll = get_collection(member_cls)
+        coll = get_root_collection(member_cls)
         coll.add(member)
         return member
 
@@ -362,14 +280,14 @@ class FunctionalTestCase(BaseTestCase):
     """
     A basic test class for client side actions.
     """
-
-    config = None
     app = None
+    app_name = None
 
     def set_up(self):
+        # Create and configure a new testing registry.
         reg = Registry('testing')
         self.config = Configurator(registry=reg,
-                                   package=self.test_app_cls.package_name)
+                                   package=self.package_name)
         self.config.hook_zca()
         self.config.begin()
         wsgiapp = self._load_wsgiapp()
@@ -392,8 +310,8 @@ class FunctionalTestCase(BaseTestCase):
         pass
 
     def _load_wsgiapp(self):
-        wsgiapp = loadapp('config:' + self.test_app_cls.app_ini_file_path,
-                          name=self.test_app_cls.app_name)
+        wsgiapp = loadapp('config:' + self.ini_file_path,
+                          name=self.app_name)
         return wsgiapp
 
     def _create_extra_environment(self):
@@ -472,3 +390,108 @@ def no_autoflush(scoped_session):
                 session.autoflush = autoflush
         return update_wrapper(go, fn)
     return decorate
+
+
+class OrmContextManager(object):
+    """
+    Context manager for ORM tests.
+    
+    Configures the entity repository to use the ORM implementation as
+    a default, sets up an outer transaction before the test is run and rolls
+    this transaction back after the test has finished.
+    """
+    def __init__(self, autoflush=True):
+        self.__autoflush = autoflush
+        self.__connection = None
+        self.__transaction = None
+        self.__session = None
+        self.__old_autoflush_flag = None
+
+    def __enter__(self):
+        # Configure the entity repository to use the ORM backend 
+        # implementation as the default. This triggers the initialization 
+        # callback.
+        entity_repository = get_utility(IEntityRepository,
+                                        name=REPOSITORY_DOMAINS.ROOT)
+        entity_repository.register_implementation(OrmAggregateImpl,
+                                                  make_default=True)
+        # We set up an outer transaction that allows us to roll back all
+        # changes (including commits) the unittest may want to make.
+        engine = get_engine()
+        self.__connection = engine.connect()
+        self.__transaction = self.__connection.begin()
+        # Configure the autoflush behavior of the session.
+        self.__old_autoflush_flag = db.Session.autoflush #pylint:disable=E1101
+        db.Session.configure(autoflush=self.__autoflush)
+        # Make sure we start with a clean session.
+        db.Session.remove()
+        # Throw out the Zope transaction manager for testing.
+        db.Session.configure(extension=None)
+        # Create a new session for the tests.
+        self.__session = db.Session(bind=self.__connection)
+        return self.__session
+
+    def __exit__(self, ext_type, value, tb):
+        # Roll back the outer transaction and close the connection.
+        self.__session.close()
+        self.__transaction.rollback()
+        self.__connection.close()
+        # Remove the session we created.
+        db.Session.remove()
+        # Restore autoflush flag.
+        db.Session.configure(autoflush=self.__old_autoflush_flag)
+
+
+def with_orm(autoflush=True, init_callback=None):
+    """
+    Decorator for ORM tests which uses a :class:`OrmContextManager` for the
+    call to the decorated test function.
+    """
+    def decorate(func):
+        def wrap(*args, **kw):
+            with OrmContextManager(autoflush=autoflush,
+                                   init_callback=init_callback):
+                func(*args, **kw)
+        return update_wrapper(wrap, func)
+    return decorate
+
+
+def check_attributes(test_object, attribute_map):
+    """
+    Utility function to test whether the test object attributes match the
+    expected ones (given the dictionary).
+
+    :param test_object: a test object
+    :param attribute_map: a dictionary with key = attribute name
+            and value = expected value for this attribute
+    """
+    for attr_name, exp_val in attribute_map.iteritems():
+        assert getattr(test_object, attr_name) == exp_val
+
+
+def persist(session, entity_class, attribute_map,
+            do_attribute_check=True):
+    """
+    Utility function which creates an object of the given class with the
+    given attribute map, commits it to the backend, reloads it from the
+    backend and then tests if the attributes compare equal.
+
+    :param entity_class: class inheriting from
+      :class:`everest.entities.base.Entity`
+    :param attribute_map: a dictionary containint attribute names as keys
+      and expected attribute values as values. The attribute map must
+      contain all mandatory attributes required for instantiation.
+    """
+    # Instantiate.
+    entity = entity_class(**attribute_map) #pylint:disable=W0142
+    session.add(entity)
+    session.commit()
+    session.refresh(entity)
+    entity_id = entity.id
+    # Assure a new object is loaded to test if storing worked.
+    session.expunge(entity)
+    del entity
+    query = session.query(entity_class)
+    fetched_entity = query.filter_by(id=entity_id).one()
+    if do_attribute_check:
+        check_attributes(fetched_entity, attribute_map)

@@ -9,8 +9,6 @@ Created on Nov 3, 2011.
 
 from everest.configuration import Configurator
 from everest.root import RootFactory
-from everest.testing import TestApp as _TestApp
-from pkg_resources import resource_filename # pylint: disable=E0611
 from repoze.bfg.threadlocal import get_current_registry
 
 
@@ -20,10 +18,3 @@ def app_factory(global_settings, **local_settings): # pylint: disable=W0613
     config.setup_registry(settings=local_settings,
                           root_factory=RootFactory())
     return config.make_wsgi_app()
-
-
-class TestApp(_TestApp):
-    app_name = 'testapp'
-    package_name = 'everest.tests.testapp'
-    app_ini_file_path = resource_filename('everest.tests.testapp',
-                                          'testapp.ini')

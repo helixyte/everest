@@ -10,12 +10,12 @@ from everest.messaging import UserMessageEventNotifier
 from everest.messaging import UserMessageHandler
 from everest.resources.interfaces import IService
 from everest.testing import FunctionalTestCase
-from everest.tests.testapp import TestApp
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
 from everest.tests.testapp.views import UserMessagePostCollectionView
 from everest.tests.testapp.views import UserMessagePutMemberView
+from pkg_resources import resource_filename # pylint: disable=E0611
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -24,21 +24,23 @@ __all__ = ['ViewsTestCase',
 
 
 class ViewsTestCase(FunctionalTestCase):
-    test_app_cls = TestApp
-
+    package_name = 'everest.tests.testapp'
+    ini_file_path = resource_filename('everest.tests.testapp', 'testapp.ini')
+    app_name = 'testapp'
     path = '/foos'
 
-    def _custom_configure(self):
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
 
     def test_get_collection_default_content_type(self):
         res = self.app.get(self.path, status=200)
-        self.assert_false(res is None)
+        self.assert_is_not_none(res)
 
 
 class WarningViewsTestCase(ViewsTestCase):
-    def _custom_configure(self):
-        ViewsTestCase._custom_configure(self)
+    def set_up(self):
+        ViewsTestCase.set_up(self)
         reg = self.config.registry
         reg.registerUtility(UserMessageEventNotifier(), # pylint:disable=E1103
                             IUserMessageEventNotifier)

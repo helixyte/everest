@@ -7,12 +7,14 @@ Marker interfaces for entities and aggregates.
 Created on Nov 3, 2011.
 """
 
+from everest.interfaces import IRepository
 from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
 __all__ = ['IAggregate',
            'IEntity',
+           'IEntityRepository',
            'IRelationAggregateImplementation',
            'IRootAggregateImplementation',
            ]
@@ -40,12 +42,10 @@ class IAggregate(Interface):
 
     def create(entity_class, relation=None, ** kw):
         """
-        Factory method for creating the aggregate.
         """
 
     def clone():
         """
-        Creates a clone of this aggregate.
         """
 
     def count():
@@ -73,13 +73,47 @@ class IAggregate(Interface):
         """
 
 
-class IRootAggregateImplementation(Interface):
+class IAggregateImplementationRegistry(Interface):
     """
-    Marker interface for aggregate implementations.
+    Interface for the aggregate implementation registry.
+    """
+    def register(implementation_class):
+        """
+        Registers the given implementation class with the registry.
+        """
+
+    def unregister(implementation_class):
+        """
+        Removes the specified registered implementation class from the 
+        registry.
+        """
+
+    def is_registered(implementation_class):
+        """
+        Checks if the given implementation class was registered with this
+        registry.
+        """
+
+    def get_registered():
+        """
+        Returns a list of all registered implementation classes.
+        """
+
+
+class IEntityRepository(IRepository):
+    """
+    Marker interface for entity repositories.
     """
 
 
-class IRelationAggregateImplementation(Interface):
+class IStagingContextManager(Interface):
+    def __enter__():
+        """Enters the context."""
+    def __exit__():
+        """Exits the context."""
+
+
+class IAggregateImplementation(Interface):
     """
     Marker interface for aggregate implementations.
     """

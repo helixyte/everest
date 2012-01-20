@@ -5,10 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 1, 2011.
 """
 
-from everest.db import Session
-from everest.db import reset_db_engine
-from everest.db import reset_metadata
-from everest.db import set_db_engine
+from everest.db import setup_db
+from everest.db import teardown_db
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.representers.base import DataElementGenerator
@@ -18,14 +16,12 @@ from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.base import Collection
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
 from everest.resources.descriptors import terminal_attribute
-from everest.resources.utils import get_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.staging import STAGING_CONTEXT_MANAGERS
+from everest.resources.utils import get_stage_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db import TestApp
 from everest.tests.testapp_db.db import create_metadata
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
@@ -39,8 +35,7 @@ from everest.tests.testapp_db.resources import MyEntityGrandchildMember
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.url import resource_to_url
-from sqlalchemy.engine import create_engine
-from zope.component import createObject as create_object # pylint: disable=E0611,F0401
+from pkg_resources import resource_filename # pylint: disable=E0611
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
@@ -48,28 +43,12 @@ __all__ = ['AttributesTestCase',
            ]
 
 
-def setup():
-    # Module level setup.
-    reset_db_engine()
-    reset_metadata()
-    db_string = 'sqlite://'
-    engine = create_engine(db_string)
-    set_db_engine(engine)
-    DescriptorsTestCase.metadata = create_metadata()
-    DescriptorsTestCase.metadata.bind = engine
-    DescriptorsTestCase.metadata.create_all()
-    # 
-    Session.remove()
-
-
 def teardown():
     # Module level teardown.
     if not DescriptorsTestCase.metadata is None:
         DescriptorsTestCase.metadata.drop_all()
         DescriptorsTestCase.metadata = None
-    # We want to clear the mappers and ensure the metadata gets rebuilt.
-    reset_metadata()
-    reset_db_engine()
+    teardown_db(reset_metadata=True)
 
 
 class AttributesTestCase(Pep8CompliantTestCase):
@@ -115,31 +94,23 @@ class AttributesTestCase(Pep8CompliantTestCase):
 
 
 class DescriptorsTestCase(ResourceTestCase):
-    test_app_cls = TestApp
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    ini_section_name = 'app:testapp_db'
 
     metadata = None
-    _connection = None
-    _transaction = None
-    _request = None
 
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
 
-    def _custom_configure(self):
+    def set_up(self):
+        ResourceTestCase.set_up(self)
         if DescriptorsTestCase.metadata is None:
-            setup()
-        # Set up outer transaction.
-        self._connection = DescriptorsTestCase.metadata.bind.connect()
-        self._transaction = self._connection.begin()
-        Session.configure(bind=self._connection,
-                          extension=None)
-        ResourceTestCase._custom_configure(self)
-
-    def tear_down(self):
-        ResourceTestCase.tear_down(self)
-        Session.remove()
-        self._transaction.rollback()
-        self._connection.close()
+            engine, metadata = setup_db(create_metadata, reset_metadata=True)
+            DescriptorsTestCase.metadata = metadata
+            DescriptorsTestCase.metadata.bind = engine
+            DescriptorsTestCase.metadata.create_all()
 
     def test_terminal_access(self):
         entity = MyEntity()
@@ -157,167 +128,167 @@ class DescriptorsTestCase(ResourceTestCase):
     def test_collection_access(self):
         parent = MyEntityParent()
         entity = MyEntity(parent=parent)
-        member = MyEntityMember.create_from_entity(entity)
+        coll = get_root_collection(IMyEntity)
+        member = coll.create_member(entity)
         self.assert_true(isinstance(member.children, Collection))
-        coll = get_collection(IMyEntity)
-        coll.add(member)
         i = 0
         n = 5
         while i < n:
             child_entity = MyEntityChild()
-            child_member = MyEntityChildMember.create_from_entity(child_entity)
-            member.children.add(child_member)
+            member.children.create_member(child_entity)
             i += 1
         self.assert_equal(len(member.children), n)
 
     def test_update_terminal(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            member.text = self.UPDATED_TEXT
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(context.text, MyEntity.DEFAULT_TEXT)
-                context.update_from_data(data_el)
-                self.assert_equal(context.text, self.UPDATED_TEXT)
+        my_entity = self.__create_entity()
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        member.text = self.UPDATED_TEXT
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(context.text, MyEntity.DEFAULT_TEXT)
+        context.update_from_data(data_el)
+        self.assert_equal(context.text, self.UPDATED_TEXT)
 
     def test_update_terminal_in_parent(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            member.parent.text = self.UPDATED_TEXT
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-                context.update_from_data(data_el)
-                self.assert_equal(context.parent.text, self.UPDATED_TEXT)
+        my_entity = self.__create_entity()
+        my_entity.parent.text = self.UPDATED_TEXT
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
+        context.update_from_data(data_el)
+        self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_terminal_in_child(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            member_child = iter(member.children).next()
-            member_child.text = self.UPDATED_TEXT
-            mb_slug = member_child.__name__
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT, STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                context_child = context.children[mb_slug]
-                self.assert_equal(context_child.text, MyEntity.DEFAULT_TEXT)
-                context.update_from_data(data_el)
-                self.assert_equal(context_child.text, self.UPDATED_TEXT)
+        my_entity = self.__create_entity()
+        my_entity.children[0].text = self.UPDATED_TEXT
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(iter(context.children).next().text,
+                          MyEntity.DEFAULT_TEXT)
+        context.update_from_data(data_el)
+        self.assert_equal(iter(context.children).next().text,
+                          self.UPDATED_TEXT)
 
     def test_update_member(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            new_parent = MyEntityParent()
-            new_parent.text = self.UPDATED_TEXT
-            new_parent_member = \
-                    MyEntityParentMember.create_from_entity(new_parent)
-            member.parent = new_parent_member
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-                context.update_from_data(data_el)
-                self.assert_equal(context.parent.text, self.UPDATED_TEXT)
+        my_entity = self.__create_entity()
+        new_parent = MyEntityParent()
+        new_parent.text = self.UPDATED_TEXT
+        new_parent.id = 2
+        my_entity.parent = new_parent
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
+        context.update_from_data(data_el)
+        self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_member_with_link(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            new_parent = MyEntityParent()
-            new_parent.text = self.UPDATED_TEXT
-            new_parent.id = 2
-            new_parent_member = \
-                    MyEntityParentMember.create_from_entity(new_parent)
-            member.parent = new_parent_member
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member,
-                              mapping_info=
-                                dict(parent=dict(write_as_link=True),
-                                     nested_parent=dict(ignore=True)))
-            del member
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            coll = get_root_collection(IMyEntityParent)
-            coll.add(new_parent_member)
-            context = self.__create_member()
-            self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-            context.update_from_data(data_el)
-            self.assert_equal(context.parent.text, self.UPDATED_TEXT)
+        my_entity = self.__create_entity()
+        new_parent = MyEntityParent()
+        new_parent.text = self.UPDATED_TEXT
+        new_parent.id = 2
+        my_entity.parent = new_parent
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member,
+                          mapping_info=
+                            dict(parent=dict(write_as_link=True),
+                                 nested_parent=dict(ignore=True)))
+        parent_coll = get_root_collection(IMyEntityParent)
+        parent_coll.create_member(new_parent)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
+        context.update_from_data(data_el)
+        self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_delete_child(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            member_child = iter(member.children).next()
-            member.children.remove(member_child)
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(len(context.children), 1)
-                context.update_from_data(data_el)
-                self.assert_equal(len(context.children), 0)
+        my_entity = self.__create_entity()
+        del my_entity.children[0]
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(len(context.children), 1)
+        context.update_from_data(data_el)
+        self.assert_equal(len(context.children), 0)
 
     def test_delete_grandchild(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            member_child = iter(member.children).next()
-            member_grandchild = iter(member_child.children).next()
-            member_child.children.remove(member_grandchild)
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(len(iter(context.children).next().children),
-                                  1)
-                context.update_from_data(data_el)
-                self.assert_equal(len(iter(context.children).next().children),
-                                  0)
+        my_entity = self.__create_entity()
+        del my_entity.children[0].children[0]
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(len(iter(context.children).next().children),
+                          1)
+        context.update_from_data(data_el)
+        self.assert_equal(len(iter(context.children).next().children),
+                          0)
 
     def test_add_child(self):
-        with create_object(STAGING_CONTEXT_MANAGERS.TRANSIENT):
-            member = self.__create_member()
-            new_child = MyEntityChild()
-            new_child_member = \
-                    MyEntityChildMember.create_from_entity(new_child)
-            member.children.add(new_child_member)
-            self.assert_equal(len(member.children), 2)
-            gen = self._make_data_element_generator()
-            data_el = gen.run(member)
-            del member
-        for stage in (STAGING_CONTEXT_MANAGERS.TRANSIENT,
-                      STAGING_CONTEXT_MANAGERS.PERSISTENT,
-                      ):
-            with create_object(stage):
-                context = self.__create_member()
-                self.assert_equal(len(context.children), 1)
-                context.update_from_data(data_el)
-                self.assert_equal(len(context.children), 2)
+        my_entity = self.__create_entity()
+        new_child = MyEntityChild()
+        my_entity.children.append(new_child)
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        self.assert_equal(len(member.children), 2)
+        gen = self._make_data_element_generator()
+        data_el = gen.run(member)
+        del member
+        del my_entity
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        context = coll.create_member(my_entity)
+        self.assert_equal(len(context.children), 1)
+        context.update_from_data(data_el)
+        self.assert_equal(len(context.children), 2)
 
     def test_filter_specification_visitor(self):
-        coll = get_collection(IMyEntity)
+        coll = get_root_collection(IMyEntity)
         mb_cls = get_member_class(coll)
-        member = self.__create_member()
+        my_entity = self.__create_entity()
+        member = coll.create_member(my_entity)
         spec_fac = FilterSpecificationFactory()
         specs = [
                 # Terminal access.
@@ -362,12 +333,15 @@ class DescriptorsTestCase(ResourceTestCase):
             self.assert_equal(str(visitor.expression), str(expr))
 
     def test_nested_access(self):
-        member = self.__create_member()
+        my_entity = self.__create_entity()
+        coll = get_stage_collection(IMyEntity)
+        member = coll.create_member(my_entity)
         self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
 
     def test_urls(self):
-        mb = self.__create_floating_member()
-        get_root_collection(mb).add(mb)
+        my_entity = self.__create_entity()
+        coll = get_root_collection(IMyEntity)
+        mb = coll.create_member(my_entity)
         self.assert_equal(resource_to_url(mb),
                           'http://0.0.0.0:6543/my-entities/0/')
         self.assert_equal(resource_to_url(mb.parent),
@@ -376,7 +350,7 @@ class DescriptorsTestCase(ResourceTestCase):
                         'http://0.0.0.0:6543/my-entities/0/nested-parent/')
         self.assert_equal(resource_to_url(mb.children),
                           'http://0.0.0.0:6543/my-entities/0/children/')
-        mb_child = mb.children[0]
+        mb_child = mb.children['0']
         self.assert_equal(mb_child.id, 0)
         self.assert_equal(resource_to_url(mb_child.children),
                           'http://0.0.0.0:6543/my-entity-grandchildren/'
@@ -423,26 +397,16 @@ class DescriptorsTestCase(ResourceTestCase):
         gen = DataElementGenerator(reg)
         return gen
 
-    def __create_floating_member(self):
+    def __create_entity(self):
         my_entity = MyEntity()
         my_entity.id = 0
-        member = MyEntityMember.create_from_entity(my_entity)
         my_entity_parent = MyEntityParent()
         my_entity_parent.id = 0
-        member.parent = \
-            MyEntityParentMember.create_from_entity(my_entity_parent)
+        my_entity.parent = my_entity_parent
         my_entity_child = MyEntityChild()
         my_entity_child.id = 0
-        child_member = MyEntityChildMember.create_from_entity(my_entity_child)
-        member.children.add(child_member)
+        my_entity.children.append(my_entity_child)
         my_entity_grandchild = MyEntityGrandchild()
         my_entity_grandchild.id = 0
-        child_member.children.add(
-            MyEntityGrandchildMember.create_from_entity(my_entity_grandchild))
-        return member
-
-    def __create_member(self):
-        member = self.__create_floating_member()
-        coll = get_collection(IMyEntity)
-        coll.add(member)
-        return member
+        my_entity_child.children.append(my_entity_grandchild)
+        return my_entity
