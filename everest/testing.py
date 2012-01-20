@@ -132,7 +132,7 @@ class EverestIni(object):
         if ini_file_path is None:
             self.__ini_parser = self.__check_ini_file()
         else:
-            self.__ini_parser = SafeConfigParser()
+            self.__ini_parser = self.__make_parser()
             self.__ini_parser.read(ini_file_path)
             self.ini_file_path = ini_file_path
 
@@ -161,9 +161,13 @@ class EverestIni(object):
                              'initialization file path (e.g., through '
                              'the EverestAppNosePlugin).')
         if cls.__ini_parser is None:
-            cls.__ini_parser = SafeConfigParser()
+            cls.__ini_parser = cls.__make_parser()
             cls.__ini_parser.read(cls.ini_file_path)
         return cls.__ini_parser
+
+    @classmethod
+    def __make_parser(cls):
+        return SafeConfigParser(defaults={'here': os.getcwd()})
 
 
 class BaseTestCase(Pep8CompliantTestCase):

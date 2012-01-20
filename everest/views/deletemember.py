@@ -5,7 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 24, 2011.
 """
 
-from everest.views.base import MemberView
+from everest.utils import get_traceback
+from everest.views.base import ResourceView
 from webob.exc import HTTPOk
 import logging
 
@@ -14,7 +15,7 @@ __all__ = ['DeleteMemberView',
            ]
 
 
-class DeleteMemberView(MemberView):
+class DeleteMemberView(ResourceView):
     """
     A View for processing DELETE requests
 
@@ -29,11 +30,14 @@ class DeleteMemberView(MemberView):
 
     __logger = logging.getLogger(__name__)
 
-    def __init__(self, member, request):
-        MemberView.__init__(self, member, request)
-
     def __call__(self):
         self.__logger.debug('DELETE Request received on %s' % self.request.url)
-        self.context.__parent__.remove(self.context)
-        return HTTPOk()
+        try:
+            self.context.__parent__.remove(self.context)
+        except Exception, err: # catch Exception pylint: disable=W0703
+            response = self._handle_unknown_exception(err.message,
+                                                      get_traceback())
+        else:
+            response = HTTPOk()
+        return response
 

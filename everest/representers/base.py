@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Representers for resources and entities.
@@ -133,15 +133,7 @@ class SimpleDataElement(DataElement):
         return cls()
 
     def get_terminal(self, attr):
-        # The ID attribute is optional, so we can not assume it is there.
-        try:
-            value = getattr(self, attr.representation_name)
-        except AttributeError, err:
-            if attr.representation_name == 'id':
-                value = None
-            else:
-                raise err
-        return value
+        return getattr(self, attr.representation_name, None)
 
     def set_terminal(self, attr, value):
         setattr(self, attr.representation_name, value)

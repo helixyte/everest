@@ -99,6 +99,9 @@ class GetResourceView(ResourceView): # still abstract pylint: disable=W0223
             raise NotImplementedError('Abstract class')
         ResourceView.__init__(self, resource, request)
 
+    def __call__(self):
+        raise NotImplementedError('Abstract method.')
+
 
 class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W0223
     """
