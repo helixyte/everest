@@ -104,6 +104,19 @@ class Resource(object):
         """
         return uuid.uuid5(uuid.NAMESPACE_URL, self.path).urn
 
+    @classmethod
+    def create_from_data(cls, data_element):
+        """
+        Creates a resource instance from the given data element (tree).
+
+        :param data_element: data element (hierarchical) to create a resource
+            from
+        :type data_element: object implementing
+         :class:`everest.resources.representers.interfaces.IExplicitDataElement`
+        """
+        parser = DataElementParser()
+        return parser.run(data_element)
+
 
 class Member(ResourceAttributeControllerMixin, Resource):
     """
@@ -151,19 +164,6 @@ class Member(ResourceAttributeControllerMixin, Resource):
         Class factory method creating a new resource from the given entity.
         """
         return cls(entity)
-
-    @classmethod
-    def create_from_data(cls, data_element):
-        """
-        Creates a resource instance from the given data element (tree).
-
-        :param data_element: data element (hierarchical) to create a resource
-            from
-        :type data_element: object implementing
-         :class:`everest.resources.representers.interfaces.IExplicitDataElement`
-        """
-        parser = DataElementParser()
-        return parser.extract_member_resource(data_element)
 
     def get_entity(self):
         """
@@ -322,18 +322,6 @@ class Collection(Resource):
         :type aggregate: :class:`everest.entities.aggregates.Aggregate` instance
         """
         return cls(aggregate)
-
-    @classmethod
-    def create_from_data(cls, data_element):
-        """
-        Creates a new collection from the given data element.
-
-        :param data_element: data element tree
-        :type data_element: object implementing
-         :class:`everest.resources.representers.interfaces.IExplicitDataElement`
-        """
-        parser = DataElementParser()
-        return parser.extract_collection_resource(data_element)
 
     def set_parent(self, parent, relation=None):
         """

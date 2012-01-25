@@ -238,10 +238,7 @@ class Aggregate(object):
     slice = property(_get_slice, _set_slice,
                       doc="Slice key for the aggregate.")
 
-    def _get_relation(self):
-        return self.__implementation.relation
-
-    def _set_relation(self, relation):
-        self.__implementation.relation = relation
-
-    relation = property(_get_relation, _set_relation)
+    def set_relationship(self, relationship):
+        """
+        """
+        self.__implementation.set_relationship(relationship)

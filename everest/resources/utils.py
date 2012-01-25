@@ -60,6 +60,19 @@ def get_stage_collection(rc):
     return rc_repo.get(rc)
 
 
+def new_stage_collection(rc):
+    """
+    Returns a new, empty collection from the stage repository matching the 
+    given registered resource.
+
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
+    """
+    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.STAGE)
+    return rc_repo.new(rc)
+
+
 def get_member_class(rc):
     """
     Returns the registered member class for the given resource.

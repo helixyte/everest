@@ -9,27 +9,21 @@ Created on Jan 11, 2012.
 
 from everest.entities.interfaces import IAggregateImplementationRegistry
 from everest.entities.interfaces import IEntityRepository
-from everest.entities.interfaces import IStagingContextManager
 from everest.entities.utils import get_aggregate_class
 from everest.entities.utils import get_entity_class
 from everest.repository import Repository
-from repoze.bfg.threadlocal import get_current_registry
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AggregateImplementationRegistry',
            'EntityRepository',
-           'StagingContextManager',
            ]
 
 
 class AggregateImplementationRegistry(object):
     """
     Registry for aggregate implementation classes.
-    
-    Each registered class may define an initialization callback which is 
-    
     """
     implements(IAggregateImplementationRegistry)
 
@@ -92,8 +86,8 @@ class EntityRepository(Repository):
         """
         Sets the implementation to use for the specified resource interface.
         Note that the given implementation class has to be registered before
-        with the implementation resitry (e.g., using the 
-        :meth:`register_implementation` method.
+        with the implementation registry (e.g., using the 
+        :meth:`register_implementation` method).
         
         The next time :meth:`get` is called, a fresh aggregates will be created
         that uses the new implementation class.
@@ -107,8 +101,8 @@ class EntityRepository(Repository):
         """
         Sets the default implementation for all resource interfaces. Note that 
         the given implementation class has to be registered before with the
-        implementation resitry (e.g., using the :meth:`register_implementation`
-        method.
+        implementation registry (e.g., using the :meth:`register_implementation`
+        method).
         
         All future aggregates obtained through the :meth:`get` method will use 
         the new implementation class.
@@ -123,10 +117,7 @@ class EntityRepository(Repository):
         """
         return self.__default_impl
 
-    def _make_key(self, rc):
-        return get_aggregate_class(rc)
-
-    def _make_new(self, rc):
+    def new(self, rc):
         agg_cls = get_aggregate_class(rc)
         entity_cls = get_entity_class(rc)
         if not issubclass(agg_cls,
@@ -136,39 +127,16 @@ class EntityRepository(Repository):
             # generic default).
             impl_cls = self.__impls.get(agg_cls) \
                        or self.__default_impl
-            impl = impl_cls(entity_cls)
+            impl = impl_cls.create(entity_cls)
             agg = agg_cls.create(entity_cls, impl)
         else:
             agg = agg_cls.create(entity_cls)
         return agg
 
+    def _make_key(self, rc):
+        return get_aggregate_class(rc)
+
     def __check_impl(self, implementation_class):
         if not self.__impl_registry.is_registered(implementation_class):
             raise ValueError('You must register the implementation class '
                              'before you can use it.')
-
-
-class StagingContextManager(object):
-    """
-    Staging context manager.
-    
-    Provides a context for the entity repository ensuring that all dynamically
-    created aggregates use a particular implementation.
-    """
-    implements(IStagingContextManager)
-
-    def __init__(self, aggregate_implementation):
-        self.__new_agg_impl = aggregate_implementation
-        self.__original_ent_repo = None
-
-    def __enter__(self):
-        reg = get_current_registry()
-        self.__original_ent_repo = reg.getUtility(IEntityRepository)
-        new_ent_repo = EntityRepository()
-        new_ent_repo.set_default_implementation(self.__new_agg_impl)
-        reg.registerUtility(new_ent_repo, IEntityRepository)
-        return new_ent_repo
-
-    def __exit__(self, exc_type, value, tb):
-        reg = get_current_registry()
-        reg.registerUtility(self.__original_ent_repo, IEntityRepository)

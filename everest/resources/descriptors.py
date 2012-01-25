@@ -8,7 +8,7 @@ Created on Apr 19, 2011.
 """
 
 from everest.entities.utils import slug_from_identifier
-from everest.relation import Relation
+from everest.relationship import Relationship
 from everest.resources.repository import ResourceRepository
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
@@ -16,7 +16,6 @@ from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_stage_collection
 from everest.utils import id_generator
 from repoze.bfg.traversal import find_root
-from weakref import WeakKeyDictionary
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -167,16 +166,12 @@ class collection_attribute(_relation_attribute):
         self.__resource_backref_attr = None
         self.__entity_backref_attr = None
         self.__need_backref_setup = True
-        self.__cache = WeakKeyDictionary()
 
     def __get__(self, resource, resource_class):
         if self.__need_backref_setup:
             self.__setup_backref()
         if not resource is None:
-            coll = self.__cache.get(resource)
-            if coll is None:
-                coll = self.__make_collection(resource)
-                self.__cache[resource] = coll
+            coll = self.__make_collection(resource)
         else:
             # Class level access.
             coll = self
@@ -218,10 +213,12 @@ class collection_attribute(_relation_attribute):
             else:
                 # This is a floating member, assume stage repository.
                 coll = get_stage_collection(self.entity_type)
+            # All resource references are relationships; we need to set this 
+            # up on the aggregate.
             agg = coll.get_aggregate()
-            agg.relation = Relation(parent, children,
-                                    backref_attribute=
-                                            self.__entity_backref_attr)
+            rel = Relationship(parent, children,
+                               backref_attribute=self.__entity_backref_attr)
+            agg.set_relationship(rel)
             if self.is_nested:
                 # Make URL generation relative to the resource.
                 coll.set_parent(resource)
@@ -230,8 +227,8 @@ class collection_attribute(_relation_attribute):
                 coll.__name__ = slug_from_identifier(self.resource_attr)
             else:
                 # Make URL generation relative to the app root.
-                rel = Relation(resource, coll,
-                               backref_attribute=
+                rel = Relationship(resource, coll,
+                                   backref_attribute=
                                         self.__resource_backref_attr)
                 coll.set_parent(find_root(resource), relation=rel)
         return coll

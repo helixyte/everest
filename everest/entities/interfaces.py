@@ -106,13 +106,6 @@ class IEntityRepository(IRepository):
     """
 
 
-class IStagingContextManager(Interface):
-    def __enter__():
-        """Enters the context."""
-    def __exit__():
-        """Exits the context."""
-
-
 class IAggregateImplementation(Interface):
     """
     Marker interface for aggregate implementations.

@@ -11,11 +11,11 @@ from zope.component import getUtility as get_utility # pylint: disable=E0611,F04
 from everest.querying.specifications import IFilterSpecificationFactory
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['Relation',
+__all__ = ['Relationship',
            ]
 
 
-class Relation(object):
+class Relationship(object):
     """
     Represents a nested relationship between a parent object and a collection 
     of child objects.

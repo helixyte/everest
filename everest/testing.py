@@ -8,6 +8,7 @@ Created on Nov 2, 2011.
 from ConfigParser import SafeConfigParser
 from everest import db
 from everest.configuration import Configurator
+from everest.db import Session
 from everest.db import get_engine
 from everest.entities.aggregates import OrmAggregateImpl
 from everest.entities.interfaces import IEntityRepository
@@ -26,6 +27,7 @@ import os
 import sys
 import time
 import unittest
+from everest.resources.utils import get_stage_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
@@ -214,7 +216,9 @@ class EntityTestCase(BaseTestCase):
         self.config.end()
 
     def _get_entity(self, icollection, key=None):
-        ent_repo = self.config.get_registered_utility(IEntityRepository)
+        ent_repo = \
+            self.config.get_registered_utility(IEntityRepository,
+                                               name=REPOSITORY_DOMAINS.ROOT)
         agg = ent_repo.get(icollection)
         if key is None:
             agg.slice = slice(0, 1)
@@ -274,10 +278,8 @@ class ResourceTestCase(BaseTestCase):
         return coll
 
     def _create_member(self, member_cls, entity):
-        member = member_cls.create_from_entity(entity)
-        coll = get_root_collection(member_cls)
-        coll.add(member)
-        return member
+        coll = get_stage_collection(member_cls)
+        return coll.create_member(entity)
 
 
 class FunctionalTestCase(BaseTestCase):
@@ -290,6 +292,7 @@ class FunctionalTestCase(BaseTestCase):
     def set_up(self):
         # Create and configure a new testing registry.
         reg = Registry('testing')
+        self.ini = EverestIni(self.ini_file_path)
         self.config = Configurator(registry=reg,
                                    package=self.package_name)
         self.config.hook_zca()
@@ -314,7 +317,7 @@ class FunctionalTestCase(BaseTestCase):
         pass
 
     def _load_wsgiapp(self):
-        wsgiapp = loadapp('config:' + self.ini_file_path,
+        wsgiapp = loadapp('config:' + self.ini.ini_file_path,
                           name=self.app_name)
         return wsgiapp
 
@@ -375,16 +378,19 @@ def elapsed(func):
     return make_decorator(func)(call_elapsed)
 
 
-def no_autoflush(scoped_session):
+def no_autoflush(scoped_session=None):
     """
     Decorator to disable autoflush on the session for the duration of a
-    test call.
+    test call. Uses the scoped session from the :mod:`everest.db` module
+    as default.
 
-    Taken from
+    Adapted from
     http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush
     """
+    if scoped_session is None:
+        scoped_session = Session
     def decorate(fn):
-        def go(*args, **kw):
+        def wrap(*args, **kw):
             session = scoped_session()
             autoflush = session.autoflush
             session.autoflush = False
@@ -392,7 +398,7 @@ def no_autoflush(scoped_session):
                 return fn(*args, **kw)
             finally:
                 session.autoflush = autoflush
-        return update_wrapper(go, fn)
+        return update_wrapper(wrap, fn)
     return decorate
 
 

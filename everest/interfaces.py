@@ -113,9 +113,15 @@ class IRepository(Interface):
     The repository manages accessors for resources or entities. 
     """
 
+    def new(rc):
+        """
+        Creates a new queryable accessor for the registered resource.
+        """
+
     def get(rc):
         """
-        Returns a queryable accessor for the registered resource.
+        Returns a queryable accessor for the registered resource. If necessary,
+        a new instance is created on the fly.
         """
 
     def set(rc, acc):
@@ -130,7 +136,7 @@ class IRepository(Interface):
 
     def clear_all():
         """
-        Clears all previously set accessors.
+        Clears all previously set or created accessors.
         """
 
     def load_representation(rc, url):

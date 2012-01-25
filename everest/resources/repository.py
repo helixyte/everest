@@ -2,7 +2,7 @@
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-The repose repository class.
+The resource repository class.
 
 Created on Jan 13, 2012.
 """
@@ -29,6 +29,10 @@ class ResourceRepository(Repository):
         Repository.__init__(self)
         self.__entity_repository = entity_repository
 
+    def new(self, rc):
+        agg = self.__entity_repository.new(rc)
+        return get_adapter(agg, ICollectionResource)
+
     def clear(self, rc):
         Repository.clear(self, rc)
         self.__entity_repository.clear(rc)
@@ -40,6 +44,3 @@ class ResourceRepository(Repository):
     def _make_key(self, rc):
         return get_collection_class(rc)
 
-    def _make_new(self, rc):
-        agg = self.__entity_repository.get(rc)
-        return get_adapter(agg, ICollectionResource)

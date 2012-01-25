@@ -43,8 +43,8 @@ class AggregateImpl(object):
         """
         if self.__class__ is AggregateImpl:
             raise NotImplementedError('Abstract class.')
-        #: Relation of entities in this aggregate to a parent entity.
-        self.relation = None
+        #: Relationship of entities in this aggregate to a parent entity.
+        self._relationship = None
         #: Entity class (type) of the entities in this aggregate.
         self.entity_class = entity_class
         #: Specification for filtering
@@ -64,7 +64,7 @@ class AggregateImpl(object):
 
     def clone(self):
         clone = self.__class__.create(self.entity_class)
-        clone.relation = self.relation
+        clone._relationship = self._relationship
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
@@ -87,6 +87,9 @@ class AggregateImpl(object):
 
     def remove(self, entity):
         raise NotImplementedError('Abstract method')
+
+    def set_relationship(self, relationship):
+        self._relationship = relationship
 
     def _get_filter(self):
         return self._filter_spec
@@ -155,7 +158,7 @@ class MemoryAggregateImpl(AggregateImpl):
 
     def clone(self):
         clone = super(MemoryAggregateImpl, self).clone()
-        if self.relation is None:
+        if self._relationship is None:
             clone.__entities = self.__entities
         return clone
 
@@ -243,10 +246,10 @@ class MemoryAggregateImpl(AggregateImpl):
         :returns:  list of objects implementing 
             :class:`everest.entities.interfaces.IEntity`
         """
-        if self.relation is None:
+        if self._relationship is None:
             ents = self.__entities
         else:
-            ents = self.relation.children
+            ents = self._relationship.children
         return ents
 
     def _set_entities(self, entities):
@@ -256,10 +259,10 @@ class MemoryAggregateImpl(AggregateImpl):
         :param entities: list of objects implementing 
             :class:`everest.entities.interfaces.IEntity`
         """
-        if self.relation is None:
+        if self._relationship is None:
             self.__entities = entities
         else:
-            self.relation.children = entities
+            self._relationship.children = entities
 
     def __check_existing(self, entity):
         ents = self._get_entities()
@@ -293,7 +296,7 @@ class OrmAggregateImpl(AggregateImpl):
         return cls(entity_class, session)
 
     def count(self):
-        if not self.relation is None:
+        if not self._relationship is None:
             # We need a flush here because we may have newly added entities
             # in the aggregate which need to get an ID *before* we build the
             # relation filter spec.
@@ -325,7 +328,7 @@ class OrmAggregateImpl(AggregateImpl):
         return ent
 
     def iterator(self):
-        if not self.relation is None:
+        if not self._relationship is None:
             # We need a flush here because we may have newly added entities
             # in the aggregate which need to get an ID *before* we build the
             # relation filter spec.
@@ -342,16 +345,17 @@ class OrmAggregateImpl(AggregateImpl):
                 yield obj
 
     def add(self, entity):
-        if self.relation is None:
+        if self._relationship is None:
             self._session.add(entity)
+            self._session.flush()
         else:
-            self.relation.children.append(entity)
+            self._relationship.children.append(entity)
 
     def remove(self, entity):
-        if self.relation is None:
+        if self._relationship is None:
             self._session.delete(entity)
         else:
-            self.relation.children.remove(entity)
+            self._relationship.children.remove(entity)
 
     def _apply_filter(self):
         pass
@@ -376,11 +380,11 @@ class OrmAggregateImpl(AggregateImpl):
         return visitor_cls(self.entity_class)
 
     def _get_base_query(self):
-        if self.relation is None:
+        if self._relationship is None:
             query = self._session.query(self.entity_class)
         else:
             # Pre-filter the base query with the relation specification.
-            rel_spec = self.relation.specification
+            rel_spec = self._relationship.specification
             visitor = self._filter_visitor_factory()
             rel_spec.accept(visitor)
             expr = visitor.expression

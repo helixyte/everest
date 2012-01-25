@@ -23,7 +23,7 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
-from everest.resources.utils import get_stage_collection
+from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from everest.url import url_to_resource
@@ -463,73 +463,17 @@ class Representer(object):
 
 
 class DataElementParser(object):
-#    def _extract_member_resource(self, data_element):
-#        mapped_attributes = data_element.mapper.get_mapped_attributes(
-#                                                    data_element.mapped_class)
-#        rc = self._extract_member_content(data_element, mapped_attributes)
-#        return rc
-
-#    def _extract_member_content(self, data_element, mapped_attributes):
-#        # Custom resource extraction.
-#        if ICustomDataElement in provided_by(data_element):
-#            rc = data_element.extract()
-#        else:
-#            data = {}
-#            for attr in mapped_attributes:
-#                value = self._extract_attribute(data_element, attr)
-#                if not value is None:
-#                    data[attr.representation_name] = value
-#            rc = data_element.mapped_class.create_from_data(data)
-#        return rc
-#
-#    def _extract_attribute(self, data_element, attr):
-#        """
-#        Extracts the given attribute from the given data element (inverse
-#        operation to `_inject_attribute`). Note that this method returns
-#        resources as entities or entity collections.
-#
-#        Returns `None` if the attribute is not found.
-#
-#        :param data_element: data element to extract an attribute from
-#          (:class:`DataElement` instance)
-#        :param attr: mapped attribute (:class:`MappedAttribute` instance)
-#        :return: attribute value or `None`
-#        """
-#        if attr.kind == ResourceAttributeKinds.TERMINAL:
-#            value = data_element.get_terminal(attr)
-#        else:
-#            rc_el = data_element.get_nested(attr)
-#            if rc_el is None:
-#                value = None
-#            else:
-#                if attr.kind == ResourceAttributeKinds.MEMBER:
-#                    # Member resource. Extract entity.
-#                    if not attr.write_as_link is False:
-#                        rc = self._extract_link(rc_el)
-#                    else:
-#                        rc = self._extract_member_resource(rc_el)
-#                    value = rc.get_entity()
-#                else:
-#                    # Collection resource. Extract list of entities.
-#                    if not attr.write_as_link is False:
-#                        rc = self._extract_link(rc_el)
-#                    else:
-#                        rc = self._extract_collection_resource(rc_el)
-#                    value = [member.get_entity() for member in rc]
-#        return value
-#
-#    def _extract_link(self, link_el):
-#        url = link_el.get_url()
-#        return url_to_resource(url)
-
+    """
+    Parser accepting a data element and returning a resource.
+    """
     def run(self, data_element):
         if provides_member_resource(data_element.mapped_class):
-            rc = self.extract_member_resource(data_element, 0)
+            rc = self._extract_member_resource(data_element, 0)
         else:
-            rc = self.extract_collection_resource(data_element, 0)
+            rc = self._extract_collection_resource(data_element, 0)
         return rc
 
-    def extract_member_resource(self, member_data_element, nesting_level=0):
+    def _extract_member_resource(self, mb_data_el, nesting_level):
         """
         Extracts a member resource from the given data element.
 
@@ -538,18 +482,18 @@ class DataElementParser(object):
         to a resource.
         """
         data = {}
-        mb_cls = member_data_element.mapped_class
-        attrs = member_data_element.mapper.get_mapped_attributes(mb_cls)
+        mb_cls = mb_data_el.mapped_class
+        attrs = mb_data_el.mapper.get_mapped_attributes(mb_cls)
         for attr in attrs.values():
             if attr.ignore is True \
                or (attr.kind == ResourceAttributeKinds.COLLECTION
                    and nesting_level > 0 and not attr.ignore is False):
                 continue
             if attr.kind == ResourceAttributeKinds.TERMINAL:
-                value = member_data_element.get_terminal(attr)
+                value = mb_data_el.get_terminal(attr)
             elif attr.kind in (ResourceAttributeKinds.MEMBER,
                                ResourceAttributeKinds.COLLECTION):
-                rc_data_el = member_data_element.get_nested(attr)
+                rc_data_el = mb_data_el.get_nested(attr)
                 if rc_data_el is None:
                     # Optional attribute.
                     value = None
@@ -559,7 +503,7 @@ class DataElementParser(object):
                             url = rc_data_el.get_url()
                             rc = url_to_resource(url)
                         else:
-                            rc = self.extract_member_resource(rc_data_el,
+                            rc = self._extract_member_resource(rc_data_el,
                                                             nesting_level + 1)
                         value = rc.get_entity()
                     else:
@@ -567,7 +511,7 @@ class DataElementParser(object):
                             url = rc_data_el.get_url()
                             rc = url_to_resource(url)
                         else:
-                            rc = self.extract_collection_resource(rc_data_el,
+                            rc = self._extract_collection_resource(rc_data_el,
                                                             nesting_level + 1)
                         value = [mb.get_entity() for mb in rc]
             else:
@@ -577,19 +521,22 @@ class DataElementParser(object):
         entity = get_entity_class(mb_cls).create_from_data(data)
         return mb_cls.create_from_entity(entity)
 
-    def extract_collection_resource(self, rc_data_el, nesting_level=0):
+    def _extract_collection_resource(self, rc_data_el, nesting_level):
         """
         Extracts a collection resource from the given data element.
         """
         coll_cls = rc_data_el.mapped_class
-        coll = get_stage_collection(coll_cls)
+        coll = new_stage_collection(coll_cls)
         for member_el in rc_data_el.get_members():
-            mb = self.extract_member_resource(member_el, nesting_level + 1)
+            mb = self._extract_member_resource(member_el, nesting_level + 1)
             coll.add(mb)
         return coll
 
 
 class DataElementGenerator(object):
+    """
+    Generator accepting a resource and returning a data element.
+    """
     def __init__(self, data_element_registry):
         self._data_element_registry = data_element_registry
 
@@ -683,28 +630,6 @@ class DataElementGenerator(object):
         de_reg = self._data_element_registry
         link_de_cls = de_reg.get_data_element_class(Link)
         return link_de_cls.create_from_resource(rc)
-
-#        url = resource_to_url(rc)
-#        de_reg = self._data_element_registry
-#        linked_de_cls = de_reg.get_data_element_class(type(rc))
-#        link_de_cls = de_reg.get_data_element_class(Link)
-#        if attr.kind == ResourceAttributeKinds.MEMBER:
-#            link_data_el = link_de_cls.create(linked_de_cls, url,
-#                                              title=rc.title, id=rc.id)
-#        else:
-#            link_data_el = link_de_cls.create(linked_de_cls, url,
-#                                              title=rc.title)
-#        return link_data_el
-
-#    def _is_link_attr(self, attr, nesting_level):
-#        """
-#        Checks whether the given attribute should be interpreted as a link
-#        at the given nesting level.
-#
-#        The default behavior is to interpret all nested attributes as links.
-#        """
-#        return attr.write_as_link is True \
-#                or (not attr.write_as_link is False and nesting_level > 0)
 
     def _is_ignored_attr(self, attr, nesting_level):
         """

@@ -105,6 +105,8 @@ def setup_db(create_metadata_callback=None,
     if not _is_engine_initialized():
         db_string = get_settings().get('db_string')
         engine = create_engine(db_string)
+        # Bind the session to the engine.
+        Session.configure(bind=engine)
         _set_engine(engine)
     else:
         engine = get_engine()
