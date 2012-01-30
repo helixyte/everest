@@ -131,10 +131,10 @@ class ResourceAttributeControllerMixin(object):
     _attributes = None
 
     @classmethod
-    def is_atomic(cls, attr):
+    def is_terminal(cls, attr):
         """
         Checks if the given attribute of the given resource class is an
-        atomic attribute.
+        terminal attribute.
         """
         return cls._attributes[attr].kind == ResourceAttributeKinds.TERMINAL
 
@@ -172,7 +172,7 @@ class ResourceAttributeControllerMixin(object):
 
 def is_terminal_attribute(rc, attr_name):
     mb_cls = get_member_class(rc)
-    return mb_cls.is_atomic(attr_name)
+    return mb_cls.is_terminal(attr_name)
 
 
 def is_member_attribute(rc, attr_name):

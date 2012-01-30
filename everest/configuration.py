@@ -415,7 +415,7 @@ class Configurator(BfgConfigurator):
                               name=EXPRESSION_KINDS.SQL)
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = EvalFilterSpecificationVisitor
-        self._register_utility(sql_filter_specification_visitor,
+        self._register_utility(eval_filter_specification_visitor,
                               IFilterSpecificationVisitor,
                               name=EXPRESSION_KINDS.EVAL)
         if order_specification_builder is None:

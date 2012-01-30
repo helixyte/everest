@@ -147,25 +147,31 @@ def get_resource_url(resource):
     return urlunparse(parsed)
 
 
-def provides_resource(type_):
+def provides_resource(obj):
     """
-    Checks if the given type provides the
+    Checks if the given type or instance provides the
     :class:`everest.resources.interfaces.IResource` interface.
     """
-    return IResource in provided_by(object.__new__(type_))
+    if isinstance(obj, type):
+        obj = object.__new__(obj)
+    return IResource in provided_by(obj)
 
 
-def provides_member_resource(type_):
+def provides_member_resource(obj):
     """
-    Checks if the given type provides the
+    Checks if the given type or instance provides the
     :class:`everest.resources.interfaces.IMemberResource` interface.
     """
-    return IMemberResource in provided_by(object.__new__(type_))
+    if isinstance(obj, type):
+        obj = object.__new__(obj)
+    return IMemberResource in provided_by(obj)
 
 
-def provides_collection_resource(type_):
+def provides_collection_resource(obj):
     """
-    Checks if the given type provides the
+    Checks if the given type or instance provides the
     :class:`everest.resources.interfaces.ICollectionResource` interface.
     """
-    return ICollectionResource in provided_by(object.__new__(type_))
+    if isinstance(obj, type):
+        obj = object.__new__(obj)
+    return ICollectionResource in provided_by(obj)

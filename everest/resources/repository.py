@@ -10,6 +10,7 @@ Created on Jan 13, 2012.
 from everest.repository import Repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResourceRepository
+from everest.resources.io import load_from_url
 from everest.resources.utils import get_collection_class
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
@@ -41,6 +42,13 @@ class ResourceRepository(Repository):
         Repository.clear_all(self)
         self.__entity_repository.clear_all()
 
+    def load_representation(self, rc, url, content_type=None):
+        loaded_coll = load_from_url(rc, url, content_type=content_type)
+        coll = self.get(rc)
+        for loaded_mb in loaded_coll:
+            coll.add(loaded_mb)
+
     def _make_key(self, rc):
         return get_collection_class(rc)
+
 

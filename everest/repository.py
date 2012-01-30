@@ -74,10 +74,6 @@ class Repository(object):
     def clear_all(self):
         self.__obj_cache.clear()
 
-    def load_representation(self, rc, url):
-#        key = self._make_key(rc)
-        pass
-
     @classmethod
     def get_repository(cls, obj):
         """

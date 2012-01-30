@@ -15,6 +15,7 @@ from everest.entities.interfaces import IEntityRepository
 from everest.repository import REPOSITORY_DOMAINS
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
+from everest.resources.utils import get_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
@@ -27,7 +28,6 @@ import os
 import sys
 import time
 import unittest
-from everest.resources.utils import get_stage_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',

@@ -42,7 +42,8 @@ install_requirements = [
     'lxml>=2.3,<=2.3.99',
     'WSGIFilter',
     'iso8601',
-    'WebOb>=1.2b1'
+    'WebOb>=1.2b1',
+    'python-graph-core',
     ]
 
 tests_requirements = install_requirements + [

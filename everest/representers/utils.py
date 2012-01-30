@@ -7,15 +7,11 @@ Representer utilities.
 Created on May 18, 2011.
 """
 
-from StringIO import StringIO
-from everest.mime import CsvMime
-from everest.mime import XmlMime
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
-from everest.resources.attributes import ResourceAttributeKinds
-from urlparse import urlparse
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_representer',
@@ -43,75 +39,44 @@ def get_data_element_registry(content_type):
     """
     return get_utility(IDataElementRegistry, content_type.mime_string)
 
-
-def data_element_tree_to_string(data_element):
-    """
-    Creates a string representation of the given data element tree.
-    """
-    def __dump(data_el, stream, offset):
-        name = data_el.__class__.__name__
-        stream.write("%s(" % name)
-        offset = offset + len(name) + 1
-        first_attr = True
-        attrs = \
-            data_el.mapper.get_mapped_attributes(data_el.mapped_class)
-        for attr in attrs.values():
-            if first_attr:
-                first_attr = False
-            else:
-                stream.write(',\n' + ' ' * offset)
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                stream.write("%s=%s" % (attr.name,
-                                        str(data_el.get_terminal(attr)))
-                             )
-            else:
-                nested_el = data_el.get_nested(attr)
-                if attr.kind == ResourceAttributeKinds.COLLECTION:
-                    stream.write('%s=[' % attr.name)
-                    first_member = True
-                    for member_el in nested_el.get_members():
-                        if first_member:
-                            stream.write('\n' + ' ' * (offset + 2))
-                            first_member = False
-                        else:
-                            stream.write(',\n' + ' ' * (offset + 2))
-                        __dump(member_el, stream, offset + 2)
-                    stream.write('\n' + ' ' * (offset + 2) + ']')
-                else:
-                    stream.write("%s=" % attr.name)
-                    __dump(nested_el, stream, offset)
-        stream.write(')')
-    stream = StringIO()
-    __dump(data_element, stream, 0)
-    return stream.getvalue()
-
-
-def load_from_url(resource, url, content_type_string=None):
-    parsed = urlparse(url)
-    if parsed.scheme == 'file': # pylint: disable=E1101
-        # Assume a local path.
-        rc = load_from_file(resource, parsed.path, # pylint: disable=E1101
-                            content_type_string=content_type_string)
-    else:
-        raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
-    return rc
-
-
-def load_from_file(resource, filename, content_type_string=None):
-    if content_type_string is None:
-        #
-        extensions = dict(csv=CsvMime,
-                          xml=XmlMime,
-                          )
-        ext = filename.splitext()[1]
-        try:
-            content_type_string = extensions[ext].mime_string
-        except KeyError:
-            raise ValueError('Unknown extension for representation.')
-    rpr = as_representer(resource, content_type_string)
-    fp = open(filename, 'rU')
-    with fp:
-        rc = rpr.from_stream(fp)
-    return rc
-
-
+#def dump_resource_graph(resource, content_type=None):
+#    def visit(rc, content_type, depth, visited, collections, depths):
+#        if rc in visited:
+#            return
+#        else:
+#            visited.add(rc)
+#        mb_cls = get_member_class(rc)
+#        coll = collections.get(mb_cls)
+#        if coll is None:
+#            # Create new collection and store max depth with it.
+#            coll = new_stage_collection(resource)
+#            collections[mb_cls] = coll
+#        max_depth = depths.get(mb_cls)
+#        if max_depth is None or max_depth < depth:
+#            # Store new max depth with existing collection.
+#            depths[mb_cls] = depth
+#        if provides_collection_resource(rc):
+#            for mb in rc:
+#                visit(mb, content_type, depth, visited, collections, depths)
+#        else:
+#            coll.add(rc)
+#            for attr in get_resource_class_attributes(type(rc)):
+#                if attr.kind == ResourceAttributeKinds.TERMINAL:
+#                    continue
+#                next_rc = getattr(rc, attr.name)
+#                visit(next_rc, content_type, depth + 1, visited, collections,
+#                      depths)
+#    if content_type is None:
+#        content_type = CsvMime
+#    visited = set()
+#    collections = {}
+#    depths = {}
+#    visit(resource, content_type, 1, visited, collections, depths)
+#    buf = []
+#    for mb_cls in [item[0] for item in sorted(depths.items(),
+#                                              cmp=lambda x, y: cmp(y[1], x[1]))]:
+#        coll = visited[mb_cls]
+#        rpr = as_representer(coll, content_type.mime_string)
+#        stream = StringIO('w')
+#        buf.append(rpr.to_stream(stream))
+#    return buf

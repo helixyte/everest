@@ -128,17 +128,7 @@ class member_attribute(_relation_attribute):
     """
     def __get__(self, resource, resource_class):
         if not resource is None:
-            obj = self._get_nested(resource.get_entity(), self.entity_attr)
-            if not obj is None:
-                if not self.is_nested:
-                    member = as_member(obj)
-                    coll = get_root_collection(member)
-                    member.__parent__ = coll
-                else:
-                    member = as_member(obj, parent=resource)
-                    member.__name__ = slug_from_identifier(self.resource_attr)
-            else:
-                member = obj
+            member = self.__make_member(resource)
         else:
             # class level access
             member = self
@@ -147,6 +137,20 @@ class member_attribute(_relation_attribute):
     def __set__(self, resource, value):
         self._set_nested(resource.get_entity(), self.entity_attr,
                          value.get_entity())
+
+    def __make_member(self, resource):
+        obj = self._get_nested(resource.get_entity(), self.entity_attr)
+        if not obj is None:
+            if not self.is_nested:
+                member = as_member(obj)
+                coll = get_root_collection(member)
+                member.__parent__ = coll
+            else:
+                member = as_member(obj, parent=resource)
+                member.__name__ = slug_from_identifier(self.resource_attr)
+        else:
+            member = obj
+        return member
 
 
 class collection_attribute(_relation_attribute):
@@ -171,7 +175,19 @@ class collection_attribute(_relation_attribute):
         if self.__need_backref_setup:
             self.__setup_backref()
         if not resource is None:
-            coll = self.__make_collection(resource)
+            # Create a collection. We can not just return the
+            # entity attribute here as that would load the whole entity
+            # collection.
+            parent = resource.get_entity()
+            try:
+                children = self._get_nested(parent, self.entity_attr)
+            except AttributeError:
+                coll = self.__make_backref_collection(resource, parent)
+            else:
+                if children is None:
+                    coll = None
+                else:
+                    coll = self.__make_collection(resource, parent, children)
         else:
             # Class level access.
             coll = self
@@ -195,43 +211,47 @@ class collection_attribute(_relation_attribute):
                 self.__entity_backref_attr = self.backref_attr
         self.__need_backref_setup = False
 
-    def __make_collection(self, resource):
-        # Create relation collection. We can not just return the
-        # entity attribute here as that would load the whole entity
-        # collection (Alternatively, we could use dynamic attributes).
-        parent = resource.get_entity()
-        children = self._get_nested(parent, self.entity_attr)
-        if children is None:
-            coll = None
-        else:
-            if not resource.__parent__ is None:
-                # Find the resource repository used for this resource's parent
-                # and use it to create the new collection.
-                rc_repo = \
-                        ResourceRepository.get_repository(resource.__parent__)
-                coll = rc_repo.get(self.entity_type)
-            else:
-                # This is a floating member, assume stage repository.
-                coll = get_stage_collection(self.entity_type)
-            # All resource references are relationships; we need to set this 
-            # up on the aggregate.
-            agg = coll.get_aggregate()
-            rel = Relationship(parent, children,
-                               backref_attribute=self.__entity_backref_attr)
-            agg.set_relationship(rel)
-            if self.is_nested:
-                # Make URL generation relative to the resource.
-                coll.set_parent(resource)
-                # Set the collection's name to the descriptor's resource
-                # attribute name.
-                coll.__name__ = slug_from_identifier(self.resource_attr)
-            else:
-                # Make URL generation relative to the app root.
-                rel = Relationship(resource, coll,
-                                   backref_attribute=
-                                        self.__resource_backref_attr)
-                coll.set_parent(find_root(resource), relation=rel)
+    def __make_backref_collection(self, resource, parent):
+        # FIXME: hack alert pylint: disable=W0511
+        coll = get_root_collection(self.entity_type)
+        rel = Relationship(parent, None,
+                           backref_attribute=self.__entity_backref_attr)
+        coll.filter = rel.specification
+        self.__check_parent(resource, coll)
         return coll
+
+    def __make_collection(self, resource, parent, children):
+        if not resource.__parent__ is None:
+            # Find the resource repository used for this resource's parent
+            # and use it to create the new collection.
+            rc_repo = \
+                    ResourceRepository.get_repository(resource.__parent__)
+            coll = rc_repo.get(self.entity_type)
+        else:
+            # This is a floating member, assume stage repository.
+            coll = get_stage_collection(self.entity_type)
+        # All resource references are relationships; we need to set this 
+        # up on the aggregate.
+        agg = coll.get_aggregate()
+        rel = Relationship(parent, children,
+                           backref_attribute=self.__entity_backref_attr)
+        agg.set_relationship(rel)
+        self.__check_parent(resource, coll)
+        return coll
+
+    def __check_parent(self, resource, coll):
+        if self.is_nested:
+            # Make URL generation relative to the resource.
+            coll.set_parent(resource)
+            # Set the collection's name to the descriptor's resource
+            # attribute name.
+            coll.__name__ = slug_from_identifier(self.resource_attr)
+        else:
+            # Make URL generation relative to the app root.
+            rel = Relationship(resource, coll,
+                               backref_attribute=
+                                    self.__resource_backref_attr)
+            coll.set_parent(find_root(resource), relation=rel)
 
 
 class attribute_alias(object):

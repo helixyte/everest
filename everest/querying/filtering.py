@@ -502,8 +502,9 @@ class EvalFilterSpecificationVisitor(FilterSpecificationVisitor):
 
     implements(IFilterSpecificationVisitor)
 
-    __evaluator = lambda spec, entities: [ent for ent in entities
-                                          if spec.is_satisfied_by(ent)]
+    @staticmethod
+    def __evaluator(spec, entities):
+        return [ent for ent in entities if spec.is_satisfied_by(ent)]
 
     def _conjunction_op(self, spec, *expressions):
         return partial(self.__evaluator, spec)
