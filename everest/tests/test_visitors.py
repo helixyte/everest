@@ -5,14 +5,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 10, 2011.
 """
 
-from everest.db import setup_db
-from everest.db import teardown_db
+from everest.db import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
+from everest.resources.persisters import PERSISTER_TYPES
+from everest.resources.utils import get_persister
 from everest.testing import BaseTestCase
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
@@ -41,7 +42,7 @@ class Person(object):
         self.age = age
 
 
-def create_metadata():
+def create_metadata(engine):
     metadata = sa.MetaData()
     person_table = sa.Table('person', metadata,
         sa.Column('id', sa.Integer, primary_key=True),
@@ -49,6 +50,8 @@ def create_metadata():
         sa.Column('age', sa.Integer, nullable=False),
         )
     orm.mapper(Person, person_table)
+    metadata.bind = engine
+    metadata.create_all()
     return metadata
 
 
@@ -57,7 +60,7 @@ def teardown():
         Person.metadata.drop_all()
         Person.metadata = None
     # Module level tear down.
-    teardown_db(reset_metadata=True)
+    reset_metadata()
 
 
 class VisitorTestCase(BaseTestCase):
@@ -66,6 +69,7 @@ class VisitorTestCase(BaseTestCase):
     _spec_map = None
 
     def set_up(self):
+        BaseTestCase.set_up(self)
         self.visitor = self._make_visitor()
         self.specs_factory = self._make_specs_factory()
 
@@ -273,11 +277,10 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
 class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
-            engine, metadata = setup_db(create_metadata, reset_metadata=True)
-            Person.metadata = metadata
-            Person.metadata.bind = engine
-            Person.metadata.create_all()
+            reset_metadata()
         VisitorTestCase.set_up(self)
+        if Person.metadata is None:
+            Person.metadata = get_persister(PERSISTER_TYPES.ORM).metadata
 
     def _make_visitor(self):
         return SqlFilterSpecificationVisitor(Person)
@@ -436,11 +439,10 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
 
     def set_up(self):
         if Person.metadata is None:
-            engine, metadata = setup_db(create_metadata, reset_metadata=True)
-            Person.metadata = metadata
-            Person.metadata.bind = engine
-            Person.metadata.create_all()
+            reset_metadata()
         OrderVisitorTestCase.set_up(self)
+        if Person.metadata is None:
+            Person.metadata = get_persister(PERSISTER_TYPES.ORM).metadata
 
     def test_simple_order_by_one_attribute(self):
         expected_expr = [Person.name.asc()]

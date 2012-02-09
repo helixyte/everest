@@ -26,7 +26,7 @@ __all__ = ['create_metadata',
            ]
 
 
-def create_metadata():
+def create_metadata(engine):
     metadata = MetaData()
     #
     # TABLES
@@ -128,4 +128,7 @@ def create_metadata():
                  ),
            )
     MyEntityGrandchild.slug = make_slug_hybrid_attr(MyEntityGrandchild)
+    # Create the mappers.
+    metadata.bind = engine
+    metadata.create_all()
     return metadata

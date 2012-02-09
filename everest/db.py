@@ -5,8 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 
-from repoze.bfg.settings import get_settings
-from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +16,12 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['commit_veto',
            'get_engine',
            'get_metadata',
-           'setup_db',
+           'is_engine_initialized',
+           'is_metadata_initialized',
+           'reset_engines',
+           'reset_metadata',
+           'set_engine',
+           'set_metadata',
            'teardown_db',
            'Session',
            ]
@@ -33,111 +36,72 @@ __all__ = ['commit_veto',
 #                 extension=ZopeTransactionExtension())
 #    )
 
-class _SingletonManager(object):
-    _singleton = None
-    __lock = Lock()
+class _GlobalObjectManager(object):
+    _globs = None
+    _lock = None
 
     @classmethod
-    def set(cls, singleton):
-        with _SingletonManager.__lock:
-            if not cls._singleton is None:
-                raise ValueError('Already initialized.')
-            cls._singleton = singleton
-        return cls._singleton
+    def set(cls, key, obj):
+        """
+        Sets the given object as global object for the given key.
+        """
+        with cls._lock:
+            if not cls._globs.get(key) is None:
+                raise ValueError('Duplicate key "%s".' % key)
+            cls._globs[key] = obj
+        return cls._globs[key]
 
     @classmethod
-    def get(cls):
-        with _SingletonManager.__lock:
-            return cls._singleton
+    def get(cls, key):
+        """
+        Returns the global object for the given key.
+        
+        :raises KeyError: if no global object was initialized for the given 
+          key.
+        """
+        with cls._lock:
+            return cls._globs[key]
 
     @classmethod
-    def is_initialized(cls):
-        with _SingletonManager.__lock:
-            return not cls._singleton is None
+    def is_initialized(cls, key):
+        """
+        Checks if a global object with the given key has been initialized.
+        """
+        with cls._lock:
+            return not cls._globs.get(key) is None
 
     @classmethod
     def reset(cls):
-        with _SingletonManager.__lock:
-            cls._singleton = None
+        """
+        Discards all global objects held by this manager.
+        """
+        with cls._lock:
+            cls._globs.clear()
 
 
-class _DbEngineManager(_SingletonManager):
-    pass
+class _DbEngineManager(_GlobalObjectManager):
+    _globs = {}
+    _lock = Lock()
 
 get_engine = _DbEngineManager.get
-_set_engine = _DbEngineManager.set
-_is_engine_initialized = _DbEngineManager.is_initialized
-_reset_engine = _DbEngineManager.reset
+set_engine = _DbEngineManager.set
+is_engine_initialized = _DbEngineManager.is_initialized
+reset_engines = _DbEngineManager.reset
 
 
-class _MetaDataManager(_SingletonManager):
+class _MetaDataManager(_GlobalObjectManager):
+    _globs = {}
+    _lock = Lock()
+
     @classmethod
     def reset(cls):
         clear_mappers()
         super(_MetaDataManager, cls).reset()
 
 get_metadata = _MetaDataManager.get
-_set_metadata = _MetaDataManager.set
-_is_metadata_initialized = _MetaDataManager.is_initialized
-_reset_metadata = _MetaDataManager.reset
-
-
-def setup_db(create_metadata_callback=None,
-             reset_metadata=False, reset_engine=False):
-    """
-    Initialization function for the database (ORM).
-    
-    :param create_metadata_callback: if no metadata have been configured before
-      or if a reset of the metadata is requested, this is called with no 
-      arguments and is expected to return a metadata instance.
-    :param bool reset_metadata: if set, previously configured metadata will be
-      replaced.
-    :param bool reset_engine: if set, a previously created DB engine will be
-      replaced. 
-    """
-    if reset_metadata:
-        if create_metadata_callback is None:
-            raise ValueError('Need to provide a callback for creating the '
-                             'ORM metadata when reset is requested.')
-        _reset_metadata()
-    if reset_engine:
-        _reset_engine()
-    if not _is_engine_initialized():
-        db_string = get_settings().get('db_string')
-        engine = create_engine(db_string)
-        # Bind the session to the engine.
-        Session.configure(bind=engine)
-        _set_engine(engine)
-    else:
-        engine = get_engine()
-    if not _is_metadata_initialized():
-        # 
-        metadata = create_metadata_callback()
-        _set_metadata(metadata)
-    else:
-        metadata = get_metadata()
-        metadata.bind = engine
-    return engine, metadata
-
-
-def teardown_db(reset_metadata=False, reset_engine=False):
-    """
-    Shutdown function for the DB (ORM).
-    
-    This is only needed in a testing context when tests need to create their
-    own metadata and/or engine.
-
-    :param bool reset_metadata: if set, previously configured metadata will be
-      discarded. The next call to :func:`setup_db` will then always create new
-      metadata.
-    :param bool reset_engine: if set, a previously created DB engine will be
-      discarded. The next call to :func:`setup_db` will then always create a
-      new engine. 
-    """
-    if reset_metadata:
-        _reset_metadata()
-    if reset_engine:
-        _reset_engine()
+set_metadata = _MetaDataManager.set
+is_metadata_initialized = _MetaDataManager.is_initialized
+reset_metadata = _MetaDataManager.reset
 
 
 #: The scoped session maker. Instantiate this to obtain a thread local

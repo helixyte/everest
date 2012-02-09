@@ -122,14 +122,12 @@ class EntityRepository(Repository):
         entity_cls = get_entity_class(rc)
         if not issubclass(agg_cls,
                           tuple(self.__impl_registry.get_registered())):
-            # If no custom agg class implementation was registered, we use
-            # the default implementation (either explicitly set or the
-            # generic default).
-            impl_cls = self.__impls.get(agg_cls) \
-                       or self.__default_impl
+            # Typcical case - "normal" Aggregate class.
+            impl_cls = self.__impls.get(agg_cls) or self.__default_impl
             impl = impl_cls.create(entity_cls)
-            agg = agg_cls.create(entity_cls, impl)
+            agg = agg_cls.create(impl)
         else:
+            # Special case - customized AggregateImpl class.
             agg = agg_cls.create(entity_cls)
         return agg
 

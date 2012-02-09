@@ -28,21 +28,24 @@ import os
 import sys
 import time
 import unittest
+from everest.resources.persisters import PERSISTER_TYPES
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
            'DummyContext',
            'DummyModule',
            'EntityTestCase',
+           'EverestIni',
            'EverestNosePlugin',
            'FunctionalTestCase',
-           'ModelTestCase',
+           'OrmContextManager',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
-           'attribute_test',
+           'check_attributes',
            'elapsed',
            'no_autoflush',
-           'persistence_test',
+           'persist',
+           'with_orm',
            ]
 
 
@@ -176,24 +179,29 @@ class BaseTestCase(Pep8CompliantTestCase):
     """
     Base class for all everest unit test case classes.
     """
-    #: The registry configurator. This must be set by derived classes.
+    #: The registry configurator. This is set in the set_up method.
     config = None
-    #: The ini file parser.
-    ini = None
     #: The name of the package where the tests reside. May be overridden in
     #: derived classes.
     package_name = 'everest'
-    #: The path to the application initialization (ini) file name.
+    #: The path to the application initialization (ini) file name. Override
+    #: as needed in derived classses.
     ini_file_path = None
-    #: The section name in the ini file to look for settings. May be 
-    #: overridden in derived classes.
+    #: The section name in the ini file to look for settings. Override as 
+    #: needed in derived classes.
     ini_section_name = 'everest'
+    #: The ini file parser. This will only be set up if the ini_file_path 
+    #: and ini_section_name variables were set up sensibly.
+    ini = None
 
     def set_up(self):
         # Create and configure a new testing registry.
         reg = Registry('testing')
-        self.ini = EverestIni(self.ini_file_path)
-        settings = self.ini.get_settings(self.ini_section_name)
+        if not self.ini_file_path is None:
+            self.ini = EverestIni(self.ini_file_path)
+            settings = self.ini.get_settings(self.ini_section_name)
+        else:
+            settings = None
         self.config = Configurator(registry=reg,
                                    package=self.package_name)
         self.config.setup_registry(settings=settings)
@@ -410,8 +418,12 @@ class OrmContextManager(object):
     a default, sets up an outer transaction before the test is run and rolls
     this transaction back after the test has finished.
     """
-    def __init__(self, autoflush=True):
+    def __init__(self, autoflush=True, engine_name=None):
         self.__autoflush = autoflush
+        if engine_name is None:
+            # Use the name of the default ORM persister for engine lookup.
+            engine_name = PERSISTER_TYPES.ORM
+        self.__engine_name = engine_name
         self.__connection = None
         self.__transaction = None
         self.__session = None
@@ -427,7 +439,7 @@ class OrmContextManager(object):
                                                   make_default=True)
         # We set up an outer transaction that allows us to roll back all
         # changes (including commits) the unittest may want to make.
-        engine = get_engine()
+        engine = get_engine(self.__engine_name)
         self.__connection = engine.connect()
         self.__transaction = self.__connection.begin()
         # Configure the autoflush behavior of the session.

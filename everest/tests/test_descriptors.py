@@ -5,8 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 1, 2011.
 """
 
-from everest.db import setup_db
-from everest.db import teardown_db
+from everest.db import reset_metadata
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.representers.base import DataElementGenerator
@@ -16,13 +15,14 @@ from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.base import Collection
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
 from everest.resources.descriptors import terminal_attribute
+from everest.resources.persisters import PERSISTER_TYPES
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
+from everest.resources.utils import get_persister
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_stage_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.db import create_metadata
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
 from everest.tests.testapp_db.entities import MyEntityGrandchild
@@ -48,7 +48,7 @@ def teardown():
     if not DescriptorsTestCase.metadata is None:
         DescriptorsTestCase.metadata.drop_all()
         DescriptorsTestCase.metadata = None
-    teardown_db(reset_metadata=True)
+    reset_metadata()
 
 
 class AttributesTestCase(Pep8CompliantTestCase):
@@ -105,12 +105,12 @@ class DescriptorsTestCase(ResourceTestCase):
     UPDATED_TEXT = 'UPDATED TEXT'
 
     def set_up(self):
+        if DescriptorsTestCase.metadata is None:
+            reset_metadata()
         ResourceTestCase.set_up(self)
         if DescriptorsTestCase.metadata is None:
-            engine, metadata = setup_db(create_metadata, reset_metadata=True)
-            DescriptorsTestCase.metadata = metadata
-            DescriptorsTestCase.metadata.bind = engine
-            DescriptorsTestCase.metadata.create_all()
+            DescriptorsTestCase.metadata = \
+                                 get_persister(PERSISTER_TYPES.ORM).metadata
 
     def test_terminal_access(self):
         entity = MyEntity()

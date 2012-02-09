@@ -10,8 +10,10 @@ Created on Nov 3, 2011.
 from everest.repository import REPOSITORY_DOMAINS
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IPersister
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IResourceRepository
+from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
@@ -175,3 +177,32 @@ def provides_collection_resource(obj):
     if isinstance(obj, type):
         obj = object.__new__(obj)
     return ICollectionResource in provided_by(obj)
+
+
+def get_registered_collection_resources():
+    """
+    Returns a list of all registered collection resource classes.
+    """
+    reg = get_current_registry()
+    return [util.component
+            for util in reg.getRegisteredUtilities()
+            if util.name == 'collection-class']
+
+
+def get_persister(name):
+    """
+    Get the persister registered under the given name.
+    """
+    return get_utility(IPersister, name)
+
+
+def as_persister(rc):
+    """
+    Adaptrs the given registered resource to a persister.
+    
+    :return: object implementing 
+      :class:`everest.resources.interfaces.IPersister`.
+    """
+    if IInterface in provided_by(rc):
+        rc = get_utility(rc, name='entity-class')
+    return get_adapter(rc, IPersister)

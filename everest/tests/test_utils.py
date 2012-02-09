@@ -9,6 +9,7 @@ from everest.testing import Pep8CompliantTestCase
 from everest.utils import classproperty
 from everest.utils import get_traceback
 from everest.utils import BidirectionalLookup
+from everest.utils import id_generator
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UtilsTestCase',
@@ -16,6 +17,18 @@ __all__ = ['UtilsTestCase',
 
 
 class UtilsTestCase(Pep8CompliantTestCase):
+
+    def test_id_generator(self):
+        # Initialize with start value.
+        idgen = id_generator(3)
+        self.assert_equal(idgen.next(), 3)
+        self.assert_equal(idgen.next(), 4)
+        # Push ID to higher value.
+        idgen.send(5)
+        self.assert_equal(idgen.next(), 6)
+        self.assert_equal(idgen.next(), 7)
+        # ID values must increase monotonically.
+        self.assert_raises(ValueError, idgen.send, 6)
 
     def test_classproperty(self):
         class X(object):

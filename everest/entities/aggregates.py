@@ -14,6 +14,7 @@ from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.resources.utils import as_persister
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
@@ -141,54 +142,55 @@ class MemoryAggregateImpl(AggregateImpl):
     """
     In-memory implementation for aggregates.
 
-    :note: Filtering and ordering in memory aggregates is very slow. Also,
-        when "blank" entities without an ID and a slug are added to a
+    :note: When "blank" entities without an ID and a slug are added to a
         memory aggregate, they can not be retrieved using the
         :method:`get_by_id` or :method:`get_by_slug` methods since there 
         is no mechanism to autogenerate IDs or slugs.
     """
-    def __init__(self, entity_class):
+    def __init__(self, entity_class, session):
         AggregateImpl.__init__(self, entity_class)
         #
-        self.__entities = []
+        self.__session = session
 
     @classmethod
     def create(cls, entity_class):
-        return cls(entity_class)
+        persister = as_persister(entity_class)
+        return cls(entity_class, persister.session)
 
     def clone(self):
         clone = super(MemoryAggregateImpl, self).clone()
         if self._relationship is None:
-            clone.__entities = self.__entities
+            clone.__session = self.__session
         return clone
 
     def count(self):
-        return len(list(self.iterator()))
+        if self._relationship is None:
+            count = len(self.__session.get_all(self.entity_class))
+        else:
+            count = len(self._relationship.children)
+        return count
 
     def get_by_id(self, id_key):
-        ents = self._get_entities()
-        matching_ents = self.__filter_by_attr(ents, 'id', id_key)
-        if len(matching_ents) == 1:
-            ent = matching_ents[0]
-        elif len(matching_ents) == 0:
-            ent = None
+        if self._relationship is None:
+            ent = self.__session.get_by_id(self.entity_class, id_key)
         else:
-            raise DuplicateException('Duplicates found for ID "%s".' % id_key)
+            ent = self.__filter_by_attr(self._relationship.children,
+                                        'id', id_key)
         return ent
 
     def get_by_slug(self, slug):
-        ents = self._get_entities()
-        matching_ents = self.__filter_by_attr(ents, 'slug', slug)
-        if len(matching_ents) == 1:
-            ent = matching_ents[0]
-        elif len(matching_ents) == 0:
-            ent = None
+        if self._relationship is None:
+            ent = self.__session.get_by_slug(self.entity_class, slug)
         else:
-            raise DuplicateException('Duplicates found for slug "%s".' % slug)
+            ent = self.__filter_by_attr(self._relationship.children,
+                                        'slug', slug)
         return ent
 
     def iterator(self):
-        ents = self._get_entities()
+        if self._relationship is None:
+            ents = self.__session.get_all(self.entity_class)
+        else:
+            ents = self._relationship.children
         if not self._filter_spec is None:
             visitor = get_utility(IFilterSpecificationVisitor,
                                   name=EXPRESSION_KINDS.EVAL)()
@@ -214,21 +216,19 @@ class MemoryAggregateImpl(AggregateImpl):
         if not hasattr(entity, 'slug'):
             raise ValueError('Entities added to a memory aggregrate have to '
                              'have a slug (`slug` attribute).')
-        entity_id = entity.id
-        entity_slug = entity.slug
-        if not entity_id is None:
-            if entity_slug is None:
-                raise ValueError('Entities added to a memory aggregate which '
-                                 'specify an ID also need to specify a slug.')
-            elif self.__check_existing(entity):
-                raise ValueError('Entity with ID "%s" or slug "%s" is already '
-                                 'present.' % (entity_id, entity_slug))
-        ents = self._get_entities()
-        ents.append(entity)
+        if self._relationship is None:
+            self.__session.add(self.entity_class, entity)
+        else:
+            if not entity.id is None \
+               and self.__check_existing(self._relationship.children, entity):
+                raise ValueError('Duplicate ID or slug.')
+            self._relationship.children.append(entity)
 
     def remove(self, entity):
-        ents = self._get_entities()
-        ents.remove(entity)
+        if self._relationship is None:
+            self.__session.remove(self.entity_class, entity)
+        else:
+            self._relationship.children.remove(entity)
 
     def _apply_filter(self):
         pass
@@ -239,46 +239,27 @@ class MemoryAggregateImpl(AggregateImpl):
     def _apply_slice(self):
         pass
 
-    def _get_entities(self):
-        """
-        Returns the entities held by this memory aggregate.
-        
-        :returns:  list of objects implementing 
-            :class:`everest.entities.interfaces.IEntity`
-        """
-        if self._relationship is None:
-            ents = self.__entities
-        else:
-            ents = self._relationship.children
-        return ents
-
-    def _set_entities(self, entities):
-        """
-        Sets the entities held by this memory aggregate.
-        
-        :param entities: list of objects implementing 
-            :class:`everest.entities.interfaces.IEntity`
-        """
-        if self._relationship is None:
-            self.__entities = entities
-        else:
-            self._relationship.children = entities
-
-    def __check_existing(self, entity):
-        ents = self._get_entities()
+    def __check_existing(self, ents, entity):
         found = [ent for ent in ents
-               if ent.id == entity.id or ent.slug == entity.slug]
+                 if ent.id == entity.id or ent.slug == entity.slug]
         return len(found) > 0
 
     def __filter_by_attr(self, ents, attr, value):
         if self._filter_spec is None:
-            filtered_ents = \
+            matching_ents = \
                 [ent for ent in ents if getattr(ent, attr) == value]
         else:
-            filtered_ents = \
+            matching_ents = \
                 [ent for ent in ents if getattr(ent, attr) == value
                  if self._filter_spec.is_satisfied_by(ent)]
-        return filtered_ents
+        if len(matching_ents) == 1:
+            ent = matching_ents[0]
+        elif len(matching_ents) == 0:
+            ent = None
+        else:
+            raise DuplicateException('Duplicates found for "%s" value of '
+                                     '"%s" attribue.' % (value, attr))
+        return ent
 
 
 class OrmAggregateImpl(AggregateImpl):
@@ -347,7 +328,6 @@ class OrmAggregateImpl(AggregateImpl):
     def add(self, entity):
         if self._relationship is None:
             self._session.add(entity)
-            self._session.flush()
         else:
             self._relationship.children.append(entity)
 

@@ -11,11 +11,17 @@ from repoze.bfg.zcml import IViewDirective
 from repoze.bfg.zcml import view as bfg_view
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
+from zope.configuration.fields import Path # pylint: disable=E0611,F0401
 from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
+from everest.resources.interfaces import IPersister
+from everest.resources.persisters import PERSISTER_TYPES
+from everest.resources.persisters import FileSystemPersister
+from everest.resources.persisters import OrmPersister
+from everest.resources.interfaces import IDefaultPersister
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ICollectionViewDirective',
@@ -30,6 +36,97 @@ __all__ = ['ICollectionViewDirective',
 
 
 # interfaces to not have an __init__ # pylint: disable=W0232
+
+class IPersisterDirective(Interface):
+    name = \
+        TextLine(title=u"Name of this persister. Must be unique among all "
+                        "persisters. If no name is given, or the name is "
+                        "specified as 'DEFAULT', the built-in persister is "
+                        "configured with the given directive.",
+                 required=False
+                 )
+    make_default = \
+        Bool(title=u"Indicates if this persister should be made the default "
+                    "for all resources that do not explicitly specify a "
+                    "persister. Defaults to False.",
+             required=False
+             )
+
+
+def _persister(_context, name, make_default, prst_type, cnf):
+    # Persister directives are applied eagerly. Note that custom persisters 
+    # must be declared *before* they can be referenced in resource directives.
+    reg = get_current_registry()
+    config = Configurator(reg, package=_context.package)
+    if name is None:
+        # Configuration for the built-in persister.
+        prst = config.get_registered_utility(IPersister, prst_type)
+        prst.configure(**cnf) # pylint: disable=W0142
+        if make_default:
+            # Replace builtin default persister.
+            reg.registerUtility(prst, IDefaultPersister) # pylint: disable=E1103
+    else:
+        if prst_type == PERSISTER_TYPES.FILE_SYSTEM:
+            prst_cls = FileSystemPersister
+        elif prst_type == PERSISTER_TYPES.ORM:
+            prst_cls = OrmPersister
+        else:
+            raise ValueError('Unknown persister type "%s".' % prst_type)
+        config.add_persister(name, prst_cls,
+                             make_default=make_default, configuration=cnf)
+    discriminator = (prst_type, name)
+    _context.action(discriminator=discriminator)
+
+
+class IFileSystemPersisterDirective(IPersisterDirective):
+    directory = \
+        Path(title=u"The directory the representation files for the "
+                    "root collection resources are kept. Defaults to "
+                    "the current working directory.",
+             required=False,
+             )
+    content_type = \
+        GlobalObject(title=u"The (MIME) content type to use for the "
+                            "representation files. Defaults to CSV.",
+                     required=False)
+
+
+def fs_persister(_context, name=None, make_default=False, directory=None,
+                 content_type=None):
+    """
+    Directive for registering a file-system based persister.
+    """
+    cnf = {}
+    if not directory is None:
+        cnf['directory'] = directory
+    if not content_type is None:
+        cnf['content_type'] = content_type
+    _persister(_context, name, make_default, PERSISTER_TYPES.FILE_SYSTEM, cnf)
+
+
+class IOrmPersisterDirective(IPersisterDirective):
+    db_string = \
+        TextLine(title=u"String to use to connect to the DB server. Defaults "
+                        "to an in-memory sqlite DB.",
+                 required=False)
+    metadata_factory = \
+        GlobalObject(title=u"Callback that initializes and returns the "
+                            "metadata for the ORM.",
+                     required=False)
+
+
+def orm_persister(_context, name=None, make_default=False, db_string=None,
+                  metadata_factory=None):
+    """
+    Directive for registering an ORM based persister.
+    """
+    cnf = {}
+    if not db_string is None:
+        cnf['db_string'] = db_string
+    if not metadata_factory is None:
+        cnf['metadata_factory'] = metadata_factory
+    _persister(_context, name, make_default, PERSISTER_TYPES.ORM, cnf)
+
 
 class IResourceDirective(Interface):
     interface = \
@@ -86,6 +183,12 @@ class IResourceDirective(Interface):
                         "to the root_name attribute of the collection class.",
                  required=False,
                  )
+    persister = \
+        TextLine(title=u"The name of the persister that should be used for "
+                        "this resource. Defaults to 'DUMMY', the built-in "
+                        "dummy persister (i.e., no persistence); see the "
+                        "IPersisterDirective for other possible values.",
+                 required=False)
     expose = \
         Bool(title=u"Flag indicating if this collection should be exposed in "
                     "the service.",
@@ -102,7 +205,8 @@ class IResourceDirective(Interface):
 def resource(_context, interface, member, entity,
              collection=None, aggregate=None,
              entity_adapter=None, aggregate_adapter=None,
-             collection_root_name=None, collection_title=None, expose=True):
+             collection_root_name=None, collection_title=None,
+             persister=None, expose=True):
     """
     Directive for registering a resource. Calls
     :method:`everest.configuration.Configurator.add_resource`.
@@ -118,6 +222,7 @@ def resource(_context, interface, member, entity,
                         aggregate_adapter=aggregate_adapter,
                         collection_root_name=collection_root_name,
                         collection_title=collection_title,
+                        persister=persister,
                         expose=expose,
                         _info=_context.info)
     discriminator = ('resource', interface)

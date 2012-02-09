@@ -209,4 +209,32 @@ class IService(ICollectionResource):
     Marker interface for the service collection.
     """
 
+
+class IPersister(Interface):
+    """
+    """
+
+    def configure(**config):
+        """
+        Sets configuration options for this persister which can then be used
+        during initialization.
+        """
+
+    def initialize():
+        """
+        Initializes the persister.
+        """
+
+    session = Attribute('The session object held by this persister.')
+
+    name = Attribute('Unique name for this persister.')
+
+    is_initialized = Attribute('Flag indicating if this persister has been '
+                               'initialized.')
+
+
+class IDefaultPersister(Interface):
+    """
+    Marker interface for the default persister.
+    """
 # pylint: enable=W0232,E0213

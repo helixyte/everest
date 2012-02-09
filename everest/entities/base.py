@@ -75,24 +75,21 @@ class Aggregate(object):
     def __init__(self, implementation):
         self.__implementation = implementation
 
-    def set_implementation(self, implementation_class):
+    def set_implementation(self, implementation):
         """
-        Switches the implementation of this aggregate to an instance of the
-        given implementation class.
+        Switches the implementation of this aggregate to the given object.
         
-        :param implementation_class: class implementing
+        :param implementation: object implementing
           :class:`everest.entities.interfaces.IAggregateImplementation`.
         """
-        self.__implementation = \
-            implementation_class.create(self.__implementation.entity_class)
+        self.__implementation = implementation
 
     @classmethod
-    def create(cls, entity_class, implementation_class):
+    def create(cls, implementation):
         """
         Factory method for creating the aggregate.
         """
-        impl = implementation_class.create(entity_class)
-        return cls(impl)
+        return cls(implementation)
 
     def clone(self):
         """

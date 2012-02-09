@@ -16,6 +16,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             schema="everest.directives.IResourceDirective"
             handler="everest.directives.resource" />
         <meta:directive
+            name="fs_persister"
+            schema="everest.directives.IFileSystemPersisterDirective"
+            handler="everest.directives.fs_persister" />
+        <meta:directive
+            name="orm_persister"
+            schema="everest.directives.IOrmPersisterDirective"
+            handler="everest.directives.orm_persister" />
+        <meta:directive
             name="representer"
             schema="everest.directives.IRepresenterDirective"
             handler="everest.directives.representer" />

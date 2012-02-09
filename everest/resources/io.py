@@ -1,7 +1,8 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
+
+Input/Output operations on resources.
 
 Created on Jan 27, 2012.
 """
@@ -22,20 +23,37 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['dump_resource',
+           'dump_resource_graph',
+           'load_resource_from_file',
+           'load_resource_from_url',
+           ]
 
-def load_from_url(resource, url, content_type=None):
+
+def load_resource_from_url(resource, url, content_type=None):
+    """
+    Loads a collection resource of the given registered resource type from a 
+    representation contained in the given URL.
+    
+    :returns: collection resource
+    """
     parsed = urlparse(url)
     if parsed.scheme == 'file': # pylint: disable=E1101
         # Assume a local path.
-        rc = load_from_file(resource, parsed.path, # pylint: disable=E1101
-                            content_type=content_type)
+        rc = load_resource_from_file(resource, parsed.path, # pylint: disable=E1101
+                                     content_type=content_type)
     else:
         raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
     return rc
 
 
-def load_from_file(resource, filename, content_type=None):
+def load_resource_from_file(resource, filename, content_type=None):
+    """
+    Loads a collection resource of the given registered resource type from a 
+    representation contained in the given file name.
+    
+    :returns: collection resource
+    """
     if content_type is None:
         #
         extensions = dict(csv=CsvMime,
@@ -56,6 +74,18 @@ def load_from_file(resource, filename, content_type=None):
     with fp:
         rc = rpr.from_stream(fp)
     return rc
+
+
+def dump_resource(resource, stream, content_type=None):
+    """
+    Dumps the given resource to the given stream using the specified MIME
+    content type (defaults to CSV). If no stream is provided, a 
+    :class:`StringIO` stream is returned.
+    """
+    if content_type is None:
+        content_type = CsvMime
+    rpr = as_representer(resource, content_type.mime_string)
+    rpr.to_stream(resource, stream)
 
 
 class ResourceGraph(digraph):
@@ -86,6 +116,9 @@ def build_resource_graph(resource):
     """
     Traverses the graph of resources that is reachable from the given resource,
     ignoring cyclic references.
+    
+    :returns: a :class:`ResourceGraph` instance representing the graph of 
+      resources reachable from the given resource
     """
     def visit(rc, grph):
         # We ignore cyclic references.
@@ -111,13 +144,15 @@ def build_resource_graph(resource):
     return graph
 
 
-def dump_resource(resource, content_type=None):
+def dump_resource_graph(resource, content_type=None):
     """
-    Dumps the visited resources in the specified content_type (defaults
+    Dumps the all resources reachable from the given resource to a map of 
+    string representations using the specified content_type (defaults
     to CSV).
+    
+    :returns: dictionary mapping resource member classes to string 
+      representations
     """
-    if content_type is None:
-        content_type = CsvMime
     collections = OrderedDict()
     graph = build_resource_graph(resource)
     for mb in topological_sorting(graph):
@@ -130,9 +165,7 @@ def dump_resource(resource, content_type=None):
         coll.add(mb)
     repr_map = {}
     for (mb_cls, coll) in collections.iteritems():
-        rpr = as_representer(coll, content_type.mime_string)
         stream = StringIO('w')
-        rpr.to_stream(coll, stream)
+        dump_resource(coll, stream, content_type=content_type)
         repr_map[mb_cls] = stream.getvalue()
     return repr_map
-

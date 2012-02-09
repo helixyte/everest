@@ -38,9 +38,18 @@ def id_generator(start=0):
     """
     Generator for sequential numeric numbers.
     """
+    count = start
     while True:
-        yield start
-        start += 1
+        send_value = (yield count)
+        if not send_value is None:
+            if send_value < count:
+                raise ValueError('Values from ID generator must increase '
+                                 'monotonically (current value: %d; value '
+                                 'sent to generator: %d).'
+                                 % (count, send_value))
+            count = send_value
+        else:
+            count += 1
 
 
 def get_traceback():

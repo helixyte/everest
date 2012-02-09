@@ -9,9 +9,13 @@
 
     <!-- Utilities -->
 
-    <!-- Representers. -->
+    <!-- Persisters. -->
+    
+    <orm_persister
+        make_default="true"
+        metadata_factory="everest.tests.testapp_db.db.create_metadata"/>
 
-    <!-- Resource declarations. -->
+    <!-- Resources. -->
 
     <resource
         interface='.interfaces.IMyEntityParent'

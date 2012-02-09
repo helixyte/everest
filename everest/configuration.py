@@ -47,9 +47,15 @@ from everest.resources.base import Collection
 from everest.resources.base import Member
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
+from everest.resources.interfaces import IDefaultPersister
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IPersister
 from everest.resources.interfaces import IResourceRepository
 from everest.resources.interfaces import IService
+from everest.resources.persisters import DummyPersister
+from everest.resources.persisters import FileSystemPersister
+from everest.resources.persisters import OrmPersister
+from everest.resources.persisters import PERSISTER_TYPES
 from everest.resources.repository import ResourceRepository
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
@@ -57,8 +63,8 @@ from everest.url import ResourceUrlConverter
 from repoze.bfg.configuration import Configurator as BfgConfigurator
 from repoze.bfg.interfaces import IRequest
 from repoze.bfg.path import caller_package
+from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
-from zope.interface import directlyProvides as directly_provides # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -181,7 +187,7 @@ class Configurator(BfgConfigurator):
                      collection=None, aggregate=None,
                      entity_adapter=None, aggregate_adapter=None,
                      collection_root_name=None, collection_title=None,
-                     expose=True, _info=u''):
+                     expose=True, persister=None, _info=u''):
         if not issubclass(member, Member):
             raise ValueError('The member must be a subclass '
                              'of member.')
@@ -265,7 +271,7 @@ class Configurator(BfgConfigurator):
         self._register_utility(aggregate, interface,
                                name='aggregate-class', info=_info)
         # Attach the marker interface to the registered resource classes, if
-        # necessary.
+        # necessary, so the instances will provide it.
         if not interface in provided_by(member):
             class_implements(member, interface)
         if not interface in provided_by(collection):
@@ -274,15 +280,39 @@ class Configurator(BfgConfigurator):
             class_implements(entity, interface)
         if not interface in provided_by(aggregate):
             class_implements(aggregate, interface)
-        # This enables us to pass the collection  or member class instead of
+        # This enables us to pass a class instead of
         # an interface or instance to the various adapters.
-        directly_provides(member, interface)
-        directly_provides(collection, interface)
-#        directly_provides(entity, interface)
-#        directly_provides(aggregate, interface)
+        also_provides(member, interface)
+        also_provides(collection, interface)
+        also_provides(entity, interface)
+        also_provides(aggregate, interface)
+        # Configure the persister adapter.
+        if persister is None:
+            prst = self.get_registered_utility(IDefaultPersister)
+        else:
+            prst = self.get_registered_utility(IPersister, persister)
+        if not prst.is_initialized:
+            # Make sure the persister gets initialized.
+            prst.initialize()
+        self._register_adapter(lambda obj: prst,
+                               required=(interface,),
+                               provided=IPersister,
+                               info=_info)
         # Expose (=register with the service) if requested.
         if expose:
             srvc.register(interface)
+
+    def add_persister(self, name, persister_cls,
+                      make_default=False, configuration=None, _info=u'',):
+        if not self.get_registered_utility(IPersister, name) is None:
+            raise ValueError('Duplicate persister name "%s".' % name)
+        if configuration is None:
+            configuration = {}
+        custom_persister = persister_cls(name)
+        custom_persister.configure(**configuration) # pylint: disable=W0142
+        self._register_utility(custom_persister, IPersister, name=name)
+        if make_default:
+            self._register_utility(custom_persister, IDefaultPersister)
 
     def add_representer(self, resource, content_type, configuration=None,
                         _info=u''):
@@ -365,6 +395,29 @@ class Configurator(BfgConfigurator):
                                                         MemoryAggregateImpl)
         self._register_utility(stage_entity_repository, IEntityRepository,
                                name=REPOSITORY_DOMAINS.STAGE)
+        # Set up builtin persisters.
+        dummy_persister = DummyPersister(PERSISTER_TYPES.DUMMY)
+        self._register_utility(dummy_persister, IPersister,
+                               name=PERSISTER_TYPES.DUMMY)
+        settings = self.get_settings()
+        fs_persister = FileSystemPersister(PERSISTER_TYPES.FILE_SYSTEM)
+        config = dict([(name, settings.get(key))
+                       for (name, key) in [('directory', 'fs_directory'),
+                                           ('content_type', 'fs_contenttype')]
+                       if not settings.get(key, None) is None])
+        fs_persister.configure(**config) # pylint: disable=W0142
+        self._register_utility(fs_persister, IPersister,
+                               name=PERSISTER_TYPES.FILE_SYSTEM)
+        orm_persister = OrmPersister(PERSISTER_TYPES.ORM)
+        config = dict([(name, settings.get(key))
+                       for (name, key) in [('db_string', 'orm_dbstring'), ]
+                       if not settings.get(key, None) is None])
+        orm_persister.configure(**config) # pylint: disable=W0142
+        self._register_utility(orm_persister, IPersister,
+                               name=PERSISTER_TYPES.ORM)
+        # Use the dummy persister as default (for resources that do not 
+        # specify a persister).
+        self._register_utility(dummy_persister, IDefaultPersister)
         # Set up filter and order specification factories.
         if filter_specification_factory is None:
             filter_specification_factory = FilterSpecificationFactory()
