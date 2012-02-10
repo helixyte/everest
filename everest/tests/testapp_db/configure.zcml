@@ -9,7 +9,7 @@
 
     <!-- Utilities -->
 
-    <!-- Persisters. -->
+    <!-- Repositories. -->
     
     <orm_repository
         make_default="true"

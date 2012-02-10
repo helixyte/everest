@@ -164,6 +164,23 @@ class Configurator(BfgConfigurator):
                      eval_order_specification_visitor,
                      url_converter)
 
+    def add_repository(self, name, persister_cls,
+                       default_aggregate_implementation=None,
+                       make_default=False, configuration=None, _info=u'',):
+        if not self.get_registered_utility(IRepository, name) is None:
+            raise ValueError('Duplicate repository name "%s".' % name)
+        if configuration is None:
+            configuration = {}
+        custom_persister = persister_cls(name)
+        custom_ent_repo = EntityRepository(custom_persister)
+        if not default_aggregate_implementation is None:
+            custom_ent_repo.set_default_implementation(
+                                            default_aggregate_implementation)
+        custom_rc_repo = ResourceRepository(custom_ent_repo)
+        custom_rc_repo.configure(**configuration) # pylint: disable=W0142
+        if make_default:
+            self._register_utility(custom_rc_repo, IDefaultRepository)
+
     def add_resource(self, interface, member, entity,
                      collection=None, aggregate=None,
                      entity_adapter=None, aggregate_adapter=None,
@@ -287,19 +304,6 @@ class Configurator(BfgConfigurator):
         # Expose (=register with the service) if requested.
         if expose:
             srvc.register(interface)
-
-    def add_repository(self, name, persister_cls,
-                       make_default=False, configuration=None, _info=u'',):
-        if not self.get_registered_utility(IRepository, name) is None:
-            raise ValueError('Duplicate repository name "%s".' % name)
-        if configuration is None:
-            configuration = {}
-        custom_persister = persister_cls(name)
-        custom_ent_repo = EntityRepository(custom_persister)
-        custom_rc_repo = ResourceRepository(custom_ent_repo)
-        custom_rc_repo.configure(**configuration) # pylint: disable=W0142
-        if make_default:
-            self._register_utility(custom_rc_repo, IDefaultRepository)
 
     def add_representer(self, resource, content_type, configuration=None,
                         _info=u''):

@@ -51,6 +51,9 @@ class ResourceRepository(Repository):
         for loaded_mb in loaded_coll:
             coll.add(loaded_mb)
 
+    def get_entity_repository(self):
+        return self.__entity_repository
+
     def manage(self, collection_class):
         self.__managed_collections.add(collection_class)
 

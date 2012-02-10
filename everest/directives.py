@@ -6,6 +6,8 @@ Created on Jun 16, 2011.
 """
 
 from everest.configuration import Configurator
+from everest.entities.aggregates import MemoryAggregateImpl
+from everest.entities.aggregates import OrmAggregateImpl
 from everest.interfaces import IDefaultRepository
 from everest.interfaces import IRepository
 from everest.repository import REPOSITORIES
@@ -52,6 +54,10 @@ class IRepositoryDirective(Interface):
                         "configured with the given directive.",
                  required=False
                  )
+    default_aggregate_implementation = \
+        GlobalObject(title=u"A class to use as the default aggregate "
+                            "implementation for this repository.",
+                     required=False)
     make_default = \
         Bool(title=u"Indicates if this repository should be made the default "
                     "for all resources that do not explicitly specify a "
@@ -60,7 +66,8 @@ class IRepositoryDirective(Interface):
              )
 
 
-def _repository(_context, name, make_default, repo_type, cnf):
+def _repository(_context, name, make_default, default_aggregate_implementation,
+                repo_type, cnf):
     # Persister directives are applied eagerly. Note that custom repositorys 
     # must be declared *before* they can be referenced in resource directives.
     discriminator = (repo_type, name)
@@ -68,22 +75,32 @@ def _repository(_context, name, make_default, repo_type, cnf):
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     if name is None:
-        # Configuration for the built-in repository.
+        # Configuration for the built-in repository of the given type.
         repo = config.get_registered_utility(IRepository, repo_type)
         repo.configure(**cnf) # pylint: disable=W0142
+        if not default_aggregate_implementation is None:
+            ent_repo = repo.get_entity_repository()
+            ent_repo.set_default_implementation(
+                                            default_aggregate_implementation)
         if make_default:
             # Replace builtin default repository.
             reg.registerUtility(repo, IDefaultRepository) # pylint: disable=E1103
     else:
         if repo_type == REPOSITORIES.MEMORY:
+            if default_aggregate_implementation is None:
+                default_aggregate_implementation = MemoryAggregateImpl
             prst_cls = DummyPersister
         elif repo_type == REPOSITORIES.FILE_SYSTEM:
+            if default_aggregate_implementation is None:
+                default_aggregate_implementation = MemoryAggregateImpl
             prst_cls = FileSystemPersister
         elif repo_type == REPOSITORIES.ORM:
+            if default_aggregate_implementation is None:
+                default_aggregate_implementation = OrmAggregateImpl
             prst_cls = OrmPersister
         else:
             raise ValueError('Unknown repository type "%s".' % repo_type)
-        config.add_repository(name, prst_cls,
+        config.add_repository(name, prst_cls, default_aggregate_implementation,
                               make_default=make_default, configuration=cnf)
 
 
@@ -91,8 +108,10 @@ class IMemoryRepositoryDirective(IRepositoryDirective):
     pass
 
 
-def memory_repository(_context, name=None, make_default=False):
-    _repository(_context, name, make_default, REPOSITORIES.MEMORY, {})
+def memory_repository(_context, name=None, make_default=False,
+                      default_aggregate_implementation=None,):
+    _repository(_context, name, make_default, default_aggregate_implementation,
+                REPOSITORIES.MEMORY, {})
 
 
 class IFileSystemRepositoryDirective(IRepositoryDirective):
@@ -109,6 +128,7 @@ class IFileSystemRepositoryDirective(IRepositoryDirective):
 
 
 def filesystem_repository(_context, name=None, make_default=False,
+                          default_aggregate_implementation=None,
                           directory=None, content_type=None):
     """
     Directive for registering a file-system based repository.
@@ -118,7 +138,8 @@ def filesystem_repository(_context, name=None, make_default=False,
         cnf['directory'] = directory
     if not content_type is None:
         cnf['content_type'] = content_type
-    _repository(_context, name, make_default, REPOSITORIES.FILE_SYSTEM, cnf)
+    _repository(_context, name, make_default, default_aggregate_implementation,
+                REPOSITORIES.FILE_SYSTEM, cnf)
 
 
 class IOrmRepositoryDirective(IRepositoryDirective):
@@ -132,8 +153,9 @@ class IOrmRepositoryDirective(IRepositoryDirective):
                      required=False)
 
 
-def orm_repository(_context, name=None, make_default=False, db_string=None,
-                  metadata_factory=None):
+def orm_repository(_context, name=None, make_default=False,
+                   default_aggregate_implementation=None, db_string=None,
+                   metadata_factory=None):
     """
     Directive for registering an ORM based repository.
     """
@@ -142,7 +164,8 @@ def orm_repository(_context, name=None, make_default=False, db_string=None,
         cnf['db_string'] = db_string
     if not metadata_factory is None:
         cnf['metadata_factory'] = metadata_factory
-    _repository(_context, name, make_default, REPOSITORIES.ORM, cnf)
+    _repository(_context, name, make_default, default_aggregate_implementation,
+                REPOSITORIES.ORM, cnf)
 
 
 class IResourceDirective(Interface):
