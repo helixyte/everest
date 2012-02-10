@@ -22,7 +22,7 @@ class UserMessagePostCollectionView(PostCollectionView):
     def _extract_request_data(self):
         msg_notifier = get_utility(IUserMessageEventNotifier)
         msg_notifier.notify(self.message)
-        foo = FooEntity()
+        foo = FooEntity(name=self.request.body)
         return FooMember(foo)
 
 

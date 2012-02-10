@@ -8,7 +8,6 @@ Created on Jan 11, 2012.
 """
 
 from everest.entities.interfaces import IAggregateImplementationRegistry
-from everest.entities.interfaces import IEntityRepository
 from everest.entities.utils import get_aggregate_class
 from everest.entities.utils import get_entity_class
 from everest.repository import Repository
@@ -52,10 +51,10 @@ class EntityRepository(Repository):
     registry. This makes it possible to switch the implementation used for 
     freshly created aggregates at runtime.
     """
-    implements(IEntityRepository)
-
-    def __init__(self, implementation_registry=None):
+    def __init__(self, persister, implementation_registry=None):
         Repository.__init__(self)
+        #
+        self.__persister = persister
         #
         if implementation_registry is None:
             implementation_registry = \
@@ -124,12 +123,22 @@ class EntityRepository(Repository):
                           tuple(self.__impl_registry.get_registered())):
             # Typcical case - "normal" Aggregate class.
             impl_cls = self.__impls.get(agg_cls) or self.__default_impl
-            impl = impl_cls.create(entity_cls)
+            impl = impl_cls.create(entity_cls, self.__persister.session)
             agg = agg_cls.create(impl)
         else:
             # Special case - customized AggregateImpl class.
-            agg = agg_cls.create(entity_cls)
+            agg = agg_cls.create(entity_cls, self.__persister.session)
         return agg
+
+    def configure(self, **config):
+        self.__persister.configure(**config)
+
+    def initialize(self):
+        self.__persister.initialize()
+
+    @property
+    def is_initialized(self):
+        return self.__persister.is_initialized
 
     def _make_key(self, rc):
         return get_aggregate_class(rc)

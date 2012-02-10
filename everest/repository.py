@@ -9,17 +9,24 @@ Created on Jan 17, 2012.
 """
 
 from everest.interfaces import IRepository
-from zope.interface import implements # pylint: disable=E0611,F0401
 from weakref import WeakKeyDictionary
+from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
+from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Repository',
+           'as_repository',
+           'get_repository',
            ]
 
 
-class REPOSITORY_DOMAINS(object):
-    ROOT = 'ROOT'
-    STAGE = 'STAGE'
+class REPOSITORIES(object):
+    MEMORY = 'MEMORY'
+    ORM = 'ORM'
+    FILE_SYSTEM = 'FILE_SYSTEM'
 
 
 class Repository(object):
@@ -31,6 +38,8 @@ class Repository(object):
     """
     implements(IRepository)
 
+    is_initialized = None
+
     __repo_cache = None
 
     def __init__(self):
@@ -41,6 +50,18 @@ class Repository(object):
     def new(self, rc):
         """
         Returns a new accessor for the given registered resource.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def configure(self, **config):
+        """
+        Configures this repository.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def initialize(self):
+        """
+        Initializes this repository.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -90,3 +111,22 @@ class Repository(object):
 
     def _make_key(self, rc):
         raise NotImplementedError('Abstract method.')
+
+
+def get_repository(name):
+    """
+    Get the resource repository registered under the given name.
+    """
+    return get_utility(IRepository, name)
+
+
+def as_repository(rc):
+    """
+    Adapts the given registered resource to its configured repository.
+    
+    :return: object implementing 
+      :class:`everest.resources.interfaces.IRepository`.
+    """
+    if IInterface in provided_by(rc):
+        rc = get_utility(rc, name='collection-class')
+    return get_adapter(rc, IRepository)

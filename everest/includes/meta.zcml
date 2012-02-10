@@ -12,17 +12,21 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
         namespace="http://namespaces.repoze.org/bfg"
     >
         <meta:directive
+            name="memory_repository"
+            schema="everest.directives.IMemoryRepositoryDirective"
+            handler="everest.directives.memory_repository" />
+        <meta:directive
+            name="filesystem_repository"
+            schema="everest.directives.IFileSystemRepositoryDirective"
+            handler="everest.directives.filesystem_repository" />
+        <meta:directive
+            name="orm_repository"
+            schema="everest.directives.IOrmRepositoryDirective"
+            handler="everest.directives.orm_repository" />
+        <meta:directive
             name="resource"
             schema="everest.directives.IResourceDirective"
             handler="everest.directives.resource" />
-        <meta:directive
-            name="fs_persister"
-            schema="everest.directives.IFileSystemPersisterDirective"
-            handler="everest.directives.fs_persister" />
-        <meta:directive
-            name="orm_persister"
-            schema="everest.directives.IOrmPersisterDirective"
-            handler="everest.directives.orm_persister" />
         <meta:directive
             name="representer"
             schema="everest.directives.IRepresenterDirective"

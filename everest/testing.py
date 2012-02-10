@@ -10,9 +10,8 @@ from everest import db
 from everest.configuration import Configurator
 from everest.db import Session
 from everest.db import get_engine
-from everest.entities.aggregates import OrmAggregateImpl
-from everest.entities.interfaces import IEntityRepository
-from everest.repository import REPOSITORY_DOMAINS
+from everest.entities.utils import get_root_aggregate
+from everest.repository import REPOSITORIES
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_stage_collection
@@ -22,13 +21,12 @@ from paste.deploy import loadapp # pylint: disable=E0611,F0401
 from repoze.bfg.registry import Registry
 from repoze.bfg.testing import DummyRequest
 from webtest import TestApp
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 import nose.plugins
 import os
 import sys
 import time
+import transaction
 import unittest
-from everest.resources.persisters import PERSISTER_TYPES
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
@@ -224,10 +222,7 @@ class EntityTestCase(BaseTestCase):
         self.config.end()
 
     def _get_entity(self, icollection, key=None):
-        ent_repo = \
-            self.config.get_registered_utility(IEntityRepository,
-                                               name=REPOSITORY_DOMAINS.ROOT)
-        agg = ent_repo.get(icollection)
+        agg = get_root_aggregate(icollection)
         if key is None:
             agg.slice = slice(0, 1)
             entity = list(agg.iterator())[0]
@@ -266,6 +261,7 @@ class ResourceTestCase(BaseTestCase):
         self._request.root = srvc
 
     def tear_down(self):
+        transaction.abort()
         self.config.unhook_zca()
         self.config.end()
 
@@ -421,8 +417,8 @@ class OrmContextManager(object):
     def __init__(self, autoflush=True, engine_name=None):
         self.__autoflush = autoflush
         if engine_name is None:
-            # Use the name of the default ORM persister for engine lookup.
-            engine_name = PERSISTER_TYPES.ORM
+            # Use the name of the default ORM repository for engine lookup.
+            engine_name = REPOSITORIES.ORM
         self.__engine_name = engine_name
         self.__connection = None
         self.__transaction = None
@@ -430,13 +426,6 @@ class OrmContextManager(object):
         self.__old_autoflush_flag = None
 
     def __enter__(self):
-        # Configure the entity repository to use the ORM backend 
-        # implementation as the default. This triggers the initialization 
-        # callback.
-        entity_repository = get_utility(IEntityRepository,
-                                        name=REPOSITORY_DOMAINS.ROOT)
-        entity_repository.register_implementation(OrmAggregateImpl,
-                                                  make_default=True)
         # We set up an outer transaction that allows us to roll back all
         # changes (including commits) the unittest may want to make.
         engine = get_engine(self.__engine_name)

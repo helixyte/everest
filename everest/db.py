@@ -9,8 +9,6 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from threading import Lock
-from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
-
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['commit_veto',
@@ -106,7 +104,7 @@ reset_metadata = _MetaDataManager.reset
 
 #: The scoped session maker. Instantiate this to obtain a thread local
 #: session instance.
-Session = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
+Session = scoped_session(sessionmaker()) # extension=ZopeTransactionExtension()))
 
 
 def commit_veto(environ, status, headers): # unused pylint: disable=W0613

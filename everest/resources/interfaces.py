@@ -7,7 +7,6 @@ Resource related interfaces.
 Created on Nov 3, 2011.
 """
 
-from everest.interfaces import IRepository
 from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
@@ -17,7 +16,6 @@ __all__ = ['ICollectionResource',
            'IMemberResource',
            'IResource',
            'IResourceLink',
-           'IResourceRepository',
            'ITraversable',
            ]
 
@@ -186,12 +184,6 @@ class IMemberResource(IResource):
         """
 
 
-class IResourceRepository(IRepository):
-    """
-    Marker interface for resource repositories.
-    """
-
-
 class IResourceLink(Interface):
     """
     Interface for resource links.
@@ -232,9 +224,4 @@ class IPersister(Interface):
     is_initialized = Attribute('Flag indicating if this persister has been '
                                'initialized.')
 
-
-class IDefaultPersister(Interface):
-    """
-    Marker interface for the default persister.
-    """
 # pylint: enable=W0232,E0213

@@ -9,8 +9,9 @@ Created on Nov 3, 2011.
 
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.interfaces import IEntityRepository
-from everest.repository import REPOSITORY_DOMAINS
+from everest.interfaces import IRepository
+from everest.repository import REPOSITORIES
+from everest.repository import as_repository
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -33,8 +34,9 @@ def get_root_aggregate(rc):
     Returns an aggregate from the root entity repository for the given 
     registered resource.
     """
-    ent_repo = get_utility(IEntityRepository, name=REPOSITORY_DOMAINS.ROOT)
-    return ent_repo.get(rc)
+    repo = as_repository(rc)
+    coll = repo.get(rc)
+    return coll.get_aggregate()
 
 
 def get_stage_aggregate(rc):
@@ -42,8 +44,9 @@ def get_stage_aggregate(rc):
     Returns an aggregate from the stage entity repository for the given 
     registered resource.
     """
-    ent_repo = get_utility(IEntityRepository, name=REPOSITORY_DOMAINS.STAGE)
-    return ent_repo.get(rc)
+    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
+    coll = repo.get(rc)
+    return coll.get_aggregate()
 
 
 def get_entity_class(rc):

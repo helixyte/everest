@@ -12,9 +12,8 @@ from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
-from everest.resources.persisters import PERSISTER_TYPES
-from everest.resources.utils import get_persister
-from everest.testing import BaseTestCase
+from everest.testing import Pep8CompliantTestCase
+from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 
@@ -63,13 +62,13 @@ def teardown():
     reset_metadata()
 
 
-class VisitorTestCase(BaseTestCase):
+class VisitorTestCase(Pep8CompliantTestCase):
     visitor = None
     specs_factory = None
     _spec_map = None
 
     def set_up(self):
-        BaseTestCase.set_up(self)
+        Pep8CompliantTestCase.set_up(self)
         self.visitor = self._make_visitor()
         self.specs_factory = self._make_specs_factory()
 
@@ -278,9 +277,9 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
             reset_metadata()
+            engine = create_engine('sqlite://')
+            Person.metadata = create_metadata(engine)
         VisitorTestCase.set_up(self)
-        if Person.metadata is None:
-            Person.metadata = get_persister(PERSISTER_TYPES.ORM).metadata
 
     def _make_visitor(self):
         return SqlFilterSpecificationVisitor(Person)
@@ -349,7 +348,8 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         expected_expr = sa.and_(Person.age.in_([34, 44]),
                                 Person.name.in_(['Nikos', 'Oliver']))
         spec_a = self.specs_factory.create_contained('age', [34, 44])
-        spec_b = self.specs_factory.create_contained('name', ['Nikos', 'Oliver'])
+        spec_b = self.specs_factory.create_contained('name',
+                                                     ['Nikos', 'Oliver'])
         spec = spec_a.and_(spec_b)
         spec.accept(self.visitor)
         self.assert_equal(str(self.visitor.expression),
@@ -440,9 +440,9 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
             reset_metadata()
+            engine = create_engine('sqlite://')
+            Person.metadata = create_metadata(engine)
         OrderVisitorTestCase.set_up(self)
-        if Person.metadata is None:
-            Person.metadata = get_persister(PERSISTER_TYPES.ORM).metadata
 
     def test_simple_order_by_one_attribute(self):
         expected_expr = [Person.name.asc()]

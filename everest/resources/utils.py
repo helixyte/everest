@@ -7,16 +7,17 @@ Utilities for dealing with resources.
 Created on Nov 3, 2011.
 """
 
-from everest.repository import REPOSITORY_DOMAINS
+from everest.interfaces import IRepository
+from everest.repository import REPOSITORIES
+from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from everest.resources.interfaces import IPersister
 from everest.resources.interfaces import IResource
-from everest.resources.interfaces import IResourceRepository
 from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
+from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -38,15 +39,15 @@ __all__ = ['as_member',
 
 def get_root_collection(rc):
     """
-    Returns a clone of the collection in the root repository matching the 
+    Returns a clone of the collection from the repository registered for the
     given registered resource.
 
     :param rc: registered resource
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.ROOT)
-    return rc_repo.get(rc)
+    repo = as_repository(rc)
+    return repo.get(rc)
 
 
 def get_stage_collection(rc):
@@ -58,21 +59,26 @@ def get_stage_collection(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.STAGE)
-    return rc_repo.get(rc)
+    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
+    return repo.get(rc)
+
+
+#def new_stage_collection(rc):
+#    """
+#    Returns a new, empty collection from the stage repository matching the 
+#    given registered resource.
+#
+#    :param rc: registered resource
+#    :type rc: class implementing or instance providing or subclass of
+#        a registered resource interface.
+#    """
+#    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
+#    return repo.new(rc)
 
 
 def new_stage_collection(rc):
-    """
-    Returns a new, empty collection from the stage repository matching the 
-    given registered resource.
-
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
-        a registered resource interface.
-    """
-    rc_repo = get_utility(IResourceRepository, name=REPOSITORY_DOMAINS.STAGE)
-    return rc_repo.new(rc)
+    new_rc_repo = create_object(REPOSITORIES.MEMORY)
+    return new_rc_repo.get(rc)
 
 
 def get_member_class(rc):
@@ -187,22 +193,3 @@ def get_registered_collection_resources():
     return [util.component
             for util in reg.getRegisteredUtilities()
             if util.name == 'collection-class']
-
-
-def get_persister(name):
-    """
-    Get the persister registered under the given name.
-    """
-    return get_utility(IPersister, name)
-
-
-def as_persister(rc):
-    """
-    Adaptrs the given registered resource to a persister.
-    
-    :return: object implementing 
-      :class:`everest.resources.interfaces.IPersister`.
-    """
-    if IInterface in provided_by(rc):
-        rc = get_utility(rc, name='entity-class')
-    return get_adapter(rc, IPersister)

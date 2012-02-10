@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
+from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -144,6 +145,26 @@ class IRepository(Interface):
         Loads the representation of the specified registered resource  
         pointed to by the given URL into the repository.
         """
+
+    def configure(**config):
+        """
+        Applies the given configuration to the repository.
+        """
+
+    def initialize():
+        """
+        Performs initialization of the repository.
+        """
+
+    is_initialized = Attribute('Checks if this repository has been '
+                               'initialized.')
+
+
+class IDefaultRepository(Interface):
+    """
+    Marker interface for the default repository (for resources that do not
+    specify a repository).
+    """
 
 
 class IMessage(Interface):

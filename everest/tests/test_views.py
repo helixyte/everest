@@ -61,14 +61,13 @@ class WarningViewsTestCase(ViewsTestCase):
 
     def test_post_collection_warning_exception(self):
         # First POST - get back a 307.
-        res1 = self.app.post(self.path, params='foo body',
+        res1 = self.app.post(self.path, params='foo name',
                              status=307)
-        self.assert_true(
-                    res1.body.startswith('307 Temporary Redirect'))
+        self.assert_true(res1.body.startswith('307 Temporary Redirect'))
         # Second POST to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.post(resubmit_location1,
-                             params='foo body',
+                             params='foo name',
                              status=201)
         self.assert_true(not res2 is None)
         # Third POST to same redirection location with different warning
@@ -77,7 +76,7 @@ class WarningViewsTestCase(ViewsTestCase):
         UserMessagePostCollectionView.message = old_msg[::-1]
         try:
             res3 = self.app.post(resubmit_location1,
-                                 params='foo body',
+                                 params='foo name',
                                  status=307)
             self.assert_true(
                     res3.body.startswith('307 Temporary Redirect'))
@@ -85,7 +84,7 @@ class WarningViewsTestCase(ViewsTestCase):
             # the second POST from above went through).
             resubmit_location2 = res3.headers['Location']
             res4 = self.app.post(resubmit_location2,
-                                 params='foo body',
+                                 params='foo name',
                                  status=409)
             self.assert_true(not res4 is None)
         finally:
@@ -98,12 +97,12 @@ class WarningViewsTestCase(ViewsTestCase):
         coll.add(FooMember(FooEntity(id=0)))
         path = '/'.join((self.path, '0'))
         # First PUT - get back a 307.
-        res1 = self.app.put(path, params='foo body',
+        res1 = self.app.put(path, params='foo name',
                             status=307)
         self.assert_true(
                     res1.body.startswith('307 Temporary Redirect'))
         # Second PUT to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
-        res2 = self.app.put(resubmit_location1, params='foo body',
+        res2 = self.app.put(resubmit_location1, params='foo name',
                             status=200)
         self.assert_true(not res2 is None)

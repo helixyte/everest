@@ -115,8 +115,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         coll = object.__new__(coll_cls)
         agg = get_root_aggregate(coll)
         self.assert_true(isinstance(agg, MyMemoryAggregate))
-        entity = object.__new__(FooEntity)
-        entity.id = 1
+        entity = FooEntity(id=1)
         agg.add(entity)
         self.assert_true(agg.count() == 1)
         self.assert_true(list(agg.iterator())[0] is entity)

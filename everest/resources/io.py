@@ -159,7 +159,7 @@ def dump_resource_graph(resource, content_type=None):
         mb_cls = get_member_class(mb)
         coll = collections.get(mb_cls)
         if coll is None:
-            # Create new collection and store max depth with it.
+            # Create new collection.
             coll = new_stage_collection(mb)
             collections[mb_cls] = coll
         coll.add(mb)

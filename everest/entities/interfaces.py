@@ -7,14 +7,12 @@ Marker interfaces for entities and aggregates.
 Created on Nov 3, 2011.
 """
 
-from everest.interfaces import IRepository
 from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
 __all__ = ['IAggregate',
            'IEntity',
-           'IEntityRepository',
            'IRelationAggregateImplementation',
            'IRootAggregateImplementation',
            ]
@@ -98,12 +96,6 @@ class IAggregateImplementationRegistry(Interface):
         """
         Returns a list of all registered implementation classes.
         """
-
-
-class IEntityRepository(IRepository):
-    """
-    Marker interface for entity repositories.
-    """
 
 
 class IAggregateImplementation(Interface):

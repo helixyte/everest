@@ -11,7 +11,7 @@
 
     <!-- Persisters. -->
     
-    <orm_persister
+    <orm_repository
         make_default="true"
         metadata_factory="everest.tests.testapp_db.db.create_metadata"/>
 

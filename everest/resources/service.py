@@ -7,11 +7,9 @@ Service class.
 Created on Jul 27, 2011.
 """
 
-from everest.repository import REPOSITORY_DOMAINS
+from everest.repository import as_repository
 from everest.resources.base import Resource
-from everest.resources.interfaces import IResourceRepository
 from everest.resources.interfaces import IService
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -34,7 +32,9 @@ class Service(Resource):
         Resource.__init__(self)
         # Setting the __name__ to None ensures a leading slash in model paths.
         self.__name__ = None
+        # Collects all interfaces managed by the service.
         self.__registered_interfaces = set()
+        # Maps collection names to collection instances.
         self.__collections = {}
         self.__started = False
 
@@ -65,9 +65,9 @@ class Service(Resource):
         
         Use this e.g. when the default aggregate implementation changed. 
         """
-        rc_repo = get_utility(IResourceRepository,
-                              name=REPOSITORY_DOMAINS.ROOT)
-        rc_repo.clear_all()
+        for irc in self.__registered_interfaces:
+            repo = as_repository(irc)
+            repo.clear(irc)
         self.__collections.clear()
         self.__started = False
         self.start()
@@ -82,10 +82,8 @@ class Service(Resource):
           :class:`everest.resources.interfaces.ICollectionResource`.
         """
         irc = self.__collections[key]
-        repo = get_utility(IResourceRepository,
-                           name=REPOSITORY_DOMAINS.ROOT)
-        coll = repo.get(irc)
-        return coll
+        repo = as_repository(irc)
+        return repo.get(irc)
 
     def __len__(self):
         return len(self.__collections)
@@ -95,23 +93,21 @@ class Service(Resource):
             yield self.__getitem__(key)
 
     def add(self, irc):
-        rc_repo = get_utility(IResourceRepository,
-                              name=REPOSITORY_DOMAINS.ROOT)
-        coll = rc_repo.get(irc)
+        repo = as_repository(irc)
+        coll = repo.get(irc)
         if coll.__name__ in self.__collections:
             raise ValueError('Root collection for collection name %s '
                              ' already exists.' % coll.__name__)
         # We replace the repository collection with a clone that has the
         # service as the parent so that URL generation works.
         coll.set_parent(self)
-        rc_repo.set(irc, coll)
+        repo.set(irc, coll)
         # 
         self.__collections[coll.__name__] = irc
 
     def remove(self, irc):
-        rc_repo = get_utility(IResourceRepository,
-                              name=REPOSITORY_DOMAINS.ROOT)
-        coll = rc_repo.get(irc)
+        repo = as_repository(irc)
+        coll = repo.get(irc)
         del self.__collections[coll.__name__]
 
     def get(self, name, default=None):

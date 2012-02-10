@@ -8,16 +8,17 @@ Created on Jun 22, 2011.
 """
 
 from everest.entities.aggregates import MemoryAggregateImpl
+from everest.entities.aggregates import OrmAggregateImpl
 from everest.entities.base import Aggregate
-from everest.entities.base import Entity
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IAggregateImplementationRegistry
 from everest.entities.interfaces import IEntity
-from everest.entities.interfaces import IEntityRepository
 from everest.entities.repository import AggregateImplementationRegistry
 from everest.entities.repository import EntityRepository
 from everest.entities.system import Message
+from everest.interfaces import IDefaultRepository
 from everest.interfaces import IMessage
+from everest.interfaces import IRepository
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
@@ -40,29 +41,26 @@ from everest.querying.ordering import OrderSpecificationDirector
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
-from everest.repository import REPOSITORY_DOMAINS
+from everest.repository import REPOSITORIES
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
-from everest.resources.base import Member
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
-from everest.resources.interfaces import IDefaultPersister
 from everest.resources.interfaces import IMemberResource
-from everest.resources.interfaces import IPersister
-from everest.resources.interfaces import IResourceRepository
 from everest.resources.interfaces import IService
 from everest.resources.persisters import DummyPersister
 from everest.resources.persisters import FileSystemPersister
 from everest.resources.persisters import OrmPersister
-from everest.resources.persisters import PERSISTER_TYPES
 from everest.resources.repository import ResourceRepository
+from everest.resources.repository import new_memory_repository
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
 from everest.url import ResourceUrlConverter
 from repoze.bfg.configuration import Configurator as BfgConfigurator
 from repoze.bfg.interfaces import IRequest
 from repoze.bfg.path import caller_package
+from zope.component.interfaces import IFactory # pylint: disable=E0611,F0401
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -82,13 +80,8 @@ class Configurator(BfgConfigurator):
                  package=None,
                  # Entity level services.
                  aggregate_implementation_registry=None,
-                 root_entity_repository=None,
-                 stage_entity_repository=None,
                  filter_specification_factory=None,
                  order_specification_factory=None,
-                 # Resource level services.
-                 root_resource_repository=None,
-                 stage_resource_repository=None,
                  # Application level services.
                  service=None,
                  filter_builder=None,
@@ -110,12 +103,8 @@ class Configurator(BfgConfigurator):
                                  registry=registry, package=package, **kw)
         if registry is None:
             self.__setup(aggregate_implementation_registry,
-                         root_entity_repository,
-                         stage_entity_repository,
                          filter_specification_factory,
                          order_specification_factory,
-                         root_resource_repository,
-                         stage_resource_repository,
                          service,
                          filter_builder,
                          filter_director,
@@ -143,12 +132,8 @@ class Configurator(BfgConfigurator):
 
     def setup_registry(self,
                        aggregate_implementation_registry=None,
-                       root_entity_repository=None,
-                       stage_entity_repository=None,
                        filter_specification_factory=None,
                        order_specification_factory=None,
-                       root_resource_repository=None,
-                       stage_resource_repository=None,
                        service=None,
                        filter_specification_builder=None,
                        filter_specification_director=None,
@@ -164,12 +149,8 @@ class Configurator(BfgConfigurator):
                        **kw):
         BfgConfigurator.setup_registry(self, **kw)
         self.__setup(aggregate_implementation_registry,
-                     root_entity_repository,
-                     stage_entity_repository,
                      filter_specification_factory,
                      order_specification_factory,
-                     root_resource_repository,
-                     stage_resource_repository,
                      service,
                      filter_specification_builder,
                      filter_specification_director,
@@ -187,13 +168,15 @@ class Configurator(BfgConfigurator):
                      collection=None, aggregate=None,
                      entity_adapter=None, aggregate_adapter=None,
                      collection_root_name=None, collection_title=None,
-                     expose=True, persister=None, _info=u''):
-        if not issubclass(member, Member):
-            raise ValueError('The member must be a subclass '
-                             'of member.')
-        if not issubclass(entity, Entity):
-            raise ValueError('The entity must be a subclass '
-                             'of Entity.')
+                     expose=True, repository=None, _info=u''):
+        if not (isinstance(member, type)
+                and IMemberResource in provided_by(object.__new__(member))):
+            raise ValueError('The member must be a class that implements '
+                             'IMemberResource.')
+        if not (isinstance(entity, type)
+                and IEntity in provided_by(object.__new__(entity))):
+            raise ValueError('The entity must be a class that implements '
+                             'IEntity.')
         if collection is None:
             collection = type('%sCollection' % member.__name__,
                               (Collection,), {})
@@ -205,8 +188,10 @@ class Configurator(BfgConfigurator):
         if aggregate is None:
             aggregate = type('%sAggregate' % entity.__name__,
                              (Aggregate,), {})
-        elif not IAggregate in provided_by(object.__new__(aggregate)):
-            raise ValueError('The entity aggregate must implement IAggregate.')
+        elif not (isinstance(aggregate, type)
+                  and IAggregate in provided_by(object.__new__(aggregate))):
+            raise ValueError('The aggregate must be a class that implements '
+                             'IAggregate.')
         # Override the root name and title the collection, if requested.
         if not collection_root_name is None:
             collection.root_name = collection_root_name
@@ -287,32 +272,34 @@ class Configurator(BfgConfigurator):
         also_provides(entity, interface)
         also_provides(aggregate, interface)
         # Configure the persister adapter.
-        if persister is None:
-            prst = self.get_registered_utility(IDefaultPersister)
+        if repository is None:
+            repo = self.get_registered_utility(IDefaultRepository)
         else:
-            prst = self.get_registered_utility(IPersister, persister)
-        if not prst.is_initialized:
+            repo = self.get_registered_utility(IRepository, repository)
+        repo.manage(collection)
+        if not repo.is_initialized:
             # Make sure the persister gets initialized.
-            prst.initialize()
-        self._register_adapter(lambda obj: prst,
+            repo.initialize()
+        self._register_adapter(lambda obj: repo,
                                required=(interface,),
-                               provided=IPersister,
+                               provided=IRepository,
                                info=_info)
         # Expose (=register with the service) if requested.
         if expose:
             srvc.register(interface)
 
-    def add_persister(self, name, persister_cls,
-                      make_default=False, configuration=None, _info=u'',):
-        if not self.get_registered_utility(IPersister, name) is None:
-            raise ValueError('Duplicate persister name "%s".' % name)
+    def add_repository(self, name, persister_cls,
+                       make_default=False, configuration=None, _info=u'',):
+        if not self.get_registered_utility(IRepository, name) is None:
+            raise ValueError('Duplicate repository name "%s".' % name)
         if configuration is None:
             configuration = {}
         custom_persister = persister_cls(name)
-        custom_persister.configure(**configuration) # pylint: disable=W0142
-        self._register_utility(custom_persister, IPersister, name=name)
+        custom_ent_repo = EntityRepository(custom_persister)
+        custom_rc_repo = ResourceRepository(custom_ent_repo)
+        custom_rc_repo.configure(**configuration) # pylint: disable=W0142
         if make_default:
-            self._register_utility(custom_persister, IDefaultPersister)
+            self._register_utility(custom_rc_repo, IDefaultRepository)
 
     def add_representer(self, resource, content_type, configuration=None,
                         _info=u''):
@@ -339,7 +326,7 @@ class Configurator(BfgConfigurator):
                                    name=utility_name)
         de_cls = de_reg.create_data_element_class(resource, configuration)
         de_reg.set_data_element_class(de_cls)
-        # Register adapter resource, MIME name -> representer;
+        # Register adapter resource, MIME name -> representer.
         self._register_adapter(rpr_cls.create_from_resource,
                                (resource,),
                                IRepresenter,
@@ -354,12 +341,8 @@ class Configurator(BfgConfigurator):
 
     def __setup(self,
                 aggregate_implementation_registry,
-                root_entity_repository,
-                stage_entity_repository,
                 filter_specification_factory,
                 order_specification_factory,
-                root_resource_repository,
-                stage_resource_repository,
                 service,
                 filter_specification_builder,
                 filter_specification_director,
@@ -372,52 +355,43 @@ class Configurator(BfgConfigurator):
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
                 url_converter):
-        # Set up the two builtin entity repositories (ROOT and STAGE).    
+        # Set up the two builtin entity repositories.
+        # ... aggregate implementation registry.
         if aggregate_implementation_registry is None:
             aggregate_implementation_registry = \
                                     AggregateImplementationRegistry()
             aggregate_implementation_registry.register(MemoryAggregateImpl)
+            aggregate_implementation_registry.register(OrmAggregateImpl)
             self._register_utility(aggregate_implementation_registry,
                                    IAggregateImplementationRegistry)
-        if root_entity_repository is None:
-            root_entity_repository = \
-                    EntityRepository(implementation_registry=
-                                        aggregate_implementation_registry)
-            root_entity_repository.set_default_implementation(
-                                                        MemoryAggregateImpl)
-        self._register_utility(root_entity_repository, IEntityRepository,
-                               name=REPOSITORY_DOMAINS.ROOT)
-        if stage_entity_repository is None:
-            stage_entity_repository = \
-                    EntityRepository(implementation_registry=
-                                        aggregate_implementation_registry)
-            stage_entity_repository.set_default_implementation(
-                                                        MemoryAggregateImpl)
-        self._register_utility(stage_entity_repository, IEntityRepository,
-                               name=REPOSITORY_DOMAINS.STAGE)
-        # Set up builtin persisters.
-        dummy_persister = DummyPersister(PERSISTER_TYPES.DUMMY)
-        self._register_utility(dummy_persister, IPersister,
-                               name=PERSISTER_TYPES.DUMMY)
-        settings = self.get_settings()
-        fs_persister = FileSystemPersister(PERSISTER_TYPES.FILE_SYSTEM)
-        config = dict([(name, settings.get(key))
-                       for (name, key) in [('directory', 'fs_directory'),
-                                           ('content_type', 'fs_contenttype')]
-                       if not settings.get(key, None) is None])
-        fs_persister.configure(**config) # pylint: disable=W0142
-        self._register_utility(fs_persister, IPersister,
-                               name=PERSISTER_TYPES.FILE_SYSTEM)
-        orm_persister = OrmPersister(PERSISTER_TYPES.ORM)
-        config = dict([(name, settings.get(key))
-                       for (name, key) in [('db_string', 'orm_dbstring'), ]
-                       if not settings.get(key, None) is None])
-        orm_persister.configure(**config) # pylint: disable=W0142
-        self._register_utility(orm_persister, IPersister,
-                               name=PERSISTER_TYPES.ORM)
-        # Use the dummy persister as default (for resources that do not 
-        # specify a persister).
-        self._register_utility(dummy_persister, IDefaultPersister)
+
+        # ... ORM repository
+        orm_repo = self.__make_repo(REPOSITORIES.ORM, OrmPersister,
+                                    aggregate_implementation_registry,
+                                    OrmAggregateImpl,
+                                    [('db_string', 'orm_dbstring')])
+        self._register_utility(orm_repo, IRepository,
+                               name=REPOSITORIES.ORM)
+        # ... MEMORY repository. By default this is used as the default for
+        #     all resources that do not specify a repository.
+        mem_repo = self.__make_repo(REPOSITORIES.MEMORY, DummyPersister,
+                                    aggregate_implementation_registry,
+                                    MemoryAggregateImpl, [])
+        self._register_utility(mem_repo, IRepository,
+                               name=REPOSITORIES.MEMORY)
+        self._register_utility(mem_repo, IDefaultRepository)
+        # ... FILE_SYSTEM repository.
+        fs_repo = self.__make_repo(REPOSITORIES.FILE_SYSTEM,
+                                   FileSystemPersister,
+                                   aggregate_implementation_registry,
+                                   MemoryAggregateImpl,
+                                   [('directory', 'fs_directory'),
+                                    ('content_type', 'fs_contenttype')])
+        self._register_utility(fs_repo, IRepository,
+                               name=REPOSITORIES.FILE_SYSTEM)
+        # Register a factory for new memory repositories.
+        self._register_utility(new_memory_repository, IFactory,
+                               name=REPOSITORIES.MEMORY)
         # Set up filter and order specification factories.
         if filter_specification_factory is None:
             filter_specification_factory = FilterSpecificationFactory()
@@ -427,22 +401,6 @@ class Configurator(BfgConfigurator):
             order_specification_factory = OrderSpecificationFactory()
         self._register_utility(order_specification_factory,
                                IOrderSpecificationFactory)
-        # Set up the two builtin resource repositories.
-        if root_resource_repository is None:
-            ent_repo = \
-                self.get_registered_utility(IEntityRepository,
-                                            name=REPOSITORY_DOMAINS.ROOT)
-            root_resource_repository = ResourceRepository(ent_repo)
-        self._register_utility(root_resource_repository, IResourceRepository,
-                               name=REPOSITORY_DOMAINS.ROOT)
-        if stage_resource_repository is None:
-            ent_repo = \
-                self.get_registered_utility(IEntityRepository,
-                                            name=REPOSITORY_DOMAINS.STAGE)
-            stage_resource_repository = ResourceRepository(ent_repo)
-        self._register_utility(stage_resource_repository,
-                               IResourceRepository,
-                               name=REPOSITORY_DOMAINS.STAGE)
         # Set up the service.
         if service is None:
             service = Service()
@@ -451,55 +409,72 @@ class Configurator(BfgConfigurator):
         if filter_specification_builder is None:
             filter_specification_builder = FilterSpecificationBuilder
         self._register_utility(filter_specification_builder,
-                              IFilterSpecificationBuilder)
+                               IFilterSpecificationBuilder)
         if filter_specification_director is None:
             filter_specification_director = FilterSpecificationDirector
         self._register_utility(filter_specification_director,
-                              IFilterSpecificationDirector)
+                               IFilterSpecificationDirector)
         if cql_filter_specification_visitor is None:
             cql_filter_specification_visitor = CqlFilterSpecificationVisitor
         self._register_utility(cql_filter_specification_visitor,
-                              IFilterSpecificationVisitor,
+                               IFilterSpecificationVisitor,
                               name=EXPRESSION_KINDS.CQL)
         if sql_filter_specification_visitor is None:
             sql_filter_specification_visitor = SqlFilterSpecificationVisitor
         self._register_utility(sql_filter_specification_visitor,
-                              IFilterSpecificationVisitor,
-                              name=EXPRESSION_KINDS.SQL)
+                               IFilterSpecificationVisitor,
+                               name=EXPRESSION_KINDS.SQL)
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = EvalFilterSpecificationVisitor
         self._register_utility(eval_filter_specification_visitor,
-                              IFilterSpecificationVisitor,
-                              name=EXPRESSION_KINDS.EVAL)
+                               IFilterSpecificationVisitor,
+                               name=EXPRESSION_KINDS.EVAL)
         if order_specification_builder is None:
             order_specification_builder = OrderSpecificationBuilder
         self._register_utility(order_specification_builder,
-                              IOrderSpecificationBuilder)
+                               IOrderSpecificationBuilder)
         if order_specification_director is None:
             order_specification_director = OrderSpecificationDirector
         self._register_utility(order_specification_director,
-                              IOrderSpecificationDirector)
+                               IOrderSpecificationDirector)
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         self._register_utility(cql_order_specification_visitor,
-                              IOrderSpecificationVisitor,
-                              name=EXPRESSION_KINDS.CQL)
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.CQL)
         if sql_order_specification_visitor is None:
             sql_order_specification_visitor = SqlOrderSpecificationVisitor
         self._register_utility(sql_order_specification_visitor,
-                              IOrderSpecificationVisitor,
-                              name=EXPRESSION_KINDS.SQL)
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.SQL)
         if eval_order_specification_visitor is None:
             eval_order_specification_visitor = EvalOrderSpecificationVisitor
         self._register_utility(eval_order_specification_visitor,
-                              IOrderSpecificationVisitor,
-                              name=EXPRESSION_KINDS.EVAL)
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.EVAL)
         # URL converter adapter.
         if url_converter is None:
             url_converter = ResourceUrlConverter
         self._register_adapter(url_converter, (IRequest,),
-                              IResourceUrlConverter)
+                               IResourceUrlConverter)
         # Register system resources provided as a service to the application.
         self.add_resource(IMessage, MessageMember, Message,
                           aggregate=MemoryAggregateImpl,
+                          repository=REPOSITORIES.MEMORY,
                           collection_root_name='_messages')
+
+    def __make_repo(self, name, prst_cls, agg_impl_reg, agg_impl_cls,
+                    setting_info):
+        settings = self.get_settings()
+        persister = prst_cls(name)
+        entity_repository = \
+                    EntityRepository(persister,
+                                     implementation_registry=agg_impl_reg)
+        entity_repository.set_default_implementation(agg_impl_cls)
+        resource_repository = ResourceRepository(entity_repository)
+        config = dict([(name, settings.get(key))
+                       for (name, key) in setting_info
+                       if not settings.get(key, None) is None])
+        resource_repository.configure(**config) # pylint: disable=W0142
+        return resource_repository
+

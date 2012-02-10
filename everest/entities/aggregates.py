@@ -7,14 +7,12 @@ Aggregate implementations.
 Created on Sep 25, 2011.
 """
 
-from everest.db import Session
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IAggregateImplementation
 from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.resources.utils import as_persister
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
@@ -33,7 +31,7 @@ class AggregateImpl(object):
     """
     implements(IAggregate, IAggregateImplementation)
 
-    def __init__(self, entity_class):
+    def __init__(self, entity_class, session):
         """
         Constructor:
 
@@ -44,10 +42,12 @@ class AggregateImpl(object):
         """
         if self.__class__ is AggregateImpl:
             raise NotImplementedError('Abstract class.')
-        #: Relationship of entities in this aggregate to a parent entity.
-        self._relationship = None
         #: Entity class (type) of the entities in this aggregate.
         self.entity_class = entity_class
+        #: The session.
+        self._session = session
+        #: Relationship of entities in this aggregate to a parent entity.
+        self._relationship = None
         #: Specification for filtering
         #: (:class:`everest.querying.specifications.FilterSpecification`).
         #: Attribute names in this specification are relative to the entity. 
@@ -60,11 +60,11 @@ class AggregateImpl(object):
         self._slice_key = None
 
     @classmethod
-    def create(cls, entity_class):
-        raise NotImplementedError('Abstract method.')
+    def create(cls, entity_class, session):
+        return cls(entity_class, session)
 
     def clone(self):
-        clone = self.__class__.create(self.entity_class)
+        clone = self.__class__.create(self.entity_class, self._session)
         clone._relationship = self._relationship
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
@@ -147,32 +147,23 @@ class MemoryAggregateImpl(AggregateImpl):
         :method:`get_by_id` or :method:`get_by_slug` methods since there 
         is no mechanism to autogenerate IDs or slugs.
     """
-    def __init__(self, entity_class, session):
-        AggregateImpl.__init__(self, entity_class)
-        #
-        self.__session = session
-
-    @classmethod
-    def create(cls, entity_class):
-        persister = as_persister(entity_class)
-        return cls(entity_class, persister.session)
 
     def clone(self):
         clone = super(MemoryAggregateImpl, self).clone()
         if self._relationship is None:
-            clone.__session = self.__session
+            clone._session = self._session
         return clone
 
     def count(self):
         if self._relationship is None:
-            count = len(self.__session.get_all(self.entity_class))
+            count = len(self._session.get_all(self.entity_class))
         else:
             count = len(self._relationship.children)
         return count
 
     def get_by_id(self, id_key):
         if self._relationship is None:
-            ent = self.__session.get_by_id(self.entity_class, id_key)
+            ent = self._session.get_by_id(self.entity_class, id_key)
         else:
             ent = self.__filter_by_attr(self._relationship.children,
                                         'id', id_key)
@@ -180,7 +171,7 @@ class MemoryAggregateImpl(AggregateImpl):
 
     def get_by_slug(self, slug):
         if self._relationship is None:
-            ent = self.__session.get_by_slug(self.entity_class, slug)
+            ent = self._session.get_by_slug(self.entity_class, slug)
         else:
             ent = self.__filter_by_attr(self._relationship.children,
                                         'slug', slug)
@@ -188,7 +179,7 @@ class MemoryAggregateImpl(AggregateImpl):
 
     def iterator(self):
         if self._relationship is None:
-            ents = self.__session.get_all(self.entity_class)
+            ents = self._session.get_all(self.entity_class)
         else:
             ents = self._relationship.children
         if not self._filter_spec is None:
@@ -217,7 +208,7 @@ class MemoryAggregateImpl(AggregateImpl):
             raise ValueError('Entities added to a memory aggregrate have to '
                              'have a slug (`slug` attribute).')
         if self._relationship is None:
-            self.__session.add(self.entity_class, entity)
+            self._session.add(self.entity_class, entity)
         else:
             if not entity.id is None \
                and self.__check_existing(self._relationship.children, entity):
@@ -226,7 +217,7 @@ class MemoryAggregateImpl(AggregateImpl):
 
     def remove(self, entity):
         if self._relationship is None:
-            self.__session.remove(self.entity_class, entity)
+            self._session.remove(self.entity_class, entity)
         else:
             self._relationship.children.remove(entity)
 
@@ -267,14 +258,8 @@ class OrmAggregateImpl(AggregateImpl):
     ORM implementation for aggregates.
     """
     def __init__(self, entity_class, session, search_mode=False):
-        AggregateImpl.__init__(self, entity_class)
-        self._session = session
+        AggregateImpl.__init__(self, entity_class, session)
         self._search_mode = search_mode
-
-    @classmethod
-    def create(cls, entity_class):
-        session = Session()
-        return cls(entity_class, session)
 
     def count(self):
         if not self._relationship is None:

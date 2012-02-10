@@ -7,7 +7,7 @@ Created on Jan 18, 2012.
 
 from everest.configuration import Configurator
 from everest.entities.interfaces import IAggregateImplementationRegistry
-from everest.entities.interfaces import IEntityRepository
+from everest.interfaces import IRepository
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationBuilder
@@ -18,8 +18,7 @@ from everest.querying.interfaces import IOrderSpecificationBuilder
 from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.repository import REPOSITORY_DOMAINS
-from everest.resources.interfaces import IResourceRepository
+from everest.repository import REPOSITORIES
 from everest.resources.interfaces import IService
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
@@ -51,20 +50,14 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
         reg = self._registry
         self.assert_is_not_none(
                         reg.queryUtility(IAggregateImplementationRegistry))
-        self.assert_is_not_none(
-                            reg.queryUtility(IEntityRepository,
-                                             name=REPOSITORY_DOMAINS.ROOT))
-        self.assert_is_not_none(
-                            reg.queryUtility(IEntityRepository,
-                                             name=REPOSITORY_DOMAINS.STAGE))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationFactory))
         self.assert_is_not_none(reg.queryUtility(IOrderSpecificationFactory))
-        self.assert_is_not_none(
-                            reg.queryUtility(IResourceRepository,
-                                             name=REPOSITORY_DOMAINS.ROOT))
-        self.assert_is_not_none(
-                            reg.queryUtility(IResourceRepository,
-                                             name=REPOSITORY_DOMAINS.STAGE))
+        self.assert_is_not_none(reg.queryUtility(IRepository,
+                                                 name=REPOSITORIES.ORM))
+        self.assert_is_not_none(reg.queryUtility(IRepository,
+                                                 name=REPOSITORIES.MEMORY))
+        self.assert_is_not_none(reg.queryUtility(IRepository,
+                                                name=REPOSITORIES.FILE_SYSTEM))
         self.assert_is_not_none(reg.queryUtility(IService))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationBuilder))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationDirector))

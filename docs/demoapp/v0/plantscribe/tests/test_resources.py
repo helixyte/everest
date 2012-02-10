@@ -6,7 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 9, 2012.
 """
 
-from everest.repository import REPOSITORY_DOMAINS
+from StringIO import StringIO
+from everest.repository import REPOSITORIES
 from everest.resources.interfaces import IResourceRepository
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_root_collection
@@ -36,7 +37,7 @@ def populate():
                         (IIncidence, 'data/incidences.csv'),
                         ):
         fn = resource_filename('plantscribe', pkg_fn)
-        rc_repo = get_utility(IResourceRepository, REPOSITORY_DOMAINS.ROOT)
+        rc_repo = get_utility(IResourceRepository, REPOSITORIES.ORM)
         rc_repo.load_representation(ifc, 'file://%s' % fn)
 
 
@@ -49,9 +50,7 @@ class PlantScribeResourcesTestCase(ResourceTestCase):
 
     def set_up(self):
         ResourceTestCase.set_up(self)
-        if not self.__populated:
-            populate()
-            self.__populated = True
+        populate()
 
     def test_get_customer(self):
         coll = get_root_collection(ICustomer)
@@ -91,5 +90,6 @@ class PlantScribeResourcesTestCase(ResourceTestCase):
     def test_dump(self):
         prjs = get_root_collection(IProject)
         prj = prjs.get('pond')
-        buf = dump_resource(prj)
-        len(buf)
+        stream = StringIO('w')
+        dump_resource(prj, stream)
+        self.assert_true(len(stream.getvalue() > 0))
