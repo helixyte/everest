@@ -13,7 +13,7 @@ from everest.resources.repository import ResourceRepository
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import get_stage_collection
+from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
 from repoze.bfg.traversal import find_root
 
@@ -229,7 +229,7 @@ class collection_attribute(_relation_attribute):
             coll = rc_repo.get(self.entity_type)
         else:
             # This is a floating member, assume stage repository.
-            coll = get_stage_collection(self.entity_type)
+            coll = new_stage_collection(self.entity_type)
         # All resource references are relationships; we need to set this 
         # up on the aggregate.
         agg = coll.get_aggregate()

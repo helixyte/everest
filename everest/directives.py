@@ -8,6 +8,7 @@ Created on Jun 16, 2011.
 from everest.configuration import Configurator
 from everest.entities.aggregates import MemoryAggregateImpl
 from everest.entities.aggregates import OrmAggregateImpl
+from everest.entities.interfaces import IAggregateImplementationRegistry
 from everest.interfaces import IDefaultRepository
 from everest.interfaces import IRepository
 from everest.repository import REPOSITORIES
@@ -79,6 +80,11 @@ def _repository(_context, name, make_default, default_aggregate_implementation,
         repo = config.get_registered_utility(IRepository, repo_type)
         repo.configure(**cnf) # pylint: disable=W0142
         if not default_aggregate_implementation is None:
+            agg_impl_reg = \
+                config.get_registered_utility(IAggregateImplementationRegistry)
+            if not agg_impl_reg.is_registered(
+                                            default_aggregate_implementation):
+                agg_impl_reg.register(default_aggregate_implementation)
             ent_repo = repo.get_entity_repository()
             ent_repo.set_default_implementation(
                                             default_aggregate_implementation)

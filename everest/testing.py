@@ -183,7 +183,7 @@ class BaseTestCase(Pep8CompliantTestCase):
     #: derived classes.
     package_name = 'everest'
     #: The path to the application initialization (ini) file name. Override
-    #: as needed in derived classses.
+    #: as needed in derived classes.
     ini_file_path = None
     #: The section name in the ini file to look for settings. Override as 
     #: needed in derived classes.
@@ -195,11 +195,8 @@ class BaseTestCase(Pep8CompliantTestCase):
     def set_up(self):
         # Create and configure a new testing registry.
         reg = Registry('testing')
-        if not self.ini_file_path is None:
-            self.ini = EverestIni(self.ini_file_path)
-            settings = self.ini.get_settings(self.ini_section_name)
-        else:
-            settings = None
+        self.ini = EverestIni(self.ini_file_path)
+        settings = self.ini.get_settings(self.ini_section_name)
         self.config = Configurator(registry=reg,
                                    package=self.package_name)
         self.config.setup_registry(settings=settings)
@@ -218,6 +215,7 @@ class EntityTestCase(BaseTestCase):
         self.config.load_zcml('configure.zcml')
 
     def tear_down(self):
+        transaction.abort()
         self.config.unhook_zca()
         self.config.end()
 

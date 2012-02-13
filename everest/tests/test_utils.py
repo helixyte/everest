@@ -10,6 +10,8 @@ from everest.utils import classproperty
 from everest.utils import get_traceback
 from everest.utils import BidirectionalLookup
 from everest.utils import id_generator
+from everest.utils import WeakList
+import random
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UtilsTestCase',
@@ -78,3 +80,81 @@ class UtilsTestCase(Pep8CompliantTestCase):
         self.assert_equal(len(bl.right_keys()), 0)
 
 
+    def test_weaklist(self):
+        class _X(object):
+            def __init__(self):
+                self.rank = random.randint(0, 20)
+            def __lt__(self, other):
+                return self.rank < other.rank
+            def __le__(self, other):
+                return self.rank <= other.rank
+            def __eq__(self, other):
+                return self.rank == other.rank
+            def __ne__(self, other):
+                return self.rank != other.rank
+            def __gt__(self, other):
+                return self.rank > other.rank
+            def __ge__(self, other):
+                return self.rank >= other.rank
+            def __hash__(self):
+                return id(self)
+        class A(_X):
+            pass
+        class B(_X):
+            pass
+        class C(_X):
+            pass
+        obj_a = A()
+        obj_b = B()
+        weak_list = WeakList([obj_a, obj_b, obj_a, obj_b, obj_a, obj_b])
+        # __len__() and deleting items through deleting the held items.
+        self.assertEqual(len(weak_list), 6)
+        del obj_b
+        self.assertEqual(len(weak_list), 3)
+        # "in" operation.
+        self.assertEqual(obj_a in weak_list, True)
+        # iteration.
+        item = None
+        count = 0
+        for item in weak_list:
+            count += 1
+        self.assertEqual(count, 3)
+        del item
+        # count().
+        self.assertEqual(weak_list.count(obj_a), 3)
+        # pop().
+        self.assertEqual(weak_list.pop() is obj_a, True)
+        # insert() and __getitem__().
+        obj_c = C()
+        weak_list.insert(2, obj_c)
+        self.assertEqual(weak_list[2] is obj_c, True)
+        # __setitem__().
+        weak_list[0] = obj_c
+        self.assertEqual(isinstance(weak_list[0], C), True)
+        # slicing.
+        weak_list[1:2] = [obj_c]
+        self.assertEqual(weak_list[1] is obj_c, True)
+        self.assertEqual(weak_list[1:2], [obj_c])
+        # index().
+        self.assertEqual(weak_list.index(obj_c), 0)
+        # .remove().
+        weak_list.remove(obj_c)
+        self.assertEqual(len(weak_list), 2)
+        # extend().
+        obj_c1 = C()
+        obj_c2 = C()
+        obj_c3 = C()
+        weak_list.extend([obj_c1, obj_c2, obj_c3])
+        self.assertEqual(len(weak_list), 5)
+        # sort().
+        item = None
+        weak_list.sort()
+        last_rank = -1
+        for item in weak_list:
+            self.assertEqual(last_rank <= item.rank, True)
+            last_rank = item.rank
+        del item
+        # clean up.
+        del obj_c1, obj_c2, obj_c3
+        del obj_a, obj_c
+        self.assertEqual(len(weak_list), 0)

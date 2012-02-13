@@ -22,6 +22,7 @@ from everest.resources.utils import get_collection_class
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
 from transaction.interfaces import IDataManager
+from weakref import WeakValueDictionary
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements
 from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
@@ -29,6 +30,7 @@ import os
 import threading
 import transaction
 import weakref
+from everest.utils import WeakList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DataManager',
@@ -42,6 +44,9 @@ __all__ = ['DataManager',
 class Persister(object):
     """
     Base class for all persisters.
+    
+    A persister is responsible for configuration and initialization of a
+    storage backend for entities. It also creates and holds a session.
     """
     implements(IPersister)
 
@@ -92,6 +97,9 @@ class Persister(object):
 
 
 class OrmPersister(Persister):
+    """
+    Persister connected to an ORM backend.
+    """
     _configurables = ['db_string', 'metadata_factory']
 
     def __init__(self, name):
@@ -133,18 +141,15 @@ class OrmPersister(Persister):
         return get_metadata(self.name)
 
 
-class InMemorySessionMixin(object):
+class DummyPersister(Persister):
+    """
+    Dummy persister to use with an in-memory repository.
+    """
+    _configurables = []
+
     def _make_session(self):
         # Pass a weak reference to avoid circular references.
-        session = InMemorySession(weakref.ref(self))
-        # Create a data manager and join the zope transaction.
-        dm = DataManager(session)
-        transaction.get().join(dm)
-        return session
-
-
-class DummyPersister(InMemorySessionMixin, Persister):
-    _configurables = []
+        return InMemorySession(weakref.ref(self), autoflush=False)
 
     def _initialize(self):
         pass
@@ -153,7 +158,7 @@ class DummyPersister(InMemorySessionMixin, Persister):
         pass
 
 
-class FileSystemPersister(InMemorySessionMixin, Persister):
+class FileSystemPersister(Persister):
     """
     Persister using the file system as storage.
     
@@ -182,6 +187,14 @@ class FileSystemPersister(InMemorySessionMixin, Persister):
             with stream:
                 dump_resource(coll, stream, content_type=content_type)
 
+    def _make_session(self):
+        # Pass a weak reference to avoid circular references.
+        session = InMemorySession(weakref.ref(self))
+        # Create a data manager and join the zope transaction.
+        dm = DataManager(session)
+        transaction.get().join(dm)
+        return session
+
     def _initialize(self):
         directory = self._config['directory']
         content_type = self._config['content_type']
@@ -200,12 +213,16 @@ class FileSystemPersister(InMemorySessionMixin, Persister):
 class EntityCache(object):
     """
     Simple cache for entities.
+    
+    Supports add and remove operations as well as lookup by ID and by slug.
+    Also automatically generates IDs when an entity is flushed.
     """
     def __init__(self):
-        self.__slug_map = {}
-        self.__id_map = {}
+        self.__entities = weakref.WeakSet()
+        self.__slug_map = WeakValueDictionary()
+        self.__id_map = WeakValueDictionary()
         self.__id_gen = id_generator()
-        self.__last_id = self.__id_gen.next()
+        self.__next_id = self.__id_gen.next()
 
     def get_by_id(self, entity_id):
         return self.__id_map.get(entity_id)
@@ -214,38 +231,53 @@ class EntityCache(object):
         return self.__slug_map.get(entity_slug)
 
     def get_all(self):
-        return self.__id_map.values()
+        return self.__entities.copy()
 
     def add(self, entity):
+        self.__entities.add(entity)
         entity_id = entity.id
         entity_slug = entity.slug
-        if entity_id in self.__id_map:
-            raise ValueError('Duplicate ID "%s".' % entity_id)
-        if entity_slug in self.__slug_map:
-            raise ValueError('Duplicate slug "%s".' % entity_slug)
         if not entity_id is None:
+            if entity_id in self.__id_map:
+                raise ValueError('Duplicate ID "%s".' % entity_id)
             if entity_slug is None:
                 raise ValueError('Entities added to a memory aggregate which '
                                  'specify an ID also need to specify a slug.')
             self.__id_map[entity_id] = entity
-            self.__slug_map[entity_slug] = entity
-            if entity_id > self.__last_id:
-                self.__last_id = entity_id
+            # If we have an integer ID (the normal case), we check if we 
+            # need to adjust the ID generator.
+            if isinstance(entity_id, int) and entity_id > self.__next_id:
+                self.__next_id = entity_id + 1
                 self.__id_gen.send(entity_id)
+        if not entity_slug is None:
+            if entity_slug in self.__slug_map:
+                raise ValueError('Duplicate slug "%s".' % entity_slug)
+            self.__slug_map[entity_slug] = entity
 
     def remove(self, entity):
-        del self.__id_map[entity.id]
-        del self.__slug_map[entity.slug]
+        self.__entities.remove(entity)
+        if not entity.id is None:
+            del self.__id_map[entity.id]
+            del self.__slug_map[entity.slug]
 
     def flush(self, entity):
         if entity.id is None:
-            entity.id = self.__last_id
-            self.__last_id = self.__id_gen.next()
-            self.add(entity)
+            # The slug may depend on the ID; we have to remove any entry
+            # with the current slug before setting the ID.
+            try:
+                del self.__slug_map[entity.slug]
+            except KeyError:
+                pass
+            entity.id = self.__next_id
+            self.__next_id = self.__id_gen.next()
+            self.__id_map[entity.id] = entity
+            self.__slug_map[entity.slug] = entity
 
 
 class InMemorySession(object):
     """
+    Simple session that uses a map of :class:`EntityCache` instances to
+    manage a "unit of work" on entities.
     """
     def __init__(self, persister, autoflush=True):
         #: Flag controlling if a flush should be performed automatically
@@ -270,10 +302,12 @@ class InMemorySession(object):
     def rollback(self):
         # Update cache.
         with self.__cache_lock:
-            for (added_cls, added_entity) in self.__state.added:
-                self.__entities[added_cls].remove(added_entity)
-            for (removed_cls, removed_entity) in self.__state.removed:
-                self.__entities[removed_cls].append(removed_entity)
+            for (added_cls, added_entities) in self.__state.added.items():
+                for added_entity in added_entities:
+                    self.__entities[added_cls].remove(added_entity)
+            for (rm_cls, rm_entities) in self.__state.removed.items():
+                for rm_entity in rm_entities:
+                    self.__entities[rm_cls].append(rm_entity)
         # Reset state.
         self.__reset()
 
@@ -284,11 +318,12 @@ class InMemorySession(object):
             cache.add(entity)
         # Update state.
         self.__state.dirty.add(entity_cls)
-        key = (entity_cls, entity)
-        if key in self.__state.removed:
-            self.__state.removed.remove(key)
+        removed = self.__state.removed.setdefault(entity_cls, WeakList())
+        if entity in removed:
+            removed.remove(entity)
         else:
-            self.__state.added.add(key)
+            added = self.__state.added.setdefault(entity_cls, WeakList())
+            added.append(entity)
         self.__needs_flush = True
 
     def remove(self, entity_cls, entity):
@@ -298,11 +333,12 @@ class InMemorySession(object):
             cache.remove(entity)
         # Update state.
         self.__state.dirty.add(entity_cls)
-        key = (entity_cls, entity)
-        if key in self.__state.added:
-            self.__state.added.remove(key)
+        added = self.__state.added.setdefault(entity_cls, WeakList())
+        if entity in added:
+            added.remove(entity)
         else:
-            self.__state.removed.add(key)
+            removed = self.__state.removed.setdefault(entity_cls, WeakList())
+            removed.add(entity)
 
     def get_by_id(self, entity_cls, entity_id):
         if self.__needs_flush and self.autoflush:
@@ -326,11 +362,12 @@ class InMemorySession(object):
         return cache.get_all()
 
     def flush(self):
-        for (entity_cls, entity) in self.__state.added:
-            if entity.id is None:
-                cache = self.__get_cache(entity_cls)
-                with self.__cache_lock:
-                    cache.flush(entity)
+        for (entity_cls, entities) in self.__state.added.items():
+            for entity in entities:
+                if entity.id is None:
+                    cache = self.__get_cache(entity_cls)
+                    with self.__cache_lock:
+                        cache.flush(entity)
         self.__needs_flush = False
 
     @property
@@ -346,11 +383,14 @@ class InMemorySession(object):
 
     def __reset(self):
         self.__state.dirty = set()
-        self.__state.added = set()
-        self.__state.removed = set()
+        self.__state.added = {}
+        self.__state.removed = {}
 
 
 class DataManager(object):
+    """
+    Data manager to plug an :class:`InMemorySession` into a zope transaction.
+    """
     implements(IDataManager)
 
     def __init__(self, session):

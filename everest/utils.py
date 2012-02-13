@@ -7,6 +7,7 @@ Created on Oct 7, 2011.
 
 from StringIO import StringIO
 from sqlalchemy.util import OrderedDict as _SqlAlchemyOrderedDict
+from weakref import ref
 import re
 import traceback
 
@@ -171,3 +172,99 @@ class BidirectionalLookup(object):
     def clear(self):
         self.__left.clear()
         self.__right.clear()
+
+
+class WeakList(list):
+    """
+    List containing weakly referenced items.
+
+    All objects stored in a weak list are only weakly referenced, but
+    accessing an element returns a strong reference. If an object referenced
+    by an element in a weak list dies, the corresponding weak reference is
+    removed automatically.
+
+    :note: only weakly referenceable objects can be stored
+    """
+
+    def __init__(self, sequence=None):
+        list.__init__(self)
+        if not sequence is None:
+            self.extend(sequence)
+
+    def __setitem__(self, index, value):
+        list.__setitem__(self, index, self.__get_weakref(value))
+
+    def __getitem__(self, index):
+        return list.__getitem__(self, index)()
+
+    def __setslice__(self, start, stop, sequence):
+        list.__setslice__(self, start, stop,
+                          [self.__get_weakref(el) for el in sequence])
+
+    def __getslice__(self, start, stop):
+        return [item() for item in list.__getslice__(self, start, stop) ]
+
+    def __contains__(self, value):
+        return list.__contains__(self, self.__get_weakref(value))
+
+    def __add__(self, sequence):
+        new_weak_list = WeakList(sequence)
+        new_weak_list.extend(self)
+        return new_weak_list
+
+    def __iter__(self):
+        return self.__iterator()
+
+    def append(self, value):
+        list.append(self, self.__get_weakref(value))
+
+    def count(self, value):
+        return list.count(self, self.__get_weakref(value))
+
+    def index(self, value):
+        return list.index(self, self.__get_weakref(value))
+
+    def insert(self, position, value):
+        list.insert(self, position, self.__get_weakref(value))
+
+    def pop(self):
+        item_weakref = list.pop(self)
+        return item_weakref()
+
+    def remove(self, value):
+        self.__delitem__(self.index(value))
+
+    def extend(self, sequence):
+        list.extend(self, self.__sequence_to_weakref(sequence))
+
+    def sort(self):
+        list.sort(self, self.__cmp_items)
+
+    def __get_weakref(self, value):
+        return ref(value, self.__remove_by_weakref)
+
+    def __remove_by_weakref(self, weakref):
+        # Cleanup callback called on garbage collection.
+        while True:
+            try:
+                self.__delitem__(list.index(self, weakref))
+            except ValueError:
+                break
+
+    def __sequence_to_weakref(self, sequence):
+        if not isinstance(sequence, WeakList):
+            weakrefs = [self.__get_weakref(el) for el in sequence]
+        else:
+            weakrefs = sequence
+        return weakrefs
+
+    def __cmp_items(self, left_ref, right_ref):
+        return cmp(left_ref(), right_ref())
+
+    def __iterator(self):
+        cnt = 0
+        while cnt < len(self):
+            yield self.__getitem__(cnt)
+            cnt += 1
+        else:
+            raise StopIteration

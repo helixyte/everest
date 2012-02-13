@@ -39,7 +39,7 @@ class Entity(object):
         Returns a human-readable and URL-compatible string that is unique
         within all siblings of this entity.
         """
-        return str(self.id)
+        return not self.id is None and str(self.id) or None
 
     @classmethod
     def create_from_data(cls, data):

@@ -174,6 +174,11 @@ class Configurator(BfgConfigurator):
         custom_persister = persister_cls(name)
         custom_ent_repo = EntityRepository(custom_persister)
         if not default_aggregate_implementation is None:
+            agg_impl_reg = \
+                self.get_registered_utility(IAggregateImplementationRegistry)
+            if not agg_impl_reg.is_registered(
+                                            default_aggregate_implementation):
+                agg_impl_reg.register(default_aggregate_implementation)
             custom_ent_repo.set_default_implementation(
                                             default_aggregate_implementation)
         custom_rc_repo = ResourceRepository(custom_ent_repo)
@@ -373,10 +378,10 @@ class Configurator(BfgConfigurator):
         orm_repo = self.__make_repo(REPOSITORIES.ORM, OrmPersister,
                                     aggregate_implementation_registry,
                                     OrmAggregateImpl,
-                                    [('db_string', 'orm_dbstring')])
+                                    [('db_string', 'db_string')])
         self._register_utility(orm_repo, IRepository,
                                name=REPOSITORIES.ORM)
-        # ... MEMORY repository. By default this is used as the default for
+        # ... MEMORY repository. This is used as the default for
         #     all resources that do not specify a repository.
         mem_repo = self.__make_repo(REPOSITORIES.MEMORY, DummyPersister,
                                     aggregate_implementation_registry,
