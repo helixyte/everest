@@ -19,18 +19,19 @@ from everest.mime import CsvMime
 from everest.resources.interfaces import IPersister
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_collection_class
+from everest.utils import WeakList
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
+from threading import Lock
+from threading import local
 from transaction.interfaces import IDataManager
 from weakref import WeakValueDictionary
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements
 from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
 import os
-import threading
 import transaction
 import weakref
-from everest.utils import WeakList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DataManager',
@@ -274,6 +275,20 @@ class EntityCache(object):
             self.__slug_map[entity.slug] = entity
 
 
+class SessionState(local):
+    """
+    Thread-local object holding session state.
+    """
+    def __init__(self): # do not need base __init__ pylint: disable=W0231
+        self.dirty = self.added = self.removed = None
+        self.reset()
+
+    def reset(self):
+        self.dirty = set()
+        self.added = {}
+        self.removed = {}
+
+
 class InMemorySession(object):
     """
     Simple session that uses a map of :class:`EntityCache` instances to
@@ -286,9 +301,8 @@ class InMemorySession(object):
         self.__persister = persister
         self.__entities = {}
         self.__id_generators = {}
-        self.__state = threading.local()
-        self.__cache_lock = threading.Lock()
-        self.__reset()
+        self.__state = SessionState()
+        self.__cache_lock = Lock()
         self.__needs_flush = False
 
     def commit(self):
@@ -297,7 +311,7 @@ class InMemorySession(object):
         for entity_cls in self.__state.dirty:
             self.__persister.commit(entity_cls)
         # Reset state.
-        self.__reset()
+        self.__state.reset()
 
     def rollback(self):
         # Update cache.
@@ -309,7 +323,7 @@ class InMemorySession(object):
                 for rm_entity in rm_entities:
                     self.__entities[rm_cls].append(rm_entity)
         # Reset state.
-        self.__reset()
+        self.__state.reset()
 
     def add(self, entity_cls, entity):
         # Update cache.
@@ -380,11 +394,6 @@ class InMemorySession(object):
             cache = EntityCache()
             self.__entities[entity_cls] = cache
         return cache
-
-    def __reset(self):
-        self.__state.dirty = set()
-        self.__state.added = {}
-        self.__state.removed = {}
 
 
 class DataManager(object):

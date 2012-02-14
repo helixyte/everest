@@ -9,6 +9,7 @@ from everest.testing import Pep8CompliantTestCase
 from everest.resources.persisters import InMemorySession
 from everest.resources.persisters import DummyPersister
 from everest.entities.base import Entity
+import threading
 
 __docformat__ = 'reStructuredText en'
 
@@ -137,3 +138,18 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
             pass
         ent = MyEntity()
         self.assert_raises(KeyError, self._session.remove, MyEntity, ent)
+
+    def test_threaded_access(self):
+        class MyEntity(Entity):
+            pass
+        class MyThread(threading.Thread):
+            ok = False
+            def run(self):
+                threading.Thread.run(self)
+                self.ok = True
+        def access_session(session):
+            self.assert_equal(len(session.get_all(MyEntity)), 0)
+        thr = MyThread(target=access_session, args=(self._session,))
+        thr.start()
+        thr.join()
+        self.assert_true(thr.ok)
