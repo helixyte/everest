@@ -13,8 +13,7 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 __docformat__ = "reStructuredText en"
 __all__ = ['IAggregate',
            'IEntity',
-           'IRelationAggregateImplementation',
-           'IRootAggregateImplementation',
+           'IAggregateImplementation',
            ]
 
 
@@ -68,33 +67,6 @@ class IAggregate(Interface):
 
     def remove(entity):
         """
-        """
-
-
-class IAggregateImplementationRegistry(Interface):
-    """
-    Interface for the aggregate implementation registry.
-    """
-    def register(implementation_class):
-        """
-        Registers the given implementation class with the registry.
-        """
-
-    def unregister(implementation_class):
-        """
-        Removes the specified registered implementation class from the 
-        registry.
-        """
-
-    def is_registered(implementation_class):
-        """
-        Checks if the given implementation class was registered with this
-        registry.
-        """
-
-    def get_registered():
-        """
-        Returns a list of all registered implementation classes.
         """
 
 

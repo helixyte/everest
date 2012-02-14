@@ -8,7 +8,6 @@ Created on Jan 9, 2012.
 
 from StringIO import StringIO
 from everest.repository import REPOSITORIES
-from everest.resources.interfaces import IResourceRepository
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
@@ -29,28 +28,22 @@ __docformat__ = 'reStructuredText en'
 __all__ = []
 
 
-def populate():
-    for ifc, pkg_fn in ((ICustomer, 'data/customers.csv'),
-                        (IProject, 'data/projects.csv'),
-                        (ISite, 'data/sites.csv'),
-                        (ISpecies, 'data/species.csv'),
-                        (IIncidence, 'data/incidences.csv'),
-                        ):
-        fn = resource_filename('plantscribe', pkg_fn)
-        rc_repo = get_utility(IResourceRepository, REPOSITORIES.ORM)
-        rc_repo.load_representation(ifc, 'file://%s' % fn)
+#def populate():
+#    for ifc, pkg_fn in ((ICustomer, 'data/customers.csv'),
+#                        (IProject, 'data/projects.csv'),
+#                        (ISite, 'data/sites.csv'),
+#                        (ISpecies, 'data/species.csv'),
+#                        (IIncidence, 'data/incidences.csv'),
+#                        ):
+#        fn = resource_filename('plantscribe', pkg_fn)
+#        rc_repo = get_utility(IResourceRepository, REPOSITORIES.ORM)
+#        rc_repo.load_representation(ifc, 'file://%s' % fn)
 
 
 class PlantScribeResourcesTestCase(ResourceTestCase):
     package_name = 'plantscribe'
     ini_file_path = resource_filename('plantscribe', 'plantscribe.ini')
     ini_section_name = 'app:plantscribe'
-
-    __populated = False
-
-    def set_up(self):
-        ResourceTestCase.set_up(self)
-        populate()
 
     def test_get_customer(self):
         coll = get_root_collection(ICustomer)

@@ -29,6 +29,7 @@ from everest.tests.testapp.resources import FooMember
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
+from everest.interfaces import IRepositoryManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -109,6 +110,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         config.add_resource(IFoo, FooMember, FooEntity,
                             collection_root_name="foos",
                             aggregate=MyMemoryAggregate)
+        repo_mgr = config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize()
         member = object.__new__(FooMember)
         coll_cls = reg.queryAdapter(member, ICollectionResource,
                                     name='collection-class')

@@ -1,19 +1,13 @@
-<configure
-    xmlns="http://namespaces.repoze.org/bfg"
->
+<configure xmlns="http://namespaces.repoze.org/bfg">
     <!-- Include special directives. -->
 
-    <include
-        package="everest.includes" />
+    <include package="everest.includes" />
 
-    <!-- Utilities -->
-
-    <!-- Representers. -->
-
-    <utility
-        component="everest.representers.csv.CsvResourceRepresenter"
-        provides="everest.representers.interfaces.IRepresenter"
-        name="application/csv" />
+    <!-- Repositories. -->
+    <filesystem_repository
+        directory="data"
+        content_type="everest.mime.CsvMime"
+        make_default="true" />
 
     <!-- Resource declarations. -->
 
@@ -33,7 +27,7 @@
         interface='.interfaces.ISite'
         member=".resources.SiteMember"
         collection=".resources.SiteCollection"
-        entity=".entities.Site" 
+        entity=".entities.Site"
         expose="false" />
 
     <resource

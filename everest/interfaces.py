@@ -160,10 +160,9 @@ class IRepository(Interface):
                                'initialized.')
 
 
-class IDefaultRepository(Interface):
+class IRepositoryManager(Interface):
     """
-    Marker interface for the default repository (for resources that do not
-    specify a repository).
+    Marker interface for the repository manager.
     """
 
 
