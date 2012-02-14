@@ -7,7 +7,7 @@ Persisters and helper classes.
 Created on Jan 31, 2012.
 """
 
-from everest.db import Session as OrmSession
+from everest.db import Session as OrmSessionFactory
 from everest.db import get_engine
 from everest.db import get_metadata
 from everest.db import is_engine_initialized
@@ -56,7 +56,7 @@ class Persister(object):
     def __init__(self, name):
         self.__name = name
         self._config = {}
-        self.__session = None
+        self.__session_factory = None
         self.__is_initialized = False
 
     def configure(self, **config):
@@ -69,12 +69,12 @@ class Persister(object):
         # Perform initialization specific to the derived class.
         self._initialize()
         # Create a session.
-        self.__session = self._make_session()
+        self.__session_factory = self._make_session_factory()
         self.__is_initialized = True
 
     @property
-    def session(self):
-        return self.__session
+    def session_factory(self):
+        return self.__session_factory
 
     @property
     def name(self):
@@ -90,7 +90,7 @@ class Persister(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def _make_session(self):
+    def _make_session_factory(self):
         """
         Create the session for this persister.
         """
@@ -116,7 +116,7 @@ class OrmPersister(Persister):
             db_string = self._config['db_string']
             engine = create_engine(db_string)
             # Bind the session to the engine.
-            OrmSession.configure(bind=engine)
+            OrmSessionFactory.configure(bind=engine)
             set_engine(self.name, engine)
         else:
             engine = get_engine(self.name)
@@ -128,10 +128,10 @@ class OrmPersister(Persister):
             metadata = get_metadata(self.name)
             metadata.bind = engine
 
-    def _make_session(self):
+    def _make_session_factory(self):
         # Enable the transaction extension.
-        OrmSession.configure(extension=ZopeTransactionExtension())
-        return OrmSession()
+        OrmSessionFactory.configure(extension=ZopeTransactionExtension())
+        return OrmSessionFactory
 
     @property
     def engine(self):
@@ -148,9 +148,11 @@ class DummyPersister(Persister):
     """
     _configurables = []
 
-    def _make_session(self):
+    def _make_session_factory(self):
         # Pass a weak reference to avoid circular references.
-        return InMemorySession(weakref.ref(self), autoflush=False)
+        session = InMemorySession(weakref.ref(self), autoflush=False)
+        # FIXME: Do not share the session across threads pylint: disable=W0511
+        return lambda: session
 
     def _initialize(self):
         pass
@@ -188,13 +190,14 @@ class FileSystemPersister(Persister):
             with stream:
                 dump_resource(coll, stream, content_type=content_type)
 
-    def _make_session(self):
+    def _make_session_factory(self):
         # Pass a weak reference to avoid circular references.
         session = InMemorySession(weakref.ref(self))
         # Create a data manager and join the zope transaction.
         dm = DataManager(session)
         transaction.get().join(dm)
-        return session
+        # FIXME: Do not share the session across threads pylint: disable=W0511
+        return lambda: session
 
     def _initialize(self):
         directory = self._config['directory']

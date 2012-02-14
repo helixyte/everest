@@ -40,11 +40,13 @@ class EntityRepository(Repository):
             # Normal case - we have an Aggregate wrapper class. Use the 
             # default aggregate implementation for this repository.
             impl_cls = self.__default_agg_impl_cls
-            impl = impl_cls.create(entity_cls, self.__persister.session)
+            impl = impl_cls.create(entity_cls,
+                                   self.__persister.session_factory())
             agg = agg_cls.create(impl)
         else:
             # Special case - customized AggregateImpl class; use directly.
-            agg = agg_cls.create(entity_cls, self.__persister.session)
+            agg = agg_cls.create(entity_cls,
+                                 self.__persister.session_factory())
         return agg
 
     def configure(self, **config):

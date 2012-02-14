@@ -45,6 +45,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         reg = self._registry = get_current_registry()
         self._config = Configurator(registry=reg, package=package)
         self._config.setup_registry()
+        repo_mgr = self._config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize()
 
     def tear_down(self):
         testing_tear_down()
@@ -110,8 +112,6 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         config.add_resource(IFoo, FooMember, FooEntity,
                             collection_root_name="foos",
                             aggregate=MyMemoryAggregate)
-        repo_mgr = config.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize()
         member = object.__new__(FooMember)
         coll_cls = reg.queryAdapter(member, ICollectionResource,
                                     name='collection-class')
