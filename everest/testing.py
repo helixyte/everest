@@ -27,6 +27,7 @@ import sys
 import time
 import transaction
 import unittest
+from everest.interfaces import IRepositoryManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
@@ -213,6 +214,9 @@ class EntityTestCase(BaseTestCase):
         self.config.hook_zca()
         self.config.begin()
         self.config.load_zcml('configure.zcml')
+        # Set up repositories.
+        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize()
 
     def tear_down(self):
         transaction.abort()
@@ -249,11 +253,14 @@ class ResourceTestCase(BaseTestCase):
                                      path_url=app_url,
                                      url=app_url,
                                      registry=self.config.registry)
-        #
+        # Load config file.
         self.config.hook_zca()
         self.config.begin(request=self._request)
         self.config.load_zcml('configure.zcml')
-        # Set the request root.
+        # Set up repositories.
+        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize()
+        # Start the service and set as request root.
         srvc = self.config.get_registered_utility(IService)
         srvc.start()
         self._request.root = srvc
@@ -301,6 +308,9 @@ class FunctionalTestCase(BaseTestCase):
         self.config.begin()
         wsgiapp = self._load_wsgiapp()
         self._custom_configure()
+        # Set up repositories.
+        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize()
         self.app = TestApp(wsgiapp,
                            extra_environ=self._create_extra_environment())
 

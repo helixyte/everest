@@ -7,16 +7,18 @@ The resource repository class.
 Created on Jan 13, 2012.
 """
 
+from everest.entities.aggregates import MemoryAggregateImpl
+from everest.entities.aggregates import OrmAggregateImpl
+from everest.entities.repository import EntityRepository
+from everest.repository import REPOSITORIES
 from everest.repository import Repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.io import load_resource_from_url
+from everest.resources.persisters import DummyPersister
+from everest.resources.persisters import FileSystemPersister
+from everest.resources.persisters import OrmPersister
 from everest.resources.utils import get_collection_class
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.interface import implementer # pylint: disable=E0611,F0401
-from everest.interfaces import IRepository
-from everest.resources.persisters import DummyPersister
-from everest.entities.repository import EntityRepository
-from everest.entities.aggregates import MemoryAggregateImpl
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceRepository',
@@ -75,13 +77,60 @@ class ResourceRepository(Repository):
         return get_collection_class(rc)
 
 
-@implementer(IRepository)
-def new_memory_repository():
-    prst = DummyPersister(None)
-    ent_repo = EntityRepository(prst)
-    ent_repo.set_default_implementation(MemoryAggregateImpl)
-    rc_repo = ResourceRepository(ent_repo)
-    rc_repo.initialize()
-    return rc_repo
+class RepositoryManager(object):
+    def __init__(self):
+        self.__repositories = {}
+        self.__default_repo = None
 
+    def get(self, name):
+        return self.__repositories.get(name)
+
+    def set(self, name, repo, make_default=False):
+        if name in self.__repositories \
+           and self.__repositories[name].is_initialized:
+            raise ValueError('Can not replace repositories that have been '
+                             'initialized.')
+        self.__repositories[name] = repo
+        if make_default:
+            self.__default_repo = repo
+
+    def get_default(self):
+        return self.__default_repo
+
+    def initialize(self):
+        for repo in self.__repositories.itervalues():
+            repo.initialize()
+
+    def new(self, repo_type,
+            name=None, persister_class=None,
+            default_aggregate_implementation_class=None):
+        if name is None:
+            # This is a builtin repository.
+            name = repo_type
+        if repo_type == REPOSITORIES.MEMORY:
+            if persister_class is None:
+                persister_class = DummyPersister
+            if default_aggregate_implementation_class is None:
+                default_aggregate_implementation_class = MemoryAggregateImpl
+        elif repo_type == REPOSITORIES.ORM:
+            if persister_class is None:
+                persister_class = OrmPersister
+            if default_aggregate_implementation_class is None:
+                default_aggregate_implementation_class = OrmAggregateImpl
+        elif repo_type == REPOSITORIES.FILE_SYSTEM:
+            if persister_class is None:
+                persister_class = FileSystemPersister
+            if default_aggregate_implementation_class is None:
+                default_aggregate_implementation_class = MemoryAggregateImpl
+        else:
+            raise ValueError('Unknown repository type.')
+        prst = persister_class(name)
+        ent_repo = EntityRepository(prst,
+                                    default_aggregate_implementation_class=
+                                        default_aggregate_implementation_class)
+        return ResourceRepository(ent_repo)
+
+    def __check_name(self, name):
+        if name in self.__repositories:
+            raise ValueError('Duplicate repository name.')
 

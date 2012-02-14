@@ -8,18 +8,17 @@ Created on Jun 22, 2011.
 """
 
 from everest.entities.aggregates import MemoryAggregateImpl
-from everest.entities.aggregates import OrmAggregateImpl
 from everest.entities.base import Aggregate
 from everest.entities.interfaces import IAggregate
-from everest.entities.interfaces import IAggregateImplementationRegistry
 from everest.entities.interfaces import IEntity
-from everest.entities.repository import AggregateImplementationRegistry
-from everest.entities.repository import EntityRepository
 from everest.entities.system import Message
-from everest.interfaces import IDefaultRepository
 from everest.interfaces import IMessage
 from everest.interfaces import IRepository
+from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
+from everest.mime import AtomMime
+from everest.mime import CsvMime
+from everest.mime import XmlMime
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import EvalFilterSpecificationVisitor
@@ -42,25 +41,24 @@ from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.repository import REPOSITORIES
+from everest.repository import as_repository
+from everest.representers.atom import AtomResourceRepresenter
+from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
+from everest.representers.xml import XmlResourceRepresenter
 from everest.resources.base import Collection
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
-from everest.resources.persisters import DummyPersister
-from everest.resources.persisters import FileSystemPersister
-from everest.resources.persisters import OrmPersister
-from everest.resources.repository import ResourceRepository
-from everest.resources.repository import new_memory_repository
+from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
 from everest.url import ResourceUrlConverter
 from repoze.bfg.configuration import Configurator as BfgConfigurator
 from repoze.bfg.interfaces import IRequest
 from repoze.bfg.path import caller_package
-from zope.component.interfaces import IFactory # pylint: disable=E0611,F0401
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -79,7 +77,6 @@ class Configurator(BfgConfigurator):
                  registry=None,
                  package=None,
                  # Entity level services.
-                 aggregate_implementation_registry=None,
                  filter_specification_factory=None,
                  order_specification_factory=None,
                  # Application level services.
@@ -102,8 +99,7 @@ class Configurator(BfgConfigurator):
         BfgConfigurator.__init__(self,
                                  registry=registry, package=package, **kw)
         if registry is None:
-            self.__setup(aggregate_implementation_registry,
-                         filter_specification_factory,
+            self.__setup(filter_specification_factory,
                          order_specification_factory,
                          service,
                          filter_builder,
@@ -131,7 +127,6 @@ class Configurator(BfgConfigurator):
         return self.registry.queryUtility(*args, **kw) # pylint: disable=E1103
 
     def setup_registry(self,
-                       aggregate_implementation_registry=None,
                        filter_specification_factory=None,
                        order_specification_factory=None,
                        service=None,
@@ -148,8 +143,7 @@ class Configurator(BfgConfigurator):
                        url_converter=None,
                        **kw):
         BfgConfigurator.setup_registry(self, **kw)
-        self.__setup(aggregate_implementation_registry,
-                     filter_specification_factory,
+        self.__setup(filter_specification_factory,
                      order_specification_factory,
                      service,
                      filter_specification_builder,
@@ -164,27 +158,39 @@ class Configurator(BfgConfigurator):
                      eval_order_specification_visitor,
                      url_converter)
 
-    def add_repository(self, name, persister_cls,
-                       default_aggregate_implementation=None,
-                       make_default=False, configuration=None, _info=u'',):
-        if not self.get_registered_utility(IRepository, name) is None:
-            raise ValueError('Duplicate repository name "%s".' % name)
+    def add_orm_repository(self, name=None, persister_class=None,
+                           default_aggregate_implementation_class=None,
+                           make_default=False, configuration=None, _info=u''):
         if configuration is None:
             configuration = {}
-        custom_persister = persister_cls(name)
-        custom_ent_repo = EntityRepository(custom_persister)
-        if not default_aggregate_implementation is None:
-            agg_impl_reg = \
-                self.get_registered_utility(IAggregateImplementationRegistry)
-            if not agg_impl_reg.is_registered(
-                                            default_aggregate_implementation):
-                agg_impl_reg.register(default_aggregate_implementation)
-            custom_ent_repo.set_default_implementation(
-                                            default_aggregate_implementation)
-        custom_rc_repo = ResourceRepository(custom_ent_repo)
-        custom_rc_repo.configure(**configuration) # pylint: disable=W0142
-        if make_default:
-            self._register_utility(custom_rc_repo, IDefaultRepository)
+        setting_info = [('db_string', 'db_string')]
+        configuration.update(self.__cnf_from_settings(setting_info))
+        self.__add_repository(name, REPOSITORIES.ORM, persister_class,
+                              default_aggregate_implementation_class,
+                              make_default, configuration)
+
+    def add_filesystem_repository(self, name=None, persister_class=None,
+                                  default_aggregate_implementation_class=None,
+                                  make_default=False, configuration=None,
+                                  _info=u''):
+        if configuration is None:
+            configuration = {}
+        setting_info = [('directory', 'fs_directory'),
+                        ('content_type', 'fs_contenttype')]
+        configuration.update(self.__cnf_from_settings(setting_info))
+        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM, persister_class,
+                              default_aggregate_implementation_class,
+                              make_default, configuration)
+
+    def add_memory_repository(self, name=None, persister_class=None,
+                              default_aggregate_implementation_class=None,
+                              make_default=False, configuration=None,
+                              _info=u''):
+        if configuration is None:
+            configuration = {}
+        self.__add_repository(name, REPOSITORIES.MEMORY, persister_class,
+                              default_aggregate_implementation_class,
+                              make_default, configuration)
 
     def add_resource(self, interface, member, entity,
                      collection=None, aggregate=None,
@@ -293,15 +299,28 @@ class Configurator(BfgConfigurator):
         also_provides(collection, interface)
         also_provides(entity, interface)
         also_provides(aggregate, interface)
-        # Configure the persister adapter.
+        # Configure the repository adapter.
+        repo_mgr = self.get_registered_utility(IRepositoryManager)
         if repository is None:
-            repo = self.get_registered_utility(IDefaultRepository)
+            repo = repo_mgr.get_default()
         else:
-            repo = self.get_registered_utility(IRepository, repository)
+            repo = repo_mgr.get(repository)
+            if repo is None:
+                # Add a builtin repository on the fly. 
+                repo_type = getattr(REPOSITORIES, repository, None)
+                if repo_type is None:
+                    raise ValueError('Unknown repository type "%s".'
+                                     % repository)
+                if repo_type == REPOSITORIES.MEMORY:
+                    self.add_memory_repository()
+                elif repo_type == REPOSITORIES.ORM:
+                    self.add_orm_repository()
+                elif repo_type == REPOSITORIES.FILE_SYSTEM:
+                    self.add_filesystem_repository()
+                else:
+                    raise NotImplementedError()
+                repo = repo_mgr.get(repository)
         repo.manage(collection)
-        if not repo.is_initialized:
-            # Make sure the persister gets initialized.
-            repo.initialize()
         self._register_adapter(lambda obj: repo,
                                required=(interface,),
                                provided=IRepository,
@@ -342,6 +361,14 @@ class Configurator(BfgConfigurator):
                                name=utility_name,
                                info=_info)
 
+    def initialize_repositories(self):
+        for coll_cls in [util.component
+                         for util in self.registry.getRegisteredUtilities() # pylint: disable=E1103
+                         if util.name == 'collection-class']:
+            repo = as_repository(coll_cls)
+            if not repo.is_initialized:
+                repo.initialize()
+
     def _register_utility(self, *args, **kw):
         return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
 
@@ -349,7 +376,6 @@ class Configurator(BfgConfigurator):
         return self.registry.registerAdapter(*args, **kw) # pylint: disable=E1103
 
     def __setup(self,
-                aggregate_implementation_registry,
                 filter_specification_factory,
                 order_specification_factory,
                 service,
@@ -364,43 +390,13 @@ class Configurator(BfgConfigurator):
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
                 url_converter):
-        # Set up the two builtin entity repositories.
-        # ... aggregate implementation registry.
-        if aggregate_implementation_registry is None:
-            aggregate_implementation_registry = \
-                                    AggregateImplementationRegistry()
-            aggregate_implementation_registry.register(MemoryAggregateImpl)
-            aggregate_implementation_registry.register(OrmAggregateImpl)
-            self._register_utility(aggregate_implementation_registry,
-                                   IAggregateImplementationRegistry)
-
-        # ... ORM repository
-        orm_repo = self.__make_repo(REPOSITORIES.ORM, OrmPersister,
-                                    aggregate_implementation_registry,
-                                    OrmAggregateImpl,
-                                    [('db_string', 'db_string')])
-        self._register_utility(orm_repo, IRepository,
-                               name=REPOSITORIES.ORM)
-        # ... MEMORY repository. This is used as the default for
-        #     all resources that do not specify a repository.
-        mem_repo = self.__make_repo(REPOSITORIES.MEMORY, DummyPersister,
-                                    aggregate_implementation_registry,
-                                    MemoryAggregateImpl, [])
-        self._register_utility(mem_repo, IRepository,
-                               name=REPOSITORIES.MEMORY)
-        self._register_utility(mem_repo, IDefaultRepository)
-        # ... FILE_SYSTEM repository.
-        fs_repo = self.__make_repo(REPOSITORIES.FILE_SYSTEM,
-                                   FileSystemPersister,
-                                   aggregate_implementation_registry,
-                                   MemoryAggregateImpl,
-                                   [('directory', 'fs_directory'),
-                                    ('content_type', 'fs_contenttype')])
-        self._register_utility(fs_repo, IRepository,
-                               name=REPOSITORIES.FILE_SYSTEM)
-        # Register a factory for new memory repositories.
-        self._register_utility(new_memory_repository, IFactory,
-                               name=REPOSITORIES.MEMORY)
+        # Set up the repository manager.
+        repo_mgr = RepositoryManager()
+        self._register_utility(repo_mgr, IRepositoryManager)
+        # Set up the builtin MEMORY repository. This is used as the default
+        # for all resources that do not specify a repository.
+        mem_repo = repo_mgr.new(REPOSITORIES.MEMORY)
+        repo_mgr.set(REPOSITORIES.MEMORY, mem_repo, make_default=True)
         # Set up filter and order specification factories.
         if filter_specification_factory is None:
             filter_specification_factory = FilterSpecificationFactory()
@@ -410,6 +406,16 @@ class Configurator(BfgConfigurator):
             order_specification_factory = OrderSpecificationFactory()
         self._register_utility(order_specification_factory,
                                IOrderSpecificationFactory)
+        # Create builtin representers.
+        self._register_utility(CsvResourceRepresenter,
+                               IRepresenter,
+                               name=CsvMime.mime_string)
+        self._register_utility(XmlResourceRepresenter,
+                               IRepresenter,
+                               name=XmlMime.mime_string)
+        self._register_utility(AtomResourceRepresenter,
+                               IRepresenter,
+                               name=AtomMime.mime_string)
         # Set up the service.
         if service is None:
             service = Service()
@@ -472,18 +478,19 @@ class Configurator(BfgConfigurator):
                           repository=REPOSITORIES.MEMORY,
                           collection_root_name='_messages')
 
-    def __make_repo(self, name, prst_cls, agg_impl_reg, agg_impl_cls,
-                    setting_info):
+    def __add_repository(self, name, repo_type, prst_cls, agg_impl_cls,
+                         make_default, cnf):
+        repo_mgr = self.get_registered_utility(IRepositoryManager)
+        repo = repo_mgr.new(
+                        repo_type, name=name,
+                        persister_class=prst_cls,
+                        default_aggregate_implementation_class=agg_impl_cls)
+        repo.configure(**cnf) # ** pylint: disable=W0142
+        repo_mgr.set(name, repo, make_default=make_default)
+
+    def __cnf_from_settings(self, setting_info):
         settings = self.get_settings()
-        persister = prst_cls(name)
-        entity_repository = \
-                    EntityRepository(persister,
-                                     implementation_registry=agg_impl_reg)
-        entity_repository.set_default_implementation(agg_impl_cls)
-        resource_repository = ResourceRepository(entity_repository)
-        config = dict([(name, settings.get(key))
-                       for (name, key) in setting_info
-                       if not settings.get(key, None) is None])
-        resource_repository.configure(**config) # pylint: disable=W0142
-        return resource_repository
+        return dict([(name, settings.get(key))
+                     for (name, key) in setting_info
+                     if not settings.get(key, None) is None])
 

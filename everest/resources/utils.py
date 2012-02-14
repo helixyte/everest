@@ -7,7 +7,7 @@ Utilities for dealing with resources.
 Created on Nov 3, 2011.
 """
 
-from everest.interfaces import IRepository
+from everest.interfaces import IRepositoryManager
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
@@ -17,7 +17,6 @@ from repoze.bfg.threadlocal import get_current_registry
 from repoze.bfg.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
-from zope.component import createObject as create_object # pylint: disable=E0611,F0401
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -59,26 +58,23 @@ def get_stage_collection(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
+    repo_mgr = get_utility(IRepositoryManager)
+    repo = repo_mgr.get(REPOSITORIES.MEMORY)
     return repo.get(rc)
 
 
-#def new_stage_collection(rc):
-#    """
-#    Returns a new, empty collection from the stage repository matching the 
-#    given registered resource.
-#
-#    :param rc: registered resource
-#    :type rc: class implementing or instance providing or subclass of
-#        a registered resource interface.
-#    """
-#    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
-#    return repo.new(rc)
-
-
 def new_stage_collection(rc):
-    new_rc_repo = create_object(REPOSITORIES.MEMORY)
-    return new_rc_repo.get(rc)
+    """
+    Returns a new, empty collection matching the given registered resource.
+
+    :param rc: registered resource
+    :type rc: class implementing or instance providing or subclass of
+        a registered resource interface.
+    """
+    repo_mgr = get_utility(IRepositoryManager)
+    new_repo = repo_mgr.new(REPOSITORIES.MEMORY)
+    new_repo.initialize()
+    return new_repo.get(rc)
 
 
 def get_member_class(rc):

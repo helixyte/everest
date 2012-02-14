@@ -66,6 +66,10 @@ class Repository(object):
         raise NotImplementedError('Abstract method.')
 
     def set(self, rc, obj):
+        """
+        Makes the given accessor the one to use for the given registered
+        resource.
+        """
         key = self._make_key(rc)
         self.__obj_cache[key] = obj
 
@@ -89,10 +93,16 @@ class Repository(object):
         return obj_clone
 
     def clear(self, rc):
+        """
+        Clears the accessor for the given registered resource.
+        """
         key = self._make_key(rc)
         self.__obj_cache.pop(key, None)
 
     def clear_all(self):
+        """
+        Clears all accessors.
+        """
         self.__obj_cache.clear()
 
     @classmethod
