@@ -202,26 +202,27 @@ class IService(ICollectionResource):
     """
 
 
-class IPersister(Interface):
+class IEntityStore(Interface):
     """
     """
 
     def configure(**config):
         """
-        Sets configuration options for this persister which can then be used
+        Sets configuration options for this entity store which can then be used
         during initialization.
         """
 
     def initialize():
         """
-        Initializes the persister.
+        Initializes the entity store.
         """
 
-    session = Attribute('The session object held by this persister.')
+    session_factory = Attribute('The session factory provided by this entity '
+                                'store.')
 
-    name = Attribute('Unique name for this persister.')
+    name = Attribute('Unique name for this entity store.')
 
-    is_initialized = Attribute('Flag indicating if this persister has been '
+    is_initialized = Attribute('Flag indicating if this entity store has been '
                                'initialized.')
 
 # pylint: enable=W0232,E0213

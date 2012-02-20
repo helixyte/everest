@@ -7,8 +7,6 @@ The entity repository class.
 Created on Jan 11, 2012.
 """
 
-from everest.entities.base import Aggregate
-from everest.entities.utils import get_aggregate_class
 from everest.entities.utils import get_entity_class
 from everest.repository import Repository
 
@@ -26,38 +24,30 @@ class EntityRepository(Repository):
     registry. This makes it possible to switch the implementation used for 
     freshly created aggregates at runtime.
     """
-    def __init__(self, persister, default_aggregate_implementation_class):
+    def __init__(self, entity_store, aggregate_class):
         Repository.__init__(self)
-        #
-        self.__persister = persister
-        #
-        self.__default_agg_impl_cls = default_aggregate_implementation_class
+        #: The class to use when creating new aggregates.
+        self.aggregate_class = aggregate_class
+        # The underlying entity store.
+        self.__entity_store = entity_store
 
     def new(self, rc):
-        agg_cls = get_aggregate_class(rc)
         entity_cls = get_entity_class(rc)
-        if issubclass(agg_cls, Aggregate):
-            # Normal case - we have an Aggregate wrapper class. Use the 
-            # default aggregate implementation for this repository.
-            impl_cls = self.__default_agg_impl_cls
-            impl = impl_cls.create(entity_cls,
-                                   self.__persister.session_factory())
-            agg = agg_cls.create(impl)
-        else:
-            # Special case - customized AggregateImpl class; use directly.
-            agg = agg_cls.create(entity_cls,
-                                 self.__persister.session_factory())
+        session_factory = self.__entity_store.session_factory
+        if session_factory is None:
+            raise RuntimeError('Repository has not been initialized yet.')
+        agg = self.aggregate_class.create(entity_cls, session_factory())
         return agg
 
     def configure(self, **config):
-        self.__persister.configure(**config)
+        self.__entity_store.configure(**config)
 
     def initialize(self):
-        self.__persister.initialize()
+        self.__entity_store.initialize()
 
     @property
     def is_initialized(self):
-        return self.__persister.is_initialized
+        return self.__entity_store.is_initialized
 
     def _make_key(self, rc):
-        return get_aggregate_class(rc)
+        return get_entity_class(rc)

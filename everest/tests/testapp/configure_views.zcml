@@ -15,11 +15,6 @@
 
     <!-- Representers. -->
 
-    <utility
-        component="everest.representers.csv.CsvResourceRepresenter"
-        provides="everest.representers.interfaces.IRepresenter"
-        name="application/csv" />
-        
     <!-- Resource declarations. -->
 
     <resource

@@ -59,19 +59,6 @@ class Service(Resource):
             for irc in self.__registered_interfaces:
                 self.add(irc)
 
-    def restart(self):
-        """
-        Restarts the service. 
-        
-        Use this e.g. when the default aggregate implementation changed. 
-        """
-        for irc in self.__registered_interfaces:
-            repo = as_repository(irc)
-            repo.clear(irc)
-        self.__collections.clear()
-        self.__started = False
-        self.start()
-
     def __getitem__(self, key):
         """
         Overrides __getitem__ to return a clone of the requested collection.
@@ -94,6 +81,8 @@ class Service(Resource):
 
     def add(self, irc):
         repo = as_repository(irc)
+        if not repo.is_initialized:
+            repo.initialize()
         coll = repo.get(irc)
         if coll.__name__ in self.__collections:
             raise ValueError('Root collection for collection name %s '

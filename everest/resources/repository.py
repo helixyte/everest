@@ -7,18 +7,16 @@ The resource repository class.
 Created on Jan 13, 2012.
 """
 
-from everest.entities.aggregates import MemoryAggregateImpl
-from everest.entities.aggregates import OrmAggregateImpl
+from everest.entities.aggregates import MemoryAggregate
+from everest.entities.aggregates import OrmAggregate
 from everest.entities.repository import EntityRepository
 from everest.repository import REPOSITORIES
 from everest.repository import Repository
-from everest.resources.interfaces import ICollectionResource
+from everest.resources.entitystores import CachingEntityStore
+from everest.resources.entitystores import FileSystemEntityStore
+from everest.resources.entitystores import OrmEntityStore
 from everest.resources.io import load_resource_from_url
-from everest.resources.persisters import DummyPersister
-from everest.resources.persisters import FileSystemPersister
-from everest.resources.persisters import OrmPersister
 from everest.resources.utils import get_collection_class
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceRepository',
@@ -36,7 +34,8 @@ class ResourceRepository(Repository):
 
     def new(self, rc):
         agg = self.__entity_repository.new(rc)
-        return get_adapter(agg, ICollectionResource)
+        coll_cls = get_collection_class(rc)
+        return coll_cls.create_from_aggregate(agg)
 
     def clear(self, rc):
         Repository.clear(self, rc)
@@ -102,32 +101,32 @@ class RepositoryManager(object):
             repo.initialize()
 
     def new(self, repo_type,
-            name=None, persister_class=None,
-            default_aggregate_implementation_class=None):
+            name=None, entity_store_class=None,
+            aggregate_class=None):
         if name is None:
             # This is a builtin repository.
             name = repo_type
         if repo_type == REPOSITORIES.MEMORY:
-            if persister_class is None:
-                persister_class = DummyPersister
-            if default_aggregate_implementation_class is None:
-                default_aggregate_implementation_class = MemoryAggregateImpl
+            if entity_store_class is None:
+                entity_store_class = CachingEntityStore
+            if aggregate_class is None:
+                aggregate_class = MemoryAggregate
         elif repo_type == REPOSITORIES.ORM:
-            if persister_class is None:
-                persister_class = OrmPersister
-            if default_aggregate_implementation_class is None:
-                default_aggregate_implementation_class = OrmAggregateImpl
+            if entity_store_class is None:
+                entity_store_class = OrmEntityStore
+            if aggregate_class is None:
+                aggregate_class = OrmAggregate
         elif repo_type == REPOSITORIES.FILE_SYSTEM:
-            if persister_class is None:
-                persister_class = FileSystemPersister
-            if default_aggregate_implementation_class is None:
-                default_aggregate_implementation_class = MemoryAggregateImpl
+            if entity_store_class is None:
+                entity_store_class = FileSystemEntityStore
+            if aggregate_class is None:
+                aggregate_class = MemoryAggregate
         else:
             raise ValueError('Unknown repository type.')
-        prst = persister_class(name)
-        ent_repo = EntityRepository(prst,
-                                    default_aggregate_implementation_class=
-                                        default_aggregate_implementation_class)
+        ent_store_cls = entity_store_class(name)
+        ent_repo = EntityRepository(ent_store_cls,
+                                    aggregate_class=
+                                                    aggregate_class)
         return ResourceRepository(ent_repo)
 
     def __check_name(self, name):

@@ -189,3 +189,11 @@ def get_registered_collection_resources():
     return [util.component
             for util in reg.getRegisteredUtilities()
             if util.name == 'collection-class']
+
+
+def get_repository(name):
+    """
+    Returns the resource repository with the given name.
+    """
+    repo_mgr = get_utility(IRepositoryManager)
+    return repo_mgr.get(name)

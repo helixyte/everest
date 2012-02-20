@@ -8,20 +8,19 @@ Created on Jun 17, 2011.
 """
 
 from everest.configuration import Configurator
-from everest.entities.aggregates import MemoryAggregateImpl
-from everest.entities.interfaces import IAggregate
+from everest.entities.aggregates import MemoryAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.utils import get_root_aggregate
+from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
 from everest.representers.interfaces import IRepresenter
 from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
+from everest.resources.utils import get_repository
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
 from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.entities import FooEntityAggregate
 from everest.tests.testapp.interfaces import IBar
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
@@ -29,7 +28,6 @@ from everest.tests.testapp.resources import FooMember
 from repoze.bfg.testing import setUp as testing_set_up
 from repoze.bfg.testing import tearDown as testing_tear_down
 from repoze.bfg.threadlocal import get_current_registry
-from everest.interfaces import IRepositoryManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -63,11 +61,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         self.assert_is_not_none(coll_cls.root_name)
         self.assert_is_not_none(coll_cls.title)
         coll = object.__new__(coll_cls)
-        agg_cls = reg.queryAdapter(coll, IAggregate,
-                                   name='aggregate-class')
-        self.assert_is_not_none(agg_cls)
-        agg = object.__new__(agg_cls)
-        self.__check(reg, member, ent, coll, agg)
+        self.__check(reg, member, ent, coll)
         # Check service.
         srvc = reg.queryUtility(IService)
         self.assert_is_not_none(srvc)
@@ -81,7 +75,6 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         # Check adapters.
         ent = FooEntity()
         member = object.__new__(FooMember)
-        agg = object.__new__(FooEntityAggregate)
         coll = object.__new__(FooCollection)
         # Make sure no adapters are in the registry.
         self.assert_is_none(reg.queryAdapter(coll, IMemberResource,
@@ -90,33 +83,34 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                                           name='collection-class'))
         self.assert_is_none(reg.queryAdapter(member, IEntity,
                                           name='entity-class'))
-        self.assert_is_none(reg.queryAdapter(coll, IAggregate,
-                                          name='aggregate-class'))
         self.assert_is_none(reg.queryAdapter(ent, IMemberResource))
-        self.assert_is_none(reg.queryAdapter(agg, ICollectionResource))
         self.assert_is_none(reg.queryAdapter(coll, IRepresenter,
                                           name=CsvMime.mime_string))
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
-        self.__check(reg, member, ent, coll, agg)
+        self.__check(reg, member, ent, coll)
         self.assert_is_not_none(reg.queryAdapter(coll, IRepresenter,
                                                  name=CsvMime.mime_string))
 
-    def test_custom_memory_aggregate_class(self):
-        class MyMemoryAggregate(MemoryAggregateImpl):
+    def test_custom_repository(self):
+        class MyMemoryAggregate(MemoryAggregate):
             pass
         reg = self._registry
-        # Load the configuration.
         config = Configurator(registry=reg)
+        config.add_memory_repository('test',
+                                     aggregate_class=MyMemoryAggregate)
         config.add_resource(IFoo, FooMember, FooEntity,
                             collection_root_name="foos",
-                            aggregate=MyMemoryAggregate)
+                            repository='test')
         member = object.__new__(FooMember)
         coll_cls = reg.queryAdapter(member, ICollectionResource,
                                     name='collection-class')
-        coll = object.__new__(coll_cls)
-        agg = get_root_aggregate(coll)
+        repo = get_repository('test')
+        self.assert_raises(RuntimeError, repo.new, coll_cls)
+        repo.initialize()
+        coll = repo.new(coll_cls)
+        agg = coll.get_aggregate()
         self.assert_true(isinstance(agg, MyMemoryAggregate))
         entity = FooEntity(id=1)
         agg.add(entity)
@@ -127,8 +121,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         agg.remove(entity)
         self.assert_true(agg.count() == 0)
 
-    def __check(self, reg, member, ent, coll, agg):
-        for idx, obj in enumerate((member, coll, ent, agg)):
+    def __check(self, reg, member, ent, coll):
+        for idx, obj in enumerate((member, coll, ent)):
             self.assert_equal(reg.queryAdapter(obj, IMemberResource,
                                               name='member-class'),
                               type(member))
@@ -138,9 +132,6 @@ class DirectivesTestCase(Pep8CompliantTestCase):
             self.assert_equal(reg.queryAdapter(obj, IEntity,
                                               name='entity-class'),
                               type(ent))
-            self.assert_equal(reg.queryAdapter(obj, IAggregate,
-                                              name='aggregate-class'),
-                              type(agg))
             if idx < 2: # lookup with class only for member/collection.
                 self.assert_equal(reg.queryAdapter(type(obj), IMemberResource,
                                                   name='member-class'),
@@ -152,9 +143,5 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                 self.assert_equal(reg.queryAdapter(type(obj), IEntity,
                                                    name='entity-class'),
                                   type(ent))
-                self.assert_equal(reg.queryAdapter(type(obj), IAggregate,
-                                                   name='aggregate-class'),
-                                  type(agg))
         # Check instance adapters.
         self.assert_is_not_none(reg.queryAdapter(ent, IMemberResource))
-        self.assert_is_not_none(reg.queryAdapter(agg, ICollectionResource))

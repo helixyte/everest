@@ -13,7 +13,6 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 __docformat__ = "reStructuredText en"
 __all__ = ['IAggregate',
            'IEntity',
-           'IAggregateImplementation',
            ]
 
 
@@ -68,11 +67,5 @@ class IAggregate(Interface):
     def remove(entity):
         """
         """
-
-
-class IAggregateImplementation(Interface):
-    """
-    Marker interface for aggregate implementations.
-    """
 
 # pylint: enable=W0232, E0213, E0211

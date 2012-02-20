@@ -47,7 +47,7 @@ class IRepositoryDirective(Interface):
                         "configured with the given directive.",
                  required=False
                  )
-    default_aggregate_implementation_class = \
+    aggregate_class = \
         GlobalObject(title=u"A class to use as the default aggregate "
                             "implementation for this repository.",
                      required=False)
@@ -59,9 +59,9 @@ class IRepositoryDirective(Interface):
              )
 
 
-def _repository(_context, name, make_default, agg_impl_cls,
+def _repository(_context, name, make_default, agg_cls,
                 repo_type, config_method, cnf):
-    # Persister directives are applied eagerly. Note that custom repositories 
+    # Repository directives are applied eagerly. Note that custom repositories 
     # must be declared *before* they can be referenced in resource directives.
     discriminator = (repo_type, name)
     _context.action(discriminator=discriminator)
@@ -70,7 +70,7 @@ def _repository(_context, name, make_default, agg_impl_cls,
     method = getattr(config, config_method)
     if name is None: # re-configure builtin repository.
         name = repo_type
-    method(name, default_aggregate_implementation_class=agg_impl_cls,
+    method(name, aggregate_class=agg_cls,
            configuration=cnf, make_default=make_default)
 
 
@@ -79,9 +79,9 @@ class IMemoryRepositoryDirective(IRepositoryDirective):
 
 
 def memory_repository(_context, name=None, make_default=False,
-                      default_aggregate_implementation_class=None):
+                      aggregate_class=None):
     _repository(_context, name, make_default,
-                default_aggregate_implementation_class,
+                aggregate_class,
                 REPOSITORIES.MEMORY, 'add_memory_repository', {})
 
 
@@ -99,7 +99,7 @@ class IFileSystemRepositoryDirective(IRepositoryDirective):
 
 
 def filesystem_repository(_context, name=None, make_default=False,
-                          default_aggregate_implementation_class=None,
+                          aggregate_class=None,
                           directory=None, content_type=None):
     """
     Directive for registering a file-system based repository.
@@ -110,7 +110,7 @@ def filesystem_repository(_context, name=None, make_default=False,
     if not content_type is None:
         cnf['content_type'] = content_type
     _repository(_context, name, make_default,
-                default_aggregate_implementation_class,
+                aggregate_class,
                 REPOSITORIES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
 
 
@@ -126,7 +126,7 @@ class IOrmRepositoryDirective(IRepositoryDirective):
 
 
 def orm_repository(_context, name=None, make_default=False,
-                   default_aggregate_implementation_class=None,
+                   aggregate_class=None,
                    db_string=None,
                    metadata_factory=None):
     """
@@ -138,7 +138,7 @@ def orm_repository(_context, name=None, make_default=False,
     if not metadata_factory is None:
         cnf['metadata_factory'] = metadata_factory
     _repository(_context, name, make_default,
-                default_aggregate_implementation_class,
+                aggregate_class,
                 REPOSITORIES.ORM, 'add_orm_repository', cnf)
 
 
@@ -162,27 +162,6 @@ class IResourceDirective(Interface):
                             "default class is created using the values of "
                             "`collection_root_name` and `collection_title` "
                             "as root name and title, respectively.",
-                     required=False,
-                     )
-    aggregate = \
-        GlobalObject(title=u"The aggregate class associated with the "
-                            "entity resource. If this is not specified, "
-                            "a dynamic class is created.",
-                     required=False,
-                     )
-    entity_adapter = \
-        GlobalObject(title=u"Callable adapting an entity to a member "
-                            "resource instance. If this is not specified, "
-                            "it defaults to the create_from_entity method "
-                            "of the member resource class.",
-                     required=False,
-                     )
-    aggregate_adapter = \
-        GlobalObject(title=u"Callable adapting an entity aggregate to a "
-                            "collection resource instance. If this is not "
-                            "specified, it defaults to the "
-                            "create_from_aggregate method of the resource "
-                            "class.",
                      required=False,
                      )
     collection_root_name = \
@@ -217,9 +196,7 @@ class IResourceDirective(Interface):
 
 
 def resource(_context, interface, member, entity,
-             collection=None, aggregate=None,
-             entity_adapter=None, aggregate_adapter=None,
-             collection_root_name=None, collection_title=None,
+             collection=None, collection_root_name=None, collection_title=None,
              repository=None, expose=True):
     """
     Directive for registering a resource. Calls
@@ -233,9 +210,6 @@ def resource(_context, interface, member, entity,
     config = Configurator(reg, package=_context.package)
     config.add_resource(interface, member, entity,
                         collection=collection,
-                        aggregate=aggregate,
-                        entity_adapter=entity_adapter,
-                        aggregate_adapter=aggregate_adapter,
                         collection_root_name=collection_root_name,
                         collection_title=collection_title,
                         repository=repository,

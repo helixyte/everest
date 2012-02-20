@@ -7,9 +7,6 @@ Configurators for the various subsystems of :mod:`everest`.
 Created on Jun 22, 2011.
 """
 
-from everest.entities.aggregates import MemoryAggregateImpl
-from everest.entities.base import Aggregate
-from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.entities.system import Message
 from everest.interfaces import IMessage
@@ -158,19 +155,19 @@ class Configurator(BfgConfigurator):
                      eval_order_specification_visitor,
                      url_converter)
 
-    def add_orm_repository(self, name=None, persister_class=None,
-                           default_aggregate_implementation_class=None,
+    def add_orm_repository(self, name=None, entity_store_class=None,
+                           aggregate_class=None,
                            make_default=False, configuration=None, _info=u''):
         if configuration is None:
             configuration = {}
         setting_info = [('db_string', 'db_string')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORIES.ORM, persister_class,
-                              default_aggregate_implementation_class,
+        self.__add_repository(name, REPOSITORIES.ORM, entity_store_class,
+                              aggregate_class,
                               make_default, configuration)
 
-    def add_filesystem_repository(self, name=None, persister_class=None,
-                                  default_aggregate_implementation_class=None,
+    def add_filesystem_repository(self, name=None, entity_store_class=None,
+                                  aggregate_class=None,
                                   make_default=False, configuration=None,
                                   _info=u''):
         if configuration is None:
@@ -178,23 +175,22 @@ class Configurator(BfgConfigurator):
         setting_info = [('directory', 'fs_directory'),
                         ('content_type', 'fs_contenttype')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM, persister_class,
-                              default_aggregate_implementation_class,
+        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM, entity_store_class,
+                              aggregate_class,
                               make_default, configuration)
 
-    def add_memory_repository(self, name=None, persister_class=None,
-                              default_aggregate_implementation_class=None,
+    def add_memory_repository(self, name=None, entity_store_class=None,
+                              aggregate_class=None,
                               make_default=False, configuration=None,
                               _info=u''):
         if configuration is None:
             configuration = {}
-        self.__add_repository(name, REPOSITORIES.MEMORY, persister_class,
-                              default_aggregate_implementation_class,
+        self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
+                              aggregate_class,
                               make_default, configuration)
 
     def add_resource(self, interface, member, entity,
-                     collection=None, aggregate=None,
-                     entity_adapter=None, aggregate_adapter=None,
+                     collection=None,
                      collection_root_name=None, collection_title=None,
                      expose=True, repository=None, _info=u''):
         if not (isinstance(member, type)
@@ -205,6 +201,7 @@ class Configurator(BfgConfigurator):
                 and IEntity in provided_by(object.__new__(entity))):
             raise ValueError('The entity must be a class that implements '
                              'IEntity.')
+        # Configure or create the collection class.
         if collection is None:
             collection = type('%sCollection' % member.__name__,
                               (Collection,), {})
@@ -213,92 +210,6 @@ class Configurator(BfgConfigurator):
         elif not issubclass(collection, Collection):
             raise ValueError('The collection must be a subclass '
                              'of Collection.')
-        if aggregate is None:
-            aggregate = type('%sAggregate' % entity.__name__,
-                             (Aggregate,), {})
-        elif not (isinstance(aggregate, type)
-                  and IAggregate in provided_by(object.__new__(aggregate))):
-            raise ValueError('The aggregate must be a class that implements '
-                             'IAggregate.')
-        # Override the root name and title the collection, if requested.
-        if not collection_root_name is None:
-            collection.root_name = collection_root_name
-        if not collection_title is None:
-            collection.title = collection_title
-        if expose:
-            srvc = self.query_registered_utilities(IService)
-            if srvc is None:
-                raise ValueError('Need a IService utility to expose a '
-                                 'resource.')
-            if collection.root_name is None:
-                raise ValueError('To expose a collection resource in the '
-                                 'service (=root), a root name is required.')
-        # Register the entity instance -> member instance adapter.
-        if entity_adapter is None:
-            mb_factory = member.create_from_entity
-        else:
-            mb_factory = entity_adapter
-        self._register_adapter(mb_factory, (interface,), IMemberResource,
-                               info=_info)
-        # Register the aggregate instance -> collection instance adapter.
-        if aggregate_adapter is None:
-            agg_factory = collection.create_from_aggregate
-        else:
-            agg_factory = aggregate_adapter
-        self._register_adapter(agg_factory, (interface,), ICollectionResource,
-                          info=_info)
-        # Register adapter object implementing interface -> member class
-        self._register_adapter(lambda obj: member,
-                               required=(interface,),
-                               provided=IMemberResource,
-                               name='member-class',
-                               info=_info)
-        # Register adapter object implementing interface -> collection class
-        self._register_adapter(lambda obj: collection,
-                               required=(interface,),
-                               provided=ICollectionResource,
-                               name='collection-class',
-                               info=_info)
-        # Register adapter object implementing interface -> member class
-        self._register_adapter(lambda obj: entity,
-                               required=(interface,),
-                               provided=IEntity,
-                               name='entity-class',
-                               info=_info)
-        # Register adapter object implementing interface -> collection class
-        self._register_adapter(lambda obj: aggregate,
-                               required=(interface,),
-                               provided=IAggregate,
-                               name='aggregate-class',
-                               info=_info)
-        # Register utility interface -> member class
-        self._register_utility(member, interface,
-                               name='member-class', info=_info)
-        # Register utility interface -> collection class
-        self._register_utility(collection, interface,
-                               name='collection-class', info=_info)
-        # Register utility interface -> entity class
-        self._register_utility(entity, interface,
-                               name='entity-class', info=_info)
-        # Register utility interface -> aggregate class
-        self._register_utility(aggregate, interface,
-                               name='aggregate-class', info=_info)
-        # Attach the marker interface to the registered resource classes, if
-        # necessary, so the instances will provide it.
-        if not interface in provided_by(member):
-            class_implements(member, interface)
-        if not interface in provided_by(collection):
-            class_implements(collection, interface)
-        if not interface in provided_by(entity):
-            class_implements(entity, interface)
-        if not interface in provided_by(aggregate):
-            class_implements(aggregate, interface)
-        # This enables us to pass a class instead of
-        # an interface or instance to the various adapters.
-        also_provides(member, interface)
-        also_provides(collection, interface)
-        also_provides(entity, interface)
-        also_provides(aggregate, interface)
         # Configure the repository adapter.
         repo_mgr = self.get_registered_utility(IRepositoryManager)
         if repository is None:
@@ -320,7 +231,66 @@ class Configurator(BfgConfigurator):
                 else:
                     raise NotImplementedError()
                 repo = repo_mgr.get(repository)
+        # Override the root name and title the collection, if requested.
+        if not collection_root_name is None:
+            collection.root_name = collection_root_name
+        if not collection_title is None:
+            collection.title = collection_title
+        if expose:
+            srvc = self.query_registered_utilities(IService)
+            if srvc is None:
+                raise ValueError('Need a IService utility to expose a '
+                                 'resource.')
+            if collection.root_name is None:
+                raise ValueError('To expose a collection resource in the '
+                                 'service (=root), a root name is required.')
+        # Register the entity instance -> member instance adapter.
+        mb_factory = member.create_from_entity
+        self._register_adapter(mb_factory, (interface,), IMemberResource,
+                               info=_info)
+        # Register adapter object implementing interface -> member class
+        self._register_adapter(lambda obj: member,
+                               required=(interface,),
+                               provided=IMemberResource,
+                               name='member-class',
+                               info=_info)
+        # Register adapter object implementing interface -> collection class
+        self._register_adapter(lambda obj: collection,
+                               required=(interface,),
+                               provided=ICollectionResource,
+                               name='collection-class',
+                               info=_info)
+        # Register adapter object implementing interface -> member class
+        self._register_adapter(lambda obj: entity,
+                               required=(interface,),
+                               provided=IEntity,
+                               name='entity-class',
+                               info=_info)
+        # Register utility interface -> member class
+        self._register_utility(member, interface,
+                               name='member-class', info=_info)
+        # Register utility interface -> collection class
+        self._register_utility(collection, interface,
+                               name='collection-class', info=_info)
+        # Register utility interface -> entity class
+        self._register_utility(entity, interface,
+                               name='entity-class', info=_info)
+        # Attach the marker interface to the registered resource classes, if
+        # necessary, so the instances will provide it.
+        if not interface in provided_by(member):
+            class_implements(member, interface)
+        if not interface in provided_by(collection):
+            class_implements(collection, interface)
+        if not interface in provided_by(entity):
+            class_implements(entity, interface)
+        # This enables us to pass a class instead of
+        # an interface or instance to the various adapters.
+        also_provides(member, interface)
+        also_provides(collection, interface)
+        also_provides(entity, interface)
+        # Register collection with the repository.
         repo.manage(collection)
+        # Register adapter implementing interface -> repository.
         self._register_adapter(lambda obj: repo,
                                required=(interface,),
                                provided=IRepository,
@@ -474,17 +444,15 @@ class Configurator(BfgConfigurator):
                                IResourceUrlConverter)
         # Register system resources provided as a service to the application.
         self.add_resource(IMessage, MessageMember, Message,
-                          aggregate=MemoryAggregateImpl,
                           repository=REPOSITORIES.MEMORY,
                           collection_root_name='_messages')
 
-    def __add_repository(self, name, repo_type, prst_cls, agg_impl_cls,
+    def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
                          make_default, cnf):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
-        repo = repo_mgr.new(
-                        repo_type, name=name,
-                        persister_class=prst_cls,
-                        default_aggregate_implementation_class=agg_impl_cls)
+        repo = repo_mgr.new(repo_type, name=name,
+                            entity_store_class=ent_store_cls,
+                            aggregate_class=agg_cls)
         repo.configure(**cnf) # ** pylint: disable=W0142
         repo_mgr.set(name, repo, make_default=make_default)
 

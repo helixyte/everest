@@ -9,24 +9,17 @@
 
     <!-- Representers. -->
 
-    <utility
-        component="everest.representers.csv.CsvResourceRepresenter"
-        provides="everest.representers.interfaces.IRepresenter"
-        name="application/csv" />
-        
     <!-- Resource declarations. -->
 
     <resource
         interface='.interfaces.IFoo'
         collection=".resources.FooCollection"
-        aggregate=".entities.FooEntityAggregate"
         member=".resources.FooMember"
         entity=".entities.FooEntity"/>
 
     <resource
         interface='.interfaces.IBar'
         collection=".resources.BarCollection"
-        aggregate=".entities.BarEntityAggregate"
         member=".resources.BarMember"
         entity=".entities.BarEntity"/>
 

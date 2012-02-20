@@ -123,13 +123,6 @@ class Repository(object):
         raise NotImplementedError('Abstract method.')
 
 
-def get_repository(name):
-    """
-    Get the resource repository registered under the given name.
-    """
-    return get_utility(IRepository, name)
-
-
 def as_repository(rc):
     """
     Adapts the given registered resource to its configured repository.

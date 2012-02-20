@@ -90,7 +90,7 @@ def dump_resource(resource, stream, content_type=None):
 
 class ResourceGraph(digraph):
     """
-    Specialized digraph for resources. 
+    Specialized digraph for resource instances. 
     
     Nodes are resources, edges represent relationships between resources. 
     Since resources are wrapper objects generated on the fly, the presence 
@@ -116,9 +116,10 @@ def build_resource_graph(resource):
     """
     Traverses the graph of resources that is reachable from the given resource,
     ignoring cyclic references.
-    
+
+    :resource: a :class:`thelma.resources.MemberResource` instance.
     :returns: a :class:`ResourceGraph` instance representing the graph of 
-      resources reachable from the given resource
+      resources reachable from the given resource.
     """
     def visit(rc, grph):
         # We ignore cyclic references.
@@ -141,6 +142,26 @@ def build_resource_graph(resource):
     graph = ResourceGraph()
     graph.add_node(resource)
     visit(resource, graph)
+    return graph
+
+
+def build_resource_dependency_graph(resource_classes):
+    def visit(mb_cls, grph):
+        for attr_name in mb_cls.get_attribute_names():
+            if mb_cls.is_terminal(attr_name):
+                continue
+            child_descr = getattr(mb_cls, attr_name)
+            child_mb_cls = get_member_class(child_descr.entity_type)
+            if not grph.has_node(child_mb_cls):
+                grph.add_node(child_mb_cls)
+                grph.add_edge((mb_cls, child_mb_cls))
+                visit(child_mb_cls, grph)
+    graph = digraph()
+    for resource_class in resource_classes:
+        mb_cls = get_member_class(resource_class)
+        if not graph.has_node(mb_cls):
+            graph.add_node(mb_cls)
+            visit(mb_cls, graph)
     return graph
 
 

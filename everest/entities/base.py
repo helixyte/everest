@@ -54,8 +54,8 @@ class Entity(object):
 
 class Aggregate(object):
     """
-    The aggregate class. 
-    
+    Abstract base class for all aggregates.
+
     An aggregate is an accessor for a set of entities of the same type which 
     are held in some repository. 
     
@@ -65,42 +65,55 @@ class Aggregate(object):
 
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
-
-    The actual work is delegated to an instance of
-    :class:`everest.entities.aggregates.AggregateImpl` to allow for runtime
-    selection of implementations.
     """
     implements(IAggregate)
 
-    def __init__(self, implementation):
-        self.__implementation = implementation
+    def __init__(self, entity_class, session):
+        """
+        Constructor:
 
-    def set_implementation(self, implementation):
+        :param entity_class: the entity class (type) of the entities in this
+            aggregate.
+        :type entity_class: a class implementing
+            :class:`everest.entities.interfaces.IEntity`
+        :param session: Session object.
         """
-        Switches the implementation of this aggregate to the given object.
-        
-        :param implementation: object implementing
-          :class:`everest.entities.interfaces.IAggregateImplementation`.
-        """
-        self.__implementation = implementation
+        if self.__class__ is Aggregate:
+            raise NotImplementedError('Abstract class.')
+        #: Entity class (type) of the entities in this aggregate.
+        self.entity_class = entity_class
+        #: The session.
+        self._session = session
+        #: Relationship of entities in this aggregate to a parent entity.
+        self._relationship = None
+        #: Specification for filtering
+        #: (:class:`everest.querying.specifications.FilterSpecification`).
+        #: Attribute names in this specification are relative to the entity. 
+        self._filter_spec = None
+        #: Specification for ordering
+        #: (:class:`everest.querying.specifications.OrderSpecification`).
+        #: Attribute names in this specification are relative to the entity. 
+        self._order_spec = None
+        #: Key for slicing. (:type:`slice`).
+        self._slice_key = None
 
     @classmethod
-    def create(cls, implementation):
+    def create(cls, entity_class, session):
         """
-        Factory method for creating the aggregate.
+        Factory class method to create a new aggregate.
         """
-        return cls(implementation)
+        return cls(entity_class, session)
 
     def clone(self):
         """
-        Creates a clone of this aggregate.
-
-        :return: A copy of the aggregate object.
+        Returns a clone of this aggregate.
         """
-        impl_clone = self.__implementation.clone()
-        agg = object.__new__(self.__class__)
-        agg.__implementation = impl_clone
-        return agg
+        clone = self.__class__.create(self.entity_class, self._session)
+        clone._relationship = self._relationship
+        clone._filter_spec = self._filter_spec
+        clone._order_spec = self._order_spec
+        clone._slice_key = self._slice_key
+        return clone
 
     def count(self):
         """
@@ -110,7 +123,7 @@ class Aggregate(object):
 
         :returns: number of aggregate members (:class:`int`)
         """
-        return self.__implementation.count()
+        raise NotImplementedError('Abstract method')
 
     def get_by_id(self, id_key):
         """
@@ -127,7 +140,7 @@ class Aggregate(object):
 
         Returns a single entity from the underlying aggregate by ID.
         """
-        return self.__implementation.get_by_id(id_key)
+        raise NotImplementedError('Abstract method')
 
     def get_by_slug(self, slug):
         """
@@ -139,7 +152,7 @@ class Aggregate(object):
           one entity is found for the given ID value. 
         :returns: entity or `None`
         """
-        return self.__implementation.get_by_slug(slug)
+        raise NotImplementedError('Abstract method')
 
     def iterator(self):
         """
@@ -150,7 +163,7 @@ class Aggregate(object):
 
         :returns: an iterator for the aggregate entities
         """
-        return self.__implementation.iterator()
+        raise NotImplementedError('Abstract method')
 
     def add(self, entity):
         """
@@ -163,7 +176,7 @@ class Aggregate(object):
           :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: if an entity with the same ID exists
         """
-        self.__implementation.add(entity)
+        raise NotImplementedError('Abstract method')
 
     def remove(self, entity):
         """
@@ -174,68 +187,60 @@ class Aggregate(object):
           :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: entity was not found
         """
-        self.__implementation.remove(entity)
-
-    def _get_filter(self):
-        """
-        Returns the filter specification for this aggregate.
-        """
-        return self.__implementation.filter
-
-    def _set_filter(self, filter_spec):
-        """
-        Sets the filter specification for this aggregate.
-        
-        :param filter_spec: filter specification
-        :type filter_spec: instance of
-            :class:`everest.querying.specifications.FilterSpecification`
-        """
-        self.__implementation.filter = filter_spec
-
-    filter = property(_get_filter, _set_filter,
-                      doc="Filter specification for the aggregate.")
-
-    def _get_order(self):
-        """
-        Returns the order specification for this aggregate.
-        """
-        return self.__implementation.order
-
-    def _set_order(self, order_spec):
-        """
-        Sets the order specification for this aggregate.
-
-        :param order_spec: order specification
-        :type order_spec: instance of 
-            :class:`everest.querying.specifications.OrderSpecification`
-        """
-        self.__implementation.order = order_spec
-
-    order = property(_get_order, _set_order,
-                      doc="Order specification for the aggregate.")
-
-    def _get_slice(self):
-        """
-        Returns the slice key for this aggregate.
-        """
-        return self.__implementation.slice
-
-    def _set_slice(self, slice_key):
-        """
-        Sets the slice key for this aggregate.
-
-        If specified, filter and order specs are applied before the slicing
-        operation is performed.
-
-        :param slice slice_key: slice to apply.
-        :type slice: `slice`
-        """
-        self.__implementation.slice = slice_key
-
-    slice = property(_get_slice, _set_slice,
-                      doc="Slice key for the aggregate.")
+        raise NotImplementedError('Abstract method')
 
     def set_relationship(self, relationship):
         """
+        Sets a relationship for this aggregate.
+        
+        :param relationship: 
+            instance of :class:`thelma.relationsip.Relationship`.
         """
-        self.__implementation.set_relationship(relationship)
+        self._relationship = relationship
+
+    def _get_filter(self):
+        #: Returns the filter specification for this aggregate.
+        return self._filter_spec
+
+    def _set_filter(self, filter_spec):
+        #: Sets the filter specification for this aggregate.
+        self._filter_spec = filter_spec
+        self._apply_filter()
+
+    filter = property(_get_filter, _set_filter)
+
+    def _get_order(self):
+        #: Returns the order specification for this aggregate.
+        return self._order_spec
+
+    def _set_order(self, order_spec):
+        #: Sets the order specification for this aggregate.
+        self._order_spec = order_spec
+        self._apply_order()
+
+    order = property(_get_order, _set_order)
+
+    def _get_slice(self):
+        #: Returns the slice key for this aggregate.
+        return self._slice_key
+
+    def _set_slice(self, slice_key):
+        #: Sets the slice key for this aggregate. Filter and order specs
+        #: are applied before the slicing operation is performed.
+        self._slice_key = slice_key
+        self._apply_slice()
+
+    slice = property(_get_slice, _set_slice)
+
+    def _apply_filter(self):
+        #: Called when the filter specification has changed.
+        raise NotImplementedError('Abstract method')
+
+    def _apply_order(self):
+        #: Called when the order specification has changed.
+        raise NotImplementedError('Abstract method')
+
+    def _apply_slice(self):
+        #: Called when the slice key has changed.
+        raise NotImplementedError('Abstract method')
+

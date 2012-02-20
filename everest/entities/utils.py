@@ -7,7 +7,6 @@ Utilities for entity classes.
 Created on Nov 3, 2011.
 """
 
-from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.interfaces import IRepository
 from everest.repository import REPOSITORIES
@@ -64,23 +63,6 @@ def get_entity_class(rc):
     else:
         ent_cls = get_adapter(rc, IEntity, name='entity-class')
     return ent_cls
-
-
-def get_aggregate_class(rc):
-    """
-    Returns the aggregate class registered for the given registered resource.
-
-    :param member: registered resource
-    :type collection: class implementing or instance providing a registered
-        resource interface.
-    :return: aggregate class
-        (class implementing `everest.entities.interfaces.IAggregate`)
-    """
-    if IInterface in provided_by(rc):
-        agg_cls = get_utility(rc, name='aggregate-class')
-    else:
-        agg_cls = get_adapter(rc, IAggregate, name='aggregate-class')
-    return agg_cls
 
 
 def slug_from_string(string):

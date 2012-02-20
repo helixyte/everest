@@ -257,13 +257,11 @@ class ResourceTestCase(BaseTestCase):
         self.config.hook_zca()
         self.config.begin(request=self._request)
         self.config.load_zcml('configure.zcml')
-        # Set up repositories.
-        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize()
-        # Start the service and set as request root.
+        # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
-        srvc.start()
         self._request.root = srvc
+        # Start the service.
+        srvc.start()
 
     def tear_down(self):
         transaction.abort()
@@ -315,6 +313,7 @@ class FunctionalTestCase(BaseTestCase):
                            extra_environ=self._create_extra_environment())
 
     def tear_down(self):
+        transaction.abort()
         self.config.unhook_zca()
         self.config.end()
 

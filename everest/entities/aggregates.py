@@ -7,8 +7,7 @@ Aggregate implementations.
 Created on Sep 25, 2011.
 """
 
-from everest.entities.interfaces import IAggregate
-from everest.entities.interfaces import IAggregateImplementation
+from everest.entities.base import Aggregate
 from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.interfaces import IFilterSpecificationVisitor
@@ -16,129 +15,14 @@ from everest.querying.interfaces import IOrderSpecificationVisitor
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AggregateImpl',
-           'MemoryAggregateImpl',
-           'OrmAggregateImpl',
+__all__ = ['MemoryAggregate',
+           'OrmAggregate',
            ]
 
 
-class AggregateImpl(object):
-    """
-    Abstract base class for all aggregate implementations.
-    """
-    implements(IAggregate, IAggregateImplementation)
-
-    def __init__(self, entity_class, session):
-        """
-        Constructor:
-
-        :param entity_class: the entity class (type) of the entities in this
-            aggregate.
-        :type entity_class: a class implementing
-            :class:`everest.entities.interfaces.IEntity`
-        """
-        if self.__class__ is AggregateImpl:
-            raise NotImplementedError('Abstract class.')
-        #: Entity class (type) of the entities in this aggregate.
-        self.entity_class = entity_class
-        #: The session.
-        self._session = session
-        #: Relationship of entities in this aggregate to a parent entity.
-        self._relationship = None
-        #: Specification for filtering
-        #: (:class:`everest.querying.specifications.FilterSpecification`).
-        #: Attribute names in this specification are relative to the entity. 
-        self._filter_spec = None
-        #: Specification for ordering
-        #: (:class:`everest.querying.specifications.OrderSpecification`).
-        #: Attribute names in this specification are relative to the entity. 
-        self._order_spec = None
-        #: Key for slicing. (:type:`slice`).
-        self._slice_key = None
-
-    @classmethod
-    def create(cls, entity_class, session):
-        return cls(entity_class, session)
-
-    def clone(self):
-        clone = self.__class__.create(self.entity_class, self._session)
-        clone._relationship = self._relationship
-        clone._filter_spec = self._filter_spec
-        clone._order_spec = self._order_spec
-        clone._slice_key = self._slice_key
-        return clone
-
-    def count(self):
-        raise NotImplementedError('Abstract method')
-
-    def get_by_id(self, id_key):
-        raise NotImplementedError('Abstract method')
-
-    def get_by_slug(self, slug):
-        raise NotImplementedError('Abstract method')
-
-    def iterator(self):
-        raise NotImplementedError('Abstract method')
-
-    def add(self, entity):
-        raise NotImplementedError('Abstract method')
-
-    def remove(self, entity):
-        raise NotImplementedError('Abstract method')
-
-    def set_relationship(self, relationship):
-        self._relationship = relationship
-
-    def _get_filter(self):
-        return self._filter_spec
-
-    def _set_filter(self, filter_spec):
-        self._filter_spec = filter_spec
-        self._apply_filter()
-
-    filter = property(_get_filter, _set_filter)
-
-    def _get_order(self):
-        return self._order_spec
-
-    def _set_order(self, order_spec):
-        self._order_spec = order_spec
-        self._apply_order()
-
-    order = property(_get_order, _set_order)
-
-    def _get_slice(self):
-        return self._slice_key
-
-    def _set_slice(self, slice_key):
-        self._slice_key = slice_key
-        self._apply_slice()
-
-    slice = property(_get_slice, _set_slice)
-
-    def _apply_filter(self):
-        """
-        Called when the filter specification has changed.
-        """
-        raise NotImplementedError('Abstract method')
-
-    def _apply_order(self):
-        """
-        Called when the order specification has changed.
-        """
-        raise NotImplementedError('Abstract method')
-
-    def _apply_slice(self):
-        """
-        Called when the slice key has changed.
-        """
-        raise NotImplementedError('Abstract method')
-
-
-class MemoryAggregateImpl(AggregateImpl):
+class MemoryAggregate(Aggregate):
     """
     In-memory implementation for aggregates.
 
@@ -149,7 +33,7 @@ class MemoryAggregateImpl(AggregateImpl):
     """
 
     def clone(self):
-        clone = super(MemoryAggregateImpl, self).clone()
+        clone = super(MemoryAggregate, self).clone()
         if self._relationship is None:
             clone._session = self._session
         return clone
@@ -253,12 +137,12 @@ class MemoryAggregateImpl(AggregateImpl):
         return ent
 
 
-class OrmAggregateImpl(AggregateImpl):
+class OrmAggregate(Aggregate):
     """
     ORM implementation for aggregates.
     """
     def __init__(self, entity_class, session, search_mode=False):
-        AggregateImpl.__init__(self, entity_class, session)
+        Aggregate.__init__(self, entity_class, session)
         self._search_mode = search_mode
 
     def count(self):
