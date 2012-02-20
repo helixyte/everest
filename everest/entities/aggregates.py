@@ -32,12 +32,6 @@ class MemoryAggregate(Aggregate):
         is no mechanism to autogenerate IDs or slugs.
     """
 
-    def clone(self):
-        clone = super(MemoryAggregate, self).clone()
-        if self._relationship is None:
-            clone._session = self._session
-        return clone
-
     def count(self):
         if self._relationship is None:
             count = len(self._session.get_all(self.entity_class))

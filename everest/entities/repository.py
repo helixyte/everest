@@ -36,7 +36,7 @@ class EntityRepository(Repository):
         session_factory = self.__entity_store.session_factory
         if session_factory is None:
             raise RuntimeError('Repository has not been initialized yet.')
-        agg = self.aggregate_class.create(entity_cls, session_factory())
+        agg = self.aggregate_class.create(entity_cls, session_factory)
         return agg
 
     def configure(self, **config):

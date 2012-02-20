@@ -181,6 +181,7 @@ class CachingEntityStore(EntityStore):
         self._id_generators = defaultdict(id_generator)
         self.__entities = defaultdict(EntityCache)
         self.__cache_lock = RLock()
+        self.__is_loaded = False
 
     def commit(self, session):
         with self.__cache_lock:
@@ -197,6 +198,10 @@ class CachingEntityStore(EntityStore):
                 for drt_entity in dirty_entities:
                     cache.replace(drt_entity)
 
+    def load(self):
+        self._load()
+        self.__is_loaded = True
+
     def rollback(self, session):
         # FIXME: Is there anything we should do here? pylint: disable=W0511
         pass
@@ -207,21 +212,32 @@ class CachingEntityStore(EntityStore):
     def _make_session_factory(self):
         return InMemorySessionFactory(self)
 
+    def _load(self):
+        pass
+
     def copy(self):
         """
         Returns a deep copy of the entire entity cache.
         """
+        if not self.__is_loaded:
+            self.load()
         return deepcopy(self.__entities)
 
     def get_by_id(self, entity_cls, entity_id):
+        if not self.__is_loaded:
+            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_by_id(entity_id)
 
     def get_by_slug(self, entity_cls, entity_slug):
+        if not self.__is_loaded:
+            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_by_slug(entity_slug)
 
     def get_all(self, entity_cls):
+        if not self.__is_loaded:
+            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_all()
 
@@ -243,7 +259,6 @@ class FileSystemEntityStore(CachingEntityStore):
     def __init__(self, name):
         super(FileSystemEntityStore, self).__init__(name)
         self.configure(directory=os.getcwd(), content_type=CsvMime)
-        self.__is_loaded = False
 
     def commit(self, session):
         """
@@ -267,31 +282,8 @@ class FileSystemEntityStore(CachingEntityStore):
         repo = self.__get_repo()
         grph = build_resource_dependency_graph(repo.managed_collections)
         for mb_cls in topological_sorting(grph):
-            self.__load_collection(mb_cls)
-        self.__is_loaded = True
-
-    def copy(self):
-        """
-        Returns a deep copy of the entire entity cache.
-        """
-        if not self.__is_loaded:
-            self._load()
-        return deepcopy(self.__entities)
-
-    def get_by_id(self, entity_cls, entity_id):
-        if not self.__is_loaded:
-            self._load()
-        return CachingEntityStore.get_by_id(self, entity_cls, entity_id)
-
-    def get_by_slug(self, entity_cls, entity_slug):
-        if not self.__is_loaded:
-            self._load()
-        return CachingEntityStore.get_by_slug(self, entity_cls, entity_slug)
-
-    def get_all(self, entity_cls):
-        if not self.__is_loaded:
-            self._load()
-        return CachingEntityStore.get_all(self, entity_cls)
+            coll_cls = get_collection_class(mb_cls)
+            self.__load_collection(coll_cls)
 
     def __dump_collection(self, collection):
         fn = self.__get_filename(collection.root_name, False)
@@ -300,13 +292,13 @@ class FileSystemEntityStore(CachingEntityStore):
             dump_resource(collection, stream,
                           content_type=self._config['content_type'])
 
-    def __load_collection(self, mb_cls):
-        coll_cls = get_collection_class(mb_cls)
+    def __load_collection(self, coll_cls):
         fn = self.__get_filename(coll_cls.root_name, True)
         if not fn is None:
+            url = 'file://%s' % fn
             repo = self.__get_repo()
-            repo.load_representation(coll_cls, 'file://%s' % fn,
-                                     content_type=self._config['content_type'])
+            repo.load_representation(coll_cls, url,
+                                     self._config['content_type'])
 
     def __get_filename(self, collection_name, check_existing):
         directory = self._config['directory']
@@ -552,8 +544,8 @@ class InMemorySession(object):
                 dm = DataManager(self)
                 trx.join(dm)
                 self.__transaction = trx
-        self.__entities = self.__entity_store.copy()
         self.__needs_sync = False
+        self.__entities = self.__entity_store.copy()
 
 
 class DataManager(object):

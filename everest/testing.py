@@ -216,7 +216,8 @@ class EntityTestCase(BaseTestCase):
         self.config.load_zcml('configure.zcml')
         # Set up repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize()
+        for repo in repo_mgr:
+            repo.initialize()
 
     def tear_down(self):
         transaction.abort()
@@ -306,9 +307,6 @@ class FunctionalTestCase(BaseTestCase):
         self.config.begin()
         wsgiapp = self._load_wsgiapp()
         self._custom_configure()
-        # Set up repositories.
-        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize()
         self.app = TestApp(wsgiapp,
                            extra_environ=self._create_extra_environment())
 

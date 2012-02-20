@@ -68,7 +68,7 @@ class Aggregate(object):
     """
     implements(IAggregate)
 
-    def __init__(self, entity_class, session):
+    def __init__(self, entity_class, session_factory):
         """
         Constructor:
 
@@ -83,7 +83,7 @@ class Aggregate(object):
         #: Entity class (type) of the entities in this aggregate.
         self.entity_class = entity_class
         #: The session.
-        self._session = session
+        self._session_factory = session_factory
         #: Relationship of entities in this aggregate to a parent entity.
         self._relationship = None
         #: Specification for filtering
@@ -108,7 +108,7 @@ class Aggregate(object):
         """
         Returns a clone of this aggregate.
         """
-        clone = self.__class__.create(self.entity_class, self._session)
+        clone = self.__class__.create(self.entity_class, self._session_factory)
         clone._relationship = self._relationship
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
@@ -197,6 +197,10 @@ class Aggregate(object):
             instance of :class:`thelma.relationsip.Relationship`.
         """
         self._relationship = relationship
+
+    @property
+    def _session(self):
+        return self._session_factory()
 
     def _get_filter(self):
         #: Returns the filter specification for this aggregate.

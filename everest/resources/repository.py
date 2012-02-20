@@ -96,10 +96,6 @@ class RepositoryManager(object):
     def get_default(self):
         return self.__default_repo
 
-    def initialize(self):
-        for repo in self.__repositories.itervalues():
-            repo.initialize()
-
     def new(self, repo_type,
             name=None, entity_store_class=None,
             aggregate_class=None):
@@ -128,6 +124,10 @@ class RepositoryManager(object):
                                     aggregate_class=
                                                     aggregate_class)
         return ResourceRepository(ent_repo)
+
+    def __iter__(self):
+        for repo in self.__repositories.itervalues():
+            yield repo
 
     def __check_name(self, name):
         if name in self.__repositories:

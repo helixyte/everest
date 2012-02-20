@@ -44,7 +44,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         self._config = Configurator(registry=reg, package=package)
         self._config.setup_registry()
         repo_mgr = self._config.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize()
+        for repo in repo_mgr:
+            repo.initialize()
 
     def tear_down(self):
         testing_tear_down()
