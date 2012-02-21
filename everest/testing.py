@@ -263,6 +263,9 @@ class ResourceTestCase(BaseTestCase):
         self._request.root = srvc
         # Start the service.
         srvc.start()
+        # 
+        repo_mgr = self.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize_all()
 
     def tear_down(self):
         transaction.abort()

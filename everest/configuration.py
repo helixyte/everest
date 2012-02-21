@@ -363,9 +363,10 @@ class Configurator(BfgConfigurator):
         # Set up the repository manager.
         repo_mgr = RepositoryManager()
         self._register_utility(repo_mgr, IRepositoryManager)
-        # Set up the builtin MEMORY repository. This is used as the default
+        # Set up the root MEMORY repository and set it as the default
         # for all resources that do not specify a repository.
-        mem_repo = repo_mgr.new(REPOSITORIES.MEMORY)
+        mem_repo = repo_mgr.new(REPOSITORIES.MEMORY,
+                                name=REPOSITORIES.MEMORY)
         repo_mgr.set(REPOSITORIES.MEMORY, mem_repo, make_default=True)
         # Set up filter and order specification factories.
         if filter_specification_factory is None:

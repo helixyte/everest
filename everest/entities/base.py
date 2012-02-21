@@ -98,11 +98,11 @@ class Aggregate(object):
         self._slice_key = None
 
     @classmethod
-    def create(cls, entity_class, session):
+    def create(cls, entity_class, session_factory):
         """
         Factory class method to create a new aggregate.
         """
-        return cls(entity_class, session)
+        return cls(entity_class, session_factory)
 
     def clone(self):
         """

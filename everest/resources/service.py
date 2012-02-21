@@ -81,8 +81,6 @@ class Service(Resource):
 
     def add(self, irc):
         repo = as_repository(irc)
-        if not repo.is_initialized:
-            repo.initialize()
         coll = repo.get(irc)
         if coll.__name__ in self.__collections:
             raise ValueError('Root collection for collection name %s '

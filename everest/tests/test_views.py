@@ -17,6 +17,7 @@ from everest.tests.testapp.views import UserMessagePostCollectionView
 from everest.tests.testapp.views import UserMessagePutMemberView
 from pkg_resources import resource_filename # pylint: disable=E0611
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+import transaction
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ViewsTestCase',
@@ -39,6 +40,8 @@ class ViewsTestCase(FunctionalTestCase):
 
 
 class WarningViewsTestCase(ViewsTestCase):
+    ini_file_path = resource_filename('everest.tests.testapp',
+                                      'testapp_views.ini')
     def set_up(self):
         ViewsTestCase.set_up(self)
         reg = self.config.registry
@@ -92,9 +95,13 @@ class WarningViewsTestCase(ViewsTestCase):
 
     def test_put_member_warning_exception(self):
         root = get_utility(IService)
+        # Need to start the service manually - no request root has been set 
+        # yet.
         root.start()
         coll = root['foos']
-        coll.add(FooMember(FooEntity(id=0)))
+        mb = FooMember(FooEntity(id=0))
+        coll.add(mb)
+        transaction.commit()
         path = '/'.join((self.path, '0'))
         # First PUT - get back a 307.
         res1 = self.app.put(path, params='foo name',

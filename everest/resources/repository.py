@@ -52,9 +52,6 @@ class ResourceRepository(Repository):
         for loaded_mb in loaded_coll:
             coll.add(loaded_mb)
 
-    def get_entity_repository(self):
-        return self.__entity_repository
-
     def manage(self, collection_class):
         self.__managed_collections.add(collection_class)
 
@@ -99,9 +96,13 @@ class RepositoryManager(object):
     def new(self, repo_type,
             name=None, entity_store_class=None,
             aggregate_class=None):
-        if name is None:
-            # This is a builtin repository.
-            name = repo_type
+        if name == repo_type:
+            # This is a root repository.
+            is_root_repository = True
+        else:
+            is_root_repository = False
+            if name is None:
+                name = 'TMP'
         if repo_type == REPOSITORIES.MEMORY:
             if entity_store_class is None:
                 entity_store_class = CachingEntityStore
@@ -119,17 +120,16 @@ class RepositoryManager(object):
                 aggregate_class = MemoryAggregate
         else:
             raise ValueError('Unknown repository type.')
-        ent_store_cls = entity_store_class(name)
-        ent_repo = EntityRepository(ent_store_cls,
-                                    aggregate_class=
-                                                    aggregate_class)
+        ent_store = entity_store_class(name,
+                                       join_transaction=is_root_repository)
+        ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
         return ResourceRepository(ent_repo)
 
-    def __iter__(self):
+    def initialize_all(self):
+        """
+        Convenience method to initialize all repositories that have not been
+        initialized yet.
+        """
         for repo in self.__repositories.itervalues():
-            yield repo
-
-    def __check_name(self, name):
-        if name in self.__repositories:
-            raise ValueError('Duplicate repository name.')
-
+            if not repo.is_initialized:
+                repo.initialize()

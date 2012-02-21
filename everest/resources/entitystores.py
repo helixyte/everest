@@ -9,7 +9,7 @@ Created on Jan 31, 2012.
 
 from collections import defaultdict
 from copy import deepcopy
-from everest.db import Session as OrmSessionFactory
+from everest.db import Session as SaSessionFactory
 from everest.db import get_engine
 from everest.db import get_metadata
 from everest.db import is_engine_initialized
@@ -57,8 +57,11 @@ class EntityStore(object):
 
     _configurables = None
 
-    def __init__(self, name):
+    def __init__(self, name, join_transaction=False):
         self.__name = name
+        #: Flag indicating that the sessions using this entity store should
+        #: join the zope transaction.
+        self._join_transaction = join_transaction
         self._config = {}
         self.__session_factory = None
         self.__is_initialized = False
@@ -70,9 +73,6 @@ class EntityStore(object):
             self._config[key] = val
 
     def initialize(self):
-        # Create a session factory. The call to _initialize may depend on the
-        # session factory being instantiated.
-        self.__session_factory = self._make_session_factory()
         # Perform initialization specific to the derived class.
         self._initialize()
         #
@@ -80,6 +80,10 @@ class EntityStore(object):
 
     @property
     def session_factory(self):
+        if self.__session_factory is None:
+            # Create a session factory. The call to _initialize may depend on 
+            # the session factory being instantiated.
+            self.__session_factory = self._make_session_factory()
         return self.__session_factory
 
     @property
@@ -103,14 +107,30 @@ class EntityStore(object):
         raise NotImplementedError('Abstract method.')
 
 
+class SessionFactory(object):
+    def __init__(self, join_transaction):
+        self._join_transaction = join_transaction
+
+    def __call__(self):
+        raise NotImplementedError('Abstract mehtod.')
+
+
+class OrmSessionFactory(SessionFactory):
+    def __call__(self):
+        if self._join_transaction:
+            # Enable the transaction extension.
+            SaSessionFactory.configure(extension=ZopeTransactionExtension())
+        return SaSessionFactory
+
+
 class OrmEntityStore(EntityStore):
     """
     EntityStore connected to an ORM backend.
     """
     _configurables = ['db_string', 'metadata_factory']
 
-    def __init__(self, name):
-        EntityStore.__init__(self, name)
+    def __init__(self, name, join_transaction=True):
+        EntityStore.__init__(self, name, join_transaction=join_transaction)
         # Default to an in-memory sqlite DB.
         self.configure(db_string='sqlite://', metadata_factory=None)
 
@@ -121,8 +141,8 @@ class OrmEntityStore(EntityStore):
         if not is_engine_initialized(self.name):
             db_string = self._config['db_string']
             engine = create_engine(db_string)
-            # Bind the session to the engine.
-            OrmSessionFactory.configure(bind=engine)
+            # Bind the session factory to the engine.
+            SaSessionFactory.configure(bind=engine)
             set_engine(self.name, engine)
         else:
             engine = get_engine(self.name)
@@ -135,9 +155,7 @@ class OrmEntityStore(EntityStore):
             metadata.bind = engine
 
     def _make_session_factory(self):
-        # Enable the transaction extension.
-        OrmSessionFactory.configure(extension=ZopeTransactionExtension())
-        return OrmSessionFactory
+        return OrmSessionFactory(self._join_transaction)
 
     @property
     def engine(self):
@@ -148,13 +166,14 @@ class OrmEntityStore(EntityStore):
         return get_metadata(self.name)
 
 
-class InMemorySessionFactory(object):
+class InMemorySessionFactory(SessionFactory):
     """
     Factory for :class:`InMemorySession` instances.
     
     The factory creates exactly one session per thread.
     """
     def __init__(self, entity_store, autoflush=False, join_transaction=False):
+        SessionFactory.__init__(self, join_transaction)
         self.__entity_store = entity_store
         self.__autoflush = autoflush
         self.__join_transaction = join_transaction
@@ -165,7 +184,7 @@ class InMemorySessionFactory(object):
         if session is None:
             session = InMemorySession(self.__entity_store,
                                       autoflush=self.__autoflush,
-                                      join_transaction=self.__join_transaction)
+                                      join_transaction=self._join_transaction)
             self.__session_registry.session = session
         return session
 
@@ -176,12 +195,11 @@ class CachingEntityStore(EntityStore):
     """
     _configurables = []
 
-    def __init__(self, name):
-        EntityStore.__init__(self, name)
+    def __init__(self, name, join_transaction=False):
+        EntityStore.__init__(self, name, join_transaction=join_transaction)
         self._id_generators = defaultdict(id_generator)
         self.__entities = defaultdict(EntityCache)
         self.__cache_lock = RLock()
-        self.__is_loaded = False
 
     def commit(self, session):
         with self.__cache_lock:
@@ -198,10 +216,6 @@ class CachingEntityStore(EntityStore):
                 for drt_entity in dirty_entities:
                     cache.replace(drt_entity)
 
-    def load(self):
-        self._load()
-        self.__is_loaded = True
-
     def rollback(self, session):
         # FIXME: Is there anything we should do here? pylint: disable=W0511
         pass
@@ -210,7 +224,8 @@ class CachingEntityStore(EntityStore):
         pass
 
     def _make_session_factory(self):
-        return InMemorySessionFactory(self)
+        return InMemorySessionFactory(self,
+                                      join_transaction=self._join_transaction)
 
     def _load(self):
         pass
@@ -219,25 +234,17 @@ class CachingEntityStore(EntityStore):
         """
         Returns a deep copy of the entire entity cache.
         """
-        if not self.__is_loaded:
-            self.load()
         return deepcopy(self.__entities)
 
     def get_by_id(self, entity_cls, entity_id):
-        if not self.__is_loaded:
-            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_by_id(entity_id)
 
     def get_by_slug(self, entity_cls, entity_slug):
-        if not self.__is_loaded:
-            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_by_slug(entity_slug)
 
     def get_all(self, entity_cls):
-        if not self.__is_loaded:
-            self.load()
         cache = self.__entities[entity_cls]
         return cache.get_all()
 
@@ -271,14 +278,11 @@ class FileSystemEntityStore(CachingEntityStore):
             coll = repo.get(entity_cls)
             self.__dump_collection(coll)
 
-    def _initialize(self):
-        pass
-
     def _make_session_factory(self):
         return InMemorySessionFactory(self,
                                       autoflush=True, join_transaction=True)
 
-    def _load(self):
+    def _initialize(self):
         repo = self.__get_repo()
         grph = build_resource_dependency_graph(repo.managed_collections)
         for mb_cls in topological_sorting(grph):
@@ -428,7 +432,7 @@ class InMemorySession(object):
         self.reset()
 
     def reset(self):
-        self.__dirty = set()
+        self.__dirty.clear()
         self.__added.clear()
         self.__removed.clear()
         self.__entities.clear()

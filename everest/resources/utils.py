@@ -197,3 +197,10 @@ def get_repository(name):
     """
     repo_mgr = get_utility(IRepositoryManager)
     return repo_mgr.get(name)
+
+
+def get_repository_manager():
+    """
+    Returns the resource repository manager.
+    """
+    return get_utility(IRepositoryManager)
