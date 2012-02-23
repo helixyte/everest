@@ -163,8 +163,7 @@ class Configurator(BfgConfigurator):
         setting_info = [('db_string', 'db_string')]
         configuration.update(self.__cnf_from_settings(setting_info))
         self.__add_repository(name, REPOSITORIES.ORM, entity_store_class,
-                              aggregate_class,
-                              make_default, configuration)
+                              aggregate_class, make_default, configuration)
 
     def add_filesystem_repository(self, name=None, entity_store_class=None,
                                   aggregate_class=None,
@@ -175,8 +174,8 @@ class Configurator(BfgConfigurator):
         setting_info = [('directory', 'fs_directory'),
                         ('content_type', 'fs_contenttype')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM, entity_store_class,
-                              aggregate_class,
+        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM,
+                              entity_store_class, aggregate_class,
                               make_default, configuration)
 
     def add_memory_repository(self, name=None, entity_store_class=None,
@@ -186,8 +185,7 @@ class Configurator(BfgConfigurator):
         if configuration is None:
             configuration = {}
         self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
-                              aggregate_class,
-                              make_default, configuration)
+                              aggregate_class, make_default, configuration)
 
     def add_resource(self, interface, member, entity,
                      collection=None,
@@ -197,6 +195,9 @@ class Configurator(BfgConfigurator):
                 and IMemberResource in provided_by(object.__new__(member))):
             raise ValueError('The member must be a class that implements '
                              'IMemberResource.')
+        if member.relation is None:
+            raise ValueError('The member class must have a "relation" '
+                             'attribute.')
         if not (isinstance(entity, type)
                 and IEntity in provided_by(object.__new__(entity))):
             raise ValueError('The entity must be a class that implements '
@@ -208,7 +209,7 @@ class Configurator(BfgConfigurator):
             if collection_title is None:
                 collection.title = 'Collection of %s' % member.__name__
         elif not issubclass(collection, Collection):
-            raise ValueError('The collection must be a subclass '
+            raise ValueError('The collection class must be a subclass '
                              'of Collection.')
         # Configure the repository adapter.
         repo_mgr = self.get_registered_utility(IRepositoryManager)

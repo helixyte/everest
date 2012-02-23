@@ -108,11 +108,8 @@ class DescriptorsTestCase(ResourceTestCase):
         if DescriptorsTestCase.metadata is None:
             reset_metadata()
         ResourceTestCase.set_up(self)
-
-    def tear_down(self):
         if DescriptorsTestCase.metadata is None:
             DescriptorsTestCase.metadata = get_metadata(REPOSITORIES.ORM)
-        ResourceTestCase.tear_down(self)
 
     def test_terminal_access(self):
         entity = MyEntity()

@@ -44,7 +44,7 @@ class MyEntityChildMember(Member):
                                     is_nested=False,
                                     backref_attr='parent')
     no_backref_children = collection_attribute('children', IMyEntityGrandchild,
-                                    is_nested=False)
+                                               is_nested=False)
     text = terminal_attribute('text', str)
     text_rc = terminal_attribute('text_ent', str)
 

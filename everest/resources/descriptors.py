@@ -128,7 +128,17 @@ class member_attribute(_relation_attribute):
     """
     def __get__(self, resource, resource_class):
         if not resource is None:
-            member = self.__make_member(resource)
+            obj = self._get_nested(resource.get_entity(), self.entity_attr)
+            if not obj is None:
+                if not self.is_nested:
+                    member = as_member(obj)
+                    coll = get_root_collection(member)
+                    member.__parent__ = coll
+                else:
+                    member = as_member(obj, parent=resource)
+                    member.__name__ = slug_from_identifier(self.resource_attr)
+            else:
+                member = obj
         else:
             # class level access
             member = self
@@ -137,20 +147,6 @@ class member_attribute(_relation_attribute):
     def __set__(self, resource, value):
         self._set_nested(resource.get_entity(), self.entity_attr,
                          value.get_entity())
-
-    def __make_member(self, resource):
-        obj = self._get_nested(resource.get_entity(), self.entity_attr)
-        if not obj is None:
-            if not self.is_nested:
-                member = as_member(obj)
-                coll = get_root_collection(member)
-                member.__parent__ = coll
-            else:
-                member = as_member(obj, parent=resource)
-                member.__name__ = slug_from_identifier(self.resource_attr)
-        else:
-            member = obj
-        return member
 
 
 class collection_attribute(_relation_attribute):

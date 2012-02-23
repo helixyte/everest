@@ -684,11 +684,22 @@ class ResourceRepresenter(Representer):
         return self._generate(generator, resource)
 
     def data_from_representation(self, representation):
+        """
+        Creates a data element from the given representation.
+        
+        :returns: object implementing 
+            :class:`everest.representers.interfaces.IExplicitDataElement`
+        """
         stream = StringIO(representation)
         parser = self._make_representation_parser(stream, self.resource_class)
         return parser.run()
 
     def representation_from_data(self, data_element):
+        """
+        Creates a representation from the given data element.
+        
+        :param data_element: 
+        """
         stream = StringIO()
         generator = \
             self._make_representation_generator(stream, self.resource_class)
@@ -699,8 +710,8 @@ class ResourceRepresenter(Representer):
         Extracts serialized data from the given data element and constructs
         a resource from it.
 
-        @return: an object implementing
-                :class:`everest.resources.interfaces.IResource`
+        :returns: object implementing
+            :class:`everest.resources.interfaces.IResource`
         """
         parser = self._make_data_element_parser()
         return parser.run(data_element)

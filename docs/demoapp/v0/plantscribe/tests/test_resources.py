@@ -70,4 +70,4 @@ class PlantScribeResourcesTestCase(ResourceTestCase):
         prj = prjs.get('pond')
         stream = StringIO('w')
         dump_resource(prj, stream)
-        self.assert_true(len(stream.getvalue() > 0))
+        self.assert_true(len(stream.getvalue()) > 0)

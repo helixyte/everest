@@ -19,12 +19,11 @@ from everest.db import set_metadata
 from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
-from everest.resources.io import build_resource_dependency_graph
 from everest.resources.io import dump_resource
+from everest.resources.io import load_order
 from everest.resources.utils import get_collection_class
 from everest.utils import WeakList
 from everest.utils import id_generator
-from pygraph.algorithms.sorting import topological_sorting
 from sqlalchemy.engine import create_engine
 from threading import RLock
 from threading import local
@@ -36,6 +35,7 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 import os
 import transaction
 import weakref
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CachingEntityStore',
@@ -120,7 +120,7 @@ class OrmSessionFactory(SessionFactory):
         if self._join_transaction:
             # Enable the transaction extension.
             SaSessionFactory.configure(extension=ZopeTransactionExtension())
-        return SaSessionFactory
+        return SaSessionFactory()
 
 
 class OrmEntityStore(EntityStore):
@@ -263,8 +263,9 @@ class FileSystemEntityStore(CachingEntityStore):
     """
     _configurables = ['directory', 'content_type']
 
-    def __init__(self, name):
-        super(FileSystemEntityStore, self).__init__(name)
+    def __init__(self, name, join_transaction=True):
+        CachingEntityStore.__init__(self, name,
+                                    join_transaction=join_transaction)
         self.configure(directory=os.getcwd(), content_type=CsvMime)
 
     def commit(self, session):
@@ -280,14 +281,14 @@ class FileSystemEntityStore(CachingEntityStore):
 
     def _make_session_factory(self):
         return InMemorySessionFactory(self,
-                                      autoflush=True, join_transaction=True)
+                                      autoflush=True,
+                                      join_transaction=self._join_transaction)
 
     def _initialize(self):
         repo = self.__get_repo()
-        grph = build_resource_dependency_graph(repo.managed_collections)
-        for mb_cls in topological_sorting(grph):
+        for mb_cls in load_order(repo.managed_collections):
             coll_cls = get_collection_class(mb_cls)
-            self.__load_collection(coll_cls)
+            self.__load_collection(repo, coll_cls)
 
     def __dump_collection(self, collection):
         fn = self.__get_filename(collection.root_name, False)
@@ -296,17 +297,24 @@ class FileSystemEntityStore(CachingEntityStore):
             dump_resource(collection, stream,
                           content_type=self._config['content_type'])
 
-    def __load_collection(self, coll_cls):
-        fn = self.__get_filename(coll_cls.root_name, True)
+    def __load_collection(self, repo, coll_cls):
+        fn = self.__get_filename(coll_cls, True)
         if not fn is None:
             url = 'file://%s' % fn
-            repo = self.__get_repo()
-            repo.load_representation(coll_cls, url,
-                                     self._config['content_type'])
+            transaction.begin()
+            try:
+                repo.load_representation(coll_cls, url,
+                                         self._config['content_type'])
+            except:
+                transaction.abort()
+                raise
+            else:
+                transaction.commit()
 
-    def __get_filename(self, collection_name, check_existing):
+    def __get_filename(self, collection_class, check_existing):
         directory = self._config['directory']
         ext = self._config['content_type'].file_extensions[0]
+        collection_name = collection_class.relation.split('/')[-1]
         fn = os.path.join(directory, "%s%s" % (collection_name, ext))
         if check_existing and not os.path.isfile(fn):
             fn = None

@@ -21,6 +21,7 @@ from urlparse import urlparse
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from pygraph.algorithms.searching import depth_first_search
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['dump_resource',
@@ -154,8 +155,9 @@ def build_resource_dependency_graph(resource_classes):
             child_mb_cls = get_member_class(child_descr.entity_type)
             if not grph.has_node(child_mb_cls):
                 grph.add_node(child_mb_cls)
-                grph.add_edge((mb_cls, child_mb_cls))
                 visit(child_mb_cls, grph)
+            if not grph.has_edge((mb_cls, child_mb_cls)):
+                grph.add_edge((mb_cls, child_mb_cls))
     graph = digraph()
     for resource_class in resource_classes:
         mb_cls = get_member_class(resource_class)
@@ -190,3 +192,19 @@ def dump_resource_graph(resource, content_type=None):
         dump_resource(coll, stream, content_type=content_type)
         repr_map[mb_cls] = stream.getvalue()
     return repr_map
+
+
+def load_order(resource_classes):
+    """
+    Returns the given resource classes in an order that permits loading
+    them from representations.
+    
+    Currently, this is implemented with a depth-first traversal of a
+    directed resource dependency graph built from the given resource
+    classes.
+    
+    :note: Cyclic resource dependencies are not handled very well.
+    """
+    grph = build_resource_dependency_graph(resource_classes)
+    post_order = depth_first_search(grph)[2]
+    return post_order

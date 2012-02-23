@@ -188,7 +188,7 @@ class BaseTestCase(Pep8CompliantTestCase):
     ini_file_path = None
     #: The section name in the ini file to look for settings. Override as 
     #: needed in derived classes.
-    ini_section_name = 'everest'
+    ini_section_name = None
     #: The ini file parser. This will only be set up if the ini_file_path 
     #: and ini_section_name variables were set up sensibly.
     ini = None
@@ -197,10 +197,13 @@ class BaseTestCase(Pep8CompliantTestCase):
         # Create and configure a new testing registry.
         reg = Registry('testing')
         self.ini = EverestIni(self.ini_file_path)
-        settings = self.ini.get_settings(self.ini_section_name)
         self.config = Configurator(registry=reg,
                                    package=self.package_name)
-        self.config.setup_registry(settings=settings)
+        if not self.ini_section_name is None:
+            settings = self.ini.get_settings(self.ini_section_name)
+            self.config.setup_registry(settings=settings)
+        else:
+            self.config.setup_registry()
 
 
 class EntityTestCase(BaseTestCase):
@@ -216,8 +219,7 @@ class EntityTestCase(BaseTestCase):
         self.config.load_zcml('configure.zcml')
         # Set up repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        for repo in repo_mgr:
-            repo.initialize()
+        repo_mgr.initialize_all()
 
     def tear_down(self):
         transaction.abort()
@@ -263,7 +265,7 @@ class ResourceTestCase(BaseTestCase):
         self._request.root = srvc
         # Start the service.
         srvc.start()
-        # 
+        # Initialize all root repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
 
