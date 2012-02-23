@@ -79,12 +79,6 @@ class MemoryAggregate(Aggregate):
         if not isinstance(entity, self.entity_class):
             raise ValueError('Can only add entities of type "%s" to this '
                              'aggregate.' % self.entity_class)
-        if not hasattr(entity, 'id'):
-            raise ValueError('Entities added to a memory aggregrate have to '
-                             'have an ID (`id` attribute).')
-        if not hasattr(entity, 'slug'):
-            raise ValueError('Entities added to a memory aggregrate have to '
-                             'have a slug (`slug` attribute).')
         if self._relationship is None:
             self._session.add(self.entity_class, entity)
         else:

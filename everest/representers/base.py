@@ -461,10 +461,69 @@ class Representer(object):
         raise NotImplementedError("Abstract method.")
 
 
+class UrlLoader(object):
+    def __init__(self, url, resolver):
+        self.__url = url
+        self.__resolver = resolver
+
+    def __call__(self):
+        return self.__resolver(self.__url)
+
+
+class LazyAttributeLoaderProxy(object):
+    def __init__(self, _loader_map, **kw):
+        self._loader_map = _loader_map
+        super(LazyAttributeLoaderProxy, self).__init__(**kw)
+
+    def __getattribute__(self, attr):
+        loader_map = \
+            object.__getattribute__(self, '__dict__').get('_loader_map')
+        if not loader_map is None and attr in loader_map:
+            self._load()
+            result = getattr(self, attr)
+        else:
+            result = object.__getattribute__(self, attr)
+        return result
+
+    def _load(self):
+        loader_map = object.__getattribute__(self, '_loader_map')
+        for attr, loader in loader_map.items():
+            try:
+                new_value = loader().get_entity()
+            except KeyError: # URL loading failed.
+                pass
+            else:
+                setattr(self, attr, new_value)
+                del loader_map[attr]
+        # Once all attributes are loaded successfully, we do not need the
+        # proxy any longer.
+        if len(loader_map) == 0:
+            self.__class__ = self.__class__.__bases__[-1]
+
+    @classmethod
+    def create(cls, entity_cls, data):
+        loader_map = {}
+        for attr, value in data.items():
+            if isinstance(value, UrlLoader):
+                loader_map[attr] = value
+                data[attr] = None
+        if len(loader_map) > 0:
+            data['_loader_map'] = loader_map
+            new_type = type('%sLazyAttributeLoaderProxy' % entity_cls.__name__,
+                            (cls, entity_cls), {})
+            ent = new_type.create_from_data(data)
+        else:
+            ent = entity_cls.create_from_data(data)
+        return ent
+
+
 class DataElementParser(object):
     """
     Parser accepting a data element and returning a resource.
     """
+    def __init__(self, resolve_urls=True):
+        self._resolve_urls = resolve_urls
+
     def run(self, data_element):
         if provides_member_resource(data_element.mapped_class):
             rc = self._extract_member_resource(data_element, 0)
@@ -500,11 +559,17 @@ class DataElementParser(object):
                     if attr.kind == ResourceAttributeKinds.MEMBER:
                         if ILinkedDataElement in provided_by(rc_data_el):
                             url = rc_data_el.get_url()
-                            rc = url_to_resource(url)
+                            if self._resolve_urls:
+                                # Resolve URL directly and extract entity.
+                                rc = url_to_resource(url)
+                                value = rc.get_entity()
+                            else:
+                                # Prepare for lazy loading.
+                                value = UrlLoader(url, url_to_resource)
                         else:
                             rc = self._extract_member_resource(rc_data_el,
                                                             nesting_level + 1)
-                        value = rc.get_entity()
+                            value = rc.get_entity()
                     else:
                         if ILinkedDataElement in provided_by(rc_data_el):
                             url = rc_data_el.get_url()
@@ -517,7 +582,11 @@ class DataElementParser(object):
                 raise ValueError('Invalid resource attribute kind.')
             if not value is None:
                 data[attr.entity_name] = value
-        entity = get_entity_class(mb_cls).create_from_data(data)
+        entity_cls = get_entity_class(mb_cls)
+        if self._resolve_urls:
+            entity = entity_cls.create_from_data(data)
+        else:
+            entity = LazyAttributeLoaderProxy.create(entity_cls, data)
         return mb_cls.create_from_entity(entity)
 
     def _extract_collection_resource(self, rc_data_el, nesting_level):
@@ -683,6 +752,16 @@ class ResourceRepresenter(Representer):
             self._make_representation_generator(stream, self.resource_class)
         return self._generate(generator, resource)
 
+    def data_from_stream(self, stream):
+        """
+        Creates a data element reading a representation from the given stream.
+        
+        :returns: object implementing 
+            :class:`everest.representers.interfaces.IExplicitDataElement`
+        """
+        parser = self._make_representation_parser(stream, self.resource_class)
+        return parser.run()
+
     def data_from_representation(self, representation):
         """
         Creates a data element from the given representation.
@@ -691,8 +770,7 @@ class ResourceRepresenter(Representer):
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         stream = StringIO(representation)
-        parser = self._make_representation_parser(stream, self.resource_class)
-        return parser.run()
+        return self.data_from_stream(stream)
 
     def representation_from_data(self, data_element):
         """
@@ -705,7 +783,7 @@ class ResourceRepresenter(Representer):
             self._make_representation_generator(stream, self.resource_class)
         return generator.run(data_element)
 
-    def resource_from_data(self, data_element):
+    def resource_from_data(self, data_element, resolve_urls=True):
         """
         Extracts serialized data from the given data element and constructs
         a resource from it.
@@ -713,7 +791,7 @@ class ResourceRepresenter(Representer):
         :returns: object implementing
             :class:`everest.resources.interfaces.IResource`
         """
-        parser = self._make_data_element_parser()
+        parser = self._make_data_element_parser(resolve_urls=resolve_urls)
         return parser.run(data_element)
 
     def data_from_resource(self, resource, mapping_info=None):
@@ -760,7 +838,7 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
-    def _make_data_element_parser(self):
+    def _make_data_element_parser(self, resolve_urls=True):
         """
         Creates a data element parser the `run` method of which converts
         a data element tree into the resource it represents.

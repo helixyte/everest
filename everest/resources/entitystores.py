@@ -291,7 +291,7 @@ class FileSystemEntityStore(CachingEntityStore):
             self.__load_collection(repo, coll_cls)
 
     def __dump_collection(self, collection):
-        fn = self.__get_filename(collection.root_name, False)
+        fn = self.__get_filename(collection, False)
         stream = file(fn, 'w')
         with stream:
             dump_resource(collection, stream,
@@ -304,7 +304,9 @@ class FileSystemEntityStore(CachingEntityStore):
             transaction.begin()
             try:
                 repo.load_representation(coll_cls, url,
-                                         self._config['content_type'])
+                                         content_type=
+                                                self._config['content_type'],
+                                         resolve_urls=False)
             except:
                 transaction.abort()
                 raise
@@ -379,6 +381,15 @@ class EntityCache(object):
         self.__id_map[entity.id] = entity
 
     def add(self, entity):
+        # Perform checks first.
+        if not entity.id is None:
+            if entity.slug is None:
+                raise ValueError('Entities with an ID also need to provide '
+                                 'a not-None slug value.')
+            if entity.id in self.__id_map:
+                raise ValueError('Duplicate entity ID "%s".' % entity.id)
+        if not entity.slug is None and entity.slug in self.__slug_map:
+                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
         self.__entities.append(entity)
         if not entity.id is None:
             self.__id_map[entity.id] = entity
@@ -451,15 +462,6 @@ class InMemorySession(object):
     def add(self, entity_cls, entity):
         if self.__needs_sync:
             self.__sync_with_store()
-        cache = self.__entities[entity_cls]
-        if not entity.id is None:
-            if entity.slug is None:
-                raise ValueError('Entities with an ID also need to provide '
-                                 'a not-None slug value.')
-            if not cache.get_by_id(entity.id) is None:
-                raise ValueError('Duplicate ID "%s".' % entity.id)
-        if not cache.get_by_slug(entity.slug) is None:
-            raise ValueError('Duplicate slug "%s".' % entity.slug)
         # Avoid conflicting operations.
         removed = self.__removed[entity_cls]
         if entity in removed:
@@ -468,7 +470,8 @@ class InMemorySession(object):
             added = self.__added[entity_cls]
             added.add(entity)
         # Update session cache.
-        self.__entities[entity_cls].add(entity)
+        cache = self.__entities[entity_cls]
+        cache.add(entity)
         # Mark for flush.
         self.__needs_flush = True
 

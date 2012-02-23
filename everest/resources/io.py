@@ -31,7 +31,8 @@ __all__ = ['dump_resource',
            ]
 
 
-def load_resource_from_url(resource, url, content_type=None):
+def load_resource_from_url(resource, url,
+                           content_type=None, resolve_urls=True):
     """
     Loads a collection resource of the given registered resource type from a 
     representation contained in the given URL.
@@ -42,13 +43,15 @@ def load_resource_from_url(resource, url, content_type=None):
     if parsed.scheme == 'file': # pylint: disable=E1101
         # Assume a local path.
         rc = load_resource_from_file(resource, parsed.path, # pylint: disable=E1101
-                                     content_type=content_type)
+                                     content_type=content_type,
+                                     resolve_urls=resolve_urls)
     else:
         raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
     return rc
 
 
-def load_resource_from_file(resource, filename, content_type=None):
+def load_resource_from_file(resource, filename,
+                            content_type=None, resolve_urls=True):
     """
     Loads a collection resource of the given registered resource type from a 
     representation contained in the given file name.
@@ -73,7 +76,8 @@ def load_resource_from_file(resource, filename, content_type=None):
                          content_type.mime_string)
     fp = open(filename, 'rU')
     with fp:
-        rc = rpr.from_stream(fp)
+        data_el = rpr.data_from_stream(fp)
+    rc = rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
     return rc
 
 
