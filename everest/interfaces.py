@@ -5,8 +5,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 
-from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
+from zope.schema import Bool # pylint: disable=E0611,F0401
+from zope.schema import List # pylint: disable=E0611,F0401
+from zope.schema import Text # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['IAtomMime',
@@ -57,47 +59,54 @@ class IZipRequest(Interface):
     """Marker interface for an Zip compressed request."""
 
 
-class IJsonMime(Interface):
-    """Marker interface for a JSON mime type."""
+class IMime(Interface):
+    """Base Interface for all MIME content types."""
+    mime_string = Text(title=u'MIME string for this MIME content type.')
+    file_extensions = List(title=u'Known file extensions for this MIME '
+                                  'content type.')
+
+class IJsonMime(IMime):
+    """Interface for JSON mime type."""
 
 
-class IAtomMime(Interface):
-    """Marker interface for an ATOM mime type."""
+class IAtomMime(IMime):
+    """Interface for ATOM mime type."""
+
+
+class IXmlMime(IMime):
+    """Interface for XML mime type."""
+
+
+class ICsvMime(IMime):
+    """Interface for CSV mime type."""
+
+
+class IXlsMime(IMime):
+    """Interface for Excel mime type."""
+
+
+class IZipMime(IMime):
+    """Interface for Zip compressed mime type."""
+
+
+class IHtmlMime(IMime):
+    """Interface for HTML mime type."""
+
+
+class ITextPlainMime(IMime):
+    """Interface for Plain Text mime type."""
 
 
 class IAtomFeedMime(Interface):
-    """Marker interface for an ATOM feed mime type."""
+    """Marker interface for ATOM feed mime type."""
 
 
 class IAtomEntryMime(Interface):
-    """Marker interface for an ATOM entry mime type."""
+    """Marker interface for ATOM entry mime type."""
 
 
 class IAtomServiceMime(Interface):
-    """Marker interface for an ATOM service mime type."""
-
-
-class IXmlMime(Interface):
-    """Marker interface for an XML mime type."""
-
-
-class ICsvMime(Interface):
-    """Marker interface for an CSV mime type."""
-
-
-class IXlsMime(Interface):
-    """Marker interface for an Excel mime type."""
-
-class IZipMime(Interface):
-    """Marker interface for an Zip compressed mime type."""
-
-
-class IHtmlMime(Interface):
-    """Marker interface for a HTML mime type."""
-
-
-class ITextPlainMime(Interface):
-    """Marker interface for a Plain Text mime type."""
+    """Marker interface for ATOM service mime type."""
 
 
 class IResourceUrlConverter(Interface):
@@ -156,8 +165,8 @@ class IRepository(Interface):
         Performs initialization of the repository.
         """
 
-    is_initialized = Attribute('Checks if this repository has been '
-                               'initialized.')
+    is_initialized = Bool(title=u'Checks if this repository has been '
+                                 'initialized.')
 
 
 class IRepositoryManager(Interface):

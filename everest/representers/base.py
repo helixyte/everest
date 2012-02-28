@@ -461,7 +461,10 @@ class Representer(object):
         raise NotImplementedError("Abstract method.")
 
 
-class UrlLoader(object):
+class LazyUrlLoader(object):
+    """
+    Helper class for lazy loading of URLs.
+    """
     def __init__(self, url, resolver):
         self.__url = url
         self.__resolver = resolver
@@ -471,6 +474,10 @@ class UrlLoader(object):
 
 
 class LazyAttributeLoaderProxy(object):
+    """
+    Proxy for lazy loading of attributes referencing entities that are loaded
+    through a URL-linked resource.
+    """
     def __init__(self, _loader_map, **kw):
         self._loader_map = _loader_map
         super(LazyAttributeLoaderProxy, self).__init__(**kw)
@@ -484,6 +491,32 @@ class LazyAttributeLoaderProxy(object):
         else:
             result = object.__getattribute__(self, attr)
         return result
+
+    @classmethod
+    def create(cls, entity_cls, data):
+        """
+        Factory class method to create a lazy loader for entities linked 
+        through resource URLs.
+        
+        This returns an instance of a new dynamically created subtype of 
+        :param:`entity_class` which also inherits from this class to add
+        the referenced entity attribute loading functionality. Once all
+        referenced entity attributes have been loaded successfully, the
+        instance's class is reverted to the given entity class. 
+        """
+        loader_map = {}
+        for attr, value in data.items():
+            if isinstance(value, LazyUrlLoader):
+                loader_map[attr] = value
+                data[attr] = None
+        if len(loader_map) > 0:
+            data['_loader_map'] = loader_map
+            new_type = type('%sLazyAttributeLoaderProxy' % entity_cls.__name__,
+                            (cls, entity_cls), {})
+            ent = new_type.create_from_data(data)
+        else:
+            ent = entity_cls.create_from_data(data)
+        return ent
 
     def _load(self):
         loader_map = object.__getattribute__(self, '_loader_map')
@@ -499,22 +532,6 @@ class LazyAttributeLoaderProxy(object):
         # proxy any longer.
         if len(loader_map) == 0:
             self.__class__ = self.__class__.__bases__[-1]
-
-    @classmethod
-    def create(cls, entity_cls, data):
-        loader_map = {}
-        for attr, value in data.items():
-            if isinstance(value, UrlLoader):
-                loader_map[attr] = value
-                data[attr] = None
-        if len(loader_map) > 0:
-            data['_loader_map'] = loader_map
-            new_type = type('%sLazyAttributeLoaderProxy' % entity_cls.__name__,
-                            (cls, entity_cls), {})
-            ent = new_type.create_from_data(data)
-        else:
-            ent = entity_cls.create_from_data(data)
-        return ent
 
 
 class DataElementParser(object):
@@ -564,8 +581,8 @@ class DataElementParser(object):
                                 rc = url_to_resource(url)
                                 value = rc.get_entity()
                             else:
-                                # Prepare for lazy loading.
-                                value = UrlLoader(url, url_to_resource)
+                                # Prepare for lazy loading from URL.
+                                value = LazyUrlLoader(url, url_to_resource)
                         else:
                             rc = self._extract_member_resource(rc_data_el,
                                                             nesting_level + 1)
@@ -573,11 +590,16 @@ class DataElementParser(object):
                     else:
                         if ILinkedDataElement in provided_by(rc_data_el):
                             url = rc_data_el.get_url()
-                            rc = url_to_resource(url)
+                            if self._resolve_urls:
+                                rc = url_to_resource(url)
+                                value = [mb.get_entity() for mb in rc]
+                            else:
+                                # Prepare for lazy loading from URL.
+                                value = LazyUrlLoader(url, url_to_resource)
                         else:
                             rc = self._extract_collection_resource(rc_data_el,
                                                             nesting_level + 1)
-                        value = [mb.get_entity() for mb in rc]
+                            value = [mb.get_entity() for mb in rc]
             else:
                 raise ValueError('Invalid resource attribute kind.')
             if not value is None:

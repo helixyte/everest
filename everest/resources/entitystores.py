@@ -20,7 +20,6 @@ from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource
-from everest.resources.io import load_order
 from everest.resources.utils import get_collection_class
 from everest.utils import WeakList
 from everest.utils import id_generator
@@ -286,7 +285,7 @@ class FileSystemEntityStore(CachingEntityStore):
 
     def _initialize(self):
         repo = self.__get_repo()
-        for mb_cls in load_order(repo.managed_collections):
+        for mb_cls in repo.managed_collections:
             coll_cls = get_collection_class(mb_cls)
             self.__load_collection(repo, coll_cls)
 
@@ -301,17 +300,10 @@ class FileSystemEntityStore(CachingEntityStore):
         fn = self.__get_filename(coll_cls, True)
         if not fn is None:
             url = 'file://%s' % fn
-            transaction.begin()
-            try:
-                repo.load_representation(coll_cls, url,
-                                         content_type=
-                                                self._config['content_type'],
-                                         resolve_urls=False)
-            except:
-                transaction.abort()
-                raise
-            else:
-                transaction.commit()
+            repo.load_representation(coll_cls, url,
+                                     content_type=
+                                            self._config['content_type'],
+                                     resolve_urls=False)
 
     def __get_filename(self, collection_class, check_existing):
         directory = self._config['directory']
@@ -389,7 +381,7 @@ class EntityCache(object):
             if entity.id in self.__id_map:
                 raise ValueError('Duplicate entity ID "%s".' % entity.id)
         if not entity.slug is None and entity.slug in self.__slug_map:
-                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
+            raise ValueError('Duplicate entity slug "%s".' % entity.slug)
         self.__entities.append(entity)
         if not entity.id is None:
             self.__id_map[entity.id] = entity

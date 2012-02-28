@@ -52,6 +52,8 @@ from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
 from everest.url import ResourceUrlConverter
 from repoze.bfg.configuration import Configurator as BfgConfigurator
 from repoze.bfg.interfaces import IRequest
@@ -59,6 +61,7 @@ from repoze.bfg.path import caller_package
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -302,13 +305,17 @@ class Configurator(BfgConfigurator):
 
     def add_representer(self, resource, content_type, configuration=None,
                         _info=u''):
+        if IInterface in provided_by(resource):
+            rcs = [get_member_class(resource), get_collection_class(resource)]
+        else:
+            if not issubclass(resource, Resource):
+                raise ValueError('Representers can only be registered for '
+                                 'classes inheriting from the Resource base '
+                                 'class.')
+            rcs = [resource]
         # If we were passed a class, instantiate it.
         if type(configuration) is type:
             configuration = configuration()
-        # FIXME: Should we allow interfaces here? # pylint: disable=W0511
-        if not issubclass(resource, Resource):
-            raise ValueError('Representers can only be registered for classes '
-                             'inheriting from the Resource base class.')
         # Register customized data element class for the representer
         # class registered for the given content type.
         utility_name = content_type.mime_string
@@ -323,14 +330,15 @@ class Configurator(BfgConfigurator):
             de_reg = rpr_cls.make_data_element_registry()
             self._register_utility(de_reg, IDataElementRegistry,
                                    name=utility_name)
-        de_cls = de_reg.create_data_element_class(resource, configuration)
-        de_reg.set_data_element_class(de_cls)
-        # Register adapter resource, MIME name -> representer.
-        self._register_adapter(rpr_cls.create_from_resource,
-                               (resource,),
-                               IRepresenter,
-                               name=utility_name,
-                               info=_info)
+        for rc in rcs:
+            de_cls = de_reg.create_data_element_class(rc, configuration)
+            de_reg.set_data_element_class(de_cls)
+            # Register adapter resource, MIME name -> representer.
+            self._register_adapter(rpr_cls.create_from_resource,
+                                   (rc,),
+                                   IRepresenter,
+                                   name=utility_name,
+                                   info=_info)
 
     def initialize_repositories(self):
         for coll_cls in [util.component
