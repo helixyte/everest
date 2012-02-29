@@ -14,7 +14,6 @@ __all__ = ['BatchTestCase',
 
 
 class BatchTestCase(Pep8CompliantTestCase):
-    data = None
 
     def set_up(self):
         self.data = range(1000)

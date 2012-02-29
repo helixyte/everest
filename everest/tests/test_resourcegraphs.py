@@ -20,7 +20,6 @@ __all__ = ['ResourceGraphTestCase',
 
 class ResourceGraphTestCase(BaseTestCase):
     package_name = 'everest.tests.testapp_db'
-    _interfaces = None
 
     def set_up(self):
         BaseTestCase.set_up(self)

@@ -29,9 +29,6 @@ db_echo = false
 """
 
 class TestingTestCase(Pep8CompliantTestCase):
-    __testdir = None
-
-    ini_file_path = None
     ini_section_name = 'app:mytestapp'
 
     def set_up(self):

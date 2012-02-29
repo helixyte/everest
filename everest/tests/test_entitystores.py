@@ -18,7 +18,6 @@ __all__ = ['InMemorySessionTestCase',
 
 
 class InMemorySessionTestCase(Pep8CompliantTestCase):
-    _session = None
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)

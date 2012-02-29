@@ -504,7 +504,7 @@ def persist(session, entity_class, attribute_map,
       contain all mandatory attributes required for instantiation.
     """
     # Instantiate.
-    entity = entity_class(**attribute_map) #pylint:disable=W0142
+    entity = entity_class(**attribute_map)
     session.add(entity)
     session.commit()
     session.refresh(entity)

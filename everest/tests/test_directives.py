@@ -35,8 +35,6 @@ __all__ = ['DirectivesTestCase',
 
 
 class DirectivesTestCase(Pep8CompliantTestCase):
-    _config = None
-    _registry = None
 
     def set_up(self):
         testing_set_up()
