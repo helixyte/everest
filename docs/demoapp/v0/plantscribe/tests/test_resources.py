@@ -41,7 +41,7 @@ class PlantScribeResourcesTestCase(ResourceTestCase):
 
     def test_get_project(self):
         coll = get_root_collection(IProject)
-        self.assert_equal(len(coll), 1)
+        self.assert_equal(len(coll), 2)
         mb = coll.get('pond')
         self.assert_true(isinstance(mb, ProjectMember))
         self.assert_equal(mb.name, 'Pond')
