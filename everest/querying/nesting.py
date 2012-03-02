@@ -25,22 +25,22 @@ class Nesting(object):
 
     :ivar parent: parent object
     :ivar children: child object collection
-    :ivar backref_attribute: name of the attribute referencing the parent in
+    :ivar backref: name of the attribute referencing the parent in
         each child object.
     """
-    def __init__(self, parent, children, backref_attribute=None):
+    def __init__(self, parent, children, backref=None):
         self.parent = parent
         self.children = children
-        self.backref_attribute = backref_attribute
+        self.backref = backref
 
     @property
     def specification(self):
         spec_fac = get_utility(IFilterSpecificationFactory)
-        if not self.backref_attribute is None:
+        if not self.backref is None:
             # Simple case: We have an attribute in the child that references
             # the parent and we can identify all elements of the child
             # collection with an "equal_to" specification. 
-            rel_spec = spec_fac.create_equal_to(self.backref_attribute,
+            rel_spec = spec_fac.create_equal_to(self.backref,
                                                 self.parent)
         else:
             # Complex case: We use the IDs of the elements of the child

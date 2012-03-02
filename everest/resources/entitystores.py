@@ -21,7 +21,6 @@ from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_collection_class
-from everest.utils import WeakList
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
 from threading import RLock
@@ -335,35 +334,63 @@ class EntityCache(object):
         self.__id_map = WeakValueDictionary()
         # Dictionary mapping entity slugs to entities for fast lookup by slug.
         self.__slug_map = WeakValueDictionary()
+        # Internal flag indicating that the cache has to be rebuilt (i.e.,
+        # the id and slug maps have to be updated). 
+        self.__needs_rebuild = False
 
     def clear(self):
-        self.__entities = WeakList()
+        """
+        Clears the cache.
+        """
+        self.__entities = []
         self.__id_map.clear()
         self.__slug_map.clear()
 
     def rebuild(self):
-        self.__id_map.clear()
-        self.__slug_map.clear()
-        for entity in self.__entities:
-            if not entity.id is None:
-                if entity.id in self.__id_map:
-                    raise ValueError('Duplicate ID "%s".' % entity.id)
-                self.__id_map[entity.id] = entity
-            if not entity.slug is None:
-                if entity.slug in self.__slug_map:
-                    raise ValueError('Duplicate slug "%s".' % entity.slug)
-                self.__slug_map[entity.slug] = entity
+        """
+        Rebuilds the cache (i.e., rebuilds the ID -> entity and slug -> 
+        entity mappings).
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
 
     def get_by_id(self, entity_id):
+        """
+        Performs a lookup of an entity by its ID.
+        
+        :param int entity_id: entity ID
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
         return self.__id_map.get(entity_id)
 
     def get_by_slug(self, entity_slug):
+        """
+        Performs a lookup of an entity by its sluyg.
+        
+        :param str entity_id: entity slug
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
         return self.__slug_map.get(entity_slug)
 
     def get_all(self):
+        """
+        Returns (a copy of) the list of all entities in this cache.
+        """
         return self.__entities[:]
 
     def replace(self, entity):
+        """
+        Replaces the entity in the cache that has the same ID as the given
+        entity with the latter.
+        
+        :param entity: entity to replace the cached entity with (must have
+            a not-None ID).
+        :type entity: object implementing :class:`everest.interfaces.IEntity`.
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
         if entity.id is None:
             raise ValueError('Can only replace entities that have an ID.')
         old_entity = self.__id_map[entity.id]
@@ -373,27 +400,56 @@ class EntityCache(object):
         self.__id_map[entity.id] = entity
 
     def add(self, entity):
+        """
+        Adds the given entity to this cache.
+        
+        At the point an entity is added, it must not have an ID or a slug
+        of another entity that is already in the cache. However, both the ID
+        and the slug may be *None* values.
+
+        :param entity: entity to add.
+        :type entity: object implementing :class:`everest.interfaces.IEntity`.
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
         # Perform checks first.
-        if not entity.id is None:
-            if entity.slug is None:
-                raise ValueError('Entities with an ID also need to provide '
-                                 'a not-None slug value.')
-            if entity.id in self.__id_map:
-                raise ValueError('Duplicate entity ID "%s".' % entity.id)
-        if not entity.slug is None and entity.slug in self.__slug_map:
-            raise ValueError('Duplicate entity slug "%s".' % entity.slug)
+        ent_id = entity.id
+        if not ent_id is None and ent_id in self.__id_map:
+            raise ValueError('Duplicate entity ID "%s".' % ent_id)
+        ent_slug = entity.slug
+        if not ent_slug is None and ent_slug in self.__slug_map:
+            raise ValueError('Duplicate entity slug "%s".' % ent_slug)
         self.__entities.append(entity)
-        if not entity.id is None:
-            self.__id_map[entity.id] = entity
-        if not entity.slug is None:
-            self.__slug_map[entity.slug] = entity
+        # Sometimes, the slug is a lazy attribute; we *always* have to rebuild
+        # when an entity was added.
+        self.__needs_rebuild = True
 
     def remove(self, entity):
+        """
+        Removes the given entity to this cache.
+        
+        :param entity: entity to remove.
+        :type entity: object implementing :class:`everest.interfaces.IEntity`.
+        """
+        if self.__needs_rebuild:
+            self.__rebuild()
         self.__entities.remove(entity)
         if not entity.id is None:
             del self.__id_map[entity.id]
         if not entity.slug is None:
             del self.__slug_map[entity.slug]
+
+    def __rebuild(self):
+        self.__id_map.clear()
+        self.__slug_map.clear()
+        for entity in self.__entities:
+            ent_id = entity.id
+            if not ent_id is None:
+                self.__id_map[ent_id] = entity
+            ent_slug = entity.slug
+            if not ent_slug is None:
+                self.__slug_map[ent_slug] = entity
+        self.__needs_rebuild = False
 
 
 class InMemorySession(object):
@@ -510,21 +566,21 @@ class InMemorySession(object):
         return entities
 
     def flush(self):
+        self.__needs_flush = False
         # Iterate over added entities and obtain new IDs from the store for 
         # entities that do not have one.
+        rebuild_cache = False
         for (entity_cls, added_entities) in self.__added.iteritems():
             cache = self.__entities[entity_cls]
             for ad_ent in added_entities:
                 if ad_ent.id is None:
                     new_id = self.__entity_store.get_id(entity_cls)
-                    if not cache.get_by_id(new_id) is None:
-                        raise ValueError('Duplicate ID "%s".' % new_id)
-                    else:
-                        ad_ent.id = new_id
-            # The flushing changed IDs and possibly slugs; we therefore rebuild
-            # the cache.
-            cache.rebuild()
-        self.__needs_flush = False
+                    if not rebuild_cache:
+                        rebuild_cache = True
+                    ad_ent.id = new_id
+        if rebuild_cache:
+            for cache in self.__entities.itervalues():
+                cache.rebuild()
 
     @property
     def is_dirty(self):

@@ -83,11 +83,12 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_equal(ent1.id, 0)
         self.assert_equal(ent2.id, 1)
 
-    def test_with_id_without_slug_raises_error(self):
+    def test_with_id_without_slug(self):
         class MyEntity(Entity):
             slug = None
         ent = MyEntity(id=0)
-        self.assert_raises(ValueError, self._session.add, MyEntity, ent)
+        self._session.add(MyEntity, ent)
+        self.assert_true(self._session.get_by_id(MyEntity, 0) is ent)
 
     def test_without_id_with_slug(self):
         class MyEntity(Entity):
@@ -101,8 +102,9 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
             pass
         ent1 = MyEntity()
         self._session.add(MyEntity, ent1)
-        # Trigger autoflush to create ID.
+        # Trigger flush to create ID.
         self._session.flush()
+        self.assert_equal(ent1.id, 0)
         ent2 = MyEntity(id=0)
         self.assert_raises(ValueError, self._session.add, MyEntity, ent2)
 

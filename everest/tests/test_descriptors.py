@@ -84,7 +84,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
 
     def test_inheritance(self):
         class MyEntityDerivedMember(MyEntityMember):
-            text = terminal_attribute('text', int)
+            text = terminal_attribute(int, 'text')
         attrs = MyEntityDerivedMember.get_attributes()
         attr = attrs['text']
         self.assert_equal(attr.kind,
