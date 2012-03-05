@@ -45,8 +45,10 @@ class FlexFilter(Filter):
 
     def filter_output(self, environ, start_response,
                       status, headers, app_iter):
+        query_string = environ.get('QUERY_STRING')
         referer = environ.get('HTTP_REFERER')
-        if referer and '.swf' in referer:
+        if ((referer and '.swf' in referer) or \
+            (query_string and 'flashfilter=true' in query_string)):
             #all the fuzz is just for Flex/Flash clients
             content_type = header_value(headers, 'content-type')
             if ';' in content_type:
