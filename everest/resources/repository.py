@@ -45,9 +45,11 @@ class ResourceRepository(Repository):
         Repository.clear_all(self)
         self.__entity_repository.clear_all()
 
-    def load_representation(self, rc, url, content_type=None):
+    def load_representation(self, rc, url,
+                            content_type=None, resolve_urls=True):
         loaded_coll = load_resource_from_url(rc, url,
-                                             content_type=content_type)
+                                             content_type=content_type,
+                                             resolve_urls=resolve_urls)
         coll = self.get(rc)
         for loaded_mb in loaded_coll:
             coll.add(loaded_mb)

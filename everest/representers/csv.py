@@ -182,8 +182,8 @@ class CsvResourceRepresenter(ResourceRepresenter):
         generator.configure(**config)
         return generator
 
-    def _make_data_element_parser(self):
-        return DataElementParser()
+    def _make_data_element_parser(self, resolve_urls=True):
+        return DataElementParser(resolve_urls=resolve_urls)
 
     def _make_data_element_generator(self):
         return DataElementGenerator(self._data_element_registry)

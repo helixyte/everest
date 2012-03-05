@@ -20,7 +20,6 @@ __all__ = ['ResourceGraphTestCase',
 
 class ResourceGraphTestCase(BaseTestCase):
     package_name = 'everest.tests.testapp_db'
-    _interfaces = None
 
     def set_up(self):
         BaseTestCase.set_up(self)
@@ -42,9 +41,9 @@ class ResourceGraphTestCase(BaseTestCase):
         # Entity Child has Grandchild.
         self.assert_equal(grph.neighbors(entity_child_mb_cls),
                           [entity_grandchild_mb_cls])
-        # Entity Grandchild has Child.
+        # Entity Grandchild has Child, but we ignore backreferences.
         self.assert_equal(grph.neighbors(entity_grandchild_mb_cls),
-                          [entity_child_mb_cls])
+                          [])
         # Entity has Parent and Child.
         self.assert_equal(set(grph.neighbors(entity_mb_cls)),
                           set([entity_parent_mb_cls, entity_child_mb_cls]))

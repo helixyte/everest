@@ -210,13 +210,14 @@ class EntityTestCase(BaseTestCase):
     """
     Test class for entity classes.
     """
+    config_file_name = 'configure.zcml'
 
     def set_up(self):
         super(EntityTestCase, self).set_up()
         # Load config file.
         self.config.hook_zca()
         self.config.begin()
-        self.config.load_zcml('configure.zcml')
+        self.config.load_zcml(self.config_file_name)
         # Set up repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
@@ -244,6 +245,7 @@ class ResourceTestCase(BaseTestCase):
     Test class for resource classes.
     """
     _request = None
+    config_file_name = 'configure.zcml'
 
     def set_up(self):
         super(ResourceTestCase, self).set_up()
@@ -259,7 +261,7 @@ class ResourceTestCase(BaseTestCase):
         # Load config file.
         self.config.hook_zca()
         self.config.begin(request=self._request)
-        self.config.load_zcml('configure.zcml')
+        self.config.load_zcml(self.config_file_name)
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
         self._request.root = srvc
@@ -504,7 +506,7 @@ def persist(session, entity_class, attribute_map,
       contain all mandatory attributes required for instantiation.
     """
     # Instantiate.
-    entity = entity_class(**attribute_map) #pylint:disable=W0142
+    entity = entity_class(**attribute_map)
     session.add(entity)
     session.commit()
     session.refresh(entity)

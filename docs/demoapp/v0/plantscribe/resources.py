@@ -26,7 +26,7 @@ __all__ = ['CustomerMember',
 
 
 class CustomerMember(Member):
-    relation = 'http://everest.org/relations/customer'
+    relation = 'http://plantscribe.org/relations/customer'
     first_name = terminal_attribute('first_name', str)
     last_name = terminal_attribute('last_name', str)
     projects = collection_attribute('projects',
@@ -40,7 +40,7 @@ class CustomerCollection(Collection):
 
 
 class ProjectMember(Member):
-    relation = 'http://everest.org/relations/project'
+    relation = 'http://plantscribe.org/relations/project'
     name = terminal_attribute('name', str)
     customer = member_attribute('customer', ICustomer)
     sites = collection_attribute('sites', ISite,
@@ -54,7 +54,7 @@ class ProjectCollection(Collection):
 
 
 class SpeciesMember(Member):
-    relation = 'http://everest.org/relations/species'
+    relation = 'http://plantscribe.org/relations/species'
     species_name = terminal_attribute('species_name', str)
     genus_name = terminal_attribute('genus_name', str)
     cultivar = terminal_attribute('cultivar', str)
@@ -67,7 +67,7 @@ class SpeciesCollection(Collection):
 
 
 class SiteMember(Member):
-    relation = 'http://everest.org/relations/site'
+    relation = 'http://plantscribe.org/relations/site'
     name = terminal_attribute('name', str)
     incidences = collection_attribute('incidences', IIncidence,
                                       backref_attr='site',
@@ -80,7 +80,7 @@ class SiteCollection(Collection):
 
 
 class IncidenceMember(Member):
-    relation = 'http://everest.org/relations/incidence'
+    relation = 'http://plantscribe.org/relations/incidence'
     species = member_attribute('species', ISpecies)
     site = member_attribute('site', ISite)
     quantity = terminal_attribute('quantity', float)
