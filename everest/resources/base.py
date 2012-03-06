@@ -125,7 +125,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
     """
     implements(IMemberResource)
 
-    id = terminal_attribute('id', int)
+    id = terminal_attribute(int, 'id')
 
     def __init__(self, entity, name=None):
         """
@@ -583,6 +583,10 @@ class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
         for rc_attr_token in rc_attr_name.split('.'):
             rc_attr = get_resource_class_attributes(rc_class)[rc_attr_token]
             ent_attr_name = rc_attr.entity_name
+            if ent_attr_name is None:
+                raise ValueError('Resource attribute "%s" does not have a '
+                                 'corresponding entity attribute.'
+                                 % rc_attr.name)
             if rc_attr.kind != ResourceAttributeKinds.TERMINAL:
                 # Look up the member class for the specified member or
                 # collection resource interface.
