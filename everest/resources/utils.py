@@ -13,8 +13,8 @@ from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
-from repoze.bfg.threadlocal import get_current_registry
-from repoze.bfg.traversal import model_path
+from pyramid.threadlocal import get_current_registry
+from pyramid.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401

@@ -6,14 +6,27 @@ Created on Dec 19, 2011.
 """
 
 from everest.entities.attributes import EntityAttributeKinds
+from everest.querying.interfaces import IFilterSpecificationFactory
+from pyramid.threadlocal import get_current_registry
 from sqlalchemy.orm.interfaces import MANYTOMANY
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmAttributeInspector',
+           'get_filter_specification_factory',
            ]
 
+
+def get_filter_specification_factory():
+    """
+    Returns the object registered as filter specification factory utility.
+    
+    :returns: object implementing 
+        :class:`everest.querying.interfaces.IFilterSpecificationFactory
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IFilterSpecificationFactory)
 
 class OrmAttributeInspector(object):
     """

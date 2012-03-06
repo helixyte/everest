@@ -55,9 +55,10 @@ from everest.resources.system import MessageMember
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.url import ResourceUrlConverter
-from repoze.bfg.configuration import Configurator as BfgConfigurator
-from repoze.bfg.interfaces import IRequest
-from repoze.bfg.path import caller_package
+from pyramid.configuration import Configurator as PyramidConfigurator
+from pyramid.interfaces import IRequest
+from pyramid.path import caller_package
+from pyramid_zcml import includeme
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -68,7 +69,7 @@ __all__ = ['Configurator',
            ]
 
 
-class Configurator(BfgConfigurator):
+class Configurator(PyramidConfigurator):
     """
     Configurator for everest.
     """
@@ -96,8 +97,10 @@ class Configurator(BfgConfigurator):
                  ):
         if package is None:
             package = caller_package()
-        BfgConfigurator.__init__(self,
+        PyramidConfigurator.__init__(self,
                                  registry=registry, package=package, **kw)
+        # Set up configurator's load_zcml method.
+        self.include(includeme)
         if registry is None:
             self.__setup(filter_specification_factory,
                          order_specification_factory,
@@ -142,7 +145,7 @@ class Configurator(BfgConfigurator):
                        eval_order_specification_visitor=None,
                        url_converter=None,
                        **kw):
-        BfgConfigurator.setup_registry(self, **kw)
+        PyramidConfigurator.setup_registry(self, **kw)
         self.__setup(filter_specification_factory,
                      order_specification_factory,
                      service,

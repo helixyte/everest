@@ -26,9 +26,9 @@ from everest.resources.utils import get_member_class
 from everest.url import resource_to_url
 from everest.url import url_to_resource
 from everest.utils import classproperty
-from repoze.bfg.security import Allow
-from repoze.bfg.security import Authenticated
-from repoze.bfg.traversal import model_path
+from pyramid.security import Allow
+from pyramid.security import Authenticated
+from pyramid.traversal import model_path
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
 from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401

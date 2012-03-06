@@ -10,23 +10,30 @@ from everest.mime import CsvMime
 from everest.representers.utils import as_representer
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
-from repoze.bfg.interfaces import IRenderer
+from pyramid.interfaces import IRenderer
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
-__all__ = ['csv_renderer_factory'
+__all__ = ['AtomRenderer',
+           'CsvRenderer',
+           'ResourceRenderer',
+           'renderer_factory',
            ]
 
 
-def renderer_factory(name):
-    if name == 'csv':
-        renderer = CsvRenderer()
-    elif name == 'atom':
-        renderer = AtomRenderer()
-    else:
-        raise ValueError('Unknown renderer name "%s"' % name)
-    return renderer
+class RendererFactory(object):
+    def __init__(self, info):
+        self.__name = info.name
+
+    def __call__(self, value, system):
+        if self.__name == 'csv':
+            rnd = CsvRenderer()
+        elif self.__name == 'atom':
+            rnd = AtomRenderer()
+        else:
+            raise ValueError('Unknown renderer name "%s"' % self.__name)
+        return rnd(value, system)
 
 
 class ResourceRenderer(object):
@@ -63,7 +70,7 @@ class AtomRenderer(ResourceRenderer):
 
     def _prepare_response(self, system):
         request = system['request']
-        request.response_content_type = self._format
+        request.response.content_type = self._format
         context = system['context']
         if context.cache_for is not None:
             request.response_cache_for = context.cache_for
@@ -80,7 +87,7 @@ class CsvRenderer(ResourceRenderer):
     def _prepare_response(self, system):
         # Set up response type.
         request = system['request']
-        request.response_content_type = self._format
+        request.response.content_type = self._format
         context = system['context']
         if ICollectionResource in provided_by(context):
             # Disable batching for CSV rendering.

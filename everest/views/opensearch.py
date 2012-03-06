@@ -7,8 +7,8 @@ Created on Aug 21, 2011.
 
 from everest.resources.utils import get_root_collection
 from everest.url import resource_to_url
-from repoze.bfg.chameleon_zpt import get_template
-from repoze.bfg.url import static_url
+from pyramid.chameleon_zpt import get_template
+from pyramid.url import static_url
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OpenSearchDescriptionView',

@@ -520,6 +520,8 @@ class InMemorySession(object):
         # Update session cache.
         cache = self.__entities[entity_cls]
         cache.add(entity)
+        # If the removed entity was marked as dirty, discard. 
+        self.__dirty[entity_cls].discard(entity)
         # Mark for flush.
         self.__needs_flush = True
 

@@ -6,6 +6,9 @@ Created on Oct 7, 2011.
 """
 
 from StringIO import StringIO
+from everest.querying.interfaces import IFilterSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
+from pyramid.threadlocal import get_current_registry
 from sqlalchemy.util import OrderedDict as _SqlAlchemyOrderedDict
 from weakref import ref
 import re
@@ -15,6 +18,8 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
            'OrderedDict',
            'check_email',
+           'get_filter_specification_visitor',
+           'get_order_specification_visitor',
            'classproperty',
            ]
 
@@ -63,6 +68,32 @@ def get_traceback():
     buf = StringIO()
     traceback.print_exc(file=buf)
     return buf.getvalue()
+
+
+def get_filter_specification_visitor(name):
+    """
+    Returns a the class registered as the filter specification 
+    visitor utility under the given name (one of the 
+    :const:`everest.querying.base.EXPRESSION_KINDS` constants).
+    
+    :returns: class implementing 
+        :class:`everest.interfaces.IFilterSpecificationVisitor`
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IFilterSpecificationVisitor, name=name)
+
+
+def get_order_specification_visitor(name):
+    """
+    Returns the class registered as the order specification 
+    visitor utility under the given name (one of the 
+    :const:`everest.querying.base.EXPRESSION_KINDS` constants).
+    
+    :returns: class implementing 
+        :class:`everest.interfaces.IOrderSpecificationVisitor`
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IOrderSpecificationVisitor, name=name)
 
 
 # We just redefine this here - perhaps we want to have our own implementation

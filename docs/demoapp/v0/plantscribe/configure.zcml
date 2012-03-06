@@ -1,9 +1,11 @@
-<configure xmlns="http://namespaces.repoze.org/bfg">
+<configure xmlns="http://pylonshq.com/pyramid">
+
     <!-- Include special directives. -->
 
     <include package="everest.includes" />
 
     <!-- Repositories. -->
+
     <filesystem_repository
         directory="data"
         content_type="everest.mime.CsvMime"
@@ -13,32 +15,32 @@
 
     <resource
         interface='.interfaces.ICustomer'
-        member=".resources.CustomerMember"
+        member=".resources.customer.CustomerMember"
         collection_root_name="customers"
-        entity=".entities.Customer" />
+        entity=".entities.customer.Customer" />
 
     <resource
         interface='.interfaces.IProject'
-        member=".resources.ProjectMember"
+        member=".resources.project.ProjectMember"
         collection_root_name="projects"
-        entity=".entities.Project" />
+        entity=".entities.project.Project" />
 
     <resource
         interface='.interfaces.ISite'
-        member=".resources.SiteMember"
-        entity=".entities.Site"
+        member=".resources.site.SiteMember"
+        entity=".entities.site.Site"
         expose="false" />
 
     <resource
         interface='.interfaces.ISpecies'
-        member=".resources.SpeciesMember"
-        collection=".resources.SpeciesCollection"
-        entity=".entities.Species" />
+        member=".resources.species.SpeciesMember"
+        collection_root_name="species"
+        entity=".entities.species.Species" />
 
     <resource
         interface='.interfaces.IIncidence'
-        member=".resources.IncidenceMember"
-        entity=".entities.Incidence"
+        member=".resources.incidence.IncidenceMember"
+        entity=".entities.incidence.Incidence"
         expose="false" />
 
     <representer

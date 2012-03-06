@@ -11,10 +11,9 @@ from everest.entities.interfaces import IEntity
 from everest.interfaces import IRepository
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_aggregate_class',
@@ -43,7 +42,8 @@ def get_stage_aggregate(rc):
     Returns an aggregate from the stage entity repository for the given 
     registered resource.
     """
-    repo = get_utility(IRepository, name=REPOSITORIES.MEMORY)
+    reg = get_current_registry()
+    repo = reg.getUtility(IRepository, name=REPOSITORIES.MEMORY)
     coll = repo.get(rc)
     return coll.get_aggregate()
 
@@ -58,10 +58,11 @@ def get_entity_class(rc):
     :return: entity class
         (class implementing `everest.entities.interfaces.IEntity`)
     """
+    reg = get_current_registry()
     if IInterface in provided_by(rc):
-        ent_cls = get_utility(rc, name='entity-class')
+        ent_cls = reg.getUtility(rc, name='entity-class')
     else:
-        ent_cls = get_adapter(rc, IEntity, name='entity-class')
+        ent_cls = reg.getAdapter(rc, IEntity, name='entity-class')
     return ent_cls
 
 

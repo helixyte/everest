@@ -5,8 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 24, 2011.
 """
 
-from repoze.bfg.threadlocal import get_current_registry
-from repoze.bfg.threadlocal import get_current_request
+from pyramid.threadlocal import get_current_registry
+from pyramid.threadlocal import get_current_request
 from zope.component import adapter # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401

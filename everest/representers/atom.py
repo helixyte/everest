@@ -18,7 +18,7 @@ from everest.representers.xml import XmlDataElementRegistry
 from everest.representers.xml import XmlRepresentationGenerator
 from everest.representers.xml import XmlRepresenterConfiguration
 from everest.url import UrlPartsConverter
-from repoze.bfg.threadlocal import get_current_registry
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AtomDataElementRegistry',

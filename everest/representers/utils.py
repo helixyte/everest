@@ -9,8 +9,7 @@ Created on May 18, 2011.
 
 from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import IRepresenter
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
+from pyramid.threadlocal import get_current_registry
 
 
 __docformat__ = 'reStructuredText en'
@@ -27,7 +26,8 @@ def as_representer(resource, content_type_string):
     :param str content_type_string: content (MIME) type to create a
         representer for.
     """
-    return get_adapter(resource, IRepresenter, content_type_string)
+    reg = get_current_registry()
+    return reg.getAdapter(resource, IRepresenter, content_type_string)
 
 
 def get_data_element_registry(content_type):
@@ -37,4 +37,5 @@ def get_data_element_registry(content_type):
     :Note: This only works after a representer for the given content type
         has been created.
     """
-    return get_utility(IDataElementRegistry, content_type.mime_string)
+    reg = get_current_registry()
+    return reg.getUtility(IDataElementRegistry, content_type.mime_string)

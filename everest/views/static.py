@@ -5,8 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 22, 2010.
 """
 
-from repoze.bfg.interfaces import ISettings
-from repoze.bfg.view import static
+from pyramid.interfaces import ISettings
+from pyramid.view import static
 from zope.component import getUtility # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'

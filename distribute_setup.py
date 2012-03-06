@@ -22,7 +22,7 @@ import tarfile
 from distutils import log
 
 try:
-    from site import USER_SITEs
+    from site import USER_SITE
 except ImportError:
     USER_SITE = None
 

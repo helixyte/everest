@@ -20,10 +20,10 @@ from everest.querying.specifications import IFilterSpecificationFactory
 from everest.querying.specifications import IOrderSpecificationFactory
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from repoze.bfg.threadlocal import get_current_request
-from repoze.bfg.traversal import find_model
-from repoze.bfg.traversal import traversal_path
-from repoze.bfg.url import model_url
+from pyramid.threadlocal import get_current_request
+from pyramid.traversal import find_resource
+from pyramid.traversal import traversal_path
+from pyramid.url import model_url
 from urllib import unquote
 from urlparse import urlparse
 from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
@@ -65,7 +65,7 @@ class ResourceUrlConverter(object):
         """
         parsed = urlparse(url)
         parsed_path = parsed.path # namedtupble problem pylint: disable=E1101
-        rc = find_model(self.__request.root, traversal_path(parsed_path))
+        rc = find_resource(self.__request.root, traversal_path(parsed_path))
         if ICollectionResource in provided_by(rc):
             # In case we found a collection, we have to filter, order, slice.
             parsed_query = parsed.query # namedtupble problem pylint: disable=E1101

@@ -6,7 +6,7 @@ Created on Jun 22, 2010.
 """
 
 from everest.views.static import public_view
-from repoze.bfg.interfaces import ISettings # pylint: disable=E0611,F0401
+from pyramid.interfaces import ISettings # pylint: disable=E0611,F0401
 from zope.component import getUtility # pylint: disable=E0611,F0401
 import os
 

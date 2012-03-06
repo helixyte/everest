@@ -1,5 +1,5 @@
 <configure
-    xmlns="http://namespaces.repoze.org/bfg"
+    xmlns="http://pylonshq.com/pyramid"
 >
 
     <!-- Include special directives. -->
