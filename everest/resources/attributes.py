@@ -117,7 +117,7 @@ class MetaResourceAttributeCollector(type):
                 else:
                     raise ValueError('Unknown resource attribute type.')
             attr = ResourceAttribute(attr_name, attr_kind,
-                                     descr.entity_type,
+                                     descr.attr_type,
                                      entity_name=descr.entity_attr,
                                      is_nested=is_nested)
             attr_map[attr_name] = attr

@@ -70,7 +70,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         member = self._make_member()
         dep_grph = \
             build_resource_dependency_graph(self._interfaces,
-                                            include_backreferences=True)
+                                            include_backrefs=True)
         coll_map = find_connected_resources(member,
                                             dependency_graph=dep_grph)
         # Backrefs should not make a difference since we check for duplicates.
@@ -92,7 +92,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         self.assert_equal(len(coll_map[MyEntityChildMember]), 1)
         dep_grph = \
             build_resource_dependency_graph(self._interfaces,
-                                            include_backreferences=True)
+                                            include_backrefs=True)
         self.assert_true(dep_grph.has_edge((MyEntityGrandchildMember,
                                             MyEntityChildMember)))
         coll_map = find_connected_resources(member,

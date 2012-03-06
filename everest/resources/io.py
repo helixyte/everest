@@ -94,7 +94,7 @@ def dump_resource(resource, stream, content_type=None):
 
 
 def build_resource_dependency_graph(resource_classes,
-                                    include_backreferences=False):
+                                    include_backrefs=False):
     """
     Builds a graph of dependencies among the given resource classes.
 
@@ -105,7 +105,7 @@ def build_resource_dependency_graph(resource_classes,
     :param resource_classes: resource classes to determine interdependencies
       of.
     :type resource_classes: sequence of registered resources.
-    :param bool include_backreferences: flag indicating if dependencies
+    :param bool include_backrefs: flag indicating if dependencies
       introduced by back-references (e.g., a child resource referencing its
       parent) should be included in the dependency graph.
     """
@@ -114,7 +114,7 @@ def build_resource_dependency_graph(resource_classes,
             if mb_cls.is_terminal(attr_name):
                 continue
             child_descr = getattr(mb_cls, attr_name)
-            child_mb_cls = get_member_class(child_descr.entity_type)
+            child_mb_cls = get_member_class(child_descr.attr_type)
             # We do not follow cyclic references back to a resource class
             # that is last in the path.
             if len(path) > 0 and child_mb_cls is path[-1] \
@@ -132,7 +132,7 @@ def build_resource_dependency_graph(resource_classes,
         mb_cls = get_member_class(resource_class)
         if not dep_grph.has_node(mb_cls):
             dep_grph.add_node(mb_cls)
-            visit(mb_cls, dep_grph, [], include_backreferences)
+            visit(mb_cls, dep_grph, [], include_backrefs)
     return dep_grph
 
 
