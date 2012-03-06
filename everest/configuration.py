@@ -463,7 +463,7 @@ class Configurator(BfgConfigurator):
         repo = repo_mgr.new(repo_type, name=name,
                             entity_store_class=ent_store_cls,
                             aggregate_class=agg_cls)
-        repo.configure(**cnf) # ** pylint: disable=W0142
+        repo.configure(**cnf)
         repo_mgr.set(name, repo, make_default=make_default)
 
     def __cnf_from_settings(self, setting_info):

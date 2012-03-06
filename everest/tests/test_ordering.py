@@ -34,10 +34,6 @@ class Person(object):
 
 
 class OrderSpecificationTestCase(BaseTestCase):
-    person_a1 = None
-    person_a2 = None
-    person_b1 = None
-    person_b2 = None
 
     def set_up(self):
         self.person_a1 = Person('John', 33)

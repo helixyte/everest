@@ -15,7 +15,6 @@ __all__ = ['OrderSpecificationParserTestCase',
 
 
 class OrderSpecificationParserTestCase(BaseTestCase):
-    parser = None
 
     def set_up(self):
         self.parser = parse_order

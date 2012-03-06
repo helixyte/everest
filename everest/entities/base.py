@@ -43,7 +43,7 @@ class Entity(object):
 
     @classmethod
     def create_from_data(cls, data):
-        return cls(**data) # ** pylint: disable=W0142
+        return cls(**data)
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.id == other.id

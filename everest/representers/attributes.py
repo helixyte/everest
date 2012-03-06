@@ -88,7 +88,7 @@ class _AttributeMapper(object):
 #                map_options['ignore'] = not attr.is_nested
             runtime_map_options = info.get(attr.name, {})
             map_options.update(runtime_map_options)
-            mapped_attr = MappedAttribute(attr.name, # ** pylint:disable=W0142
+            mapped_attr = MappedAttribute(attr.name,
                                           attr.kind,
                                           attr.value_type,
                                           attr.entity_name,

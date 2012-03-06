@@ -6,6 +6,7 @@ Created on Feb 4, 2011.
 """
 
 from datetime import datetime, timedelta
+from everest.querying.base import Operator
 from everest.querying.specifications import ConjuctionFilterSpecification
 from everest.querying.specifications import DisjuctionFilterSpecification
 from everest.querying.specifications import FilterSpecification
@@ -24,7 +25,6 @@ from everest.querying.specifications import \
     ValueLessThanOrEqualToFilterSpecification
 from everest.testing import BaseTestCase
 from nose.tools import raises
-from everest.querying.base import Operator
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjuctionFilterSpecification',
@@ -60,7 +60,7 @@ class AlwaysTrueOperator(Operator):
     literal = 'T'
 
     @staticmethod
-    def apply(arg):
+    def apply(arg): # pylint: disable=W0613
         return True
 
 
@@ -69,7 +69,7 @@ class AlwaysFalseOperator(Operator):
     literal = 'F'
 
     @staticmethod
-    def apply(arg):
+    def apply(arg): # pylint: disable=W0613
         return False
 
 
@@ -97,7 +97,6 @@ class AlwaysFalseFilterSpecification(FilterSpecification):
 
 
 class CriterionFilterSpecificationTestCase(BaseTestCase):
-    candidate = None
 
     TEXT_VALUE = 'Beta-2'
     GREATER_THAN_TEXT_VALUE = 'Gamma-3'
@@ -462,9 +461,6 @@ class TestValueContainedFilterSpecification(
 
 
 class CompositeFilterSpecificationTestCase(BaseTestCase):
-    candidate = None
-    always_true = None
-    always_false = None
 
     def set_up(self):
         self.candidate = object()
@@ -516,9 +512,6 @@ class TestDisjuctionFilterSpecification(CompositeFilterSpecificationTestCase):
 
 
 class TestNegationFilterSpecification(BaseTestCase):
-    candidate = None
-    always_true = None
-    always_false = None
 
     def set_up(self):
         self.candidate = object()

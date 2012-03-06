@@ -28,7 +28,6 @@ __all__ = ['CriterionFilterSpecificationBuilderTestCase',
 
 
 class CriterionFilterSpecificationBuilderTestCase(BaseTestCase):
-    builder = None
 
     def set_up(self):
         self.builder = FilterSpecificationBuilder(FilterSpecificationFactory())
@@ -140,7 +139,6 @@ class CriterionFilterSpecificationBuilderTestCase(BaseTestCase):
 
 
 class CompositeFilterSpecificationBuilderTestCase(BaseTestCase):
-    builder = None
 
     def set_up(self):
         self.builder = FilterSpecificationBuilder(FilterSpecificationFactory())
