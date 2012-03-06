@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Resource base classes.
@@ -34,6 +34,7 @@ from zope.component import getUtility as get_utility # pylint: disable=E0611,F04
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
+from everest.entities.utils import identifier_from_slug
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -59,7 +60,7 @@ class Resource(object):
     __parent__ = None
     #: The name of the resource. This has to be unique within the parent.
     __name__ = None
-    #: The relation identifier to show in links to this resource. Needs to 
+    #: The relation identifier to show in links to this resource. Needs to
     #: be specified in derived classes.
     relation = None
     #: Descriptive title for this resource.
@@ -149,7 +150,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
         self.__name = name
 
     def _get__name__(self):
-        # The name of a member resource defaults to the slug of the underlying 
+        # The name of a member resource defaults to the slug of the underlying
         # entity.
         return self.__name or self.__entity.slug
 
@@ -169,7 +170,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         Returns the entity this resource manages.
 
-        :return: an object implementing 
+        :return: an object implementing
             :class:`everest.entities.interfaces.IEntity`.
         """
         return self.__entity
@@ -214,7 +215,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
                     url = rc_data_el.get_url()
                     if not self_rc is None \
                        and resource_to_url(self_rc) == url:
-                        # 
+                        #
                         continue
                     new_rc = url_to_resource(url)
                     setattr(self, attr.name, new_rc)
@@ -228,10 +229,11 @@ class Member(ResourceAttributeControllerMixin, Resource):
                 raise ValueError('Invalid resource attribute kind.')
 
     def __getitem__(self, item):
-        attr = get_resource_class_attributes(self.__class__).get(item)
+        ident = identifier_from_slug(item)
+        attr = get_resource_class_attributes(self.__class__).get(ident)
         if attr is None or not attr.is_nested:
-            raise KeyError('%s' % item)
-        return getattr(self, item)
+            raise KeyError('%s' % ident)
+        return getattr(self, ident)
 
     def __eq__(self, other):
         """
@@ -302,10 +304,10 @@ class Collection(Resource):
             name = self.root_name
         self.__name__ = name
         #: The filter specification for this resource. Attribute names in
-        #: this specification are relative to the resource.. 
+        #: this specification are relative to the resource..
         self._filter_spec = None
         #: The order specification for this resource. Attribute names in
-        #: this specification are relative to the resource. 
+        #: this specification are relative to the resource.
         self._order_spec = None
         # The underlying aggregate.
         self.__aggregate = aggregate
@@ -327,12 +329,12 @@ class Collection(Resource):
         """
         Sets the traversal parent of this resource and optionally a relation
         parent.
-        
+
         The traversal parent determines the URL, the relation parent affects
         the expressions built for filter and order operations.
-        
+
         :param parent: parent resource.
-        :param relatin: relation with another resource, encapsulated in a 
+        :param relatin: relation with another resource, encapsulated in a
           :class:`everest.relation.Relation` instance.
         """
         self.__parent__ = parent
@@ -342,7 +344,7 @@ class Collection(Resource):
         """
         Returns the aggregate underlying this collection.
 
-        :return: an object implementing 
+        :return: an object implementing
             :class:`everest.entities.interfaces.IAggregate`.
         """
         return self.__aggregate
@@ -369,7 +371,7 @@ class Collection(Resource):
         :param key: the name of the member
         :type key: :class:`string` or :class:`unicode`
         :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one member is found for the given key value. 
+          one member is found for the given key value.
         :returns: object implementing
           :class:`everest.resources.interfaces.IMemberResource`
         """
@@ -421,7 +423,7 @@ class Collection(Resource):
 
     def get(self, key, default=None):
         """
-        Returns a member for the given key or the given default value if no 
+        Returns a member for the given key or the given default value if no
         match was found in the collection.
         """
         try:
@@ -487,7 +489,7 @@ class Collection(Resource):
         if self.__relation is None:
             filter_spec = self._filter_spec
         else:
-            # If we have nesting information, we need to prepend the 
+            # If we have nesting information, we need to prepend the
             # relation specification to the current filter specification.
             if self._filter_spec is None:
                 filter_spec = self.__relation.specification
@@ -499,7 +501,7 @@ class Collection(Resource):
         return filter_spec
 
     def _set_filter(self, filter_spec):
-        # Translate to entity filter expression before passing on to the 
+        # Translate to entity filter expression before passing on to the
         # aggregate.
         visitor = ResourceToEntityFilterSpecificationVisitor(
                                                     get_member_class(self))
@@ -513,7 +515,7 @@ class Collection(Resource):
         return self._order_spec
 
     def _set_order(self, order_spec):
-        # Translate to entity order expression before passing on to the 
+        # Translate to entity order expression before passing on to the
         # aggregate.
         visitor = ResourceToEntityOrderSpecificationVisitor(
                                                     get_member_class(self))
@@ -550,7 +552,7 @@ class Collection(Resource):
 
 class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
     """
-    Base class for specification visitors that convert resource to entity 
+    Base class for specification visitors that convert resource to entity
     attribute names.
     """
     implements(ISpecificationVisitor)
@@ -582,7 +584,7 @@ class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
             rc_attr = get_resource_class_attributes(rc_class)[rc_attr_token]
             ent_attr_name = rc_attr.entity_name
             if rc_attr.kind != ResourceAttributeKinds.TERMINAL:
-                # Look up the member class for the specified member or 
+                # Look up the member class for the specified member or
                 # collection resource interface.
                 rc_class = get_member_class(rc_attr.value_type)
             entity_attr_tokens.append(ent_attr_name)

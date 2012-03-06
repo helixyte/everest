@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
@@ -7,6 +7,7 @@ Created on Feb 4, 2011.
 
 from repoze.bfg.traversal import ModelGraphTraverser # pylint: disable-msg=E0611, F0401
 from everest.resources.interfaces import ICollectionResource
+from everest.resources.interfaces import IResource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionTraverser',
@@ -28,10 +29,10 @@ class CollectionTraverser(ModelGraphTraverser): # pylint: disable-msg=W0232
         system = ModelGraphTraverser.__call__(self, request)
         context = system['context']
         view_name = system['view_name']
-        if ICollectionResource.providedBy(context) and '.' in view_name: # pylint: disable=E1101
-            coll_name, repr_name = view_name.split('.')
+        if IResource.providedBy(context) and '.' in view_name: # pylint: disable=E1101
+            rc_name, repr_name = view_name.split('.')
             try:
-                collection = context[coll_name]
+                collection = context[rc_name]
             except KeyError:
                 pass
             else:
