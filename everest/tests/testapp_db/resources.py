@@ -23,34 +23,36 @@ __all__ = ['MyEntityChildMember',
 
 class MyEntityParentMember(Member):
     relation = 'http://test.org/my-entity-parent'
-    text = terminal_attribute('text', str)
-    text_rc = terminal_attribute('text_ent', str)
+    text = terminal_attribute(str, 'text')
+    text_rc = terminal_attribute(str, 'text_ent')
 
 
 class MyEntityMember(Member):
     relation = 'http://test.org/my-entity'
-    parent = member_attribute('parent', IMyEntityParent)
-    nested_parent = member_attribute('parent', IMyEntityParent, is_nested=True)
-    children = collection_attribute('children', IMyEntityChild)
-    text = terminal_attribute('text', str)
-    text_rc = terminal_attribute('text_ent', str)
-    number = terminal_attribute('number', int)
-    parent_text = terminal_attribute('parent.text_ent', str)
+    parent = member_attribute(IMyEntityParent, 'parent')
+    nested_parent = member_attribute(IMyEntityParent, 'parent', is_nested=True)
+    children = collection_attribute(IMyEntityChild, 'children')
+    text = terminal_attribute(str, 'text')
+    text_rc = terminal_attribute(str, 'text_ent')
+    number = terminal_attribute(int, 'number')
+    parent_text = terminal_attribute(str, 'parent.text_ent')
 
 
 class MyEntityChildMember(Member):
     relation = 'http://test.org/my-entity-child'
-    children = collection_attribute('children', IMyEntityGrandchild,
+    children = collection_attribute(IMyEntityGrandchild,
+                                    entity_attr='children',
                                     is_nested=False,
-                                    backref_attr='parent')
-    no_backref_children = collection_attribute('children', IMyEntityGrandchild,
+                                    backref='parent')
+    no_backref_children = collection_attribute(IMyEntityGrandchild,
+                                               entity_attr='children',
                                                is_nested=False)
-    text = terminal_attribute('text', str)
-    text_rc = terminal_attribute('text_ent', str)
+    text = terminal_attribute(str, 'text')
+    text_rc = terminal_attribute(str, 'text_ent')
 
 
 class MyEntityGrandchildMember(Member):
     relation = 'http://test.org/my-entity-grandchild'
-    text = terminal_attribute('text', str)
-    text_rc = terminal_attribute('text_ent', str)
-    parent = member_attribute('parent', IMyEntityChild)
+    text = terminal_attribute(str, 'text')
+    text_rc = terminal_attribute(str, 'text_ent')
+    parent = member_attribute(IMyEntityChild, 'parent')

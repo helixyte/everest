@@ -14,19 +14,18 @@
     <resource
         interface='.interfaces.ICustomer'
         member=".resources.CustomerMember"
-        collection=".resources.CustomerCollection"
+        collection_root_name="customers"
         entity=".entities.Customer" />
 
     <resource
         interface='.interfaces.IProject'
         member=".resources.ProjectMember"
-        collection=".resources.ProjectCollection"
+        collection_root_name="projects"
         entity=".entities.Project" />
 
     <resource
         interface='.interfaces.ISite'
         member=".resources.SiteMember"
-        collection=".resources.SiteCollection"
         entity=".entities.Site"
         expose="false" />
 
@@ -39,21 +38,15 @@
     <resource
         interface='.interfaces.IIncidence'
         member=".resources.IncidenceMember"
-        collection=".resources.IncidenceCollection"
-        expose="false"
-        entity=".entities.Incidence" />
+        entity=".entities.Incidence"
+        expose="false" />
 
     <representer
-        for=".resources.CustomerMember
-             .resources.CustomerCollection
-             .resources.ProjectMember
-             .resources.ProjectCollection
-             .resources.SiteMember             
-             .resources.SiteCollection             
-             .resources.SpeciesMember             
-             .resources.SpeciesCollection             
-             .resources.IncidenceMember             
-             .resources.IncidenceCollection             
+        for=".interfaces.ICustomer
+             .interfaces.IProject
+             .interfaces.ISite             
+             .interfaces.ISpecies             
+             .interfaces.IIncidence             
              "
         content_type="everest.mime.CsvMime" />
 

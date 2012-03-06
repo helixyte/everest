@@ -77,4 +77,4 @@ class Incidence(Entity):
 
     @property
     def slug(self):
-        return self.species.slug
+        return None if self.species is None else self.species.slug

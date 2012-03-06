@@ -4,6 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 22, 2011.
 """
+
 from everest.resources.base import Member
 from everest.resources.descriptors import terminal_attribute
 
@@ -15,4 +16,4 @@ __all__ = ['MessageMember',
 class MessageMember(Member):
     relation = 'message'
 
-    text = terminal_attribute('text', str)
+    text = terminal_attribute(str, 'text')
