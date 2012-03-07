@@ -478,16 +478,22 @@ class LazyAttributeLoaderProxy(object):
     Proxy for lazy loading of attributes referencing entities that are loaded
     through a URL-linked resource.
     """
-    def __init__(self, _loader_map, **kw):
+    def __init__(self, _loader_map=None, **kw):
+        if _loader_map is None:
+            _loader_map = {}
         self._loader_map = _loader_map
         super(LazyAttributeLoaderProxy, self).__init__(**kw)
 
     def __getattribute__(self, attr):
-        loader_map = \
-            object.__getattribute__(self, '__dict__').get('_loader_map')
-        if not loader_map is None and attr in loader_map:
-            self._load()
-            result = getattr(self, attr)
+        attrs = object.__getattribute__(self, '__dict__')
+        if attr in attrs.get('_loader_map', ()):
+            #  Setting this flag protects agains recursive loading.
+            loaded_attrs = self.__load()
+            try:
+                result = loaded_attrs[attr]
+            except KeyError:
+                # Loading failed - try again later.
+                result = object.__getattribute__(self, attr)
         else:
             result = object.__getattribute__(self, attr)
         return result
@@ -518,20 +524,27 @@ class LazyAttributeLoaderProxy(object):
             ent = entity_cls.create_from_data(data)
         return ent
 
-    def _load(self):
+    def __load(self):
+        loaded_attrs = dict()
         loader_map = object.__getattribute__(self, '_loader_map')
         for attr, loader in loader_map.items():
+            # To prevent recursive attempts to load the currently loading
+            # attribute, we remove it from the loader map.
+            del loader_map[attr]
             try:
                 new_value = loader().get_entity()
-            except KeyError: # URL loading failed.
-                pass
+            except KeyError: # URL resolving (traversal) failed.
+                # Reinsert the attribute into the map for later loading.
+                loader_map[attr] = loader
             else:
                 setattr(self, attr, new_value)
-                del loader_map[attr]
+                loaded_attrs[attr] = new_value
         # Once all attributes are loaded successfully, we do not need the
         # proxy any longer.
         if len(loader_map) == 0:
             self.__class__ = self.__class__.__bases__[-1]
+            delattr(self, '_loader_map')
+        return loaded_attrs
 
 
 class DataElementParser(object):

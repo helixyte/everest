@@ -24,7 +24,7 @@ class MappedAttribute(object):
 
     This is a simple value object.
     """
-    def __init__(self, name, kind, value_type, entity_name, **options):
+    def __init__(self, name, kind, value_type, entity_name=None, **options):
         """
         :param str name: The attribute name.
         :param str kind: The attribute kind. One of the constants
@@ -91,7 +91,7 @@ class _AttributeMapper(object):
             mapped_attr = MappedAttribute(attr.name,
                                           attr.kind,
                                           attr.value_type,
-                                          attr.entity_name,
+                                          entity_name=attr.entity_name,
                                           **map_options)
             mapped_attrs[attr.name] = mapped_attr
         cache[mapped_class] = mapped_attrs

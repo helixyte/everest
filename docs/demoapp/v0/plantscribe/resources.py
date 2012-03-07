@@ -27,38 +27,24 @@ __all__ = ['CustomerMember',
 
 class CustomerMember(Member):
     relation = 'http://plantscribe.org/relations/customer'
-    first_name = terminal_attribute('first_name', str)
-    last_name = terminal_attribute('last_name', str)
-    projects = collection_attribute('projects',
-                                    IProject, backref_attr='customer')
-
-
-class CustomerCollection(Collection):
-    title = 'Customers.'
-    root_name = 'customers'
-    description = 'Collection of customers.'
+    first_name = terminal_attribute(str, 'first_name')
+    last_name = terminal_attribute(str, 'last_name')
+    projects = collection_attribute(IProject, backref='customer')
 
 
 class ProjectMember(Member):
     relation = 'http://plantscribe.org/relations/project'
-    name = terminal_attribute('name', str)
-    customer = member_attribute('customer', ICustomer)
-    sites = collection_attribute('sites', ISite,
-                                 backref_attr='project',
-                                 is_nested=True)
-
-
-class ProjectCollection(Collection):
-    title = 'Projects.'
-    root_name = 'projects'
+    name = terminal_attribute(str, 'name')
+    customer = member_attribute(ICustomer, 'customer')
+    sites = collection_attribute(ISite, backref='project', is_nested=True)
 
 
 class SpeciesMember(Member):
     relation = 'http://plantscribe.org/relations/species'
-    species_name = terminal_attribute('species_name', str)
-    genus_name = terminal_attribute('genus_name', str)
-    cultivar = terminal_attribute('cultivar', str)
-    author = terminal_attribute('author', str)
+    species_name = terminal_attribute(str, 'species_name')
+    genus_name = terminal_attribute(str, 'genus_name')
+    cultivar = terminal_attribute(str, 'cultivar')
+    author = terminal_attribute(str, 'author')
 
 
 class SpeciesCollection(Collection):
@@ -68,23 +54,14 @@ class SpeciesCollection(Collection):
 
 class SiteMember(Member):
     relation = 'http://plantscribe.org/relations/site'
-    name = terminal_attribute('name', str)
-    incidences = collection_attribute('incidences', IIncidence,
-                                      backref_attr='site',
+    name = terminal_attribute(str, 'name')
+    incidences = collection_attribute(IIncidence, backref='site',
                                       is_nested=True)
-    project = member_attribute('project', IProject)
-
-
-class SiteCollection(Collection):
-    title = 'Sites.'
+    project = member_attribute(IProject, 'project')
 
 
 class IncidenceMember(Member):
     relation = 'http://plantscribe.org/relations/incidence'
-    species = member_attribute('species', ISpecies)
-    site = member_attribute('site', ISite)
-    quantity = terminal_attribute('quantity', float)
-
-
-class IncidenceCollection(Collection):
-    title = 'Incidences.'
+    species = member_attribute(ISpecies, 'species')
+    site = member_attribute(ISite, 'site')
+    quantity = terminal_attribute(float, 'quantity')
