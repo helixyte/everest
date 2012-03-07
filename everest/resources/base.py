@@ -9,8 +9,8 @@ Created on Nov 3, 2011.
 
 from everest.entities.utils import get_entity_class
 from everest.querying.base import SpecificationVisitorBase
-from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import ISpecificationVisitor
+from everest.querying.utils import get_filter_specification_factory
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
 from everest.resources.attributes import ResourceAttributeControllerMixin
@@ -29,8 +29,6 @@ from everest.utils import classproperty
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
@@ -352,7 +350,7 @@ class Collection(Resource):
         Creates a new member resource from the given entity and adds it to
         this collection.
         """
-        member = get_adapter(entity, IMemberResource)
+        member = as_member(entity)
         self.add(member)
         return member
 
@@ -492,7 +490,7 @@ class Collection(Resource):
             if self._filter_spec is None:
                 filter_spec = self.__relation.specification
             else:
-                spec_fac = get_utility(IFilterSpecificationFactory)
+                spec_fac = get_filter_specification_factory()
                 filter_spec = \
                     spec_fac.create_conjunction(self.__relation.specification,
                                                 self._filter_spec)

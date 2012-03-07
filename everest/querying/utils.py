@@ -7,6 +7,7 @@ Created on Dec 19, 2011.
 
 from everest.entities.attributes import EntityAttributeKinds
 from everest.querying.interfaces import IFilterSpecificationFactory
+from everest.querying.interfaces import IOrderSpecificationFactory
 from pyramid.threadlocal import get_current_registry
 from sqlalchemy.orm.interfaces import MANYTOMANY
 from sqlalchemy.orm.interfaces import MANYTOONE
@@ -15,6 +16,7 @@ from sqlalchemy.orm.interfaces import ONETOMANY
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmAttributeInspector',
            'get_filter_specification_factory',
+           'get_order_specification_factory',
            ]
 
 
@@ -27,6 +29,18 @@ def get_filter_specification_factory():
     """
     reg = get_current_registry()
     return reg.getUtility(IFilterSpecificationFactory)
+
+
+def get_order_specification_factory():
+    """
+    Returns the object registered as order specification factory utility.
+    
+    :returns: object implementing 
+        :class:`everest.querying.interfaces.IOrderSpecificationFactory
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IOrderSpecificationFactory)
+
 
 class OrmAttributeInspector(object):
     """

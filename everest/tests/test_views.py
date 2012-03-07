@@ -5,10 +5,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 17, 2011.
 """
 
+from everest.messaging import IUserMessageEvent
 from everest.messaging import IUserMessageEventNotifier
 from everest.messaging import UserMessageEventNotifier
 from everest.messaging import UserMessageHandler
-from everest.resources.interfaces import IService
+from everest.resources.utils import get_service
 from everest.testing import FunctionalTestCase
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooCollection
@@ -16,7 +17,6 @@ from everest.tests.testapp.resources import FooMember
 from everest.tests.testapp.views import UserMessagePostCollectionView
 from everest.tests.testapp.views import UserMessagePutMemberView
 from pkg_resources import resource_filename # pylint: disable=E0611
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 import transaction
 
 __docformat__ = 'reStructuredText en'
@@ -47,7 +47,8 @@ class WarningViewsTestCase(ViewsTestCase):
         reg = self.config.registry
         reg.registerUtility(UserMessageEventNotifier(), # pylint:disable=E1103
                             IUserMessageEventNotifier)
-        reg.registerHandler(UserMessageHandler.handle_user_message_event)
+        reg.registerHandler(UserMessageHandler.handle_user_message_event,
+                            required=(IUserMessageEvent,))
         self.config.add_view(context=FooCollection,
                              view=UserMessagePostCollectionView,
                              renderer='csv',
@@ -94,7 +95,7 @@ class WarningViewsTestCase(ViewsTestCase):
             UserMessagePostCollectionView.message = old_msg
 
     def test_put_member_warning_exception(self):
-        root = get_utility(IService)
+        root = get_service()
         # Need to start the service manually - no request root has been set 
         # yet.
         root.start()

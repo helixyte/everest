@@ -10,11 +10,10 @@ Created on Jan 17, 2012.
 
 from everest.interfaces import IRepository
 from weakref import WeakKeyDictionary
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Repository',
@@ -130,6 +129,7 @@ def as_repository(rc):
     :return: object implementing 
       :class:`everest.resources.interfaces.IRepository`.
     """
+    reg = get_current_registry()
     if IInterface in provided_by(rc):
-        rc = get_utility(rc, name='collection-class')
-    return get_adapter(rc, IRepository)
+        rc = reg.getUtility(rc, name='collection-class')
+    return reg.getAdapter(rc, IRepository)

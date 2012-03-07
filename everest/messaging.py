@@ -7,7 +7,6 @@ Created on Nov 24, 2011.
 
 from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
-from zope.component import adapter # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
@@ -83,7 +82,6 @@ class UserMessageHandler(object):
         cls.__handler_map.pop(request, None)
 
     @classmethod
-    @adapter(IUserMessageEvent)
     def handle_user_message_event(cls, event):
         handler = cls.__handler_map[event.request]
         handler.add_message(event.message)

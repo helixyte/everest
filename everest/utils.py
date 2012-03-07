@@ -6,6 +6,7 @@ Created on Oct 7, 2011.
 """
 
 from StringIO import StringIO
+from everest.interfaces import IRepositoryManager
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from pyramid.threadlocal import get_current_registry
@@ -18,9 +19,10 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
            'OrderedDict',
            'check_email',
+           'classproperty',
            'get_filter_specification_visitor',
            'get_order_specification_visitor',
-           'classproperty',
+           'get_repository_manager',
            ]
 
 EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$'
@@ -94,6 +96,17 @@ def get_order_specification_visitor(name):
     """
     reg = get_current_registry()
     return reg.getUtility(IOrderSpecificationVisitor, name=name)
+
+
+def get_repository_manager():
+    """
+    Registers the object registered as the repository manager utility.
+    
+    :returns: object implementing 
+        :class:`everest.interfaces.IRepositoryManager`
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IRepositoryManager)
 
 
 # We just redefine this here - perhaps we want to have our own implementation

@@ -38,8 +38,6 @@ install_requirements = [
     'rfc3339',
     'sqlalchemy>=0.7.4,<=0.7.99',
     'transaction>=1.2.0,<=1.2.99',
-    'zope.component',
-    'zope.schema',
     'zope.sqlalchemy>=0.4,<=0.4.99',
     ]
 
