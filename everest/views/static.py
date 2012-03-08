@@ -5,9 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 22, 2010.
 """
 
-from repoze.bfg.interfaces import ISettings
-from repoze.bfg.view import static
-from zope.component import getUtility # pylint: disable=E0611,F0401
+from pyramid.settings import get_settings
+from pyramid.view import static
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['public_view',
@@ -30,7 +29,7 @@ class PublicViewFactory(object):
         return self.__static_view(context, request)
 
     def _create_static_view(self):
-        settings = getUtility(ISettings)
+        settings = get_settings()
         return static(settings.get(self.PUBLIC_DIR),
                       int(settings.get(self.PUBLIC_CACHE_MAX_AGE,
                                        self.DEFAULT_CACHE_MAX_AGE)))

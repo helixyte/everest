@@ -7,8 +7,7 @@ Resource relation classes.
 Created on Sep 30, 2011.
 """
 
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from everest.querying.specifications import IFilterSpecificationFactory
+from everest.querying.utils import get_filter_specification_factory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Nesting',
@@ -35,7 +34,7 @@ class Nesting(object):
 
     @property
     def specification(self):
-        spec_fac = get_utility(IFilterSpecificationFactory)
+        spec_fac = get_filter_specification_factory()
         if not self.backref is None:
             # Simple case: We have an attribute in the child that references
             # the parent and we can identify all elements of the child

@@ -20,10 +20,10 @@ from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.resources.interfaces import IService
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
-from repoze.bfg.testing import DummyRequest
-from repoze.bfg.testing import setUp as testing_set_up
-from repoze.bfg.testing import tearDown as testing_tear_down
-from repoze.bfg.threadlocal import get_current_registry
+from pyramid.testing import DummyRequest
+from pyramid.testing import setUp as testing_set_up
+from pyramid.testing import tearDown as testing_tear_down
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConfiguratorTestCase',

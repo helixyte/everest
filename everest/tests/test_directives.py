@@ -25,9 +25,9 @@ from everest.tests.testapp.interfaces import IBar
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
-from repoze.bfg.testing import setUp as testing_set_up
-from repoze.bfg.testing import tearDown as testing_tear_down
-from repoze.bfg.threadlocal import get_current_registry
+from pyramid.testing import setUp as testing_set_up
+from pyramid.testing import tearDown as testing_tear_down
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',

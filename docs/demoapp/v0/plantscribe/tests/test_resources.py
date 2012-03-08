@@ -1,5 +1,4 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -14,11 +13,11 @@ from pkg_resources import resource_filename # pylint: disable=E0611
 from plantscribe.interfaces import ICustomer
 from plantscribe.interfaces import IProject
 from plantscribe.interfaces import ISpecies
-from plantscribe.resources import CustomerMember
-from plantscribe.resources import IncidenceMember
-from plantscribe.resources import ProjectMember
-from plantscribe.resources import SiteMember
-from plantscribe.resources import SpeciesMember
+from plantscribe.resources.customer import CustomerMember
+from plantscribe.resources.incidence import IncidenceMember
+from plantscribe.resources.project import ProjectMember
+from plantscribe.resources.site import SiteMember
+from plantscribe.resources.species import SpeciesMember
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PlantScribeResourcesTestCase',
@@ -27,7 +26,7 @@ __all__ = ['PlantScribeResourcesTestCase',
 
 class PlantScribeResourcesTestCase(ResourceTestCase):
     package_name = 'plantscribe'
-    ini_file_path = resource_filename('plantscribe', 'plantscribe.ini')
+    ini_file_path = resource_filename('plantscribe.tests', 'plantscribe.ini')
     ini_section_name = 'app:plantscribe'
 
     def test_get_customer(self):

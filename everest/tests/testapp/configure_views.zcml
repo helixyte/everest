@@ -1,5 +1,5 @@
 <configure
-    xmlns="http://namespaces.repoze.org/bfg"
+    xmlns="http://pylonshq.com/pyramid"
 >
 
     <!-- Include special directives. -->
@@ -11,7 +11,7 @@
 
     <renderer
         name="csv"
-        factory="everest.renderers.renderer_factory" />
+        factory="everest.renderers.RendererFactory" />
 
     <!-- Representers. -->
 

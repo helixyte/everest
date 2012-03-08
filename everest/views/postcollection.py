@@ -37,8 +37,8 @@ class PostCollectionView(PutOrPostResourceView):
         else:
             # All is good - 201 Created.
             self.context.add(data)
-            self.request.response_status = self._status(HTTPCreated)
-            self.request.response_headerlist = [
+            self.request.response.status = self._status(HTTPCreated)
+            self.request.response.headerlist = [
                 ('Location',
                  resource_to_url(data, request=self.request))
                 ]

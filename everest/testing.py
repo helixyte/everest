@@ -11,6 +11,7 @@ from everest.configuration import Configurator
 from everest.db import Session
 from everest.db import get_engine
 from everest.entities.utils import get_root_aggregate
+from everest.interfaces import IRepositoryManager
 from everest.repository import REPOSITORIES
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
@@ -18,8 +19,8 @@ from everest.resources.utils import get_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
-from repoze.bfg.registry import Registry
-from repoze.bfg.testing import DummyRequest
+from pyramid.registry import Registry
+from pyramid.testing import DummyRequest
 from webtest import TestApp
 import nose.plugins
 import os
@@ -27,7 +28,6 @@ import sys
 import time
 import transaction
 import unittest
-from everest.interfaces import IRepositoryManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BaseTestCase',
@@ -158,6 +158,13 @@ class EverestIni(object):
         """
         return self.__ini_parser.get(section, key)
 
+    def has_setting(self, section, key):
+        """
+        Checks if the specified ini file section has a setting with the given
+        name.
+        """
+        return self.__ini_parser.has_option(section, key)
+
     @classmethod
     def __check_ini_file(cls):
         if cls.ini_file_path is None:
@@ -250,8 +257,15 @@ class ResourceTestCase(BaseTestCase):
     def set_up(self):
         super(ResourceTestCase, self).set_up()
         # Build a dummy request.
-        host = self.ini.get_setting('server:main', 'host')
-        port = int(self.ini.get_setting('server:main', 'port'))
+        section = 'server:main'
+        if self.ini.has_setting(section, 'host'):
+            host = self.ini.get_setting(section, 'host')
+        else:
+            host = 'localhost'
+        if self.ini.has_setting(section, 'port'):
+            port = int(self.ini.get_setting(section, 'port'))
+        else:
+            port = 6543
         base_url = app_url = 'http://%s:%d' % (host, port)
         self._request = DummyRequest(application_url=app_url,
                                      host_url=base_url,
@@ -310,7 +324,6 @@ class FunctionalTestCase(BaseTestCase):
         self.ini = EverestIni(self.ini_file_path)
         self.config = Configurator(registry=reg,
                                    package=self.package_name)
-        self.config.hook_zca()
         self.config.begin()
         wsgiapp = self._load_wsgiapp()
         self._custom_configure()

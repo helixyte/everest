@@ -17,8 +17,8 @@ __all__ = ['handle_request',
 def handle_request(event):
     """Categorizes a new request
 
-    :param event: an object broadcast by the repoze.bfg framework
-    :type event: :class:`repoze.bfg.interfaces.INewRequest`
+    :param event: an object broadcast by the pyramid framework
+    :type event: :class:`pyramid.interfaces.INewRequest`
     """
     request = event.request
     mime = request.headers.get('accept', '')

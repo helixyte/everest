@@ -79,6 +79,10 @@ class Service(Resource):
         for key in self.__collections.iterkeys():
             yield self.__getitem__(key)
 
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__,
+                           'started' if self.__started else 'not started')
+
     def add(self, irc):
         repo = as_repository(irc)
         coll = repo.get(irc)

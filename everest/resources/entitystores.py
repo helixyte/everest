@@ -16,24 +16,22 @@ from everest.db import is_engine_initialized
 from everest.db import is_metadata_initialized
 from everest.db import set_engine
 from everest.db import set_metadata
-from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_repository_manager
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
 from threading import RLock
 from threading import local
 from transaction.interfaces import IDataManager
 from weakref import WeakValueDictionary
-from zope.component import getUtility as get_utility
-from zope.interface import implements
-from zope.sqlalchemy import ZopeTransactionExtension
+from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
 import os
 import transaction
 import weakref
-
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CachingEntityStore',
@@ -315,7 +313,7 @@ class FileSystemEntityStore(CachingEntityStore):
 
     def __get_repo(self):
         # FIXME: assuming repo has same name as store. pylint: disable=W0511
-        repo_mgr = get_utility(IRepositoryManager)
+        repo_mgr = get_repository_manager()
         return repo_mgr.get(self.name)
 
 
@@ -520,6 +518,8 @@ class InMemorySession(object):
         # Update session cache.
         cache = self.__entities[entity_cls]
         cache.add(entity)
+        # If the removed entity was marked as dirty, discard. 
+        self.__dirty[entity_cls].discard(entity)
         # Mark for flush.
         self.__needs_flush = True
 

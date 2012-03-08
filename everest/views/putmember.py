@@ -32,10 +32,10 @@ class PutMemberView(PutOrPostResourceView):
         initial_name = self.context.__name__
         self.context.update_from_data(data)
         current_name = self.context.__name__
-        self.request.response_status = self._status(HTTPOk)
+        self.request.response.status = self._status(HTTPOk)
         # FIXME: add conflict detection # pylint: disable=W0511
         if initial_name != current_name:
-            self.request.response_headerlist = \
+            self.request.response.headerlist = \
                 [('Location',
                   resource_to_url(self.context, request=self.request))]
         # We return the representation of the updated member to

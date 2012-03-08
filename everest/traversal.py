@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 
-from repoze.bfg.traversal import ModelGraphTraverser # pylint: disable-msg=E0611, F0401
+from pyramid.traversal import ModelGraphTraverser # pylint: disable-msg=E0611, F0401
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
 

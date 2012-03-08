@@ -13,12 +13,11 @@ from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
-from repoze.bfg.threadlocal import get_current_registry
-from repoze.bfg.traversal import model_path
+from everest.resources.interfaces import IService
+from pyramid.threadlocal import get_current_registry
+from pyramid.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
-from zope.component import getAdapter as get_adapter # pylint: disable=E0611,F0401
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
@@ -58,7 +57,7 @@ def get_stage_collection(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    repo_mgr = get_utility(IRepositoryManager)
+    repo_mgr = get_repository_manager()
     repo = repo_mgr.get(REPOSITORIES.MEMORY)
     return repo.get(rc)
 
@@ -71,7 +70,7 @@ def new_stage_collection(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    repo_mgr = get_utility(IRepositoryManager)
+    repo_mgr = get_repository_manager()
     new_repo = repo_mgr.new(REPOSITORIES.MEMORY)
     new_repo.initialize()
     return new_repo.get(rc)
@@ -85,10 +84,11 @@ def get_member_class(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
+    reg = get_current_registry()
     if IInterface in provided_by(rc):
-        member_class = get_utility(rc, name='member-class')
+        member_class = reg.getUtility(rc, name='member-class')
     else:
-        member_class = get_adapter(rc, IMemberResource, name='member-class')
+        member_class = reg.getAdapter(rc, IMemberResource, name='member-class')
     return member_class
 
 
@@ -101,11 +101,12 @@ def get_collection_class(rc):
     :type rc: class implementing or instance providing or subclass of
         a registered resource interface.
     """
+    reg = get_current_registry()
     if IInterface in provided_by(rc):
-        coll_class = get_utility(rc, name='collection-class')
+        coll_class = reg.getUtility(rc, name='collection-class')
     else:
-        coll_class = get_adapter(rc, ICollectionResource,
-                                 name='collection-class')
+        coll_class = reg.getAdapter(rc, ICollectionResource,
+                                    name='collection-class')
     return coll_class
 
 
@@ -124,7 +125,8 @@ def as_member(entity, parent=None):
     :returns: an object implementing
         :class:`everest.resources.interfaces.IMemberResource`
     """
-    rc = get_adapter(entity, IMemberResource)
+    reg = get_current_registry()
+    rc = reg.getAdapter(entity, IMemberResource)
     if not parent is None:
         rc.__parent__ = parent # interface method pylint: disable=E1121
     return rc
@@ -195,7 +197,8 @@ def get_repository(name):
     """
     Returns the resource repository with the given name.
     """
-    repo_mgr = get_utility(IRepositoryManager)
+    reg = get_current_registry()
+    repo_mgr = reg.getUtility(IRepositoryManager)
     return repo_mgr.get(name)
 
 
@@ -203,4 +206,17 @@ def get_repository_manager():
     """
     Returns the resource repository manager.
     """
-    return get_utility(IRepositoryManager)
+    reg = get_current_registry()
+    return reg.getUtility(IRepositoryManager)
+
+
+def get_service():
+    """
+    Registers the object registered as the service utility.
+    
+    :returns: object implementing 
+        :class:`everest.interfaces.IService`
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IService)
+

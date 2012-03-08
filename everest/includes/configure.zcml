@@ -4,12 +4,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 -->
 
 <configure
-    xmlns="http://namespaces.repoze.org/bfg"
+    xmlns="http://pylonshq.com/pyramid"
 >
 
     <!-- Load BFG directives. -->
     <include
-        package="repoze.bfg.includes" />
+        package="pyramid_zcml" />
 
     <!-- Load everest directives. -->
     <include

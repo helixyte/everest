@@ -11,21 +11,23 @@ from StringIO import StringIO
 from everest.mime import CsvMime
 from everest.mime import XmlMime
 from everest.representers.utils import as_representer
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
 from everest.utils import OrderedDict
-from pygraph.algorithms.sorting import topological_sorting
-from pygraph.classes.digraph import digraph
+from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
+from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from urlparse import urlparse
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 import os
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['dump_resource',
+__all__ = ['build_resource_dependency_graph',
+           'build_resource_graph',
+           'dump_resource',
+           'dump_resource_to_files',
            'dump_resource_graph',
+           'find_connected_resources',
            'load_resource_from_file',
            'load_resource_from_url',
            ]
@@ -68,10 +70,7 @@ def load_resource_from_file(resource, filename,
             content_type = extensions[ext]
         except KeyError:
             raise ValueError('Unknown file extension "%s".' % ext)
-    if IInterface in provided_by(resource):
-        coll_cls = get_utility(resource, name='collection-class')
-    else:
-        coll_cls = resource
+    coll_cls = get_collection_class(resource)
     rpr = as_representer(object.__new__(coll_cls),
                          content_type.mime_string)
     fp = open(filename, 'rU')

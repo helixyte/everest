@@ -10,11 +10,10 @@ Created on Sep 25, 2011.
 from everest.entities.base import Aggregate
 from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
-from everest.querying.interfaces import IFilterSpecificationVisitor
-from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.utils import get_filter_specification_visitor
+from everest.utils import get_order_specification_visitor
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
-from zope.component import getUtility as get_utility # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregate',
@@ -61,13 +60,11 @@ class MemoryAggregate(Aggregate):
         else:
             ents = self._relationship.children
         if not self._filter_spec is None:
-            visitor = get_utility(IFilterSpecificationVisitor,
-                                  name=EXPRESSION_KINDS.EVAL)()
+            visitor = get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
             self._filter_spec.accept(visitor)
             ents = visitor.expression(ents)
         if not self._order_spec is None:
-            visitor = get_utility(IOrderSpecificationVisitor,
-                                  name=EXPRESSION_KINDS.EVAL)()
+            visitor = get_order_specification_visitor(EXPRESSION_KINDS.EVAL)()
             self._order_spec.accept(visitor)
             ents = visitor.expression(ents)
         if not self._slice_key is None:
@@ -207,13 +204,11 @@ class OrmAggregate(Aggregate):
         return query
 
     def _filter_visitor_factory(self):
-        visitor_cls = get_utility(IFilterSpecificationVisitor,
-                                  name=EXPRESSION_KINDS.SQL)
+        visitor_cls = get_filter_specification_visitor(EXPRESSION_KINDS.SQL)
         return visitor_cls(self.entity_class)
 
     def _order_visitor_factory(self):
-        visitor_cls = get_utility(IOrderSpecificationVisitor,
-                                  name=EXPRESSION_KINDS.SQL)
+        visitor_cls = get_order_specification_visitor(EXPRESSION_KINDS.SQL)
         return visitor_cls(self.entity_class)
 
     def _get_base_query(self):

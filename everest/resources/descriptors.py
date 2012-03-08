@@ -15,7 +15,7 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
-from repoze.bfg.traversal import find_root
+from pyramid.traversal import find_root
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',

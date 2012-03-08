@@ -26,12 +26,13 @@ class ILocationAware(Interface):
     """
     ILocationAware Interface
 
-    Applications which use traversal to locate the context of a view must ensure
-    that the model instances that make up the model graph are "location aware".
+    Applications which use traversal to locate the context of a view must
+    ensure that the model instances that make up the model graph are 
+    "location aware".
 
-    In order for repoze.bfg  location, security, URL-generation, and traversal
-    functions to work properly against a instances in an object graph, all nodes
-    in the graph must be location-aware.
+    In order for location, security, URL-generation, and traversal functions
+    to work properly against a instances in an object graph, all nodes in the
+    object graph must be location-aware.
 
     The __parent__ of the root object should be None and its __name__ should be
     the empty string. For instance:

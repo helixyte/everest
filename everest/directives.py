@@ -7,9 +7,9 @@ Created on Jun 16, 2011.
 
 from everest.configuration import Configurator
 from everest.repository import REPOSITORIES
-from repoze.bfg.threadlocal import get_current_registry
-from repoze.bfg.zcml import IViewDirective
-from repoze.bfg.zcml import view as bfg_view
+from pyramid.threadlocal import get_current_registry
+from pyramid_zcml import IViewDirective
+from pyramid_zcml import view as pyramid_view
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Path # pylint: disable=E0611,F0401
@@ -232,7 +232,7 @@ def collection_view(_context,
     for rc in for_:
         if IInterface in provided_by(rc):
             rc = reg.getUtility(rc, 'collection-class')
-        bfg_view(_context, context=rc, **kw)
+        pyramid_view(_context, context=rc, **kw)
 
 
 class IMemberViewDirective(IViewDirective):
@@ -250,7 +250,7 @@ def member_view(_context,
     for rc in for_:
         if IInterface in provided_by(rc):
             rc = reg.getUtility(rc, 'member-class')
-        bfg_view(_context, context=rc, **kw)
+        pyramid_view(_context, context=rc, **kw)
 
 
 class IRepresenterDirective(Interface):
