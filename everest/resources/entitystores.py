@@ -395,6 +395,8 @@ class EntityCache(object):
         if entity.slug != old_entity.slug:
             del self.__slug_map[old_entity.slug]
             self.__slug_map[entity.slug] = entity
+        self.__entities.remove(old_entity)
+        self.__entities.append(entity)
         self.__id_map[entity.id] = entity
 
     def add(self, entity):
