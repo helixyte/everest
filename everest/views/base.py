@@ -82,7 +82,7 @@ class ResourceView(object):
         
         Respond with a 500 "Internal Server Error".
         """
-        self._logger.debug('Request errors\n'
+        self._logger.error('Request errors\n'
                            'Error message: %s\nTraceback:%s' %
                            (message, traceback))
         http_exc = HTTPInternalServerError(message)

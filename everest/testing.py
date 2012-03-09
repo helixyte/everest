@@ -184,9 +184,12 @@ class EverestIni(object):
 class BaseTestCase(Pep8CompliantTestCase):
     """
     Base class for all everest unit test case classes.
+    
+    :ivar config: The registry configurator. This is set in the set_up method.
+    :ivar ini: The ini file parser. This will only be set up if the 
+        `ini_file_path` and `ini_section_name` class variables were set up 
+        sensibly.  
     """
-    #: The registry configurator. This is set in the set_up method.
-    config = None
     #: The name of the package where the tests reside. May be overridden in
     #: derived classes.
     package_name = 'everest'
@@ -196,24 +199,34 @@ class BaseTestCase(Pep8CompliantTestCase):
     #: The section name in the ini file to look for settings. Override as 
     #: needed in derived classes.
     ini_section_name = None
-    #: The ini file parser. This will only be set up if the ini_file_path 
-    #: and ini_section_name variables were set up sensibly.
-    ini = None
 
     def set_up(self):
+        self.ini = EverestIni(self.ini_file_path)
+
+
+class ConfiguredTestCase(BaseTestCase):
+    """
+    Base class for test cases access a configured test registry.
+    """
+    def set_up(self):
+        super(ConfiguredTestCase, self).set_up()
         # Create and configure a new testing registry.
         reg = Registry('testing')
-        self.ini = EverestIni(self.ini_file_path)
         self.config = Configurator(registry=reg,
-                                   package=self.package_name)
+                               package=self.package_name)
+        self.config.hook_zca()
         if not self.ini_section_name is None:
             settings = self.ini.get_settings(self.ini_section_name)
             self.config.setup_registry(settings=settings)
         else:
             self.config.setup_registry()
 
+    def tear_down(self):
+        self.config.unhook_zca()
+        self.config.end()
 
-class EntityTestCase(BaseTestCase):
+
+class EntityTestCase(ConfiguredTestCase):
     """
     Test class for entity classes.
     """
@@ -222,7 +235,6 @@ class EntityTestCase(BaseTestCase):
     def set_up(self):
         super(EntityTestCase, self).set_up()
         # Load config file.
-        self.config.hook_zca()
         self.config.begin()
         self.config.load_zcml(self.config_file_name)
         # Set up repositories.
@@ -231,8 +243,7 @@ class EntityTestCase(BaseTestCase):
 
     def tear_down(self):
         transaction.abort()
-        self.config.unhook_zca()
-        self.config.end()
+        super(EntityTestCase, self).tear_down()
 
     def _get_entity(self, icollection, key=None):
         agg = get_root_aggregate(icollection)
@@ -247,11 +258,10 @@ class EntityTestCase(BaseTestCase):
         return entity_cls.create_from_data(data)
 
 
-class ResourceTestCase(BaseTestCase):
+class ResourceTestCase(ConfiguredTestCase):
     """
     Test class for resource classes.
     """
-    _request = None
     config_file_name = 'configure.zcml'
 
     def set_up(self):
@@ -273,7 +283,6 @@ class ResourceTestCase(BaseTestCase):
                                      url=app_url,
                                      registry=self.config.registry)
         # Load config file.
-        self.config.hook_zca()
         self.config.begin(request=self._request)
         self.config.load_zcml(self.config_file_name)
         # Put the service at the request root (needed for URL resolving).
@@ -287,8 +296,7 @@ class ResourceTestCase(BaseTestCase):
 
     def tear_down(self):
         transaction.abort()
-        self.config.unhook_zca()
-        self.config.end()
+        super(ResourceTestCase, self).tear_down()
 
     def _get_member(self, icollection, key=None):
         if key is None:
@@ -314,36 +322,25 @@ class ResourceTestCase(BaseTestCase):
 class FunctionalTestCase(BaseTestCase):
     """
     A basic test class for client side actions.
+    
+    :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test. 
     """
-    app = None
+    #: The name of the application to test.
     app_name = None
 
     def set_up(self):
-        # Create and configure a new testing registry.
-        reg = Registry('testing')
-        self.ini = EverestIni(self.ini_file_path)
-        self.config = Configurator(registry=reg,
+        super(FunctionalTestCase, self).set_up()
+        # Create the WSGI application and set up a configurator.
+        wsgiapp = self._load_wsgiapp()
+        self.config = Configurator(registry=wsgiapp.registry,
                                    package=self.package_name)
         self.config.begin()
-        wsgiapp = self._load_wsgiapp()
-        self._custom_configure()
         self.app = TestApp(wsgiapp,
                            extra_environ=self._create_extra_environment())
 
     def tear_down(self):
         transaction.abort()
-        self.config.unhook_zca()
         self.config.end()
-
-    def _custom_configure(self):
-        """
-        Called from :method:`set_up` after the configurator has been set up
-        and hooked with the ZCA site manager, but before the WSGI app is
-        loaded.
-
-        This default implementation does nothing and is meant to be overridden.
-        """
-        pass
 
     def _load_wsgiapp(self):
         wsgiapp = loadapp('config:' + self.ini.ini_file_path,
