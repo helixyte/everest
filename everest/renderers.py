@@ -17,8 +17,8 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = "reStructuredText en"
 __all__ = ['AtomRenderer',
            'CsvRenderer',
+           'RendererFactory',
            'ResourceRenderer',
-           'renderer_factory',
            ]
 
 

@@ -23,7 +23,6 @@ class ResourceGraphTestCase(ConfiguredTestCase):
 
     def set_up(self):
         ConfiguredTestCase.set_up(self)
-        self.config.hook_zca()
         self.config.begin()
         self.config.load_zcml('configure.zcml')
         self._interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,

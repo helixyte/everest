@@ -214,16 +214,11 @@ class ConfiguredTestCase(BaseTestCase):
         reg = Registry('testing')
         self.config = Configurator(registry=reg,
                                package=self.package_name)
-        self.config.hook_zca()
         if not self.ini_section_name is None:
             settings = self.ini.get_settings(self.ini_section_name)
             self.config.setup_registry(settings=settings)
         else:
             self.config.setup_registry()
-
-    def tear_down(self):
-        self.config.unhook_zca()
-        self.config.end()
 
 
 class EntityTestCase(ConfiguredTestCase):
@@ -243,7 +238,7 @@ class EntityTestCase(ConfiguredTestCase):
 
     def tear_down(self):
         transaction.abort()
-        super(EntityTestCase, self).tear_down()
+        self.config.end()
 
     def _get_entity(self, icollection, key=None):
         agg = get_root_aggregate(icollection)
@@ -296,7 +291,7 @@ class ResourceTestCase(ConfiguredTestCase):
 
     def tear_down(self):
         transaction.abort()
-        super(ResourceTestCase, self).tear_down()
+        self.config.end()
 
     def _get_member(self, icollection, key=None):
         if key is None:

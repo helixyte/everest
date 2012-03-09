@@ -31,7 +31,6 @@ install_requirements = [
     'pyparsing>=1.5.5,<=1.5.99',
     'pyramid>=1.3b2,<=1.3.99',
     'pyramid_tm',
-    'pyramid_who',
     'pyramid_zcml',
     'python-graph-core',
     'python-ldap>=2.3.11,<=2.3.99',
