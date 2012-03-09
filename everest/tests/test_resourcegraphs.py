@@ -7,7 +7,7 @@ Created on Feb 21, 2012.
 """
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
-from everest.testing import BaseTestCase
+from everest.testing import ConfiguredTestCase
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
@@ -18,16 +18,19 @@ __all__ = ['ResourceGraphTestCase',
            ]
 
 
-class ResourceGraphTestCase(BaseTestCase):
+class ResourceGraphTestCase(ConfiguredTestCase):
     package_name = 'everest.tests.testapp_db'
 
     def set_up(self):
-        BaseTestCase.set_up(self)
+        ConfiguredTestCase.set_up(self)
         self.config.hook_zca()
         self.config.begin()
         self.config.load_zcml('configure.zcml')
         self._interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,
                             IMyEntityGrandchild]
+
+    def tear_down(self):
+        self.config.end()
 
     def test_dependency_graph(self):
         grph = build_resource_dependency_graph(self._interfaces)

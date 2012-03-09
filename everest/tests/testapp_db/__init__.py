@@ -13,8 +13,7 @@ from repoze.bfg.threadlocal import get_current_registry
 
 
 def app_factory(global_settings, **local_settings): # pylint: disable=W0613
-    reg = get_current_registry()
-    config = Configurator(registry=reg)
+    config = Configurator()
     config.setup_registry(settings=local_settings,
                           root_factory=RootFactory())
     return config.make_wsgi_app()
