@@ -33,7 +33,6 @@ install_requirements = [
     'pyramid_tm',
     'pyramid_zcml',
     'python-graph-core',
-    'python-ldap>=2.3.11,<=2.3.99',
     'rfc3339',
     'sqlalchemy>=0.7.4,<=0.7.99',
     'transaction>=1.2.0,<=1.2.99',
