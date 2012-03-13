@@ -237,8 +237,46 @@ application, we could use the following ZCML declaration:
 
 This tells :mod:`everest` to use the ``data`` directory (relative to the
 ``plantscribe`` package) to persist representations of the root collections of
-all resources as ``.csv`` files.
+all resources as ``.csv`` files. When the application is initialized, the root
+collections are loaded from these representation files and during each
+``commit`` operation at the end of a transaction, all modified root collections
+are written back to their corresponding representation files.
+
+Obviously, such a filesystem-based repository does not really perform well with
+complex data structures or with high data volumes. For this, we need to switch
+to a an ORM-based repository.
+
+:mod:`everest` uses xxx ``SQLAlchemy`` as ORM; what follows is a highly
+simplified account of what is needed to
+
+In a first step, we need to tell the ORM how we want to map our entity model
+attributes to the database
+
+.. code-block:: text
+
+    <orm_repository
+        metadata_factory="everest.tests.testapp_db.db.create_metadata"
+        make_default="true"/>
+
+The ORM repository needs to be configured with a metadata factory, a callable
+that takes an ``SQLAlchemy`` engine as a parameter and returns a metadata
+instance. If you want to use a backend other than the default in-memory SQLite
+database, you need to supply the ``db_string`` setting in the paster
+application ``.ini`` file like so:
+
+.. code-block::text
+
+   [DEFAULT]
+   db_server = mydbserver
+   db_port = 5432
+   db_user = mydbuser
+   db_password = mypassword
+   db_name = mydbname
+   
+   [app:myapp]
+   db_string = postgresql+psycopg2://%(db_user)s:%(db_password)s@%(db_server)s:%(db_port)s/%(db_name)s
+   
 
 
-Different resorces may use different repositories, but you may not assign the
-same resource to multiple repos
+Different resorces may use different repositories, but any given resource can
+only be assigned one repository.
