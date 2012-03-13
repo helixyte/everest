@@ -178,7 +178,8 @@ class EverestIni(object):
 
     @classmethod
     def __make_parser(cls):
-        return SafeConfigParser(defaults={'here': os.getcwd()})
+        return SafeConfigParser(
+                    defaults={'here':os.path.dirname(cls.ini_file_path)})
 
 
 class BaseTestCase(Pep8CompliantTestCase):
