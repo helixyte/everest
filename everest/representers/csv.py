@@ -8,6 +8,7 @@ Created on May 19, 2011.
 """
 
 from __future__ import absolute_import # Makes the import below absolute
+from collections import OrderedDict
 from csv import Dialect
 from csv import QUOTE_NONNUMERIC
 from csv import reader
@@ -133,7 +134,7 @@ class CsvRepresentationGenerator(RepresentationGenerator):
             csv_writer.writerow(row_data.values())
 
     def __process_data(self, data_el):
-        row_data = {}
+        row_data = OrderedDict()
         attrs = data_el.mapper.get_mapped_attributes(data_el.mapped_class)
         for attr in attrs.values():
             attr_name_str = self.__encode(attr.representation_name)
@@ -143,17 +144,17 @@ class CsvRepresentationGenerator(RepresentationGenerator):
             else:
                 value = data_el.get_nested(attr)
                 if value is None:
+                    row_data[attr_name_str] = value
                     continue
                 if not isinstance(value, CsvLinkedDataElement):
                     raise ValueError('CSV representations must encode nested '
-                                     'resources as link.')
+                                     'resources as a link.')
                 row_data[attr_name_str] = self.__encode(value.get_url())
         return row_data
 
     def __encode(self, item):
         encoding = self.get_option('encoding')
         return isinstance(item, unicode) and item.encode(encoding) or item
-
 
 
 class CsvResourceRepresenter(ResourceRepresenter):
