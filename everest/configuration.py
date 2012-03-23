@@ -58,7 +58,6 @@ from everest.url import ResourceUrlConverter
 from pyramid.configuration import Configurator as PyramidConfigurator
 from pyramid.interfaces import IRequest
 from pyramid.path import caller_package
-from pyramid_zcml import includeme
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -100,7 +99,7 @@ class Configurator(PyramidConfigurator):
         PyramidConfigurator.__init__(self,
                                  registry=registry, package=package, **kw)
         # Set up configurator's load_zcml method.
-        self.include(includeme)
+        self.include('pyramid_zcml')
         if registry is None:
             self.__setup(filter_specification_factory,
                          order_specification_factory,
