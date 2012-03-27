@@ -86,6 +86,7 @@ class _AttributeMapper(object):
 #               and map_options['ignore'] is None:
 #                # By default, ignore if attribute references root collection.
 #                map_options['ignore'] = not attr.is_nested
+            # Apply custom settings for this attribute.
             runtime_map_options = info.get(attr.name, {})
             map_options.update(runtime_map_options)
             mapped_attr = MappedAttribute(attr.name,

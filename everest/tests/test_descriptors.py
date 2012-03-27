@@ -25,7 +25,6 @@ from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
-from everest.tests.testapp_db.entities import MyEntityGrandchild
 from everest.tests.testapp_db.entities import MyEntityParent
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityChild
@@ -34,6 +33,7 @@ from everest.tests.testapp_db.resources import MyEntityChildMember
 from everest.tests.testapp_db.resources import MyEntityGrandchildMember
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
+from everest.tests.testapp_db.testing import create_entity
 from everest.url import resource_to_url
 from pkg_resources import resource_filename # pylint: disable=E0611
 
@@ -139,7 +139,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(len(member.children), n)
 
     def test_update_terminal(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         member.text = self.UPDATED_TEXT
@@ -147,7 +147,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.text, MyEntity.DEFAULT_TEXT)
@@ -155,7 +155,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(context.text, self.UPDATED_TEXT)
 
     def test_update_terminal_in_parent(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         my_entity.parent.text = self.UPDATED_TEXT
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
@@ -163,7 +163,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
@@ -171,7 +171,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_terminal_in_child(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         my_entity.children[0].text = self.UPDATED_TEXT
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
@@ -179,7 +179,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(iter(context.children).next().text,
@@ -189,7 +189,7 @@ class DescriptorsTestCase(ResourceTestCase):
                           self.UPDATED_TEXT)
 
     def test_update_member(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         new_parent = MyEntityParent()
         new_parent.text = self.UPDATED_TEXT
         new_parent.id = 2
@@ -200,7 +200,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
@@ -208,7 +208,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_member_with_link(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         new_parent = MyEntityParent()
         new_parent.text = self.UPDATED_TEXT
         new_parent.id = 2
@@ -226,7 +226,7 @@ class DescriptorsTestCase(ResourceTestCase):
         del my_entity
         parent_coll = get_root_collection(IMyEntityParent)
         parent_coll.create_member(new_parent)
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
@@ -234,7 +234,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_delete_child(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         del my_entity.children[0]
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
@@ -242,7 +242,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(context.children), 1)
@@ -250,7 +250,7 @@ class DescriptorsTestCase(ResourceTestCase):
         self.assert_equal(len(context.children), 0)
 
     def test_delete_grandchild(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         del my_entity.children[0].children[0]
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
@@ -258,7 +258,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(iter(context.children).next().children),
@@ -268,7 +268,7 @@ class DescriptorsTestCase(ResourceTestCase):
                           0)
 
     def test_add_child(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         new_child = MyEntityChild()
         my_entity.children.append(new_child)
         coll = new_stage_collection(IMyEntity)
@@ -278,7 +278,7 @@ class DescriptorsTestCase(ResourceTestCase):
         data_el = gen.run(member)
         del member
         del my_entity
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(context.children), 1)
@@ -288,7 +288,7 @@ class DescriptorsTestCase(ResourceTestCase):
     def test_filter_specification_visitor(self):
         coll = get_root_collection(IMyEntity)
         mb_cls = get_member_class(coll)
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         member = coll.create_member(my_entity)
         spec_fac = FilterSpecificationFactory()
         specs = [
@@ -334,13 +334,13 @@ class DescriptorsTestCase(ResourceTestCase):
             self.assert_equal(str(visitor.expression), str(expr))
 
     def test_nested_access(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
 
     def test_urls(self):
-        my_entity = self.__create_entity()
+        my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         mb = coll.create_member(my_entity)
         self.assert_equal(resource_to_url(mb),
@@ -397,17 +397,3 @@ class DescriptorsTestCase(ResourceTestCase):
             reg.set_data_element_class(de_cls)
         gen = DataElementGenerator(reg)
         return gen
-
-    def __create_entity(self):
-        my_entity = MyEntity()
-        my_entity.id = 0
-        my_entity_parent = MyEntityParent()
-        my_entity_parent.id = 0
-        my_entity.parent = my_entity_parent
-        my_entity_child = MyEntityChild()
-        my_entity_child.id = 0
-        my_entity.children.append(my_entity_child)
-        my_entity_grandchild = MyEntityGrandchild()
-        my_entity_grandchild.id = 0
-        my_entity_child.children.append(my_entity_grandchild)
-        return my_entity

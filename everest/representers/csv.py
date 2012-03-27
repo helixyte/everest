@@ -112,8 +112,52 @@ class CsvRepresentationGenerator(RepresentationGenerator):
     """
     A CSV writer for resource data.
 
-    Handles linked resources and referenced member resources.
+    Handles linked resources and nested member and collection resources.
     """
+    class __CsvData(object):
+        def __init__(self):
+            self.__data = []
+            self.__fields = []
+            self.__field_indices = OrderedDict()
+
+        @property
+        def header(self):
+            return self.__field_indices.keys()
+
+        def __setitem__(self, key, value):
+            row_index, field = key
+            if not field in self.__fields:
+                self.__field_indices[field] = len(self.__fields)
+                self.__fields.append(field)
+            num_rows = len(self.__data)
+            if row_index > (num_rows - 1):
+                if num_rows - row_index - 1 > 0:
+                    raise ValueError('Can not auto-append beyond the last '
+                                     'data row.')
+                self.__data.append(dict())
+            field_index = self.__field_indices[field]
+            self.__data[row_index][field_index] = value
+
+        def __getitem__(self, key):
+            row_index, field = key
+            field_index = self.__field_indices[field]
+            return self.__data[row_index][field_index]
+
+        def __iter__(self):
+            last_row_data = {}
+            for row_data in self.__data:
+                row_values = []
+                for field_index in self.__field_indices.values():
+                    cell_value = row_data.get(field_index)
+                    if cell_value is None:
+                        cell_value = last_row_data.get(field_index)
+                        row_data[field_index] = cell_value
+                    row_values.append(cell_value)
+                yield row_values
+                last_row_data = row_data
+
+        def __len__(self):
+            return len(self.__data)
 
     def __init__(self, stream, resource_class):
         RepresentationGenerator.__init__(self, stream, resource_class)
@@ -122,35 +166,49 @@ class CsvRepresentationGenerator(RepresentationGenerator):
     def run(self, data_element):
         csv_writer = writer(self._stream, dialect=self.get_option('dialect'))
         is_member_rpr = provides_member_resource(self._resource_class)
+        rows_data = self.__CsvData()
         if is_member_rpr:
-            rows_data = [self.__process_data(data_element)]
+            mb_data_els = [data_element]
         else:
-            rows_data = [self.__process_data(data_el)
-                         for data_el in data_element.get_members()]
+            mb_data_els = data_element.get_members()
+        for mb_data_el in mb_data_els:
+            self.__process_data(mb_data_el, rows_data, len(rows_data), None)
+        csv_writer.writerow(rows_data.header)
         for row_data in rows_data:
-            if not self.__is_header_written:
-                csv_writer.writerow(row_data.keys())
-                self.__is_header_written = True
-            csv_writer.writerow(row_data.values())
+            csv_writer.writerow(row_data)
 
-    def __process_data(self, data_el):
-        row_data = OrderedDict()
+    def __process_data(self, data_el, rows_data, row_index, prefix):
+        has_found_collection = False
         attrs = data_el.mapper.get_mapped_attributes(data_el.mapped_class)
         for attr in attrs.values():
             attr_name_str = self.__encode(attr.representation_name)
+            if not prefix is None:
+                attr_name_str = "%s.%s" % (prefix, attr_name_str)
+            key = (row_index, attr_name_str)
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 value = data_el.get_terminal(attr)
-                row_data[attr_name_str] = value
+                rows_data[key] = value
             else:
                 value = data_el.get_nested(attr)
                 if value is None:
-                    row_data[attr_name_str] = value
-                    continue
-                if not isinstance(value, CsvLinkedDataElement):
-                    raise ValueError('CSV representations must encode nested '
-                                     'resources as a link.')
-                row_data[attr_name_str] = self.__encode(value.get_url())
-        return row_data
+                    rows_data[key] = None
+                elif isinstance(value, CsvLinkedDataElement):
+                    rows_data[key] = self.__encode(value.get_url())
+#                    raise ValueError('CSV representations must encode nested '
+#                                     'resources as a link.')
+                elif attr.kind == ResourceAttributeKinds.MEMBER:
+                    self.__process_data(value, rows_data,
+                                        row_index, attr_name_str)
+                elif attr.kind == ResourceAttributeKinds.COLLECTION:
+                    if not has_found_collection:
+                        has_found_collection = True
+                    else:
+                        raise ValueError('In CSV representations, all but '
+                                         'one collection attribute must be '
+                                         'represented as links.')
+                    for mb_cnt, mb_data_el in enumerate(value.get_members()):
+                        self.__process_data(mb_data_el, rows_data,
+                                            row_index + mb_cnt, attr_name_str)
 
     def __encode(self, item):
         encoding = self.get_option('encoding')

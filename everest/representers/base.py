@@ -816,7 +816,8 @@ class ResourceRepresenter(Representer):
         stream = StringIO()
         generator = \
             self._make_representation_generator(stream, self.resource_class)
-        return generator.run(data_element)
+        generator.run(data_element)
+        return stream.getvalue()
 
     def resource_from_data(self, data_element, resolve_urls=True):
         """
