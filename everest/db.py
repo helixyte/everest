@@ -5,13 +5,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 
+from sqlalchemy import String
+from sqlalchemy import func
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['commit_veto',
+__all__ = ['as_slug_expression',
+           'commit_veto',
+           'convert_slug_to_hybrid_property',
+           'convert_to_hybrid_property',
            'get_engine',
            'get_metadata',
            'is_engine_initialized',
@@ -117,3 +124,37 @@ def commit_veto(environ, status, headers): # unused pylint: disable=W0613
     "commit".
     """
     return not status.startswith('2') and not headers.get('x-tm') == 'commit'
+
+
+def as_slug_expression(attr):
+    """
+    Converts the given instrumented string attribute into an SQL expression
+    that can be used as a slug.
+
+    Slugs are identifiers for members in a collection that can be used in an
+    URL. We create slug columns by replacing non-URL characters with dashes
+    and lower casing the result. We need this at the ORM level so that we can
+    use the slug in a query expression.
+    """
+    slug_expr = func.replace(attr, ' ', '-')
+    slug_expr = func.replace(slug_expr, '_', '-')
+    slug_expr = func.lower(slug_expr)
+    return slug_expr
+
+
+def convert_slug_to_hybrid_property(ent_cls):
+    """
+    Helper function that converts the slug property of the given entity class
+    to a hybrid property that also works in SQL expressions.
+    """
+    convert_to_hybrid_property(ent_cls, 'slug',
+                               lambda cls: cast(cls.id, String))
+
+
+def convert_to_hybrid_property(ent_cls, name, expression):
+    """
+    Helper function to convert plain slug properties to hybrid properties that
+    also work in SQL expressions.
+    """
+    setattr(ent_cls, name, hybrid_property(getattr(ent_cls, name).fget,
+                                           expr=expression))

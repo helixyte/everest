@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 1, 2011.
 """
 
+from everest.db import convert_slug_to_hybrid_property
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
 from everest.tests.testapp_db.entities import MyEntityGrandchild
@@ -15,11 +16,9 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import synonym
-from sqlalchemy.sql.expression import cast
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['create_metadata',
@@ -78,9 +77,6 @@ def create_metadata(engine):
     #
     # MAPPERS
     #
-    def make_slug_hybrid_attr(ent_cls):
-        return hybrid_property(ent_cls.slug.fget,
-                               expr=lambda cls: cast(cls.id, String))
 
     mapper(MyEntityParent, my_entity_parent_tbl,
            properties=
@@ -90,7 +86,7 @@ def create_metadata(engine):
                                     back_populates='parent'),
                  )
            )
-    MyEntityParent.slug = make_slug_hybrid_attr(MyEntityParent)
+    convert_slug_to_hybrid_property(MyEntityParent)
     mapper(MyEntity, my_entity_tbl,
            properties=
             dict(id=synonym('my_entity_id'),
@@ -102,7 +98,7 @@ def create_metadata(engine):
                                        cascade="all, delete-orphan"),
                  )
            )
-    MyEntity.slug = make_slug_hybrid_attr(MyEntity)
+    convert_slug_to_hybrid_property(MyEntity)
     mapper(MyEntityChild, my_entity_child_tbl,
            properties=
             dict(id=synonym('my_entity_child_id'),
@@ -117,7 +113,7 @@ def create_metadata(engine):
                                  back_populates='parent'),
                  ),
            )
-    MyEntityChild.slug = make_slug_hybrid_attr(MyEntityChild)
+    convert_slug_to_hybrid_property(MyEntityChild)
     mapper(MyEntityGrandchild, my_entity_grandchild_tbl,
            properties=
             dict(id=synonym('my_entity_grandchild_id'),
@@ -127,7 +123,7 @@ def create_metadata(engine):
                                      back_populates='children'),
                  ),
            )
-    MyEntityGrandchild.slug = make_slug_hybrid_attr(MyEntityGrandchild)
+    convert_slug_to_hybrid_property(MyEntityGrandchild)
     # Create the mappers.
     metadata.bind = engine
     metadata.create_all()

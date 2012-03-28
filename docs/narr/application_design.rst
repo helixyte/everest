@@ -242,15 +242,17 @@ collections are loaded from these representation files and during each
 ``commit`` operation at the end of a transaction, all modified root collections
 are written back to their corresponding representation files.
 
-Obviously, such a filesystem-based repository does not really perform well with
-complex data structures or with high data volumes. For this, we need to switch
-to a an ORM-based repository.
+The filesystem-based repository does not perform well with complex or high
+volume data structures or in cases where several processes need to access the
+same persistency backend. In these situations, we need to switch to a an
+ORM-based repository. :mod:`everest` uses xxx ``SQLAlchemy`` as ORM. What
+follows is a highly simplified account of what is needed to instruct
+``SQLAlchemy`` to persist the entities of an :mod:`everest` application; for an
+explanation of the terms and concepts used in this section, please refer to the
+excellent documentation on the ``SQLAlchemy`` web site.
 
-:mod:`everest` uses xxx ``SQLAlchemy`` as ORM; what follows is a highly
-simplified account of what is needed to
-
-In a first step, we need to tell the ORM how we want to map our entity model
-attributes to the database
+In a first step, we need to initialize the ORM. The following ZCML declaration
+makes the ORM the default resource repository:
 
 .. code-block:: text
 
@@ -258,11 +260,20 @@ attributes to the database
         metadata_factory="everest.tests.testapp_db.db.create_metadata"
         make_default="true"/>
 
-The ORM repository needs to be configured with a metadata factory, a callable
-that takes an ``SQLAlchemy`` engine as a parameter and returns a metadata
-instance. If you want to use a backend other than the default in-memory SQLite
-database, you need to supply the ``db_string`` setting in the paster
-application ``.ini`` file like so:
+The metadata factory setting references a callable that takes an ``SQLAlchemy``
+engine as a parameter and returns a fully initialized metadata instance. For
+our simple application, this function looks like this:
+
+.. literalinclude:: ../demoapp/v0/plantscribe/orm.py
+   :lineno:
+
+The function first creates a database schema and then maps our entity classes to
+this schema.
+
+
+To use an engine other than the default in-memory SQLite database engine, you
+need to supply a ``db_string`` setting in the paster application ``.ini`` file.
+For example:
 
 .. code-block::text
 
@@ -276,7 +287,6 @@ application ``.ini`` file like so:
    [app:myapp]
    db_string = postgresql+psycopg2://%(db_user)s:%(db_password)s@%(db_server)s:%(db_port)s/%(db_name)s
    
-
 
 Different resorces may use different repositories, but any given resource can
 only be assigned one repository.
