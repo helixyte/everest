@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 
+from copy import deepcopy
 from everest.batch import Batch
 from everest.resources.base import Link
 from everest.url import UrlPartsConverter
@@ -49,6 +50,10 @@ class GetCollectionView(GetResourceView):
                 last_link = self._create_nav_link(batch.last, 'last')
                 self.context.add_link(last_link)
             result = dict(batch=batch)
+        # Make sure we have defined an ordering on the collection to guarantee
+        # an order on the result set. This should not be reflected in the 
+        # links' URLs, so we do it after the links have been set up.
+        self.__ensure_default_order()
         return result
 
     def _create_batch(self):
@@ -108,3 +113,7 @@ class GetCollectionView(GetResourceView):
             # Apply maximum batch size, if necessary.
             slice_key.stop = slice_key.start + self.context.max_limit
         self.context.slice = slice_key
+
+    def __ensure_default_order(self):
+        if self.context.order is None:
+            self.context.order = deepcopy(self.context.default_order)

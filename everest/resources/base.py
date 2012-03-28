@@ -8,8 +8,10 @@ Created on Nov 3, 2011.
 """
 
 from everest.entities.utils import get_entity_class
+from everest.entities.utils import identifier_from_slug
 from everest.querying.base import SpecificationVisitorBase
 from everest.querying.interfaces import ISpecificationVisitor
+from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
@@ -32,7 +34,6 @@ from pyramid.traversal import model_path
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
-from everest.entities.utils import identifier_from_slug
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -279,7 +280,7 @@ class Collection(Resource):
     #: A description of the collection.
     description = ''
     #: The default order of the collection's members.
-    default_order = None
+    default_order = AscendingOrderSpecification('id')
     # The default number of members shown on one page (superclass default: 100).
     default_limit = 100
     #: The maximum number of member that can be shown on one page
