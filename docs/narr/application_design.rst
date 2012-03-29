@@ -237,8 +237,56 @@ application, we could use the following ZCML declaration:
 
 This tells :mod:`everest` to use the ``data`` directory (relative to the
 ``plantscribe`` package) to persist representations of the root collections of
-all resources as ``.csv`` files.
+all resources as ``.csv`` files. When the application is initialized, the root
+collections are loaded from these representation files and during each
+``commit`` operation at the end of a transaction, all modified root collections
+are written back to their corresponding representation files.
+
+The filesystem-based repository does not perform well with complex or high
+volume data structures or in cases where several processes need to access the
+same persistency backend. In these situations, we need to switch to a an
+ORM-based repository. :mod:`everest` uses xxx ``SQLAlchemy`` as ORM. What
+follows is a highly simplified account of what is needed to instruct
+``SQLAlchemy`` to persist the entities of an :mod:`everest` application; for an
+explanation of the terms and concepts used in this section, please refer to the
+excellent documentation on the ``SQLAlchemy`` web site.
+
+In a first step, we need to initialize the ORM. The following ZCML declaration
+makes the ORM the default resource repository:
+
+.. code-block:: text
+
+    <orm_repository
+        metadata_factory="everest.tests.testapp_db.db.create_metadata"
+        make_default="true"/>
+
+The metadata factory setting references a callable that takes an ``SQLAlchemy``
+engine as a parameter and returns a fully initialized metadata instance. For
+our simple application, this function looks like this:
+
+.. literalinclude:: ../demoapp/v0/plantscribe/orm.py
+   :lineno:
+
+The function first creates a database schema and then maps our entity classes to
+this schema.
 
 
-Different resorces may use different repositories, but you may not assign the
-same resource to multiple repos
+To use an engine other than the default in-memory SQLite database engine, you
+need to supply a ``db_string`` setting in the paster application ``.ini`` file.
+For example:
+
+.. code-block::text
+
+   [DEFAULT]
+   db_server = mydbserver
+   db_port = 5432
+   db_user = mydbuser
+   db_password = mypassword
+   db_name = mydbname
+   
+   [app:myapp]
+   db_string = postgresql+psycopg2://%(db_user)s:%(db_password)s@%(db_server)s:%(db_port)s/%(db_name)s
+   
+
+Different resorces may use different repositories, but any given resource can
+only be assigned one repository.

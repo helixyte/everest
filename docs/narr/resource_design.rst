@@ -46,12 +46,7 @@ Slugs
 *****
 
 In a member URL such as
-``, the last part which identifies the member uniquely within its parent
-collection resource is called a "slug". When :mod:`everest` resolves a given
-member URL to a member object, it builds a query that looks up the member's
-entity in the collection's aggregate, using the slug as the search key.
-To be able to use the slug in query expressions, it needs to be declared at
-the entity data model level; there are two choices for implemeting this:
+``, the last part which identifies the member uniquely within its parent collection resource is called a "slug". When :mod:`everest` resolves a given member URL to a member object, it builds a query that looks up the member's entity in the collection's aggregate, using the slug as the search key. To be able to use the slug in query expressions, it needs to be declared at the entity data model level; there are two choices for implemeting this:
 
  1) If you want your users to be able to customize
 the slugs for individual member resources, then you will have to add a "slug"
@@ -75,8 +70,7 @@ Sometimes, you want to hide the complexity of your entity model from the client.
 
 One way of providing access to nested  doing this is to add "shortcut"
  attributes to your entities that
-provide direct access to nested data structures, e.g. at
-the ORM layer.
+provide direct access to nested data structures, e.g. at the ORM layer.
 
 Obviously, this solution is not very elegant as it introduces unnecessary
 attributes to your entity objects.
