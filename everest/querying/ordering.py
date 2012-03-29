@@ -220,17 +220,21 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         return self.__build(spec.attr_name, 'desc')
 
     def __build(self, attribute_name, sql_op):
-        expr = ()
+        exprs = ()
         infos = OrmAttributeInspector.inspect(self.__entity_class,
                                               attribute_name)
         count = len(infos)
         for idx, info in enumerate(infos):
             kind, entity_attr = info
             if idx == count - 1:
-                expr = (getattr(entity_attr, sql_op)(),)
+                expr = getattr(entity_attr, sql_op)()
+                if not isinstance(expr, tuple):
+                    exprs = (expr,)
+                else:
+                    exprs = expr
             elif kind == EntityAttributeKinds.ENTITY:
                 self.__joins.add(entity_attr)
-        return expr
+        return exprs
 
 
 class EvalOrderSpecificationVisitor(OrderSpecificationVisitor):
