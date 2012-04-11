@@ -76,7 +76,11 @@ class MetaResourceAttributeCollector(type):
         # Skip classes that are direct subclasses of the base mixin class.
         if name != 'ResourceAttributeControllerMixin' \
            and not ResourceAttributeControllerMixin in bases:
-            dicts = [base.__dict__ for base in bases[::-1]] + [class_dict]
+            dicts = []
+            for cls in mcs.__mro__[::-1]:
+                if cls in ResourceAttributeControllerMixin.__mro__:
+                    continue
+                dicts.append(cls.__dict__)
             attr_map = mcs.__collect_attributes(dicts)
             # Store in class namespace.
             mcs._attributes = attr_map
