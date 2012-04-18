@@ -26,6 +26,14 @@ __all__ = ['LazyAttribteLoaderProxyTestCase',
            ]
 
 
+def _make_collection():
+    my_entity0 = create_entity(entity_id=0)
+    my_entity1 = create_entity(entity_id=1)
+    coll = get_root_collection(IMyEntity)
+    coll.create_member(my_entity0)
+    coll.create_member(my_entity1)
+    return coll
+
 class LazyAttribteLoaderProxyTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
@@ -60,8 +68,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
     config_file_name = 'configure_no_orm.zcml'
 
     def test_csv_with_defaults(self):
-        coll = self.__make_collection()
-        rpr = as_representer(coll, CsvMime.mime_string)
+        coll = _make_collection()
+        rpr = as_representer(coll, CsvMime)
         rpr_str = rpr.to_string(coll)
         self.assert_true(len(rpr_str) > 0)
         lines = rpr_str.split(os.linesep)
@@ -76,8 +84,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
         self.assert_equal(row_data[3], '""')
 
     def test_csv_with_collection_link(self):
-        coll = self.__make_collection()
-        rpr = as_representer(coll, CsvMime.mime_string)
+        coll = _make_collection()
+        rpr = as_representer(coll, CsvMime)
         data = rpr.data_from_resource(coll,
                                       mapping_info=
                                        dict(children=dict(ignore=False,
@@ -89,8 +97,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
         self.assert_not_equal(row_data[3].find('my-entities/0/children/'), -1)
 
     def test_csv_with_collection_expanded(self):
-        coll = self.__make_collection()
-        rpr = as_representer(coll, CsvMime.mime_string)
+        coll = _make_collection()
+        rpr = as_representer(coll, CsvMime)
         data = rpr.data_from_resource(coll,
                                       mapping_info=
                                        dict(children=dict(ignore=False,
@@ -106,10 +114,16 @@ class CsvRepresentationTestCase(ResourceTestCase):
         # Third field should now be "children.id" and contains 0.
         self.assert_equal(row_data[3], '0')
 
-    def __make_collection(self):
-        my_entity0 = create_entity(entity_id=0)
-        my_entity1 = create_entity(entity_id=1)
-        coll = get_root_collection(IMyEntity)
-        coll.create_member(my_entity0)
-        coll.create_member(my_entity1)
-        return coll
+
+class RepresenterConfigurationTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_rpr.zcml'
+
+    def test_configure_rpr_with_zcml(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, CsvMime)
+        rpr_str = rpr.to_string(coll)
+        lines = rpr_str.split(os.linesep)
+        row_data = lines[1].split(',')
+        # Now, the collection should be a link.
+        self.assert_not_equal(row_data[3].find('my-entities/0/children/'), -1)

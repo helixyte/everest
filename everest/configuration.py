@@ -306,7 +306,7 @@ class Configurator(PyramidConfigurator):
             srvc.register(interface)
 
     def add_representer(self, resource, content_type, configuration=None,
-                        _info=u''):
+                        mapping_info=None, _info=u''):
         if IInterface in provided_by(resource):
             rcs = [get_member_class(resource), get_collection_class(resource)]
         else:
@@ -341,6 +341,12 @@ class Configurator(PyramidConfigurator):
                                    IRepresenter,
                                    name=utility_name,
                                    info=_info)
+            if not mapping_info is None:
+                mapping = de_cls.mapper.get_config_option('mapping')
+                if mapping is None:
+                    de_cls.mapper.set_config_option('mapping', mapping_info)
+                else:
+                    mapping.update(mapping_info)
 
     def initialize_repositories(self):
         for coll_cls in [util.component

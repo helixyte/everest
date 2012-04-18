@@ -71,8 +71,7 @@ def load_resource_from_file(resource, filename,
         except KeyError:
             raise ValueError('Unknown file extension "%s".' % ext)
     coll_cls = get_collection_class(resource)
-    rpr = as_representer(object.__new__(coll_cls),
-                         content_type.mime_string)
+    rpr = as_representer(object.__new__(coll_cls), content_type)
     fp = open(filename, 'rU')
     with fp:
         data_el = rpr.data_from_stream(fp)
@@ -88,7 +87,7 @@ def dump_resource(resource, stream, content_type=None):
     """
     if content_type is None:
         content_type = CsvMime
-    rpr = as_representer(resource, content_type.mime_string)
+    rpr = as_representer(resource, content_type)
     rpr.to_stream(resource, stream)
 
 

@@ -7,15 +7,16 @@ Created on Oct 7, 2011.j
 
 from everest.entities.system import Message
 from everest.messaging import UserMessageHandler
+from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import as_representer
 from everest.resources.system import MessageMember
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
-from paste.httpexceptions import HTTPInternalServerError
-from paste.httpexceptions import HTTPTemporaryRedirect
+from paste.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
+from paste.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
 from webob.exc import HTTPBadRequest
 from webob.exc import HTTPConflict
-from zope.interface import implements
+from zope.interface import implements # pylint: disable=E0611,F0401
 import logging
 import os
 import re
@@ -27,7 +28,7 @@ __all__ = ['ResourceView',
            ]
 
 
-class HttpWarningResubmit(HTTPTemporaryRedirect):
+class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=W0232
     """
     Special 307 HTTP Temporary Redirect exception which transports 
     """
@@ -72,8 +73,9 @@ class ResourceView(object):
     @property
     def representer(self):
         if self.__representer is None:
-            self.__representer = \
-                as_representer(self.__context, self.__request.content_type)
+            mime_type = \
+              get_registered_mime_type_for_string(self.__request.content_type)
+            self.__representer = as_representer(self.__context, mime_type)
         return self.__representer
 
     def _handle_unknown_exception(self, message, traceback):

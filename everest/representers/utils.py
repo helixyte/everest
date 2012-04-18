@@ -18,16 +18,20 @@ __all__ = ['as_representer',
            ]
 
 
-def as_representer(resource, content_type_string):
+def as_representer(resource, content_type):
     """
     Adapts the given resource and content type to a representer.
 
     :param resource: resource to adapt.
-    :param str content_type_string: content (MIME) type to create a
+    :param str content_type: content (MIME) type to create a
         representer for.
     """
     reg = get_current_registry()
-    return reg.getAdapter(resource, IRepresenter, content_type_string)
+    rpr = reg.queryAdapter(resource, IRepresenter, content_type.mime_string)
+    if rpr is None:
+        reg.add_representer(resource, content_type)
+        rpr = reg.getAdapter(resource, IRepresenter, content_type.mime_string)
+    return rpr
 
 
 def get_data_element_registry(content_type):

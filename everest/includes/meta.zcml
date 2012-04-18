@@ -27,10 +27,25 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             name="resource"
             schema="everest.directives.IResourceDirective"
             handler="everest.directives.resource" />
-        <meta:directive
+        <meta:groupingDirective
             name="representer"
             schema="everest.directives.IRepresenterDirective"
-            handler="everest.directives.representer" />
+            handler="everest.directives.RepresenterDirective" />
+        <meta:groupingDirective
+            name="attribute"
+            usedIn="everest.directives.IRepresenterDirective"
+            schema="everest.directives.IRepresenterAttributeDirective"
+            handler="everest.directives.RepresenterAttributeDirective" />
+        <meta:directive
+            name="option"
+            usedIn="everest.directives.IRepresenterAttributeDirective"
+            schema="everest.directives.IOptionDirective"
+            handler="everest.directives.option" />
+        <meta:directive
+            name="option"
+            usedIn="everest.directives.IRepresenterDirective"
+            schema="everest.directives.IOptionDirective"
+            handler="everest.directives.option" />
         <meta:directive
             name="collection_view"
             schema="everest.directives.ICollectionViewDirective"

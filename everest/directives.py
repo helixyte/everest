@@ -10,11 +10,14 @@ from everest.repository import REPOSITORIES
 from pyramid.threadlocal import get_current_registry
 from pyramid_zcml import IViewDirective
 from pyramid_zcml import view as pyramid_view
+from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
+from zope.configuration.config import IConfigurationContext # pylint: disable=E0611,F0401
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Path # pylint: disable=E0611,F0401
 from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
+from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
@@ -263,24 +266,77 @@ class IRepresenterDirective(Interface):
         GlobalObject(title=u"The (MIME) content type the representer manages.",
                      required=True)
     configuration = \
-        GlobalObject(title=u"The configuration map for this representer.",
+        GlobalObject(title=u"Old-style configuration class for this "
+                            "representer.",
                      required=False)
 
 
-def representer(_context, for_, content_type, configuration=None):
+class RepresenterDirective(GroupingContextDecorator):
     """
-    Directive for registering a representer for a given resource(s) and
-    content type combination. Delegates the work to a
+    Grouping directive for registering a representer for a given resource(s) 
+    and content type combination. Delegates the work to a
     :class:`everest.configuration.Configurator`.
     """
-    reg = get_current_registry()
-    config = Configurator(reg, package=_context.package)
-    for rc in for_:
-        discriminator = ('representer', rc, content_type)
-        _context.action(discriminator=discriminator,
+    implements(IConfigurationContext, IRepresenterDirective)
+
+    def __init__(self, context, for_, content_type, configuration=None):
+        self.context = context
+        self.for_ = for_
+        self.content_type = content_type
+        self.configuration = configuration
+        self.options = {}
+        self.mapping_info = {}
+
+    def after(self):
+        reg = get_current_registry()
+        config = Configurator(reg, package=self.context.package)
+        mapping_info = \
+            None if len(self.mapping_info) == 0 else self.mapping_info
+        for rc in self.for_:
+            discriminator = ('representer', rc, self.content_type)
+            self.action(discriminator=discriminator, # pylint: disable=E1101
                         callable=config.add_representer,
-                        args=(rc, content_type),
-                        kw=dict(configuration=configuration,
-                                _info=_context.info))
+                        args=(rc, self.content_type),
+                        kw=dict(configuration=self.configuration,
+                                mapping_info=mapping_info,
+                                _info=self.context.info))
+
+
+class IRepresenterAttributeDirective(Interface):
+    name = \
+        TextLine(title=u"Name of the representer attribute.")
+
+
+class RepresenterAttributeDirective(GroupingContextDecorator):
+    implements(IConfigurationContext, IRepresenterAttributeDirective)
+
+    def __init__(self, context, name):
+        self.context = context
+        self.name = name
+        self.options = {}
+
+    def after(self):
+        self.context.mapping_info[self.name] = self.options
+
+
+class IOptionDirective(Interface):
+    name = \
+        TextLine(title=u"Name of the option.")
+    value = \
+        TextLine(title=u"Value of the option.")
+    type = \
+        GlobalObject(title=u"Type of the option. This is only needed if the "
+                            "option value needs to be something else than a "
+                            "string; should be a Zope configuration field "
+                            "type such as zope.configuration.fields.Bool.",
+                     required=False)
+
+
+def option(_context, name, value, type=None): # pylint: disable=W0622
+    grouping_context = _context.context
+    if not type is None:
+        field = type()
+        value = field.fromUnicode(value)
+    grouping_context.options[name] = value
 
 # pylint: enable=W0232

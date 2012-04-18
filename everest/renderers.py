@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created Oct 7, 2011.
 """
 
-from everest.mime import ATOM_MIME
+from everest.mime import AtomMime
 from everest.mime import CsvMime
 from everest.representers.utils import as_representer
 from everest.resources.interfaces import ICollectionResource
@@ -39,8 +39,8 @@ class RendererFactory(object):
 class ResourceRenderer(object):
     implements(IRenderer)
 
-    def __init__(self, format): # redef format pylint:disable=W0622
-        self._format = format
+    def __init__(self, content_type): # redef format pylint:disable=W0622
+        self._content_type = content_type
 
     def __call__(self, value, system):
         context = value.get('context', system.get('context'))
@@ -50,8 +50,12 @@ class ResourceRenderer(object):
             raise ValueError('Invalid representation.')
         self._prepare_response(system)
         # Assemble response.
-        rpr = as_representer(context, self._format)
+        rpr = as_representer(context, self._content_type)
         return rpr.to_string(context)
+
+    @property
+    def _format(self):
+        return self._content_type.mime_string
 
     def _validate(self, value):
         raise NotImplementedError('Abstract method.')
@@ -63,7 +67,7 @@ class ResourceRenderer(object):
 class AtomRenderer(ResourceRenderer):
 
     def __init__(self):
-        ResourceRenderer.__init__(self, ATOM_MIME)
+        ResourceRenderer.__init__(self, AtomMime)
 
     def _validate(self, value):
         return IResource in  provided_by(value)
@@ -79,7 +83,7 @@ class AtomRenderer(ResourceRenderer):
 class CsvRenderer(ResourceRenderer):
 
     def __init__(self):
-        ResourceRenderer.__init__(self, CsvMime.mime_string)
+        ResourceRenderer.__init__(self, CsvMime)
 
     def _validate(self, resource):
         return IResource in provided_by(resource)

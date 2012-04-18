@@ -68,7 +68,7 @@ class AtomDataElementGenerator(DataElementGenerator):
     def _inject_member_resource(self, member, nesting_level, mapping_info):
         # Build a representer for the content. Only XML content is supported
         # for now.
-        member_rpr = as_representer(member, XmlMime.mime_string)
+        member_rpr = as_representer(member, XmlMime)
         if nesting_level > 1:
             raise ValueError('Can only encode top level members in ATOM.')
         de_cls = \

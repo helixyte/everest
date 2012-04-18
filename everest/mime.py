@@ -36,6 +36,9 @@ __all__ = ['JSON_MIME',
            'CSV_MIME',
            'ZIP_MIME',
            'MIME_REQUEST',
+           'get_registered_mime_strings',
+           'get_registered_mime_type_for_string',
+           'get_registered_mime_types',
            ]
 
 
@@ -63,10 +66,15 @@ class MimeTypeRegistry(object):
     def get_types(cls):
         return cls.__mime_string_map.values()
 
+    @classmethod
+    def get_type_for_string(cls, mime_string):
+        return cls.__mime_string_map[mime_string]
+
 
 register_mime_type = MimeTypeRegistry.register
 get_registered_mime_strings = MimeTypeRegistry.get_strings
 get_registered_mime_types = MimeTypeRegistry.get_types
+get_registered_mime_type_for_string = MimeTypeRegistry.get_type_for_string
 
 
 class JsonMime(object):
