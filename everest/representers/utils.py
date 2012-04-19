@@ -7,8 +7,7 @@ Representer utilities.
 Created on May 18, 2011.
 """
 
-from everest.representers.interfaces import IDataElementRegistry
-from everest.representers.interfaces import IRepresenter
+from everest.representers.interfaces import IRepresenterRegistry
 from pyramid.threadlocal import get_current_registry
 
 
@@ -27,10 +26,12 @@ def as_representer(resource, content_type):
         representer for.
     """
     reg = get_current_registry()
-    rpr = reg.queryAdapter(resource, IRepresenter, content_type.mime_string)
+    rpr_reg = reg.queryUtility(IRepresenterRegistry)
+    rpr = rpr_reg.get(resource, content_type)
     if rpr is None:
-        reg.add_representer(resource, content_type)
-        rpr = reg.getAdapter(resource, IRepresenter, content_type.mime_string)
+        # Register a representer with default configuration on the fly.
+        rpr_reg.register(type(resource), content_type)
+        rpr = rpr_reg.get(resource, content_type)
     return rpr
 
 
@@ -42,4 +43,5 @@ def get_data_element_registry(content_type):
         has been created.
     """
     reg = get_current_registry()
-    return reg.getUtility(IDataElementRegistry, content_type.mime_string)
+    rpr_reg = reg.queryUtility(IRepresenterRegistry)
+    return rpr_reg.get_data_element_registry(content_type)

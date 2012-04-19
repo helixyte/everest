@@ -399,13 +399,16 @@ class DataElementRegistry(object):
         :type mapped_class: type
         :returns: type implementing :class:`IDataElement`
         """
+        de_cls = None
         for base_cls in mapped_class.__mro__:
             try:
-                return self.__de_map[base_cls]
+                de_cls = self.__de_map[base_cls]
             except KeyError:
                 continue
-        raise KeyError('No data element class registered for "%s" or any '
-                       'of its base classes.' % mapped_class)
+        if de_cls is None:
+            de_cls = self.create_data_element_class(mapped_class, None)
+            self.__de_map[mapped_class] = de_cls
+        return de_cls
 
     def get_data_element_classes(self):
         """
@@ -965,3 +968,62 @@ def data_element_tree_to_string(data_element):
     return stream.getvalue()
 
 
+class RepresenterRegistry(object):
+    """
+    Registry for representer classes and representer factories.
+    """
+
+    def __init__(self):
+        self.__rpr_classes = {}
+        self.__de_regs = {}
+        self.__rpr_factories = {}
+
+    def register_representer_class(self, representer_class):
+        if representer_class in self.__rpr_classes:
+            raise ValueError('The representer class "%s" has already been '
+                             'registered.' % representer_class)
+        self.__rpr_classes[representer_class.content_type] = representer_class
+        # Create and store a data element registry for the registered resource 
+        # representer class.
+        de_reg = representer_class.make_data_element_registry()
+        self.__de_regs[representer_class.content_type] = de_reg
+
+    def is_registered_representer_class(self, representer_class):
+        return representer_class in self.__rpr_classes
+
+    def get_data_element_registry(self, content_type):
+        return self.__de_regs.get(content_type)
+
+    def register(self, resource_class, content_type,
+                 configuration=None, mapping_info=None):
+        if not issubclass(type(resource_class), type):
+            raise ValueError('Representers can only be registered for '
+                             'resource classes (got: %s).' % resource_class)
+        # If we were passed a configuration class, instantiate it.
+        if type(configuration) is type:
+            configuration = configuration()
+        # Register customized data element class for the representer
+        # class registered for the given content type.
+        rpr_cls = self.__rpr_classes[content_type]
+        de_reg = self.__de_regs[content_type]
+        de_cls = de_reg.create_data_element_class(resource_class, configuration)
+        de_reg.set_data_element_class(de_cls)
+        if not mapping_info is None:
+            mapping = de_cls.mapper.get_config_option('mapping')
+            if mapping is None:
+                de_cls.mapper.set_config_option('mapping', mapping_info)
+            else:
+                mapping.update(mapping_info)
+        # Register factory resource -> representer for the given resource
+        # class, content type combination.
+        self.__rpr_factories[(resource_class, content_type)] = \
+                                            rpr_cls.create_from_resource
+
+    def get(self, resource, content_type):
+        try:
+            rpr_fac = self.__rpr_factories[(type(resource), content_type)]
+        except KeyError:
+            rpr = None
+        else:
+            rpr = rpr_fac(resource)
+        return rpr

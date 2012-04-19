@@ -269,6 +269,10 @@ class IRepresenterDirective(Interface):
         GlobalObject(title=u"Old-style configuration class for this "
                             "representer.",
                      required=False)
+    representer_class = \
+        GlobalObject(title=u"Class to use for the representer. Only needed if "
+                            "a non-standard representer class is used.",
+                     required=False)
 
 
 class RepresenterDirective(GroupingContextDecorator):
@@ -279,11 +283,13 @@ class RepresenterDirective(GroupingContextDecorator):
     """
     implements(IConfigurationContext, IRepresenterDirective)
 
-    def __init__(self, context, for_, content_type, configuration=None):
+    def __init__(self, context, for_, content_type,
+                 configuration=None, representer_class=None):
         self.context = context
         self.for_ = for_
         self.content_type = content_type
         self.configuration = configuration
+        self.representer_class = representer_class
         self.options = {}
         self.mapping_info = {}
 
@@ -298,6 +304,7 @@ class RepresenterDirective(GroupingContextDecorator):
                         callable=config.add_representer,
                         args=(rc, self.content_type),
                         kw=dict(configuration=self.configuration,
+                                representer_class=self.representer_class,
                                 mapping_info=mapping_info,
                                 _info=self.context.info))
 

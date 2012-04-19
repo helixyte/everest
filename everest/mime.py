@@ -51,12 +51,10 @@ class MimeTypeRegistry(object):
     def register(cls, mime_type):
         if mime_type.mime_string in cls.__mime_string_map:
             raise ValueError('Duplicate MIME string detected.')
-        for ext in mime_type.file_extensions:
-            if ext in cls.__file_extension_map:
-                raise ValueError('Duplicate file extension detected.')
+        if mime_type.file_extension in cls.__file_extension_map:
+            raise ValueError('Duplicate file extension detected.')
         cls.__mime_string_map[mime_type.mime_string] = mime_type
-        for ext in mime_type.file_extensions:
-            cls.__file_extension_map[ext] = mime_type
+        cls.__file_extension_map[mime_type.file_extension] = mime_type
 
     @classmethod
     def get_strings(cls):
@@ -80,7 +78,7 @@ get_registered_mime_type_for_string = MimeTypeRegistry.get_type_for_string
 class JsonMime(object):
     implements(IJsonMime)
     mime_string = 'application/json'
-    file_extensions = ['.json']
+    file_extension = '.json'
 
 JSON_MIME = JsonMime.mime_string
 
@@ -90,7 +88,7 @@ register_mime_type(JsonMime)
 class AtomMime(object):
     implements(IAtomMime)
     mime_string = 'application/atom+xml'
-    file_extensions = ['.atom']
+    file_extension = '.atom'
 
 ATOM_MIME = AtomMime.mime_string
 
@@ -121,7 +119,7 @@ ATOM_SERVICE_MIME = AtomFeedMime.mime_string
 class XmlMime(object):
     implements(IXmlMime)
     mime_string = 'application/xml'
-    file_extensions = ['.xml']
+    file_extension = '.xml'
 
 XML_MIME = XmlMime.mime_string
 
@@ -131,7 +129,7 @@ register_mime_type(XmlMime)
 class CsvMime(object):
     implements(ICsvMime)
     mime_string = 'application/csv'
-    file_extensions = ['.csv']
+    file_extension = '.csv'
 
 CSV_MIME = CsvMime.mime_string
 
@@ -141,7 +139,7 @@ register_mime_type(CsvMime)
 class HtmlMime(object):
     implements(IHtmlMime)
     mime_string = 'text/html'
-    file_extensions = ['.html', '.htm']
+    file_extension = '.html'
 
 HTML_MIME = HtmlMime.mime_string
 
@@ -151,7 +149,7 @@ register_mime_type(HtmlMime)
 class TextPlainMime(object):
     implements(ITextPlainMime)
     mime_string = 'text/plain'
-    file_extensions = ['.txt']
+    file_extension = '.txt'
 
 TEXT_PLAIN_MIME = TextPlainMime.mime_string
 
@@ -161,7 +159,7 @@ register_mime_type(TextPlainMime)
 class XlsMime(object):
     implements(IXlsMime)
     mime_string = 'application/vnd.xls'
-    file_extensions = ['.xls']
+    file_extension = '.xls'
 
 XLS_MIME = XlsMime.mime_string
 
@@ -171,7 +169,7 @@ register_mime_type(XlsMime)
 class ZipMime(object):
     implements(IZipMime)
     mime_string = 'application/zip'
-    file_extensions = ['.zip']
+    file_extension = '.zip'
 
 ZIP_MIME = ZipMime.mime_string
 

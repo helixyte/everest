@@ -28,6 +28,8 @@ from everest.tests.testapp.resources import FooMember
 from pyramid.testing import setUp as testing_set_up
 from pyramid.testing import tearDown as testing_tear_down
 from pyramid.threadlocal import get_current_registry
+from everest.representers.interfaces import IRepresenterRegistry
+from everest.representers.base import Representer
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -88,8 +90,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll)
-        self.assert_is_not_none(reg.queryAdapter(coll, IRepresenter,
-                                                 name=CsvMime.mime_string))
+        rpr_reg = reg.getUtility(IRepresenterRegistry)
+        self.assert_true(isinstance(rpr_reg.get(coll, CsvMime), Representer))
 
     def test_custom_repository(self):
         class MyMemoryAggregate(MemoryAggregate):

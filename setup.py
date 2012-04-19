@@ -76,5 +76,6 @@ setup(name='everest',
       entry_points="""\
       [nose.plugins.0.10]
       everest = everest.testing:EverestNosePlugin
+      elapsed = everest.testing:ElapsedNosePlugin
       """
       )

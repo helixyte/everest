@@ -60,6 +60,10 @@ class AtomResourceRepresenter(ResourceRepresenter):
         return AtomDataElementGenerator(self._data_element_registry)
 
 
+# Adapter creating representers from resource instances.
+resource_adapter = AtomResourceRepresenter.create_from_resource
+
+
 class AtomDataElementGenerator(DataElementGenerator):
 
     # FIXME: Make the hypermedia type configurable. pylint: disable=W0511
@@ -175,9 +179,6 @@ class AtomDataElementGenerator(DataElementGenerator):
 class AtomDataElementRegistry(XmlDataElementRegistry):
 
     NS_MAP = dict(opensearch=XML_NS_OPEN_SEARCH)
-
-
-resource_adapter = AtomResourceRepresenter.create_from_resource
 
 
 AtomRepresenterConfiguration = XmlRepresenterConfiguration

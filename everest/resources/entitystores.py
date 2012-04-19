@@ -19,7 +19,8 @@ from everest.db import set_metadata
 from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource
-from everest.resources.utils import get_collection_class
+from everest.resources.io import get_read_collection_path
+from everest.resources.io import get_write_collection_path
 from everest.resources.utils import get_repository_manager
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
@@ -282,34 +283,26 @@ class FileSystemEntityStore(CachingEntityStore):
 
     def _initialize(self):
         repo = self.__get_repo()
-        for mb_cls in repo.managed_collections:
-            coll_cls = get_collection_class(mb_cls)
+        for coll_cls in repo.managed_collections:
             self.__load_collection(repo, coll_cls)
 
     def __dump_collection(self, collection):
-        fn = self.__get_filename(collection, False)
+        fn = get_write_collection_path(collection,
+                                       self._config['content_type'],
+                                       directory=self._config['directory'])
         stream = file(fn, 'w')
         with stream:
             dump_resource(collection, stream,
                           content_type=self._config['content_type'])
 
     def __load_collection(self, repo, coll_cls):
-        fn = self.__get_filename(coll_cls, True)
+        fn = get_read_collection_path(coll_cls, self._config['content_type'],
+                                      directory=self._config['directory'])
         if not fn is None:
             url = 'file://%s' % fn
             repo.load_representation(coll_cls, url,
-                                     content_type=
-                                            self._config['content_type'],
+                                     content_type=self._config['content_type'],
                                      resolve_urls=False)
-
-    def __get_filename(self, collection_class, check_existing):
-        directory = self._config['directory']
-        ext = self._config['content_type'].file_extensions[0]
-        collection_name = collection_class.relation.split('/')[-1]
-        fn = os.path.join(directory, "%s%s" % (collection_name, ext))
-        if check_existing and not os.path.isfile(fn):
-            fn = None
-        return fn
 
     def __get_repo(self):
         # FIXME: assuming repo has same name as store. pylint: disable=W0511

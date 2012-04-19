@@ -9,9 +9,7 @@ Created on Jan 27, 2012.
 
 from StringIO import StringIO
 from everest.mime import CsvMime
-from everest.mime import XmlMime
 from everest.representers.utils import as_representer
-from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
@@ -20,6 +18,8 @@ from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E06
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from urlparse import urlparse
 import os
+from everest.mime import MimeTypeRegistry
+from zipfile import ZipFile
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['build_resource_dependency_graph',
@@ -28,13 +28,13 @@ __all__ = ['build_resource_dependency_graph',
            'dump_resource_to_files',
            'dump_resource_graph',
            'find_connected_resources',
-           'load_resource_from_file',
-           'load_resource_from_url',
+           'load_collection_from_file',
+           'load_collection_from_url',
            ]
 
 
-def load_resource_from_url(resource, url,
-                           content_type=None, resolve_urls=True):
+def load_collection_from_url(collection, url,
+                             content_type=None, resolve_urls=True):
     """
     Loads a collection resource of the given registered resource type from a 
     representation contained in the given URL.
@@ -44,16 +44,15 @@ def load_resource_from_url(resource, url,
     parsed = urlparse(url)
     if parsed.scheme == 'file': # pylint: disable=E1101
         # Assume a local path.
-        rc = load_resource_from_file(resource, parsed.path, # pylint: disable=E1101
-                                     content_type=content_type,
-                                     resolve_urls=resolve_urls)
+        load_collection_from_file(collection, parsed.path, # pylint: disable=E1101
+                                  content_type=content_type,
+                                  resolve_urls=resolve_urls)
     else:
         raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
-    return rc
 
 
-def load_resource_from_file(resource, filename,
-                            content_type=None, resolve_urls=True):
+def load_collection_from_file(collection, filename,
+                              content_type=None, resolve_urls=True):
     """
     Loads a collection resource of the given registered resource type from a 
     representation contained in the given file name.
@@ -61,22 +60,40 @@ def load_resource_from_file(resource, filename,
     :returns: collection resource
     """
     if content_type is None:
-        #
-        extensions = dict(csv=CsvMime,
-                          xml=XmlMime,
-                          )
         ext = filename.split('.')[1]
-        try:
-            content_type = extensions[ext]
-        except KeyError:
+        for content_type in MimeTypeRegistry.get_types():
+            if content_type.file_extension == ext:
+                break
+        if content_type is None:
             raise ValueError('Unknown file extension "%s".' % ext)
-    coll_cls = get_collection_class(resource)
-    rpr = as_representer(object.__new__(coll_cls), content_type)
-    fp = open(filename, 'rU')
-    with fp:
-        data_el = rpr.data_from_stream(fp)
-    rc = rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
-    return rc
+    load_collection_from_stream(collection, open(filename, 'rU'),
+                                content_type=content_type,
+                                resolve_urls=resolve_urls)
+
+
+def load_collection_from_stream(collection, stream,
+                                content_type=None, resolve_urls=True):
+    rpr = as_representer(collection, content_type)
+    with stream:
+        data_el = rpr.data_from_stream(stream)
+    mem_coll = rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
+    for mb in mem_coll:
+        collection.add(mb)
+
+
+def load_collections_from_zipfile(collections, zip_filename, content_type=None,
+                                  resolve_urls=True):
+    if content_type is None:
+        content_type = CsvMime
+    zipf = ZipFile(open(zip_filename, 'rb'))
+    names = zipf.namelist()
+    for collection in collections:
+        coll_fn = get_collection_filename(collection, content_type)
+        if not coll_fn in names:
+            continue
+        load_collection_from_stream(collection, zipf.read(coll_fn),
+                                    content_type=content_type,
+                                    resolve_urls=resolve_urls)
 
 
 def dump_resource(resource, stream, content_type=None):
@@ -296,8 +313,31 @@ class ConnectedResourcesSerializer(object):
             directory = os.getcwd()
         rc_map = self.to_strings(resource)
         for mb_cls, rpr_string in rc_map.iteritems():
-            fn = '%s-collection.%s' % (mb_cls.relation.split('/')[-1],
-                                       self.__content_type.file_extensions[0])
+            fn = get_collection_filename(mb_cls, self.__content_type)
             strm = open(os.path.join(directory, fn), 'wb')
             with strm:
                 strm.write(rpr_string)
+
+
+def get_collection_filename(collection_class, content_type):
+    collection_name = collection_class.relation.split('/')[-1]
+    return "%s-collection%s" % (collection_name, content_type.file_extension)
+
+
+def get_write_collection_path(collection_class, content_type, directory=None):
+    if directory is None:
+        directory = os.getcwd()
+    coll_fn = get_collection_filename(collection_class, content_type)
+    return os.path.join(directory, coll_fn)
+
+
+def get_read_collection_path(collection_class, content_type, directory=None):
+    if directory is None:
+        directory = os.getcwd()
+    coll_fn = get_collection_filename(collection_class, content_type)
+    fn = os.path.join(directory, coll_fn)
+    if os.path.isfile(fn):
+        result = fn
+    else:
+        result = None
+    return result

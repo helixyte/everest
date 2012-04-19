@@ -186,4 +186,10 @@ class IDataElementRegistry(Interface):
         Returns a list of all registered data element classes.
         """
 
+
+class IRepresenterRegistry(Interface):
+    """
+    Marker interface for the representer registry.
+    """
+
 # pylint: enable=W0232,E0213,E0211

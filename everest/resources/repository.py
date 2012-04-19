@@ -15,7 +15,7 @@ from everest.repository import Repository
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.entitystores import FileSystemEntityStore
 from everest.resources.entitystores import OrmEntityStore
-from everest.resources.io import load_resource_from_url
+from everest.resources.io import load_collection_from_url
 from everest.resources.utils import get_collection_class
 
 __docformat__ = 'reStructuredText en'
@@ -47,12 +47,10 @@ class ResourceRepository(Repository):
 
     def load_representation(self, rc, url,
                             content_type=None, resolve_urls=True):
-        loaded_coll = load_resource_from_url(rc, url,
-                                             content_type=content_type,
-                                             resolve_urls=resolve_urls)
         coll = self.get(rc)
-        for loaded_mb in loaded_coll:
-            coll.add(loaded_mb)
+        load_collection_from_url(coll, url,
+                                 content_type=content_type,
+                                 resolve_urls=resolve_urls)
 
     def manage(self, collection_class):
         self.__managed_collections.add(collection_class)

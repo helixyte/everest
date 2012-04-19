@@ -13,9 +13,6 @@ from everest.interfaces import IMessage
 from everest.interfaces import IRepository
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
-from everest.mime import AtomMime
-from everest.mime import CsvMime
-from everest.mime import XmlMime
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import EvalFilterSpecificationVisitor
@@ -40,9 +37,9 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
 from everest.representers.atom import AtomResourceRepresenter
+from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
-from everest.representers.interfaces import IDataElementRegistry
-from everest.representers.interfaces import IRepresenter
+from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.xml import XmlResourceRepresenter
 from everest.resources.base import Collection
 from everest.resources.base import Resource
@@ -306,8 +303,11 @@ class Configurator(PyramidConfigurator):
             srvc.register(interface)
 
     def add_representer(self, resource, content_type, configuration=None,
-                        mapping_info=None, _info=u''):
+                        representer_class=None, mapping_info=None, _info=u''):
+        rpr_reg = self.get_registered_utility(IRepresenterRegistry)
         if IInterface in provided_by(resource):
+            # If we got an interface, we register representers with the same
+            # configuration for the registered member and collection resources.
             rcs = [get_member_class(resource), get_collection_class(resource)]
         else:
             if not issubclass(resource, Resource):
@@ -315,38 +315,14 @@ class Configurator(PyramidConfigurator):
                                  'classes inheriting from the Resource base '
                                  'class.')
             rcs = [resource]
-        # If we were passed a class, instantiate it.
-        if type(configuration) is type:
-            configuration = configuration()
-        # Register customized data element class for the representer
-        # class registered for the given content type.
-        utility_name = content_type.mime_string
-        rpr_cls = self.get_registered_utility(IRepresenter, utility_name)
-        de_reg = self.query_registered_utilities(IDataElementRegistry,
-                                                 utility_name)
-        if de_reg is None:
-            # A sad attempt at providing a singleton that lives as long
-            # as the associated (zope) registry: The first time this is
-            # called with a fresh registry, a data element registry is
-            # instantiated and then registered as a utility.
-            de_reg = rpr_cls.make_data_element_registry()
-            self._register_utility(de_reg, IDataElementRegistry,
-                                   name=utility_name)
+        # Register the representer class, if given and necessary.
+        # FIXME: the class registration should not be a side effect  # pylint: disable=W0511
+        if not representer_class is None \
+           and not rpr_reg.is_registered_representer_class(representer_class):
+            rpr_reg.register_representer_class(representer_class)
         for rc in rcs:
-            de_cls = de_reg.create_data_element_class(rc, configuration)
-            de_reg.set_data_element_class(de_cls)
-            # Register adapter resource, MIME name -> representer.
-            self._register_adapter(rpr_cls.create_from_resource,
-                                   (rc,),
-                                   IRepresenter,
-                                   name=utility_name,
-                                   info=_info)
-            if not mapping_info is None:
-                mapping = de_cls.mapper.get_config_option('mapping')
-                if mapping is None:
-                    de_cls.mapper.set_config_option('mapping', mapping_info)
-                else:
-                    mapping.update(mapping_info)
+            rpr_reg.register(rc, content_type, configuration=configuration,
+                             mapping_info=mapping_info)
 
     def initialize_repositories(self):
         for coll_cls in [util.component
@@ -394,16 +370,12 @@ class Configurator(PyramidConfigurator):
             order_specification_factory = OrderSpecificationFactory()
         self._register_utility(order_specification_factory,
                                IOrderSpecificationFactory)
-        # Create builtin representers.
-        self._register_utility(CsvResourceRepresenter,
-                               IRepresenter,
-                               name=CsvMime.mime_string)
-        self._register_utility(XmlResourceRepresenter,
-                               IRepresenter,
-                               name=XmlMime.mime_string)
-        self._register_utility(AtomResourceRepresenter,
-                               IRepresenter,
-                               name=AtomMime.mime_string)
+        # Create representer registry and register builtin representer classes.
+        rpr_reg = RepresenterRegistry()
+        rpr_reg.register_representer_class(CsvResourceRepresenter)
+        rpr_reg.register_representer_class(XmlResourceRepresenter)
+        rpr_reg.register_representer_class(AtomResourceRepresenter)
+        self._register_utility(rpr_reg, IRepresenterRegistry)
         # Set up the service.
         if service is None:
             service = Service()
