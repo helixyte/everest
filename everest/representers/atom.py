@@ -12,7 +12,7 @@ from everest.mime import XmlMime
 from everest.representers.base import DataElementGenerator
 from everest.representers.base import DataElementParser
 from everest.representers.base import ResourceRepresenter
-from everest.representers.interfaces import IDataElementRegistry
+from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.utils import as_representer
 from everest.representers.xml import XmlDataElementRegistry
 from everest.representers.xml import XmlRepresentationGenerator
@@ -120,7 +120,8 @@ class AtomDataElementGenerator(DataElementGenerator):
         # member representer so that attribute serialization works as
         # expected.
         reg = get_current_registry()
-        de_reg = reg.getUtility(IDataElementRegistry, XmlMime.mime_string)
+        rpr_reg = reg.getUtility(IRepresenterRegistry)
+        de_reg = rpr_reg.get_data_element_registry(XmlMime)
         cnt_de_cls = de_reg.get_data_element_class(type(collection))
         mp_info = cnt_de_cls.mapper.get_config_option('mapping')
         for member in collection:
