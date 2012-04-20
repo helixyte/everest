@@ -13,6 +13,7 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import cast
 from threading import Lock
+from inspect import isdatadescriptor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_slug_expression',
@@ -156,5 +157,12 @@ def convert_to_hybrid_property(ent_cls, name, expression):
     Helper function to convert plain slug properties to hybrid properties that
     also work in SQL expressions.
     """
-    setattr(ent_cls, name, hybrid_property(getattr(ent_cls, name).fget,
-                                           expr=expression))
+    # Use object.__getattribute__ if we already have a hybrid property.
+    obj = getattr(ent_cls, name)
+    if isdatadescriptor(obj):
+        setattr(ent_cls, name,
+                hybrid_property(obj.fget, expr=expression))
+    else:
+        setattr(ent_cls, name,
+                hybrid_property(object.__getattribute__(ent_cls, name).fget,
+                                expr=expression))

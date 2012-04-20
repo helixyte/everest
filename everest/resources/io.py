@@ -20,6 +20,7 @@ from urlparse import urlparse
 import os
 from everest.mime import MimeTypeRegistry
 from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['build_resource_dependency_graph',
@@ -81,19 +82,19 @@ def load_collection_from_stream(collection, stream,
         collection.add(mb)
 
 
-def load_collections_from_zipfile(collections, zip_filename, content_type=None,
+def load_collections_from_zipfile(collections, zipfile, content_type=None,
                                   resolve_urls=True):
     if content_type is None:
         content_type = CsvMime
-    zipf = ZipFile(open(zip_filename, 'rb'))
-    names = zipf.namelist()
-    for collection in collections:
-        coll_fn = get_collection_filename(collection, content_type)
-        if not coll_fn in names:
-            continue
-        load_collection_from_stream(collection, zipf.read(coll_fn),
-                                    content_type=content_type,
-                                    resolve_urls=resolve_urls)
+    with ZipFile(zipfile) as zipf:
+        names = zipf.namelist()
+        for collection in collections:
+            coll_fn = get_collection_filename(collection, content_type)
+            if not coll_fn in names:
+                continue
+            load_collection_from_stream(collection, zipf.read(coll_fn),
+                                        content_type=content_type,
+                                        resolve_urls=resolve_urls)
 
 
 def dump_resource(resource, stream, content_type=None):
@@ -299,9 +300,9 @@ class ConnectedResourcesSerializer(object):
         # Build a map of representations.
         rpr_map = OrderedDict()
         for (mb_cls, coll) in collections.iteritems():
-            stream = StringIO('w')
-            dump_resource(coll, stream, content_type=self.__content_type)
-            rpr_map[mb_cls] = stream.getvalue()
+            strm = StringIO('w')
+            dump_resource(coll, strm, content_type=self.__content_type)
+            rpr_map[mb_cls] = strm.getvalue()
         return rpr_map
 
     def to_files(self, resource, directory=None):
@@ -311,12 +312,26 @@ class ConnectedResourcesSerializer(object):
         """
         if directory is None:
             directory = os.getcwd()
-        rc_map = self.to_strings(resource)
-        for mb_cls, rpr_string in rc_map.iteritems():
-            fn = get_collection_filename(mb_cls, self.__content_type)
-            strm = open(os.path.join(directory, fn), 'wb')
-            with strm:
-                strm.write(rpr_string)
+        collections = \
+            find_connected_resources(resource,
+                                     dependency_graph=self.__dependency_graph)
+        for (mb_cls, coll) in collections.iteritems():
+            fn = get_write_collection_path(mb_cls,
+                                           self.__content_type,
+                                           directory=directory)
+            with open(os.path.join(directory, fn), 'wb') as strm:
+                dump_resource(coll, strm, content_type=self.__content_type)
+
+    def to_zipfile(self, resource, zipfile):
+        """
+        Dumps the given resource and all resources linked to it into the given
+        ZIP file.
+        """
+        rpr_map = self.to_strings(resource)
+        with ZipFile(zipfile, 'w') as zipf:
+            for (mb_cls, rpr_string) in rpr_map.iteritems():
+                fn = get_collection_filename(mb_cls, self.__content_type)
+                zipf.writestr(fn, rpr_string, compress_type=ZIP_DEFLATED)
 
 
 def get_collection_filename(collection_class, content_type):

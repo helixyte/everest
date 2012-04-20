@@ -29,6 +29,19 @@ __all__ = ['ConnectedResourcesTestCase',
            'ResourceDependencyGraphTestCase',
            ]
 
+
+def _make_test_entity_member():
+    parent = MyEntityParent(id=0)
+    entity = MyEntity(id=0, parent=parent)
+    parent.child = entity
+    child = MyEntityChild(id=0, parent=entity)
+    entity.children.append(child)
+    grandchild = MyEntityGrandchild(id=0, parent=child)
+    child.children.append(grandchild)
+    coll = get_root_collection(IMyEntity)
+    return coll.create_member(entity)
+
+
 class ResourceGraphTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
@@ -61,13 +74,13 @@ class ResourceDependencyGraphTestCase(ResourceGraphTestCase):
 class ConnectedResourcesTestCase(ResourceGraphTestCase):
 
     def test_find_connected(self):
-        member = self._make_member()
+        member = _make_test_entity_member()
         coll_map = find_connected_resources(member)
         for coll in coll_map.itervalues():
             self.assert_equal(len(coll), 1)
 
     def test_find_connected_with_deps(self):
-        member = self._make_member()
+        member = _make_test_entity_member()
         dep_grph = \
             build_resource_dependency_graph(self._interfaces,
                                             include_backrefs=True)
@@ -78,7 +91,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
             self.assert_equal(len(coll), 1)
 
     def test_find_connected_with_custom_deps(self):
-        member = self._make_member()
+        member = _make_test_entity_member()
         ent = member.get_entity()
         # Point grandchild's parent to new child.
         new_child = MyEntityChild(id=1)
@@ -100,18 +113,18 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         self.assert_equal(len(coll_map[MyEntityChildMember]), 2)
 
     def test_convert_to_strings(self):
-        member = self._make_member()
+        member = _make_test_entity_member()
         srl = ConnectedResourcesSerializer(CsvMime)
         rpr_map = srl.to_strings(member)
         self.assert_equal(len(rpr_map), 4)
 
-    def _make_member(self):
-        parent = MyEntityParent(id=0)
-        entity = MyEntity(id=0, parent=parent)
-        parent.child = entity
-        child = MyEntityChild(id=0, parent=entity)
-        entity.children.append(child)
-        grandchild = MyEntityGrandchild(id=0, parent=child)
-        child.children.append(grandchild)
-        coll = get_root_collection(IMyEntity)
-        return coll.create_member(entity)
+
+class ResourceLoadingTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure.zcml'
+
+    def test_load_from_zipfile(self):
+        member = _make_test_entity_member()
+        print member
+
+
