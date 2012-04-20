@@ -1,0 +1,17 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+
+    <!-- Include special directives. -->
+
+    <include package="everest.includes" />
+
+    <!-- Repositories. -->
+
+    <orm_repository
+        metadata_factory='plantscribe.orm.create_metadata'
+        make_default="true" />
+
+    <!-- Resource declarations. -->
+    
+    <include file="resources.zcml" />
+
+</configure>

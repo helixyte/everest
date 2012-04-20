@@ -102,7 +102,8 @@ absolute path) or relative to the parent resource declaring the attribute.
    
    :mod:`everest` favors and facilitates object traversal for URL resolution. 
    In particular, all resource attributes that target a member or collection
-   resource can be used directly for URL traversal. 
+   resource can be used directly for URL traversal unless they are specifically
+   set as non-nested resource in the corresponding resource attribute declaration.
    
 
 We also have the possibility to declare resource attributes that do not
@@ -268,8 +269,9 @@ our simple application, this function looks like this:
    :lineno:
 
 The function first creates a database schema and then maps our entity classes to
-this schema.
-
+this schema. Note that a special mapper is used which provides a convenient way
+to map the special `id` and `slug` attributes required by :mod:`everest` to the
+ORM layer.
 
 To use an engine other than the default in-memory SQLite database engine, you
 need to supply a ``db_string`` setting in the paster application ``.ini`` file.
@@ -287,6 +289,5 @@ For example:
    [app:myapp]
    db_string = postgresql+psycopg2://%(db_user)s:%(db_password)s@%(db_server)s:%(db_port)s/%(db_name)s
    
-
 Different resorces may use different repositories, but any given resource can
-only be assigned one repository.
+only be assigned to one repository.

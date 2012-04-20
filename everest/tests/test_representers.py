@@ -34,6 +34,7 @@ def _make_collection():
     coll.create_member(my_entity1)
     return coll
 
+
 class LazyAttribteLoaderProxyTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
@@ -42,8 +43,7 @@ class LazyAttribteLoaderProxyTestCase(ResourceTestCase):
         loader = LazyUrlLoader('http://localhost/my-entity-parents/0',
                                url_to_resource)
         my_entity = LazyAttributeLoaderProxy.create(MyEntity,
-                                                    dict(id=0,
-                                                         parent=loader))
+                                                    dict(id=0, parent=loader))
         self.assert_true(isinstance(my_entity, LazyAttributeLoaderProxy))
         coll = get_root_collection(IMyEntity)
         mb = coll.create_member(my_entity)

@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 1, 2011.
 """
 
-from everest.db import convert_slug_to_hybrid_property
+from everest.orm import mapper
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
 from everest.tests.testapp_db.entities import MyEntityGrandchild
@@ -16,9 +16,7 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import synonym
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['create_metadata',
@@ -79,18 +77,17 @@ def create_metadata(engine):
     #
 
     mapper(MyEntityParent, my_entity_parent_tbl,
+           id_attribute='my_entity_parent_id',
            properties=
-            dict(id=synonym('my_entity_parent_id'),
-                 child=relationship(MyEntity,
+            dict(child=relationship(MyEntity,
                                     uselist=False,
                                     back_populates='parent'),
                  )
            )
-    convert_slug_to_hybrid_property(MyEntityParent)
     mapper(MyEntity, my_entity_tbl,
+           id_attribute='my_entity_id',
            properties=
-            dict(id=synonym('my_entity_id'),
-                 parent=relationship(MyEntityParent,
+            dict(parent=relationship(MyEntityParent,
                                      uselist=False,
                                      back_populates='child'),
                  children=relationship(MyEntityChild,
@@ -98,11 +95,10 @@ def create_metadata(engine):
                                        cascade="all, delete-orphan"),
                  )
            )
-    convert_slug_to_hybrid_property(MyEntity)
     mapper(MyEntityChild, my_entity_child_tbl,
+           id_attribute='my_entity_child_id',
            properties=
-            dict(id=synonym('my_entity_child_id'),
-                 parent=relationship(MyEntity,
+            dict(parent=relationship(MyEntity,
                                      uselist=False,
                                      back_populates='children',
                                      cascade='save-update'
@@ -113,17 +109,15 @@ def create_metadata(engine):
                                  back_populates='parent'),
                  ),
            )
-    convert_slug_to_hybrid_property(MyEntityChild)
     mapper(MyEntityGrandchild, my_entity_grandchild_tbl,
+           id_attribute='my_entity_grandchild_id',
            properties=
-            dict(id=synonym('my_entity_grandchild_id'),
-                 parent=relationship(MyEntityChild,
+            dict(parent=relationship(MyEntityChild,
                                      uselist=False,
                                      secondary=my_entity_child_children_tbl,
                                      back_populates='children'),
                  ),
            )
-    convert_slug_to_hybrid_property(MyEntityGrandchild)
     # Create the mappers.
     metadata.bind = engine
     metadata.create_all()

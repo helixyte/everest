@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 10, 2011.
 """
 
-from everest.db import reset_metadata
+from everest.orm import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor

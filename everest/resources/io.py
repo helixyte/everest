@@ -26,8 +26,9 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['build_resource_dependency_graph',
            'build_resource_graph',
            'dump_resource',
-           'dump_resource_to_files',
            'dump_resource_graph',
+           'dump_resource_to_files',
+           'dump_resource_to_zipfile',
            'find_connected_resources',
            'load_collection_from_file',
            'load_collection_from_url',
@@ -226,16 +227,6 @@ def find_connected_resources(resource, dependency_graph=None):
     return collections
 
 
-def dump_resource_to_files(resource, content_type=None, directory=None):
-    """
-    Convenience function. See 
-    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
-    details.
-    """
-    srl = ConnectedResourcesSerializer(content_type=content_type)
-    srl.to_files(resource, directory=directory)
-
-
 class ResourceGraph(digraph):
     """
     Specialized digraph for resource instances. 
@@ -332,6 +323,26 @@ class ConnectedResourcesSerializer(object):
             for (mb_cls, rpr_string) in rpr_map.iteritems():
                 fn = get_collection_filename(mb_cls, self.__content_type)
                 zipf.writestr(fn, rpr_string, compress_type=ZIP_DEFLATED)
+
+
+def dump_resource_to_files(resource, content_type=None, directory=None):
+    """
+    Convenience function. See 
+    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
+    details.
+    """
+    srl = ConnectedResourcesSerializer(content_type=content_type)
+    srl.to_files(resource, directory=directory)
+
+
+def dump_resource_to_zipfile(resource, zipfile, content_type=None):
+    """
+    Convenience function. See 
+    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
+    details.
+    """
+    srl = ConnectedResourcesSerializer(content_type=content_type)
+    srl.to_zipfile(resource, zipfile)
 
 
 def get_collection_filename(collection_class, content_type):

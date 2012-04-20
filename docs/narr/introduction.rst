@@ -7,7 +7,13 @@
 
 .. sidebar:: Representational State Transfer (REST)
 
-:mod:`everest` aims to simplify the development of REST applications:
+:mod:`everest` is an extension of the popular :mod:`Pyramid` framework aimed at
+simplifying the development of REST applications. :mod:`everest` allows you to
+define a resource layer on top of your existing entity model
+
+ * Convert
+
+
 
 
 

@@ -1,4 +1,5 @@
 from everest.entities.base import Entity
+from everest.entities.utils import slug_from_string
 
 class Customer(Entity):
     def __init__(self, first_name, last_name, **kw):
@@ -8,4 +9,4 @@ class Customer(Entity):
 
     @property
     def slug(self):
-        return "%s-%s" % (self.last_name.lower(), self.first_name.lower())
+        return slug_from_string("%s-%s" % (self.last_name, self.first_name))

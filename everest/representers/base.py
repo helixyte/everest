@@ -33,6 +33,7 @@ import inspect
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionResourceRepresenter',
            'DataElement',
+           'LazyAttributeLoaderProxy',
            'MemberResourceRepresenter',
            'ResourceRepresenter',
            ]
@@ -405,6 +406,8 @@ class DataElementRegistry(object):
                 de_cls = self.__de_map[base_cls]
             except KeyError:
                 continue
+            else:
+                break
         if de_cls is None:
             de_cls = self.create_data_element_class(mapped_class, None)
             self.__de_map[mapped_class] = de_cls
@@ -1020,10 +1023,12 @@ class RepresenterRegistry(object):
                                             rpr_cls.create_from_resource
 
     def get(self, resource, content_type):
-        try:
-            rpr_fac = self.__rpr_factories[(type(resource), content_type)]
-        except KeyError:
-            rpr = None
-        else:
-            rpr = rpr_fac(resource)
+        for rc_cls in type(resource).__mro__:
+            try:
+                rpr_fac = self.__rpr_factories[(rc_cls, content_type)]
+            except KeyError:
+                rpr = None
+            else:
+                rpr = rpr_fac(resource)
+                break
         return rpr
