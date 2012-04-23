@@ -6,10 +6,16 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 21, 2012.
 """
 
+from StringIO import StringIO
 from everest.mime import CsvMime
+from everest.orm import is_metadata_initialized
+from everest.orm import reset_metadata
+from everest.repository import REPOSITORIES
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph
+from everest.resources.io import dump_resource_to_zipfile
 from everest.resources.io import find_connected_resources
+from everest.resources.io import load_collections_from_zipfile
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
@@ -123,8 +129,24 @@ class ResourceLoadingTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure.zcml'
 
+    metadata = None
+
+    @classmethod
+    def teardown_class(cls):
+        if is_metadata_initialized(REPOSITORIES.ORM):
+            reset_metadata()
+
     def test_load_from_zipfile(self):
         member = _make_test_entity_member()
-        print member
-
-
+        strm = StringIO('w')
+        dump_resource_to_zipfile(member, strm)
+        colls = [get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntityParent),
+                 get_root_collection(IMyEntityChild),
+                 get_root_collection(IMyEntityGrandchild)
+                 ]
+        load_collections_from_zipfile(colls, strm)
+        self.assert_equal(len(colls[0]), 1)
+        self.assert_equal(len(colls[1]), 1)
+        self.assert_equal(len(colls[2]), 1)
+        self.assert_equal(len(colls[3]), 1)

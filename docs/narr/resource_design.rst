@@ -52,7 +52,7 @@ In a member URL such as
 the slugs for individual member resources, then you will have to add a "slug"
 field to your entity class and map that to an appropriate column at the ORM
 layer.
- 2) Alternatively, you could use one or more other persistent columns from
+ 2) Alternatively, you can use one or more other persistent columns from
 the entity to define a (read-only) slug expression.
 
 

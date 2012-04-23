@@ -5,15 +5,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 
+from inspect import isdatadescriptor
 from sqlalchemy import String
 from sqlalchemy import func
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import clear_mappers as sa_clear_mappers
+from sqlalchemy.orm import mapper as sa_mapper
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import cast
 from threading import Lock
-from inspect import isdatadescriptor
+from sqlalchemy.orm.mapper import _mapper_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_slug_expression',
@@ -143,26 +145,46 @@ def as_slug_expression(attr):
     return slug_expr
 
 
-def convert_slug_to_hybrid_property(ent_cls):
+def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
+           *args, **kwargs):
     """
-    Helper function that converts the slug property of the given entity class
-    to a hybrid property that also works in SQL expressions.
+    Convenience wrapper around the SA mapper which will call the 
+    :func:`map_id_property` and :func:`map_slug_property` functions after 
+    calling the SA mapper using the values of the :param:`id_attribute` and
+    :param:`slug_expression` parameters as arguments.
     """
-    convert_to_hybrid_property(ent_cls, 'slug',
-                               lambda cls: cast(cls.id, String))
-
-
-def convert_to_hybrid_property(ent_cls, name, expression):
-    """
-    Helper function to convert plain slug properties to hybrid properties that
-    also work in SQL expressions.
-    """
-    # Use object.__getattribute__ if we already have a hybrid property.
-    obj = getattr(ent_cls, name)
-    if isdatadescriptor(obj):
-        setattr(ent_cls, name,
-                hybrid_property(obj.fget, expr=expression))
+    mpr = sa_mapper(class_, local_table=local_table, *args, **kwargs)
+    # Set up the ID attribute as a hybrid property, if necessary.
+    if id_attribute != 'id':
+        # Make sure we are not overwriting an already mapped or customized
+        # 'id' attribute.
+        if 'id' in mpr.columns:
+            raise ValueError('Attempting to overwrite the mapped "id" '
+                             'attribute.')
+        elif isdatadescriptor(getattr(class_, 'id', None)):
+            raise ValueError('Attempting to overwrite the custom data '
+                             'descriptor defined for the "id" attribute.')
+        fget = lambda obj: getattr(obj, id_attribute)
+        fset = lambda self, value: setattr(self, id_attribute, value)
+        class_.id = hybrid_property(fget, fset=fset, expr=fget)
+    # Set up the slug attribute as a hybrid property.
+    if slug_expression is None:
+        cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
     else:
-        setattr(ent_cls, name,
-                hybrid_property(object.__getattribute__(ent_cls, name).fget,
-                                expr=expression))
+        cls_expr = slug_expression
+    class_.slug = hybrid_property(class_.slug.fget, expr=cls_expr)
+    return mpr
+
+
+def clear_mappers():
+    # Remove our hybrid property constructs.
+    for mpr, is_primary in _mapper_registry.items():
+        if is_primary:
+            for attr_name in ('id', 'slug'):
+                try:
+                    attr = object.__getattribute__(mpr.class_, attr_name)
+                    if isinstance(attr, hybrid_property):
+                        delattr(mpr.class_, attr_name)
+                except AttributeError:
+                    pass
+    sa_clear_mappers()

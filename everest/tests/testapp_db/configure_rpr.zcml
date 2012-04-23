@@ -11,10 +11,6 @@
 
     <!-- Repositories. -->
     
-    <orm_repository
-        make_default="true"
-        metadata_factory="everest.tests.testapp_db.orm.create_metadata"/>
-
     <!-- Resources. -->
 
     <resource
@@ -40,5 +36,16 @@
         member=".resources.MyEntityGrandchildMember"
         entity=".entities.MyEntityGrandchild"
         collection_root_name="my-entity-grandchildren" />
+        
+    <representer
+        for='.interfaces.IMyEntity'
+        content_type='everest.mime.CsvMime'>
+        <attribute name="children">
+            <option name="ignore" value="false"
+                    type="zope.configuration.fields.Bool"/>
+            <option name="write_as_link" value="true" 
+                    type="zope.configuration.fields.Bool"/>
+        </attribute>
+    </representer>
 
 </configure>

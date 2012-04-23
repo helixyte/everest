@@ -9,13 +9,13 @@ Created on Jan 31, 2012.
 
 from collections import defaultdict
 from copy import deepcopy
-from everest.db import Session as SaSessionFactory
-from everest.db import get_engine
-from everest.db import get_metadata
-from everest.db import is_engine_initialized
-from everest.db import is_metadata_initialized
-from everest.db import set_engine
-from everest.db import set_metadata
+from everest.orm import Session as SaSessionFactory
+from everest.orm import get_engine
+from everest.orm import get_metadata
+from everest.orm import is_engine_initialized
+from everest.orm import is_metadata_initialized
+from everest.orm import set_engine
+from everest.orm import set_metadata
 from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource

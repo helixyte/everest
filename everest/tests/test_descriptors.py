@@ -5,8 +5,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 1, 2011.
 """
 
-from everest.db import get_metadata
-from everest.db import reset_metadata
+from everest.orm import get_metadata
+from everest.orm import is_metadata_initialized
+from everest.orm import reset_metadata
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repository import REPOSITORIES
@@ -41,14 +42,6 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
            'DescriptorsTestCase',
            ]
-
-
-def teardown():
-    # Module level teardown.
-    if not DescriptorsTestCase.metadata is None:
-        DescriptorsTestCase.metadata.drop_all()
-        DescriptorsTestCase.metadata = None
-    reset_metadata()
 
 
 class AttributesTestCase(Pep8CompliantTestCase):
@@ -104,12 +97,12 @@ class DescriptorsTestCase(ResourceTestCase):
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
 
-    def set_up(self):
-        if DescriptorsTestCase.metadata is None:
+    @classmethod
+    def teardown_class(cls):
+        if is_metadata_initialized(REPOSITORIES.ORM):
+            metadata = get_metadata(REPOSITORIES.ORM)
+            metadata.drop_all()
             reset_metadata()
-        ResourceTestCase.set_up(self)
-        if DescriptorsTestCase.metadata is None:
-            DescriptorsTestCase.metadata = get_metadata(REPOSITORIES.ORM)
 
     def test_terminal_access(self):
         entity = MyEntity()

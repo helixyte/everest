@@ -22,14 +22,14 @@ the tilde ("~") character. Each criterion consists of three parts separated by
 a colon (":") character :
 
 1. resource attribute name
-  Specifies the name of the resource to query. You can specify dotted names
-  to query nested resources (see xxx).
+  Specifies the name of the resource to query. You can specify dotted names to
+  query nested resources (see xxx).
 2. operator
   The operator to apply.
 3. value
-  The value to query for. It is possible to supply multiple
-  values in a comma separated list, which will be interpreted as a Boolean
-  "OR" operation on all given values.
+  The value to query for. It is possible to supply multiple values in a comma
+  separated list, which will be interpreted as a Boolean "OR" operation on all
+  given values.
 
 
 Supported criterion value types are:

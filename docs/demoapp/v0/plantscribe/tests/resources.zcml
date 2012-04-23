@@ -1,0 +1,42 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+
+    <resource
+        interface='plantscribe.interfaces.ICustomer'
+        member="plantscribe.resources.customer.CustomerMember"
+        collection_root_name="customers"
+        entity="plantscribe.entities.customer.Customer" />
+
+    <resource
+        interface='plantscribe.interfaces.IProject'
+        member="plantscribe.resources.project.ProjectMember"
+        collection_root_name="projects"
+        entity="plantscribe.entities.project.Project" />
+
+    <resource
+        interface='plantscribe.interfaces.ISite'
+        member="plantscribe.resources.site.SiteMember"
+        entity="plantscribe.entities.site.Site"
+        expose="false" />
+
+    <resource
+        interface='plantscribe.interfaces.ISpecies'
+        member="plantscribe.resources.species.SpeciesMember"
+        collection_root_name="species"
+        entity="plantscribe.entities.species.Species" />
+
+    <resource
+        interface='plantscribe.interfaces.IIncidence'
+        member="plantscribe.resources.incidence.IncidenceMember"
+        entity="plantscribe.entities.incidence.Incidence"
+        expose="false" />
+
+    <representer
+        for="plantscribe.interfaces.ICustomer
+             plantscribe.interfaces.IProject
+             plantscribe.interfaces.ISite             
+             plantscribe.interfaces.ISpecies             
+             plantscribe.interfaces.IIncidence             
+             "
+        content_type="everest.mime.CsvMime" />
+
+</configure>

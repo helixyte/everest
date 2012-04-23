@@ -31,7 +31,8 @@ class Entity(object):
     def __init__(self, id=None): # redefining id pylint: disable=W0622
         if self.__class__ is Entity:
             raise NotImplementedError('Abstract class.')
-        self.id = id
+        if not id is None:
+            self.id = id
 
     @property
     def slug(self):
@@ -39,7 +40,7 @@ class Entity(object):
         Returns a human-readable and URL-compatible string that is unique
         within all siblings of this entity.
         """
-        return not self.id is None and str(self.id) or None
+        return None if self.id is None else str(self.id)
 
     @classmethod
     def create_from_data(cls, data):

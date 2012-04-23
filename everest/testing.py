@@ -6,10 +6,10 @@ Created on Nov 2, 2011.
 """
 
 from ConfigParser import SafeConfigParser
-from everest import db
+from everest import orm
 from everest.configuration import Configurator
-from everest.db import Session
-from everest.db import get_engine
+from everest.orm import Session
+from everest.orm import get_engine
 from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IRepositoryManager
 from everest.repository import REPOSITORIES
@@ -280,7 +280,12 @@ class ResourceTestCase(ConfiguredTestCase):
                                      registry=self.config.registry)
         # Load config file.
         self.config.begin(request=self._request)
-        self.config.load_zcml(self.config_file_name)
+        if self.ini.has_setting(self.ini_section_name, 'configure_zcml'):
+            cfg_zcml = self.ini.get_setting(self.ini_section_name,
+                                            'configure_zcml')
+        else:
+            cfg_zcml = self.config_file_name
+        self.config.load_zcml(cfg_zcml)
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
         self._request.root = srvc
@@ -450,14 +455,14 @@ class OrmContextManager(object):
         self.__connection = engine.connect()
         self.__transaction = self.__connection.begin()
         # Configure the autoflush behavior of the session.
-        self.__old_autoflush_flag = db.Session.autoflush #pylint:disable=E1101
-        db.Session.configure(autoflush=self.__autoflush)
+        self.__old_autoflush_flag = orm.Session.autoflush #pylint:disable=E1101
+        orm.Session.configure(autoflush=self.__autoflush)
         # Make sure we start with a clean session.
-        db.Session.remove()
+        orm.Session.remove()
         # Throw out the Zope transaction manager for testing.
-        db.Session.configure(extension=None)
+        orm.Session.configure(extension=None)
         # Create a new session for the tests.
-        self.__session = db.Session(bind=self.__connection)
+        self.__session = orm.Session(bind=self.__connection)
         return self.__session
 
     def __exit__(self, ext_type, value, tb):
@@ -466,9 +471,9 @@ class OrmContextManager(object):
         self.__transaction.rollback()
         self.__connection.close()
         # Remove the session we created.
-        db.Session.remove()
+        orm.Session.remove()
         # Restore autoflush flag.
-        db.Session.configure(autoflush=self.__old_autoflush_flag)
+        orm.Session.configure(autoflush=self.__old_autoflush_flag)
 
 
 def with_orm(autoflush=True, init_callback=None):

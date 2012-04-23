@@ -12,8 +12,8 @@ class Species(Entity):
 
     @property
     def slug(self):
-        return "%s-%s-%s-%s" \
-        % (slug_from_string(self.genus_name),
-           slug_from_string(self.species_name),
-           not self.cultivar is None and slug_from_string(self.cultivar) or '',
-           not self.author is None and slug_from_string(self.author) or '')
+        return slug_from_string(
+                    "%s-%s-%s-%s"
+                    % (self.genus_name, self.species_name,
+                       '' if self.cultivar is None else self.cultivar,
+                       '' if self.author is None else self.author))

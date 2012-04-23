@@ -14,6 +14,7 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IService
+from everest.utils import get_repository_manager
 from pyramid.threadlocal import get_current_registry
 from pyramid.traversal import model_path
 from urlparse import urlparse
@@ -200,14 +201,6 @@ def get_repository(name):
     reg = get_current_registry()
     repo_mgr = reg.getUtility(IRepositoryManager)
     return repo_mgr.get(name)
-
-
-def get_repository_manager():
-    """
-    Returns the resource repository manager.
-    """
-    reg = get_current_registry()
-    return reg.getUtility(IRepositoryManager)
 
 
 def get_service():

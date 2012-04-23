@@ -9,6 +9,7 @@ from StringIO import StringIO
 from everest.resources.io import dump_resource
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
+from everest.utils import get_repository_manager
 from pkg_resources import resource_filename # pylint: disable=E0611
 from plantscribe.interfaces import ICustomer
 from plantscribe.interfaces import IProject
@@ -18,17 +19,22 @@ from plantscribe.resources.incidence import IncidenceMember
 from plantscribe.resources.project import ProjectMember
 from plantscribe.resources.site import SiteMember
 from plantscribe.resources.species import SpeciesMember
+import os
+from everest.repository import REPOSITORIES
+from everest.mime import CsvMime
+from everest.resources.utils import get_collection_class
+from plantscribe.interfaces import IIncidence
+from plantscribe.interfaces import ISite
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['PlantScribeResourcesTestCase',
+__all__ = ['PlantScribeResourcesFsTestCase',
+           'PlantScribeResourcesOrmTestCase',
            ]
 
 
-class PlantScribeResourcesTestCase(ResourceTestCase):
-    package_name = 'plantscribe'
-    ini_file_path = resource_filename('plantscribe.tests', 'plantscribe.ini')
+class _PlantScribeResourcesBaseTestCase(ResourceTestCase):
+    package_name = 'plantscribe.tests'
     ini_section_name = 'app:plantscribe'
-
     def test_get_customer(self):
         coll = get_root_collection(ICustomer)
         self.assert_equal(len(coll), 2)
@@ -70,3 +76,31 @@ class PlantScribeResourcesTestCase(ResourceTestCase):
         stream = StringIO('w')
         dump_resource(prj, stream)
         self.assert_true(len(stream.getvalue()) > 0)
+
+
+class PlantScribeResourcesFsTestCase(_PlantScribeResourcesBaseTestCase):
+    ini_file_path = resource_filename('plantscribe.tests',
+                                      'plantscribe_fs.ini')
+
+
+class PlantScribeResourcesOrmTestCase(_PlantScribeResourcesBaseTestCase):
+    ini_file_path = resource_filename('plantscribe.tests',
+                                      'plantscribe_orm.ini')
+
+    def set_up(self):
+        _PlantScribeResourcesBaseTestCase.set_up(self)
+        #
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get(REPOSITORIES.ORM)
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        for coll_name, coll_cls in \
+                (('customer', get_collection_class(ICustomer)),
+                 ('project', get_collection_class(IProject)),
+                 ('site', get_collection_class(ISite)),
+                 ('species', get_collection_class(ISpecies)),
+                 ('incidence', get_collection_class(IIncidence)),
+                 ):
+            url = 'file://%s' % os.path.join(data_dir,
+                                             '%s-collection.csv' % coll_name)
+            repo.load_representation(coll_cls, url,
+                                     content_type=CsvMime, resolve_urls=True)
