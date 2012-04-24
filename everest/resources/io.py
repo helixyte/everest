@@ -9,6 +9,7 @@ Created on Jan 27, 2012.
 
 from StringIO import StringIO
 from everest.mime import CsvMime
+from everest.mime import MimeTypeRegistry
 from everest.representers.utils import as_representer
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
@@ -17,10 +18,9 @@ from everest.utils import OrderedDict
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from urlparse import urlparse
-import os
-from everest.mime import MimeTypeRegistry
-from zipfile import ZipFile
 from zipfile import ZIP_DEFLATED
+from zipfile import ZipFile
+import os
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['build_resource_dependency_graph',
@@ -93,7 +93,7 @@ def load_collections_from_zipfile(collections, zipfile, content_type=None,
             coll_fn = get_collection_filename(collection, content_type)
             if not coll_fn in names:
                 continue
-            load_collection_from_stream(collection, zipf.read(coll_fn),
+            load_collection_from_stream(collection, zipf.open(coll_fn, 'r'),
                                         content_type=content_type,
                                         resolve_urls=resolve_urls)
 
@@ -345,8 +345,9 @@ def dump_resource_to_zipfile(resource, zipfile, content_type=None):
     srl.to_zipfile(resource, zipfile)
 
 
-def get_collection_filename(collection_class, content_type):
-    collection_name = collection_class.relation.split('/')[-1]
+def get_collection_filename(rc_class, content_type):
+    coll_cls = get_member_class(rc_class)
+    collection_name = coll_cls.relation.split('/')[-1]
     return "%s-collection%s" % (collection_name, content_type.file_extension)
 
 

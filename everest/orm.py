@@ -13,9 +13,9 @@ from sqlalchemy.orm import clear_mappers as sa_clear_mappers
 from sqlalchemy.orm import mapper as sa_mapper
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.sql.expression import cast
 from threading import Lock
-from sqlalchemy.orm.mapper import _mapper_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_slug_expression',
@@ -148,10 +148,12 @@ def as_slug_expression(attr):
 def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
            *args, **kwargs):
     """
-    Convenience wrapper around the SA mapper which will call the 
-    :func:`map_id_property` and :func:`map_slug_property` functions after 
-    calling the SA mapper using the values of the :param:`id_attribute` and
-    :param:`slug_expression` parameters as arguments.
+    Convenience wrapper around the SA mapper which will set up the hybrid
+    "id" and "slug" attributes required by everest after calling the SA
+    mapper.
+    
+    If you (e.g., for testing purposes) want to clear mappers created with
+    this function, use the :func:`clear_mappers` function in this module.
     """
     mpr = sa_mapper(class_, local_table=local_table, *args, **kwargs)
     # Set up the ID attribute as a hybrid property, if necessary.
@@ -177,6 +179,10 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
 
 
 def clear_mappers():
+    """
+    Clears all mappers set up by SA and also clears all custom "id" and
+    "slug" attributes inserted by the :func:`mapper` function in this module.
+    """
     # Remove our hybrid property constructs.
     for mpr, is_primary in _mapper_registry.items():
         if is_primary:
