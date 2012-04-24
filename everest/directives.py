@@ -54,6 +54,10 @@ class IRepositoryDirective(Interface):
         GlobalObject(title=u"A class to use as the default aggregate "
                             "implementation for this repository.",
                      required=False)
+    entity_store_class = \
+        GlobalObject(title=u"A class to use as the entity store "
+                            "implementation for this repository.",
+                     required=False)
     make_default = \
         Bool(title=u"Indicates if this repository should be made the default "
                     "for all resources that do not explicitly specify a "
@@ -62,7 +66,7 @@ class IRepositoryDirective(Interface):
              )
 
 
-def _repository(_context, name, make_default, agg_cls,
+def _repository(_context, name, make_default, agg_cls, ent_store_cls,
                 repo_type, config_method, cnf):
     # Repository directives are applied eagerly. Note that custom repositories 
     # must be declared *before* they can be referenced in resource directives.
@@ -73,7 +77,7 @@ def _repository(_context, name, make_default, agg_cls,
     method = getattr(config, config_method)
     if name is None: # re-configure builtin repository.
         name = repo_type
-    method(name, aggregate_class=agg_cls,
+    method(name, aggregate_class=agg_cls, entity_store_class=ent_store_cls,
            configuration=cnf, make_default=make_default)
 
 
@@ -82,9 +86,9 @@ class IMemoryRepositoryDirective(IRepositoryDirective):
 
 
 def memory_repository(_context, name=None, make_default=False,
-                      aggregate_class=None):
+                      aggregate_class=None, entity_store_class=False):
     _repository(_context, name, make_default,
-                aggregate_class,
+                aggregate_class, entity_store_class,
                 REPOSITORIES.MEMORY, 'add_memory_repository', {})
 
 
@@ -102,7 +106,7 @@ class IFileSystemRepositoryDirective(IRepositoryDirective):
 
 
 def filesystem_repository(_context, name=None, make_default=False,
-                          aggregate_class=None,
+                          aggregate_class=None, entity_store_class=None,
                           directory=None, content_type=None):
     """
     Directive for registering a file-system based repository.
@@ -113,7 +117,7 @@ def filesystem_repository(_context, name=None, make_default=False,
     if not content_type is None:
         cnf['content_type'] = content_type
     _repository(_context, name, make_default,
-                aggregate_class,
+                aggregate_class, entity_store_class,
                 REPOSITORIES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
 
 
@@ -129,7 +133,7 @@ class IOrmRepositoryDirective(IRepositoryDirective):
 
 
 def orm_repository(_context, name=None, make_default=False,
-                   aggregate_class=None,
+                   aggregate_class=None, entity_store_class=None,
                    db_string=None,
                    metadata_factory=None):
     """
@@ -141,7 +145,7 @@ def orm_repository(_context, name=None, make_default=False,
     if not metadata_factory is None:
         cnf['metadata_factory'] = metadata_factory
     _repository(_context, name, make_default,
-                aggregate_class,
+                aggregate_class, entity_store_class,
                 REPOSITORIES.ORM, 'add_orm_repository', cnf)
 
 
