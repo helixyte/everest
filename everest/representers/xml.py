@@ -8,19 +8,20 @@ Created on May 19, 2011.
 """
 
 from everest.mime import XmlMime
-from everest.representers.base import DataElement
-from everest.representers.base import DataElementGenerator
-from everest.representers.base import DataElementParser
-from everest.representers.base import DataElementRegistry
-from everest.representers.base import LinkedDataElement
-from everest.representers.base import RepresentationGenerator
-from everest.representers.base import RepresentationParser
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import ResourceRepresenter
+from everest.representers.dataelements import CollectionDataElement
+from everest.representers.dataelements import DataElementRegistry
+from everest.representers.dataelements import LinkedDataElement
+from everest.representers.dataelements import MemberDataElement
+from everest.representers.generators import DataElementGenerator
+from everest.representers.generators import RepresentationGenerator
 from everest.representers.interfaces import ILinkedDataElement
+from everest.representers.parsers import DataElementParser
+from everest.representers.parsers import RepresentationParser
 from everest.representers.utils import get_data_element_registry
-from everest.resources.base import Link
 from everest.resources.interfaces import IMemberResource
+from everest.resources.link import Link
 from everest.url import resource_to_url
 from lxml import etree
 from lxml import objectify
@@ -181,11 +182,7 @@ class XmlResourceRepresenter(ResourceRepresenter):
 resource_adapter = XmlResourceRepresenter.create_from_resource
 
 
-class XmlDataElement(objectify.ObjectifiedElement, DataElement):
-
-    # XML schema definitions: schema location, namespace, tag, prefix.
-    # These attributes are set when new data element classes are registered.
-
+class _XmlDataElementXmixin(object):
     @classmethod
     def create(cls):
         el_fac = XmlParserFactory.get_default().makeelement
@@ -202,6 +199,13 @@ class XmlDataElement(objectify.ObjectifiedElement, DataElement):
         el_fac = XmlParserFactory.get_default().makeelement
         tag = "{%s}%s" % (cls_xml_ns, cls_xml_tag)
         return el_fac(tag, nsmap=ns_map)
+
+
+class XmlMemberDataElement(objectify.ObjectifiedElement,
+                           _XmlDataElementXmixin, MemberDataElement):
+
+    # XML schema definitions: schema location, namespace, tag, prefix.
+    # These attributes are set when new data element classes are registered.
 
     def get_nested(self, attr):
         # We only allow *one* child with the given name.
@@ -261,12 +265,6 @@ class XmlDataElement(objectify.ObjectifiedElement, DataElement):
 #                wrapper_el.set('id', id_str)
 #                del data_element.attrib['id']
 
-    def add_member(self, data_element):
-        self.append(data_element)
-
-    def get_members(self):
-        return self.iterchildren()
-
     def get_terminal(self, attr):
         if attr.representation_name == 'id':
             # The "special" id attribute.
@@ -298,6 +296,15 @@ class XmlDataElement(objectify.ObjectifiedElement, DataElement):
             if not attr.converter is None:
                 value = attr.converter.to_xml(value)
             setattr(self, q_tag, value)
+
+
+class XmlCollectionDataElement(objectify.ObjectifiedElement,
+                               _XmlDataElementXmixin, CollectionDataElement):
+    def add_member(self, data_element):
+        self.append(data_element)
+
+    def get_members(self):
+        return self.iterchildren()
 
 
 class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
@@ -382,8 +389,9 @@ class XmlDataElementRegistry(DataElementRegistry):
     Registry for XML data element classes.
     """
 
-    data_element_class = XmlDataElement
-    linked_data_element_class = XmlLinkedDataElement
+    member_data_element_base_class = XmlMemberDataElement
+    collection_data_element_base_class = XmlCollectionDataElement
+    linked_data_element_base_class = XmlLinkedDataElement
     configuration_class = XmlRepresenterConfiguration
 
     #: Static namespace prefix: namespace map.

@@ -7,8 +7,8 @@ Created on Mar 2, 2012.
 """
 
 from everest.mime import CsvMime
-from everest.representers.base import LazyAttributeLoaderProxy
-from everest.representers.base import LazyUrlLoader
+from everest.representers.urlloader import LazyAttributeLoaderProxy
+from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase

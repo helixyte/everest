@@ -9,10 +9,10 @@ Created on May 19, 2011.
 
 from everest.mime import AtomMime
 from everest.mime import XmlMime
-from everest.representers.base import DataElementGenerator
-from everest.representers.base import DataElementParser
 from everest.representers.base import ResourceRepresenter
+from everest.representers.generators import DataElementGenerator
 from everest.representers.interfaces import IRepresenterRegistry
+from everest.representers.parsers import DataElementParser
 from everest.representers.utils import as_representer
 from everest.representers.xml import XmlDataElementRegistry
 from everest.representers.xml import XmlRepresentationGenerator

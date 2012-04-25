@@ -105,40 +105,56 @@ class IDataElement(Interface):
         Factory class method creating a new data element.
         """
 
-class IExplicitDataElement(IDataElement):
-    """
-    Interface for data elements containing explicit resource data.
-    """
 
+class IResourceDataElement(IDataElement):
     def create_from_resource(resource):
         """
         Factory class method creating a new data element from the given
         resource.
         """
 
-    def get_value(attr):
+
+class IMemberDataElement(IResourceDataElement):
+    """
+    Interface for member data elements.
+    """
+
+    def get_terminal(attr):
         """
-        Returns the value for the given mapped attribute.
+        Returns the value for the given terminal mapped attribute.
         """
 
-    def set_value(attr, value):
+    def set_terminal(attr, value):
         """
-        Sets the given mapped attribute to the given value.
+        Sets the given mapped terminal attribute to the given value.
         """
 
-    def get_child(attr):
+    def get_nested(attr):
         """
-        Returns the data element child specified by the given mapped attribute.
+        Returns the nested data element specified by the given member or
+        collection mapped attribute.
         """
 
     def set_child(attr, data_element):
         """
-        Sets the given mapped attribute to the given data element child.
+        Sets the given mmeber or collection mapped attribute to the given 
+        data element.
         """
 
-    def get_children():
+
+class ICollectionDataElement(IResourceDataElement):
+    """
+    Interface for collection data elements.
+    """
+
+    def get_members():
         """
-        Returns all data element children.
+        Returns all member data elements.
+        """
+
+    def add_member(member_data_el):
+        """
+        Adds the given member data element to this collection data element.
         """
 
 

@@ -15,15 +15,16 @@ from csv import reader
 from csv import register_dialect
 from csv import writer
 from everest.mime import CsvMime
-from everest.representers.base import DataElementGenerator
-from everest.representers.base import DataElementParser
-from everest.representers.base import RepresentationGenerator
-from everest.representers.base import RepresentationParser
 from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import ResourceRepresenter
-from everest.representers.base import SimpleDataElement
-from everest.representers.base import SimpleDataElementRegistry
-from everest.representers.base import SimpleLinkedDataElement
+from everest.representers.dataelements import SimpleCollectionDataElement
+from everest.representers.dataelements import SimpleDataElementRegistry
+from everest.representers.dataelements import SimpleLinkedDataElement
+from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.generators import DataElementGenerator
+from everest.representers.generators import RepresentationGenerator
+from everest.representers.parsers import DataElementParser
+from everest.representers.parsers import RepresentationParser
 from everest.representers.utils import get_data_element_registry
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
@@ -31,13 +32,15 @@ from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CsvDataElement',
+__all__ = ['CsvCollectionDataElement',
            'CsvDataElementRegistry',
            'CsvLinkedDataElement',
+           'CsvMemberDataElement',
            'CsvRepresentationGenerator'
            'CsvRepresentationParser',
            'CsvRepresenterConfiguration',
            'CsvResourceRepresenter',
+           'resource_adapter',
            ]
 
 
@@ -252,7 +255,11 @@ class CsvResourceRepresenter(ResourceRepresenter):
 resource_adapter = CsvResourceRepresenter.create_from_resource
 
 
-class CsvDataElement(SimpleDataElement):
+class CsvMemberDataElement(SimpleMemberDataElement):
+    pass
+
+
+class CsvCollectionDataElement(SimpleCollectionDataElement):
     pass
 
 
@@ -268,6 +275,7 @@ class CsvDataElementRegistry(SimpleDataElementRegistry):
     """
     Registry for CSV data element classes.
     """
-    data_element_class = CsvDataElement
-    linked_data_element_class = CsvLinkedDataElement
+    member_data_element_base_class = CsvMemberDataElement
+    collection_data_element_base_class = CsvCollectionDataElement
+    linked_data_element_base_class = CsvLinkedDataElement
     configuration_class = CsvRepresenterConfiguration

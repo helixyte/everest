@@ -13,8 +13,8 @@ from everest.querying.base import SpecificationVisitorBase
 from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
-from everest.representers.base import DataElementParser
 from everest.representers.interfaces import ILinkedDataElement
+from everest.representers.parsers import DataElementParser
 from everest.resources.attributes import ResourceAttributeControllerMixin
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes

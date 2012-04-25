@@ -13,6 +13,7 @@ from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_representer',
+           'data_element_tree_to_string',
            'get_data_element_registry',
            ]
 

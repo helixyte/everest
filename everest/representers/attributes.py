@@ -9,6 +9,7 @@ Created on June 8, 2011.
 
 from everest.resources.attributes import get_resource_class_attributes
 from everest.utils import OrderedDict
+from copy import deepcopy
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionAttributeMapper',
@@ -52,6 +53,9 @@ class MappedAttribute(object):
 class _AttributeMapper(object):
     """
     Performs attribute mapping between a mapped class and its representation.
+    
+    Attribute mappers have a static configuration which can be overridden at
+    runtime.
     """
 
     def __init__(self, configuration):
@@ -68,34 +72,32 @@ class _AttributeMapper(object):
         self.__config.set_option(name, value)
 
     def get_mapped_attributes(self, mapped_class, info=None):
-        cache = self.__mapped_attr_cache
-        self._collect_mapped_attributes(cache, mapped_class, info)
-        return cache[mapped_class]
-
-    def _collect_mapped_attributes(self, cache, mapped_class, info):
-        if info is None:
-            info = {}
+        if not mapped_class in self.__mapped_attr_cache:
+            self._collect_mapped_attributes(mapped_class)
+        attrs = self.__mapped_attr_cache[mapped_class]
+        if not info is None:
+            copied_attrs = deepcopy(attrs)
+            for name, map_options in info.iteritems():
+                attr = copied_attrs[name]
+                for opt_name, opt_value in map_options.iteritems():
+                    setattr(attr, opt_name, opt_value)
+            result = copied_attrs
         else:
-            # Discard the cache if we have dynamic mapping info.
-            cache.pop(mapped_class, None)
+            result = attrs
+        return result
+
+    def _collect_mapped_attributes(self, mapped_class):
         mapped_attrs = OrderedDict()
         attrs = get_resource_class_attributes(mapped_class)
         for attr in attrs.values():
             map_options = self.__config.get_mapping(attr.name)
-#            if attr.kind == ResourceAttributeKinds.COLLECTION \
-#               and map_options['ignore'] is None:
-#                # By default, ignore if attribute references root collection.
-#                map_options['ignore'] = not attr.is_nested
-            # Apply custom settings for this attribute.
-            runtime_map_options = info.get(attr.name, {})
-            map_options.update(runtime_map_options)
             mapped_attr = MappedAttribute(attr.name,
                                           attr.kind,
                                           attr.value_type,
                                           entity_name=attr.entity_name,
                                           **map_options)
             mapped_attrs[attr.name] = mapped_attr
-        cache[mapped_class] = mapped_attrs
+        self.__mapped_attr_cache[mapped_class] = mapped_attrs
 
 
 class MemberAttributeMapper(_AttributeMapper):

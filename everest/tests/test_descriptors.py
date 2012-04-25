@@ -11,9 +11,9 @@ from everest.orm import reset_metadata
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repository import REPOSITORIES
-from everest.representers.base import DataElementGenerator
 from everest.representers.base import RepresenterConfiguration
-from everest.representers.base import SimpleDataElementRegistry
+from everest.representers.dataelements import SimpleDataElementRegistry
+from everest.representers.generators import DataElementGenerator
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.base import Collection
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
