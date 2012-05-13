@@ -6,7 +6,6 @@ Configurators for the various subsystems of :mod:`everest`.
 
 Created on Jun 22, 2011.
 """
-
 from everest.entities.interfaces import IEntity
 from everest.entities.system import Message
 from everest.interfaces import IMessage
@@ -302,8 +301,10 @@ class Configurator(PyramidConfigurator):
         if expose:
             srvc.register(interface)
 
-    def add_representer(self, resource, content_type, configuration=None,
-                        representer_class=None, mapping_info=None, _info=u''):
+    def add_representer(self, resource, content_type,
+                        configuration_class=None, representer_class=None,
+                        options=None, mapping_options=None,
+                        _info=u''):
         rpr_reg = self.get_registered_utility(IRepresenterRegistry)
         if IInterface in provided_by(resource):
             # If we got an interface, we register representers with the same
@@ -315,18 +316,23 @@ class Configurator(PyramidConfigurator):
                                  'classes inheriting from the Resource base '
                                  'class.')
             rcs = [resource]
-        # Register the representer class, if given and necessary.
-        # FIXME: the class registration should not be a side effect  # pylint: disable=W0511
+        # Register the representer class, if given and not yet registered.
+        # FIXME: representer class registration should not be a side effect.
         if not representer_class is None \
            and not rpr_reg.is_registered_representer_class(representer_class):
             rpr_reg.register_representer_class(representer_class)
+        # Prepare the representer configuration.
+        if configuration_class is None:
+            mp_reg = rpr_reg.get_mapping_registry(content_type)
+            configuration_class = mp_reg.configuration_class
+        rpr_config = configuration_class(options=options,
+                                         mapping_options=mapping_options)
         for rc in rcs:
-            rpr_reg.register(rc, content_type, configuration=configuration,
-                             mapping_info=mapping_info)
+            rpr_reg.register(rc, content_type, configuration=rpr_config)
 
     def initialize_repositories(self):
         for coll_cls in [util.component
-                         for util in self.registry.getRegisteredUtilities() # pylint: disable=E1103
+                         for util in self.registry.getRegisteredUtilities()# pylint: disable=E1103
                          if util.name == 'collection-class']:
             repo = as_repository(coll_cls)
             if not repo.is_initialized:

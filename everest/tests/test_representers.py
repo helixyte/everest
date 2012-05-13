@@ -7,6 +7,8 @@ Created on Mar 2, 2012.
 """
 
 from everest.mime import CsvMime
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.urlloader import LazyAttributeLoaderProxy
 from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
@@ -86,10 +88,9 @@ class CsvRepresentationTestCase(ResourceTestCase):
     def test_csv_with_collection_link(self):
         coll = _make_collection()
         rpr = as_representer(coll, CsvMime)
-        data = rpr.data_from_resource(coll,
-                                      mapping_info=
-                                       dict(children=dict(ignore=False,
-                                                          write_as_link=True)))
+        mapping_options = {('children',):{IGNORE_OPTION:False,
+                                          WRITE_AS_LINK_OPTION:True}}
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
         rpr_str = rpr.representation_from_data(data)
         lines = rpr_str.split(os.linesep)
         row_data = lines[1].split(',')
@@ -99,10 +100,9 @@ class CsvRepresentationTestCase(ResourceTestCase):
     def test_csv_with_collection_expanded(self):
         coll = _make_collection()
         rpr = as_representer(coll, CsvMime)
-        data = rpr.data_from_resource(coll,
-                                      mapping_info=
-                                       dict(children=dict(ignore=False,
-                                                          write_as_link=False)))
+        mapping_options = {('children',):{IGNORE_OPTION:False,
+                                          WRITE_AS_LINK_OPTION:False}}
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
         rpr_str = rpr.representation_from_data(data)
         lines = rpr_str.split(os.linesep)
         self.assert_equal(lines[0], '"id","parent","nested_parent",'
@@ -124,6 +124,8 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         rpr = as_representer(coll, CsvMime)
         rpr_str = rpr.to_string(coll)
         lines = rpr_str.split(os.linesep)
+        chld_field_idx = lines[0].split(',').index('"children"')
         row_data = lines[1].split(',')
         # Now, the collection should be a link.
-        self.assert_not_equal(row_data[3].find('my-entities/0/children/'), -1)
+        self.assert_not_equal(
+                row_data[chld_field_idx].find('my-entities/0/children/'), -1)

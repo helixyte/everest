@@ -6,10 +6,10 @@ Resource attribute handling classes.
 
 Created on June 8, 2011.
 """
-
-from everest.resources.attributes import get_resource_class_attributes
-from everest.utils import OrderedDict
-from copy import deepcopy
+from everest.representers.config import IGNORE_ON_READ_OPTION
+from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import REPR_NAME_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionAttributeMapper',
@@ -23,91 +23,69 @@ class MappedAttribute(object):
     """
     Represents an attribute mapped from a class into a representation.
 
-    This is a simple value object.
+    Wraps a (read-only) resource attribute and mapping options which can be
+    configured dynamically.
     """
-    def __init__(self, name, kind, value_type, entity_name=None, **options):
+    def __init__(self, attr, options=None):
         """
-        :param str name: The attribute name.
-        :param str kind: The attribute kind. One of the constants
-          defined in :class:`ResourceAttributeKinds`.
+        :param attr: The attribute name.
+        :type attr: :class:`
         """
-        self.name = name
-        self.kind = kind
-        self.value_type = value_type
-        self.entity_name = entity_name
+        # Check given options.
+        if options is None:
+            options = {}
         # Make sure we have a valid representation name.
-        representation_name = options.pop('repr_name', None)
-        if representation_name is None:
-            representation_name = name
-        self.representation_name = representation_name
-        # All other options are made available as attributes.
-        for option_name, option_value in options.iteritems():
-            setattr(self, option_name, option_value)
+        if options.get(REPR_NAME_OPTION) is None:
+            options[REPR_NAME_OPTION] = attr.name
+        # Process the "ignore" option..
+        do_ignore = options.get(IGNORE_OPTION)
+        if not do_ignore is None:
+            if not options.get(IGNORE_ON_READ_OPTION) in (None, do_ignore):
+                raise ValueError('Value for "ignore" option conflicts with '
+                                 'given value for "ignore_on_read" option.')
+            options[IGNORE_ON_READ_OPTION] = do_ignore
+            if not options.get(IGNORE_ON_WRITE_OPTION) in (None, do_ignore):
+                raise ValueError('Value for "ignore" option conflicts with '
+                                 'given value for "ignore_on_write" option.')
+            options[IGNORE_ON_WRITE_OPTION] = do_ignore
+        self.options = options
+        #
+        self.__attr = attr
+
+    def clone(self, options=None):
+        if options is None:
+            options = {}
+        new_options = self.options.copy()
+        new_options.update(options)
+        return MappedAttribute(self.__attr, options=new_options)
+
+    @property
+    def name(self):
+        return self.__attr.name
+
+    @property
+    def kind(self):
+        return self.__attr.kind
+
+    @property
+    def value_type(self):
+        return self.__attr.value_type
+
+    @property
+    def entity_name(self):
+        return self.__attr.entity_name
+
+    @property
+    def is_required(self):
+        return self.__attr.is_required
+
+    def __getattr__(self, attr_name):
+        # Make options available as attributes.
+        if attr_name in self.options:
+            return self.options.get(attr_name)
+        else:
+            raise AttributeError(attr_name)
 
     def __str__(self):
         return '%s(%s -> %s, type %s)' % \
-               (self.__class__.__name__, self.name,
-                self.representation_name, self.kind)
-
-
-class _AttributeMapper(object):
-    """
-    Performs attribute mapping between a mapped class and its representation.
-    
-    Attribute mappers have a static configuration which can be overridden at
-    runtime.
-    """
-
-    def __init__(self, configuration):
-        """
-        :param configuration: representer configuration class
-        """
-        self.__mapped_attr_cache = {}
-        self.__config = configuration
-
-    def get_config_option(self, name):
-        return self.__config.get_option(name)
-
-    def set_config_option(self, name, value):
-        self.__config.set_option(name, value)
-
-    def get_mapped_attributes(self, mapped_class, info=None):
-        if not mapped_class in self.__mapped_attr_cache:
-            self._collect_mapped_attributes(mapped_class)
-        attrs = self.__mapped_attr_cache[mapped_class]
-        if not info is None:
-            copied_attrs = deepcopy(attrs)
-            for name, map_options in info.iteritems():
-                attr = copied_attrs[name]
-                for opt_name, opt_value in map_options.iteritems():
-                    setattr(attr, opt_name, opt_value)
-            result = copied_attrs
-        else:
-            result = attrs
-        return result
-
-    def _collect_mapped_attributes(self, mapped_class):
-        mapped_attrs = OrderedDict()
-        attrs = get_resource_class_attributes(mapped_class)
-        for attr in attrs.values():
-            map_options = self.__config.get_mapping(attr.name)
-            mapped_attr = MappedAttribute(attr.name,
-                                          attr.kind,
-                                          attr.value_type,
-                                          entity_name=attr.entity_name,
-                                          **map_options)
-            mapped_attrs[attr.name] = mapped_attr
-        self.__mapped_attr_cache[mapped_class] = mapped_attrs
-
-
-class MemberAttributeMapper(_AttributeMapper):
-    pass
-
-
-class CollectionAttributeMapper(_AttributeMapper):
-    pass
-
-
-class LinkAttributeMapper(_AttributeMapper):
-    pass
-
+               (self.__class__.__name__, self.name, self.repr_name, self.kind)

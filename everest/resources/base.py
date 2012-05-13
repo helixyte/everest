@@ -6,7 +6,6 @@ Resource base classes.
 
 Created on Nov 3, 2011.
 """
-
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import identifier_from_slug
 from everest.querying.base import SpecificationVisitorBase
@@ -14,7 +13,6 @@ from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.representers.interfaces import ILinkedDataElement
-from everest.representers.parsers import DataElementParser
 from everest.resources.attributes import ResourceAttributeControllerMixin
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
@@ -114,8 +112,7 @@ class Resource(object):
         :type data_element: object implementing
          :class:`everest.resources.representers.interfaces.IExplicitDataElement`
         """
-        parser = DataElementParser()
-        return parser.run(data_element)
+        return data_element.mapping.map_to_resource(data_element)
 
 
 class Member(ResourceAttributeControllerMixin, Resource):
@@ -193,8 +190,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
          `:class:everest.resources.representers.interfaces.IExplicitDataElement`
 
         """
-        attrs = data_element.mapper.get_mapped_attributes(self.__class__)
-        for attr in attrs.values():
+        for attr in data_element.mapping.attribute_iterator():
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 other_value = data_element.get_terminal(attr)
                 if other_value is None:
@@ -440,8 +436,8 @@ class Collection(Resource):
         Updates this collection from the given data element.
 
         This iterates over the members of this collection and checks if
-        a member with the same ID exists in the given update data; if
-        yes, the existing member is updated with the update member, if no,
+        a member with the same ID exists in the given update data. If yes, 
+        the existing member is updated with the update member; if no,
         the member is removed. All data elements in the update data that
         have no ID are added as new members. Data elements with an ID that
         can not be found in this collection trigger an error.
@@ -450,9 +446,10 @@ class Collection(Resource):
             from
         :type data_element: object implementing
          `:class:everest.resources.interfaces.IExplicitDataElement`
+        :raises ValueError: when a data element with an ID that is not present
+          in this collection is encountered.
         """
-        mb_cls = get_member_class(self.__class__)
-        attrs = data_element.mapper.get_mapped_attributes(mb_cls)
+        attrs = data_element.mapping.get_attribute_map()
         id_attr = attrs['id']
         update_ids = set()
         new_mb_els = []
@@ -484,6 +481,7 @@ class Collection(Resource):
                 # the update data- remove.
                 self.remove(self_mb)
         # Now, add new members.
+        mb_cls = get_member_class(self.__class__)
         for new_member_el in new_mb_els:
             new_member = mb_cls.create_from_data(new_member_el)
             self.add(new_member)

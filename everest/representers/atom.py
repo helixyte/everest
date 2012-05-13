@@ -6,19 +6,16 @@ ATOM representers.
 
 Created on May 19, 2011.
 """
-
 from everest.mime import AtomMime
 from everest.mime import XmlMime
 from everest.representers.base import ResourceRepresenter
-from everest.representers.generators import DataElementGenerator
-from everest.representers.interfaces import IRepresenterRegistry
-from everest.representers.parsers import DataElementParser
-from everest.representers.utils import as_representer
-from everest.representers.xml import XmlDataElementRegistry
+from everest.representers.utils import get_mapping_registry
+from everest.representers.xml import XmlMappingRegistry
 from everest.representers.xml import XmlRepresentationGenerator
 from everest.representers.xml import XmlRepresenterConfiguration
 from everest.url import UrlPartsConverter
-from pyramid.threadlocal import get_current_registry
+from everest.representers.mapping import Mapping
+from everest.resources.utils import provides_member_resource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AtomDataElementRegistry',
@@ -41,8 +38,8 @@ class AtomResourceRepresenter(ResourceRepresenter):
         raise NotImplementedError('Not implemented.')
 
     @classmethod
-    def make_data_element_registry(cls):
-        return AtomDataElementRegistry()
+    def make_mapping_registry(cls):
+        return AtomMappingRegistry()
 
     def _make_representation_parser(self, stream, resource_class):
         # We do not support parsing ATOM representations.
@@ -53,83 +50,64 @@ class AtomResourceRepresenter(ResourceRepresenter):
         generator.configure(**config)
         return generator
 
-    def _make_data_element_parser(self, resolve_urls=True):
-        return DataElementParser(resolve_urls=resolve_urls)
-
-    def _make_data_element_generator(self):
-        return AtomDataElementGenerator(self._data_element_registry)
-
 
 # Adapter creating representers from resource instances.
 resource_adapter = AtomResourceRepresenter.create_from_resource
 
 
-class AtomDataElementGenerator(DataElementGenerator):
+class AtomMapping(Mapping):
 
     # FIXME: Make the hypermedia type configurable. pylint: disable=W0511
     VND_MIME = 'application/vnd.everest+xml'
 
-    def _inject_member_resource(self, member, nesting_level, mapping_info):
-        # Build a representer for the content. Only XML content is supported
-        # for now.
-        member_rpr = as_representer(member, XmlMime)
-        if nesting_level > 1:
-            raise ValueError('Can only encode top level members in ATOM.')
-        de_cls = \
-          self._data_element_registry.get_data_element_class(type(member))
-        data_el = de_cls.create_from_resource(member)
+    def map_to_data_element(self, resource):
+        # We use the XML mapping for the content serialization.
+        xml_mp_reg = get_mapping_registry(XmlMime)
+        xml_mp = xml_mp_reg.get_mapping(type(resource))
+        data_el = self.create_data_element_from_resource(resource)
+        if provides_member_resource(resource):
+            self.__map_member_to_data_element(data_el, resource, xml_mp)
+        else:
+            self.__map_collection_to_data_element(data_el, resource, xml_mp)
+        return data_el
+
+    def __map_member_to_data_element(self, data_el, member, xml_mp):
         # Fill in ATOM tags.
         # FIXME: Should not use etree API here pylint: disable=W0511
         data_el.title = member.title
         data_el.id = member.urn
         self.__append_links(data_el, member.links)
-        content_data_el = \
-            member_rpr.data_from_resource(member,
-                                          mapping_info=mapping_info)
+        # FIXME: Make the media type configurable. pylint: disable=W0511
         type_string = '%s;type=%s' % (self.VND_MIME, member.__class__.__name__)
         cnt_wrapper_el = data_el.makeelement('content',
                                              type=type_string)
+        # Create content.
+        content_data_el = xml_mp.map_to_data_element(member)
         cnt_wrapper_el.append(content_data_el)
         data_el.append(cnt_wrapper_el)
-        return data_el
 
-    def _inject_collection_resource(self, collection, nesting_level,
-                                    mapping_info):
-        if nesting_level > 0:
-            raise ValueError('Can only encode top level members in ATOM.')
-        coll_de_cls = self._data_element_registry.get_data_element_class(
-                                                         type(collection))
-        coll_data_el = coll_de_cls.create_from_resource(collection)
+    def __map_collection_to_data_element(self, data_el, collection, xml_mp):
         # Fill in ATOM tags.
-        coll_data_el.title = collection.title
-        coll_data_el.subtitle = collection.description
-        coll_data_el.generator = collection.title
-        coll_data_el.generator.set('uri', collection.path)
-        #
-        coll_data_el.id = collection.urn
+        # FIXME: Should not use etree API here pylint: disable=W0511
+        data_el.title = collection.title
+        data_el.subtitle = collection.description
+        data_el.generator = collection.title
+        data_el.generator.set('uri', collection.path)
+        data_el.id = collection.urn
         # FIXME: Make the media type configurable. pylint: disable=W0511
         type_string = '%s;type=%s' % (self.VND_MIME,
                                       collection.__class__.__name__)
-        cnt_type_el = coll_data_el.makeelement('content_type',
-                                               name=type_string)
-        coll_data_el.append(cnt_type_el)
+        cnt_type_el = data_el.makeelement('content_type',
+                                          name=type_string)
+        data_el.append(cnt_type_el)
         #
-        self.__append_opensearch_elements(coll_data_el, collection)
-        self.__append_links(coll_data_el, collection.links)
-        # We extract the collection mapper's attribute mapping to the
-        # member representer so that attribute serialization works as
-        # expected.
-        reg = get_current_registry()
-        rpr_reg = reg.getUtility(IRepresenterRegistry)
-        de_reg = rpr_reg.get_data_element_registry(XmlMime)
-        cnt_de_cls = de_reg.get_data_element_class(type(collection))
-        mp_info = cnt_de_cls.mapper.get_config_option('mapping')
+        self.__append_opensearch_elements(data_el, collection)
+        self.__append_links(data_el, collection.links)
+        # Iterate over members and serialize as ATOM entries.
         for member in collection:
-            member_data_el = self._inject_member_resource(member,
-                                                          nesting_level + 1,
-                                                          mp_info)
-            coll_data_el.append(member_data_el)
-        return coll_data_el
+            member_data_el = self.create_data_element_from_resource(member)
+            self.__map_member_to_data_element(member_data_el, member, xml_mp)
+            data_el.append(member_data_el)
 
     def __append_links(self, resource_data_el, links):
         for link in links:
@@ -174,12 +152,10 @@ class AtomDataElementGenerator(DataElementGenerator):
                 str(collection.slice.stop - collection.slice.start))
 
 
-# Adapters creating representers from resource instances.
-
-#FIXME this override does not work # pylint: disable=W0511
-class AtomDataElementRegistry(XmlDataElementRegistry):
-
+class AtomMappingRegistry(XmlMappingRegistry):
+    #FIXME this override does not work
     NS_MAP = dict(opensearch=XML_NS_OPEN_SEARCH)
+    mapping_class = AtomMapping
 
 
 AtomRepresenterConfiguration = XmlRepresenterConfiguration

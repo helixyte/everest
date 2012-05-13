@@ -157,6 +157,12 @@ class ICollectionDataElement(IResourceDataElement):
         Adds the given member data element to this collection data element.
         """
 
+    def __len__():
+        """
+        Returns the number of member data elements in this collection data
+        element.
+        """
+
 
 class ILinkedDataElement(IDataElement):
     """
@@ -180,8 +186,9 @@ class ICustomDataElement(Interface):
         """
 
 
-class IDataElementRegistry(Interface):
-    def create_data_element_class(mapped_class, configuration):
+class IMappingRegistry(Interface):
+    def create_mapping(mapped_class, configuration,
+                       base_data_element_class=None):
         """
         Creates a new data element class for the given mapped class and
         representer configuration.
@@ -201,6 +208,7 @@ class IDataElementRegistry(Interface):
         """
         Returns a list of all registered data element classes.
         """
+
 
 
 class IRepresenterRegistry(Interface):

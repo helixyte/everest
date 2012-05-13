@@ -6,21 +6,15 @@ Data element classes.
 
 Created on Apr 25, 2012
 """
-
-from everest.representers.attributes import CollectionAttributeMapper
-from everest.representers.attributes import LinkAttributeMapper
-from everest.representers.attributes import MemberAttributeMapper
-from everest.representers.base import RepresenterConfiguration
 from everest.representers.base import data_element_tree_to_string
 from everest.representers.interfaces import ICollectionDataElement
-from everest.representers.interfaces import IDataElementRegistry
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IResourceDataElement
-from everest.resources.interfaces import ICollectionResource
-from everest.resources.interfaces import IMemberResource
-from everest.resources.interfaces import IResourceLink
-from everest.resources.link import Link
+from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.kinds import ResourceKinds
+from everest.resources.utils import provides_collection_resource
+from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -37,10 +31,8 @@ class DataElement(object):
 
     implements(IResourceDataElement)
 
-    #: The class to be mapped to a representation.
-    mapped_class = None
-    #: Static attribute mapper.
-    mapper = None
+    #: Static attribute mapping.
+    mapping = None
 
     @classmethod
     def create(cls):
@@ -113,13 +105,20 @@ class CollectionDataElement(DataElement):
 
     def add_member(self, data_element):
         """
-        Adds the given member data element to this data element.
+        Adds the given member data element to this collection data element.
         """
         raise NotImplementedError('Abstract method.')
 
     def get_members(self):
         """
-        Returns all member data elements added to this data element.
+        Returns all member data elements added to this collection data element.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def __len__(self):
+        """
+        Returns the number of member data elements in this collection data
+        element.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -137,18 +136,18 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
     __nested = None
 
     def get_terminal(self, attr):
-        return getattr(self, attr.representation_name, None)
+        return getattr(self, attr.repr_name, None)
 
     def set_terminal(self, attr, value):
-        setattr(self, attr.representation_name, value)
+        setattr(self, attr.repr_name, value)
 
     def get_nested(self, attr):
         nested = self.__get_nested()
-        return nested.get(attr.representation_name)
+        return nested.get(attr.repr_name)
 
     def set_nested(self, attr, data_element):
         nested = self.__get_nested()
-        nested[attr.representation_name] = data_element
+        nested[attr.repr_name] = data_element
 
     def __get_nested(self):
         if self.__nested is None:
@@ -175,6 +174,9 @@ class SimpleCollectionDataElement(_SimpleDataElementMixin,
             self.__members = []
         return self.__members
 
+    def __len__(self):
+        return len(self.__members)
+
 
 class LinkedDataElement(object):
     """
@@ -184,11 +186,8 @@ class LinkedDataElement(object):
 
     implements(ILinkedDataElement)
 
-    mapped_class = Link
-
     @classmethod
-    def create(cls, linked_data_element_class, url,
-               relation=None, title=None):
+    def create(cls, url, kind, relation=None, title=None, **options):
         raise NotImplementedError('Abstract method.')
 
     @classmethod
@@ -196,6 +195,9 @@ class LinkedDataElement(object):
         raise NotImplementedError('Abstract method.')
 
     def get_url(self):
+        raise NotImplementedError('Abstract method.')
+
+    def get_kind(self):
         raise NotImplementedError('Abstract method.')
 
     def get_relation(self):
@@ -210,26 +212,36 @@ class SimpleLinkedDataElement(LinkedDataElement):
     Basic implementation of a linked data element.
     """
     __url = None
+    __kind = None
     __relation = None
     __title = None
 
     @classmethod
-    def create(cls, linked_data_element_class, url,
-               relation=None, title=None):
+    def create(cls, url, kind, relation=None, title=None, **options):
         inst = cls()
         inst.__url = url
+        inst.__kind = kind
         inst.__relation = relation
         inst.__title = title
         return inst
 
     @classmethod
     def create_from_resource(cls, resource):
-        return cls.create(None, resource_to_url(resource),
+        if provides_member_resource(resource):
+            kind = ResourceKinds.MEMBER
+        elif provides_collection_resource(resource):
+            kind = ResourceKinds.COLLECTION
+        else:
+            raise ValueError('"%s" is not a resource.' % resource)
+        return cls.create(resource_to_url(resource), kind,
                           relation=resource.relation,
                           title=resource.title)
 
     def get_url(self):
         return self.__url
+
+    def get_kind(self):
+        return self.__kind
 
     def get_relation(self):
         return self.__relation
@@ -238,113 +250,33 @@ class SimpleLinkedDataElement(LinkedDataElement):
         return self.__title
 
 
-class DataElementRegistry(object):
-
-    implements(IDataElementRegistry)
-
-    member_data_element_base_class = None
-    collection_data_element_base_class = None
-    linked_data_element_base_class = None
-    configuration_class = None
-
-    def __init__(self):
-        self.__de_map = {}
-        # Perform static initializations.
-        self._initialize()
-
-    def create_data_element_class(self, mapped_class, configuration,
-                                  base_class=None):
-        """
-        Creates a new data element class for the given mapped class and
-        representer configuration.
-
-        :param configuration: configuration for the new data element class.
-        :type configuration: :class:`RepresenterConfiguration`
-        :returns: new type implementing :class:`IDataElement`
-        """
-        if configuration is None:
-            configuration = self.configuration_class() # pylint: disable=E1102
-        provided_ifcs = provided_by(object.__new__(mapped_class))
-        if IMemberResource in provided_ifcs:
-            if base_class is None:
-                base_class = self.member_data_element_base_class
-            mapper = MemberAttributeMapper(configuration)
-        elif ICollectionResource in provided_ifcs:
-            if base_class is None:
-                base_class = self.collection_data_element_base_class
-            mapper = CollectionAttributeMapper(configuration)
-        elif IResourceLink in provided_ifcs:
-            if base_class is None:
-                base_class = self.linked_data_element_base_class
-            mapper = LinkAttributeMapper(configuration)
+class DataElementAttributeProxy(object):
+    def __init__(self, data_element):
+        self.__data_element = data_element
+        if not ILinkedDataElement in provided_by(data_element):
+            attrs = data_element.mapping.attribute_iterator()
         else:
-            raise ValueError('Mapped class for data element class does not '
-                             'implement one of the required interfaces.')
-        name = "%s%s" % (mapped_class.__name__, base_class.__name__)
-        custom_de_cls = type(name, (base_class,), {})
-        custom_de_cls.mapper = mapper
-        custom_de_cls.mapped_class = mapped_class
-        return custom_de_cls
+            attrs = ()
+        self.__attr_map = dict([(attr.repr_name, attr) for attr in attrs])
 
-    def set_data_element_class(self, data_element_class):
-        """
-        Registers the given data element class.
-
-        :param data_element_class: type implementing :class:`IDataElement`
-        :type data_element_class: type
-        """
-        if self.__de_map.has_key(data_element_class.mapped_class):
-            raise ValueError('Class "%s" has already been registered.'
-                             % data_element_class.mapped_class)
-        self.__de_map[data_element_class.mapped_class] = data_element_class
-
-    def get_data_element_class(self, mapped_class):
-        """
-        Returns the data element class registered for the given mapped class.
-
-        :param mapped_class: mapped type
-        :type mapped_class: type
-        :returns: type implementing :class:`IDataElement`
-        """
-        de_cls = None
-        for base_cls in mapped_class.__mro__:
+    def __getattr__(self, name):
+        try:
+            value = getattr(self.__data_element, name)
+        except AttributeError:
             try:
-                de_cls = self.__de_map[base_cls]
+                attr = self.__attr_map[name]
             except KeyError:
-                continue
+                raise AttributeError(name)
             else:
-                break
-        if de_cls is None:
-            de_cls = self.create_data_element_class(mapped_class, None)
-            self.__de_map[mapped_class] = de_cls
-        return de_cls
-
-    def get_data_element_classes(self):
-        """
-        Returns a list of all registered data element classes.
-
-        :returns: list of types implementing :class:`IDataElement`
-        """
-        return self.__de_map.iteritems()
-
-    def _initialize(self):
-        # Implement this for static initializations.
-        raise NotImplementedError('Abstract method.')
-
-
-class SimpleDataElementRegistry(DataElementRegistry):
-    member_data_element_base_class = SimpleMemberDataElement
-    collection_data_element_base_class = SimpleCollectionDataElement
-    linked_data_element_base_class = SimpleLinkedDataElement
-    configuration_class = RepresenterConfiguration
-
-    def _initialize(self):
-        # Create and register the linked data element class.
-        configuration = self.configuration_class()
-        mapped_class = self.linked_data_element_base_class.mapped_class
-        de_cls = self.create_data_element_class(
-                                mapped_class,
-                                configuration,
-                                base_class=self.linked_data_element_base_class)
-        self.set_data_element_class(de_cls)
-
+                if attr.kind == ResourceAttributeKinds.TERMINAL:
+                    value = self.__data_element.get_terminal(attr)
+                else:
+                    nested_data_el = self.__data_element.get_nested(attr)
+                    if nested_data_el is None:
+                        value = None
+                    elif attr.kind == ResourceAttributeKinds.MEMBER:
+                        value = DataElementAttributeProxy(nested_data_el)
+                    else:
+                        value = [DataElementAttributeProxy(mb_el)
+                                 for mb_el in nested_data_el.get_members()]
+        return value

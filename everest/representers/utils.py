@@ -36,7 +36,7 @@ def as_representer(resource, content_type):
     return rpr
 
 
-def get_data_element_registry(content_type):
+def get_mapping_registry(content_type):
     """
     Returns the data element registry for the given content type (a Singleton).
 
@@ -45,4 +45,4 @@ def get_data_element_registry(content_type):
     """
     reg = get_current_registry()
     rpr_reg = reg.queryUtility(IRepresenterRegistry)
-    return rpr_reg.get_data_element_registry(content_type)
+    return rpr_reg.get_mapping_registry(content_type)

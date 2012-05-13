@@ -6,7 +6,6 @@ CSV representers.
 
 Created on May 19, 2011.
 """
-
 from __future__ import absolute_import # Makes the import below absolute
 from collections import OrderedDict
 from csv import Dialect
@@ -15,17 +14,15 @@ from csv import reader
 from csv import register_dialect
 from csv import writer
 from everest.mime import CsvMime
-from everest.representers.base import RepresenterConfiguration
+from everest.representers.base import RepresentationGenerator
+from everest.representers.base import RepresentationParser
 from everest.representers.base import ResourceRepresenter
+from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
-from everest.representers.dataelements import SimpleDataElementRegistry
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
-from everest.representers.generators import DataElementGenerator
-from everest.representers.generators import RepresentationGenerator
-from everest.representers.parsers import DataElementParser
-from everest.representers.parsers import RepresentationParser
-from everest.representers.utils import get_data_element_registry
+from everest.representers.mapping import SimpleMappingRegistry
+from everest.representers.utils import get_mapping_registry
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
@@ -60,7 +57,7 @@ register_dialect('default', _DefaultDialect)
 class CsvRepresentationParser(RepresentationParser):
 
     def run(self):
-        csv_reader = reader(self._stream, self.get_option('dialect'))
+        mp_reg = get_mapping_registry(CsvMime)
         is_member_rpr = provides_member_resource(self._resource_class)
         if is_member_rpr:
             member_cls = self._resource_class
@@ -68,15 +65,15 @@ class CsvRepresentationParser(RepresentationParser):
         else:
             # Collection resource: Create a wrapping collection data element.
             member_cls = get_member_class(self._resource_class)
-            coll_de_fac = self.__lookup_de_class(self._resource_class).create
-            coll_data_el = coll_de_fac()
+            coll_mp = mp_reg.get_mapping(self._resource_class)
+            coll_data_el = coll_mp.create_data_element()
             result_data_el = coll_data_el
-        de_cls = self.__lookup_de_class(member_cls)
-        member_de_fac = de_cls.create
-        attrs = de_cls.mapper.get_mapped_attributes(member_cls)
+        mb_mp = mp_reg.get_mapping(member_cls)
+        csv_reader = reader(self._stream, self.get_option('dialect'))
+        attrs = mb_mp.get_attribute_map()
         header = None
         for row in csv_reader:
-            member_data_el = member_de_fac()
+            mb_data_el = mb_mp.create_data_element()
             if header is None:
                 # Check if the header is valid.
                 attr_names = attrs.keys()
@@ -92,23 +89,16 @@ class CsvRepresentationParser(RepresentationParser):
             for csv_attr, value in zip(header, row):
                 attr = attrs[csv_attr]
                 if is_resource_url(value):
-                    # Resources are *always* links.
-                    link = \
-                       CsvLinkedDataElement.create(member_data_el.mapped_class,
-                                                   value)
-                    member_data_el.set_nested(attr, link)
+                    link = CsvLinkedDataElement.create(value, attr.kind)
+                    mb_data_el.set_nested(attr, link)
                 else:
                     # Treat everything else as a terminal.
-                    member_data_el.set_terminal(attr, value)
+                    mb_data_el.set_terminal(attr, value)
             if is_member_rpr:
-                result_data_el = member_data_el
+                result_data_el = mb_data_el
             else:
-                coll_data_el.add_member(member_data_el)
+                coll_data_el.add_member(mb_data_el)
         return result_data_el
-
-    def __lookup_de_class(self, rc_class):
-        de_reg = get_data_element_registry(CsvMime)
-        return de_reg.get_data_element_class(rc_class)
 
 
 class CsvRepresentationGenerator(RepresentationGenerator):
@@ -182,9 +172,9 @@ class CsvRepresentationGenerator(RepresentationGenerator):
 
     def __process_data(self, data_el, rows_data, row_index, prefix):
         has_found_collection = False
-        attrs = data_el.mapper.get_mapped_attributes(data_el.mapped_class)
+        attrs = data_el.mapping.get_attribute_map()
         for attr in attrs.values():
-            attr_name_str = self.__encode(attr.representation_name)
+            attr_name_str = self.__encode(attr.repr_name)
             if not prefix is None:
                 attr_name_str = "%s.%s" % (prefix, attr_name_str)
             key = (row_index, attr_name_str)
@@ -228,8 +218,8 @@ class CsvResourceRepresenter(ResourceRepresenter):
     ENCODING = 'utf-8'
 
     @classmethod
-    def make_data_element_registry(cls):
-        return CsvDataElementRegistry()
+    def make_mapping_registry(cls):
+        return CsvMappingRegistry()
 
     def _make_representation_parser(self, stream, resource_class, **config):
         parser = CsvRepresentationParser(stream, resource_class)
@@ -243,12 +233,6 @@ class CsvResourceRepresenter(ResourceRepresenter):
         generator.set_option('encoding', self.ENCODING)
         generator.configure(**config)
         return generator
-
-    def _make_data_element_parser(self, resolve_urls=True):
-        return DataElementParser(resolve_urls=resolve_urls)
-
-    def _make_data_element_generator(self):
-        return DataElementGenerator(self._data_element_registry)
 
 
 # Adapter creating representers from resource instances.
@@ -271,9 +255,9 @@ class CsvRepresenterConfiguration(RepresenterConfiguration):
     pass
 
 
-class CsvDataElementRegistry(SimpleDataElementRegistry):
+class CsvMappingRegistry(SimpleMappingRegistry):
     """
-    Registry for CSV data element classes.
+    Registry for CSV mappings.
     """
     member_data_element_base_class = CsvMemberDataElement
     collection_data_element_base_class = CsvCollectionDataElement

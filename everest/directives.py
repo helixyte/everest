@@ -269,7 +269,7 @@ class IRepresenterDirective(Interface):
     content_type = \
         GlobalObject(title=u"The (MIME) content type the representer manages.",
                      required=True)
-    configuration = \
+    configuration_class = \
         GlobalObject(title=u"Old-style configuration class for this "
                             "representer.",
                      required=False)
@@ -288,28 +288,30 @@ class RepresenterDirective(GroupingContextDecorator):
     implements(IConfigurationContext, IRepresenterDirective)
 
     def __init__(self, context, for_, content_type,
-                 configuration=None, representer_class=None):
+                 configuration_class=None, representer_class=None):
         self.context = context
         self.for_ = for_
         self.content_type = content_type
-        self.configuration = configuration
+        self.configuration_class = configuration_class
         self.representer_class = representer_class
         self.options = {}
-        self.mapping_info = {}
+        self.mapping_options = {}
 
     def after(self):
         reg = get_current_registry()
         config = Configurator(reg, package=self.context.package)
-        mapping_info = \
-            None if len(self.mapping_info) == 0 else self.mapping_info
+        mapping_options = \
+            None if len(self.mapping_options) == 0 else self.mapping_options
+        options = self.options
         for rc in self.for_:
             discriminator = ('representer', rc, self.content_type)
             self.action(discriminator=discriminator, # pylint: disable=E1101
                         callable=config.add_representer,
                         args=(rc, self.content_type),
-                        kw=dict(configuration=self.configuration,
+                        kw=dict(configuration_class=self.configuration_class,
                                 representer_class=self.representer_class,
-                                mapping_info=mapping_info,
+                                options=options,
+                                mapping_options=mapping_options,
                                 _info=self.context.info))
 
 
@@ -327,7 +329,9 @@ class RepresenterAttributeDirective(GroupingContextDecorator):
         self.options = {}
 
     def after(self):
-        self.context.mapping_info[self.name] = self.options
+        # Convert the (nested) attribute names into keys.
+        key = tuple(self.name.split('.'))
+        self.context.mapping_options[key] = self.options
 
 
 class IOptionDirective(Interface):

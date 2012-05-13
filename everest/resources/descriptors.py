@@ -16,6 +16,8 @@ from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
 from pyramid.traversal import find_root
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -34,6 +36,8 @@ class attribute_base(object):
       attribute.
     :ivar entity_attr: the entity attribute the descriptor references. May
       be *None*.
+    :ivar is_required: indicates that the controlled entity attribute is 
+      required by the entity. 
     :ivar int id: unique sequential numeric ID for this attribute. Since this
       ID is incremented each time a new resource attribute is declared,
       it can be used to establish a well-defined sorting order on all
@@ -44,9 +48,13 @@ class attribute_base(object):
 
     __id_gen = id_generator()
 
-    def __init__(self, attr_type, entity_attr):
+    def __init__(self, attr_type, entity_attr, is_required):
+        if entity_attr is None and is_required:
+            raise ValueError('Required resource attributes need to reference '
+                             'an entity attribute.')
         self.attr_type = attr_type
         self.entity_attr = entity_attr
+        self.is_required = is_required
         self.id = self.__id_gen.next()
         self.resource_attr = None
 
@@ -89,6 +97,13 @@ class terminal_attribute(attribute_base):
     into any further for querying or serialization.
     """
 
+    def __init__(self, attr_type, entity_attr, is_required=False):
+        if not isinstance(attr_type, type):
+            raise ValueError('The attribute type of a terminal attribute '
+                             'must be a class.')
+        attribute_base.__init__(self, attr_type, entity_attr,
+                                is_required=is_required)
+
     def __get__(self, resource, resource_class):
         if resource is None:
             # Class level access.
@@ -106,13 +121,19 @@ class _relation_attribute(attribute_base):
     Base class for relation resource descriptors (i.e., descriptors managing
     a related member or collection resource).
     """
-    def __init__(self, attr_type, entity_attr=None, is_nested=False):
+    def __init__(self, attr_type,
+                 entity_attr=None, is_required=False, is_nested=False):
         """
         :param bool is_nested: indicates if the URLs generated for this
             relation descriptor should be relative to the parent ("nested")
             or absolute.
         """
-        attribute_base.__init__(self, attr_type, entity_attr)
+        if not (isinstance(attr_type, type)
+                or IInterface in provided_by(attr_type)):
+            raise ValueError('The attribute type of a member or collection '
+                             ' attribute must be a class or an interface.')
+        attribute_base.__init__(self, attr_type, entity_attr,
+                                is_required=is_required)
         self.is_nested = is_nested
 
     def __get__(self, resource, resource_class):
@@ -127,6 +148,13 @@ class member_attribute(_relation_attribute):
     Descriptor for declaring member attributes of a resource as attributes
     from its underlying entity.
     """
+    def __init__(self, attr_type,
+                 entity_attr=None, is_required=True, is_nested=False):
+        _relation_attribute.__init__(self, attr_type,
+                                     entity_attr=entity_attr,
+                                     is_required=is_required,
+                                     is_nested=is_nested)
+
     def __get__(self, resource, resource_class):
         if not resource is None:
             obj = self._get_nested(resource.get_entity(), self.entity_attr)
@@ -155,14 +183,17 @@ class collection_attribute(_relation_attribute):
     Descriptor for declaring collection attributes of a resource as attributes
     from its underlying entity.
     """
-    def __init__(self, attr_type, entity_attr=None, backref=None,
-                 is_nested=True, **kw):
+    def __init__(self, attr_type, entity_attr=None, is_required=False,
+                 is_nested=True, backref=None):
         """
         :param str backref: attribute of the members of the target
           collection which back-references the current resource (parent).
         """
-        _relation_attribute.__init__(self, attr_type, entity_attr=entity_attr,
-                                     is_nested=is_nested, **kw)
+        _relation_attribute.__init__(self, attr_type,
+                                     entity_attr=entity_attr,
+                                     is_required=is_required,
+                                     is_nested=is_nested)
+
         self.backref = backref
         self.__resource_backref = None
         self.__entity_backref = None

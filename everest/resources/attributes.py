@@ -11,6 +11,7 @@ from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
+from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_member_class
 from everest.utils import OrderedDict
 
@@ -36,32 +37,64 @@ class ResourceAttributeKinds(object):
         TERMINAL :
             an attribute that is not a resource
     """
-    MEMBER = 'MEMBER'
-    COLLECTION = 'COLLECTION'
+    MEMBER = ResourceKinds.MEMBER
+    COLLECTION = ResourceKinds.COLLECTION
     TERMINAL = 'TERMINAL'
 
 
-class ResourceAttribute(object):
+class _ResourceAttribute(object):
     """
     Value object holding information about a resource attribute.
     """
-    def __init__(self, name, kind, value_type,
-                 entity_name=None, is_nested=None):
+    #: The kind of the attribute. Set to one of the constants defined in the
+    #: :class: `ResourceAttributeKinds` class in derived classes.
+    kind = None
+
+    def __init__(self, name, value_type,
+                 entity_name=None, is_required=False):
         #: The name of the attribute in the resource.
         self.name = name
-        #: The kind of the attribute.
-        self.kind = kind
         #: The type or interface of the attribute in the underlying entity.
         self.value_type = value_type
         #: The name of the attribute in the underlying entity.
         self.entity_name = entity_name
-        #: For member and collection resource attributes, this indicates if
-        #: the referenced resource is subordinate to this one. This is
-        #: always `None` for terminal resource attributes.
-        self.is_nested = is_nested
+        #: Indicates if this attribute is required in the underlying entity.
+        self.is_required = is_required
 
     def __hash__(self):
         return self.entity_name
+
+
+class TerminalResourceAttribute(_ResourceAttribute):
+    """
+    Resource attribute class for terminal attribute declarations.
+    """
+    kind = ResourceAttributeKinds.TERMINAL
+
+
+class _ResourceResourceAttribute(_ResourceAttribute):
+    def __init__(self, name, value_type,
+                 entity_name=None, is_required=False, is_nested=False):
+        _ResourceAttribute.__init__(self, name, value_type,
+                                    entity_name=entity_name,
+                                    is_required=is_required)
+        #: If this is set, URLs for this resource attribute will be relative
+        #: to the parent resource. 
+        self.is_nested = is_nested
+
+
+class MemberResourceAttribute(_ResourceResourceAttribute):
+    """
+    Resource attribute class for member attribute declarations.
+    """
+    kind = ResourceAttributeKinds.MEMBER
+
+
+class CollectionResourceAttribute(_ResourceResourceAttribute):
+    """
+    Resource attribute class for collection attribute declarations.
+    """
+    kind = ResourceAttributeKinds.COLLECTION
 
 
 class MetaResourceAttributeCollector(type):
@@ -109,21 +142,19 @@ class MetaResourceAttributeCollector(type):
             # in the parameters to the descriptor, so we set it manually
             # here.
             descr.resource_attr = attr_name
+            options = dict(is_required=descr.is_required)
             if type(descr) is terminal_attribute:
-                attr_kind = ResourceAttributeKinds.TERMINAL
-                is_nested = None
+                rc_attr_cls = TerminalResourceAttribute
             else:
-                is_nested = descr.is_nested
+                options['is_nested'] = descr.is_nested
                 if type(descr) is member_attribute:
-                    attr_kind = ResourceAttributeKinds.MEMBER
+                    rc_attr_cls = MemberResourceAttribute
                 elif type(descr) is collection_attribute:
-                    attr_kind = ResourceAttributeKinds.COLLECTION
+                    rc_attr_cls = CollectionResourceAttribute
                 else:
                     raise ValueError('Unknown resource attribute type.')
-            attr = ResourceAttribute(attr_name, attr_kind,
-                                     descr.attr_type,
-                                     entity_name=descr.entity_attr,
-                                     is_nested=is_nested)
+            attr = rc_attr_cls(attr_name, descr.attr_type,
+                               entity_name=descr.entity_attr, **options)
             attr_map[attr_name] = attr
         return attr_map
 
@@ -137,26 +168,36 @@ class ResourceAttributeControllerMixin(object):
     @classmethod
     def is_terminal(cls, attr):
         """
-        Checks if the given attribute of the given resource class is an
-        terminal attribute.
+        Checks if the given resource class attribute is a terminal resource 
+        attribute.
         """
         return cls._attributes[attr].kind == ResourceAttributeKinds.TERMINAL
 
     @classmethod
     def is_member(cls, attr):
         """
-        Checks if the given attribute of the given resource class is a
-        member resource attribute.
+        Checks if the given resource class attribute is a member resource 
+        attribute.
         """
         return cls._attributes[attr].kind == ResourceAttributeKinds.MEMBER
 
     @classmethod
     def is_collection(cls, attr):
         """
-        Checks if the given attribute of the given resource class is an
-        collection resource attribute.
+        Checks if the given resource class attribute is a collection resource 
+        attribute.
         """
         return cls._attributes[attr].kind == ResourceAttributeKinds.COLLECTION
+
+    @classmethod
+    def is_resource(cls, attr):
+        """
+        Checks if the given resource class attribute is a member or collection
+        resource attribute.
+        """
+        return cls._attributes[attr].kind \
+                in [ResourceAttributeKinds.MEMBER,
+                    ResourceAttributeKinds.COLLECTION]
 
     @classmethod
     def get_attribute_names(cls):

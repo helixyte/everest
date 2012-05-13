@@ -4,21 +4,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-
 from everest.orm import get_metadata
 from everest.orm import is_metadata_initialized
 from everest.orm import reset_metadata
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repository import REPOSITORIES
-from everest.representers.base import RepresenterConfiguration
-from everest.representers.dataelements import SimpleDataElementRegistry
-from everest.representers.generators import DataElementGenerator
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import RepresenterConfiguration
+from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.mapping import SimpleMappingRegistry
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.base import Collection
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
 from everest.resources.descriptors import terminal_attribute
-from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
@@ -30,8 +29,6 @@ from everest.tests.testapp_db.entities import MyEntityParent
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntityParent
-from everest.tests.testapp_db.resources import MyEntityChildMember
-from everest.tests.testapp_db.resources import MyEntityGrandchildMember
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_entity
@@ -136,8 +133,8 @@ class DescriptorsTestCase(ResourceTestCase):
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         member.text = self.UPDATED_TEXT
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -152,8 +149,8 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity.parent.text = self.UPDATED_TEXT
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -168,8 +165,8 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity.children[0].text = self.UPDATED_TEXT
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -189,8 +186,8 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity.parent = new_parent
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -208,11 +205,11 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity.parent = new_parent
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member,
-                          mapping_info=
-                            dict(parent=dict(write_as_link=True),
-                                 nested_parent=dict(ignore=True)))
+        mp = self._make_mapping()
+        mapping_options = {('parent',):{WRITE_AS_LINK_OPTION:True},
+                           ('nested_parent',):{IGNORE_OPTION:True}}
+        mp_cloned = mp.clone(mapping_options=mapping_options)
+        data_el = mp_cloned.map_to_data_element(member)
         # The linked-to parent needs to be in the root collection.
         my_entity.parent = None
         del member
@@ -231,8 +228,8 @@ class DescriptorsTestCase(ResourceTestCase):
         del my_entity.children[0]
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -247,8 +244,8 @@ class DescriptorsTestCase(ResourceTestCase):
         del my_entity.children[0].children[0]
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -267,8 +264,8 @@ class DescriptorsTestCase(ResourceTestCase):
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(len(member.children), 2)
-        gen = self._make_data_element_generator()
-        data_el = gen.run(member)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
         del member
         del my_entity
         my_entity = create_entity()
@@ -354,39 +351,19 @@ class DescriptorsTestCase(ResourceTestCase):
                           'http://0.0.0.0:6543/my-entity-grandchildren/'
                           '?q=id:contained:0')
 
-    def _make_data_element_generator(self):
-        reg = SimpleDataElementRegistry()
-        # Fine tune DataElementGenerator configuration.
-        repr_config = RepresenterConfiguration()
-        repr_config.set_option('mapping',
-                               dict(parent=dict(write_as_link=False,
-                                                ignore=False),
-                                    nested_parent=dict(write_as_link=False,
-                                                       ignore=False),
-                                    children=dict(write_as_link=False,
-                                                  ignore=False)))
-        for cls in (MyEntityMember,):
-            de_cls = reg.create_data_element_class(cls, repr_config)
-            reg.set_data_element_class(de_cls)
-        repr_config = RepresenterConfiguration()
-        repr_config.set_option('mapping',
-                               dict(children=dict(write_as_link=False,
-                                                  ignore=False),
-                                    no_backref_children=dict(ignore=True)))
-        for cls in (MyEntityChildMember,
-                    get_collection_class(MyEntityChildMember)):
-            de_cls = reg.create_data_element_class(cls, repr_config)
-            reg.set_data_element_class(de_cls)
-        repr_config = RepresenterConfiguration()
-        repr_config.set_option('mapping',
-                               dict(parent=dict(ignore=True)))
-        for cls in (MyEntityGrandchildMember,
-                    get_collection_class(MyEntityGrandchildMember)):
-            de_cls = reg.create_data_element_class(cls, repr_config)
-            reg.set_data_element_class(de_cls)
-        repr_config = RepresenterConfiguration()
-        for cls in (MyEntityParentMember,):
-            de_cls = reg.create_data_element_class(cls, repr_config)
-            reg.set_data_element_class(de_cls)
-        gen = DataElementGenerator(reg)
-        return gen
+    def _make_mapping(self):
+        reg = SimpleMappingRegistry()
+        mp_opts = {('parent',):{WRITE_AS_LINK_OPTION:False,
+                                IGNORE_OPTION:False},
+                   ('nested_parent',):{WRITE_AS_LINK_OPTION:False,
+                                       IGNORE_OPTION:False},
+                   ('children',):{WRITE_AS_LINK_OPTION:False,
+                                  IGNORE_OPTION:False},
+                   ('children', 'children'):{WRITE_AS_LINK_OPTION:False,
+                                             IGNORE_OPTION:False},
+                   ('children', 'no_backref_children'):{IGNORE_OPTION:True},
+                   }
+        conf = RepresenterConfiguration(mapping_options=mp_opts)
+        mp = reg.create_mapping(MyEntityMember, conf)
+        reg.set_mapping(mp)
+        return mp

@@ -138,10 +138,10 @@ class ResourceLoadingTestCase(ResourceTestCase):
                  get_root_collection(IMyEntityGrandchild),
                  get_root_collection(IMyEntityChild),
                  get_root_collection(IMyEntityParent),
-#                 get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntity),
                  ]
         load_collections_from_zipfile(colls, strm, resolve_urls=False)
         self.assert_equal(len(colls[0]), 1)
         self.assert_equal(len(colls[1]), 1)
         self.assert_equal(len(colls[2]), 1)
-#        self.assert_equal(len(colls[3]), 1)
+        self.assert_equal(len(colls[3]), 1)
