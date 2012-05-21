@@ -6,13 +6,14 @@ Adapted from the ZCML unit tests in BFG.
 
 Created on Jun 17, 2011.
 """
-
 from everest.configuration import Configurator
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.interfaces import IEntity
 from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
+from everest.representers.base import Representer
 from everest.representers.interfaces import IRepresenter
+from everest.representers.utils import as_representer
 from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -28,8 +29,6 @@ from everest.tests.testapp.resources import FooMember
 from pyramid.testing import setUp as testing_set_up
 from pyramid.testing import tearDown as testing_tear_down
 from pyramid.threadlocal import get_current_registry
-from everest.representers.interfaces import IRepresenterRegistry
-from everest.representers.base import Representer
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DirectivesTestCase',
@@ -90,8 +89,8 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')
         self.__check(reg, member, ent, coll)
-        rpr_reg = reg.getUtility(IRepresenterRegistry)
-        self.assert_true(isinstance(rpr_reg.get(coll, CsvMime), Representer))
+        rpr = as_representer(coll, CsvMime)
+        self.assert_true(isinstance(rpr, Representer))
 
     def test_custom_repository(self):
         class MyMemoryAggregate(MemoryAggregate):

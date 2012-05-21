@@ -58,12 +58,16 @@ class Mapping(object):
         #
         self.__mapped_attr_cache = {}
 
-    def clone(self, mapping_options=None):
-        mp_options = self.__mapping_options.copy()
+    def clone(self, options=None, mapping_options=None):
+        opts = self.__options.copy()
+        if not options is None:
+            opts.update(options)
+        mp_opts = self.__mapping_options.copy()
         if not mapping_options is None:
-            mp_options.update(mapping_options)
+            for attr, opts in mapping_options.iteritems():
+                mp_opts[attr].update(opts)
         return self.__class__(self.__mp_reg, self.__mapped_cls, self.__de_cls,
-                              self.__options.copy(), mp_options)
+                              opts, mp_opts)
 
     def get_config_option(self, name):
         """
@@ -109,11 +113,11 @@ class Mapping(object):
         return self.__de_cls.create()
 
     def create_data_element_from_resource(self, resource):
-        mp = self.__mp_reg.get_mapping(type(resource))
+        mp = self.__mp_reg.find_or_create_mapping(type(resource))
         return mp.data_element_class.create_from_resource(resource)
 
     def create_linked_data_element_from_resource(self, resource):
-        mp = self.__mp_reg.get_mapping(Link)
+        mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resolve_urls=True):
@@ -144,7 +148,7 @@ class Mapping(object):
         else:
             # Nested access - fetch mapped attributes from other mapping.
             child_attr_cls = self.__resolve(self.__mapped_cls, key)
-            mp = self.__mp_reg.get_mapping(child_attr_cls)
+            mp = self.__mp_reg.find_or_create_mapping(child_attr_cls)
             attrs = mp.get_attribute_map()
         for attr in attrs.values():
             mp_opts = self.__mapping_options[key + (attr.name,)]
@@ -193,8 +197,9 @@ class MappingRegistry(object):
     mapping_class = Mapping
 
     def __init__(self):
+        self.configuration_class = self.__class__.configuration_class.clone()
         self.__mappings = {}
-        self._initialize()
+        self.__is_initialized = False
 
     def _initialize(self):
         # Implement this for static initializations.
@@ -238,21 +243,20 @@ class MappingRegistry(object):
         :param mapping: mapping
         :type mapping: :class:`Mapping`
         """
-        if self.__mappings.has_key(mapping.mapped_class):
-            raise ValueError('A mapping was already registered for class "%s".'
-                             % mapping.mapped_class)
         self.__mappings[mapping.mapped_class] = mapping
 
-    def get_mapping(self, mapped_class):
+    def find_mapping(self, mapped_class):
         """
         Returns the mapping registered for the given mapped class or any of
-        its base classes. If no mapping can be found, a new one is created
-        with a default configuration and registered automatically. 
+        its base classes. Returns `None` if no mapping can be found. 
 
         :param mapped_class: mapped type
         :type mapped_class: type
-        :returns: instance of :class:`Mapping`
+        :returns: instance of :class:`Mapping` or `None`
         """
+        if not self.__is_initialized:
+            self.__is_initialized = True
+            self._initialize()
         mapping = None
         for base_cls in mapped_class.__mro__:
             try:
@@ -261,6 +265,16 @@ class MappingRegistry(object):
                 continue
             else:
                 break
+        return mapping
+
+    def find_or_create_mapping(self, mapped_class):
+        """
+        First calls :method:`find_mapping` to check if a mapping for the given
+        mapped class or any of its base classes has been created. If not, a 
+        new one is created with a default configuration, registered 
+        automatically and returned.
+        """
+        mapping = self.find_mapping(mapped_class)
         if mapping is None:
             mapping = self.create_mapping(mapped_class)
             self.set_mapping(mapping)
@@ -289,7 +303,6 @@ class SimpleMappingRegistry(MappingRegistry):
     def _initialize(self):
         # Create and register the linked data element class.
         configuration = self.configuration_class()
-        mapped_class = Link
-        mapping = self.create_mapping(mapped_class, configuration)
+        mapping = self.create_mapping(Link, configuration)
         self.set_mapping(mapping)
 

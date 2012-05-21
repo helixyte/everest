@@ -37,12 +37,4 @@
         entity=".entities.MyEntityGrandchild"
         collection_root_name="my-entity-grandchildren" />
 
-    <representer
-        for=".interfaces.IMyEntity
-             .interfaces.IMyEntityParent
-             .interfaces.IMyEntityChild
-             .interfaces.IMyEntityGrandchild
-             "
-        content_type="everest.mime.CsvMime" />
-
 </configure>

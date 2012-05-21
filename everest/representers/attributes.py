@@ -76,8 +76,8 @@ class MappedAttribute(object):
         return self.__attr.entity_name
 
     @property
-    def is_required(self):
-        return self.__attr.is_required
+    def cardinality(self):
+        return self.__attr.cardinality
 
     def __getattr__(self, attr_name):
         # Make options available as attributes.

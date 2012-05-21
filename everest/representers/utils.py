@@ -28,11 +28,11 @@ def as_representer(resource, content_type):
     """
     reg = get_current_registry()
     rpr_reg = reg.queryUtility(IRepresenterRegistry)
-    rpr = rpr_reg.get(resource, content_type)
+    rpr = rpr_reg.create(resource, content_type)
     if rpr is None:
         # Register a representer with default configuration on the fly.
         rpr_reg.register(type(resource), content_type)
-        rpr = rpr_reg.get(resource, content_type)
+        rpr = rpr_reg.create(resource, content_type)
     return rpr
 
 

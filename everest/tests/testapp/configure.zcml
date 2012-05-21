@@ -22,9 +22,4 @@
         collection=".resources.BarCollection"
         member=".resources.BarMember"
         entity=".entities.BarEntity"/>
-
-    <representer
-        for=".resources.FooCollection"
-        content_type="everest.mime.CsvMime" />
-
 </configure>

@@ -1,12 +1,12 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 2, 2012.
 """
-
+from everest.mime import AtomMime
 from everest.mime import CsvMime
+from everest.mime import XmlMime
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.urlloader import LazyAttributeLoaderProxy
@@ -24,7 +24,9 @@ from everest.url import url_to_resource
 import os
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['LazyAttribteLoaderProxyTestCase',
+__all__ = ['CsvRepresentationTestCase',
+           'LazyAttribteLoaderProxyTestCase',
+           'RepresenterConfigurationTestCase',
            ]
 
 
@@ -77,7 +79,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
         lines = rpr_str.split(os.linesep)
         self.assert_true(len(lines), 3)
         self.assert_equal(lines[0], '"id","parent","nested_parent","children"'
-                                    ',"text","text_rc","number","parent_text"')
+                                    ',"text","text_rc","number","date_time",'
+                                    '"parent_text"')
         self.assert_equal(lines[1][0], '0')
         self.assert_equal(lines[2][0], '1')
         row_data = lines[1].split(',')
@@ -109,10 +112,48 @@ class CsvRepresentationTestCase(ResourceTestCase):
                                     '"children.id","children.children",'
                                     '"children.no_backref_children",'
                                     '"children.text","children.text_rc",'
-                                    '"text","text_rc","number","parent_text"')
+                                    '"text","text_rc","number","date_time",'
+                                    '"parent_text"')
         row_data = lines[1].split(',')
         # Third field should now be "children.id" and contains 0.
         self.assert_equal(row_data[3], '0')
+
+
+class XmlRepresentationTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_rpr.zcml'
+
+    def test_xml_with_defaults(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, XmlMime)
+        rpr_str = rpr.to_string(coll)
+        self.assert_not_equal(rpr_str.find('<ent:myentityparent id="0">'), -1)
+
+    def test_xml_roundtrip(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, XmlMime)
+        mapping_options = {('nested_parent',):{IGNORE_OPTION:True},
+                           ('text_rc',):{IGNORE_OPTION:True},
+                           ('parent_text',):{IGNORE_OPTION:True},
+                           ('children',):{IGNORE_OPTION:False,
+                                          WRITE_AS_LINK_OPTION:True},
+                           }
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
+        rpr_str = rpr.representation_from_data(data)
+        reloaded_coll = rpr.from_string(rpr_str)
+        self.assert_equal(len(reloaded_coll), 2)
+
+
+class AtomRepresentationTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_rpr.zcml'
+
+    def test_atom_with_defaults(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, AtomMime)
+        rpr_str = rpr.to_string(coll)
+        self.assert_not_equal(
+            rpr_str.find('<feed xmlns:ent="http://test.org/myentity"'), -1)
 
 
 class RepresenterConfigurationTestCase(ResourceTestCase):

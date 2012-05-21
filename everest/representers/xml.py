@@ -30,6 +30,7 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import iso8601
+import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DateTimeConverter',
@@ -53,8 +54,6 @@ XML_SCHEMA_OPTION = 'xml_schema'
 XML_NAMESPACE_OPTION = 'xml_ns'
 XML_PREFIX_OPTION = 'xml_prefix'
 
-
-CONVERTER_MAPPING_OPTION = 'converter'
 NAMESPACE_MAPPING_OPTION = 'namespace'
 
 
@@ -72,17 +71,35 @@ class IConverter(Interface):
 # end interface pylint:enable=W0232, E0213
 
 
-class NoOpConverter(object):
-
-    implements(IConverter)
+class XmlConverterRegistry(object):
+    __converters = {}
 
     @classmethod
-    def from_xml(cls, value):
+    def register(cls, value_type, converter_class):
+        if value_type in cls.__converters:
+            raise ValueError('For the "%s" XML data type, a converter has '
+                             'already been registered (%s).'
+                             % (value_type, cls.__converters[value_type]))
+        cls.__converters[value_type] = converter_class
+
+    @classmethod
+    def convert_from_xml(cls, xml_value, value_type):
+        cnv = cls.__converters.get(value_type)
+        if not cnv is None:
+            value = cnv.from_xml(xml_value)
+        else:
+            # Try the value type's constructor.
+            value = value_type(xml_value)
         return value
 
     @classmethod
-    def to_xml(cls, value):
-        return value
+    def convert_to_xml(cls, value, value_type):
+        cnv = cls.__converters.get(value_type)
+        if not cnv is None:
+            xml_value = cnv.to_xml(value)
+        else:
+            xml_value = str(value) # FIXME: use unicode?
+        return xml_value
 
 
 class DateTimeConverter(object):
@@ -95,6 +112,9 @@ class DateTimeConverter(object):
     @classmethod
     def to_xml(cls, value):
         return rfc3339(value)
+
+
+XmlConverterRegistry.register(datetime.datetime, DateTimeConverter)
 
 
 class XmlRepresentationParser(RepresentationParser):
@@ -167,7 +187,7 @@ class XmlResourceRepresenter(ResourceRepresenter):
 
     def _make_representation_parser(self, stream, resource_class, **config):
         parser = XmlRepresentationParser(stream, resource_class)
-        mp = self._mapping_registry.get_mapping(resource_class)
+        mp = self._mapping_registry.find_or_create_mapping(resource_class)
         xml_schema = mp.get_config_option(XML_SCHEMA_OPTION)
         parser.set_option('schema_location', xml_schema)
         parser.set_option('class_lookup',
@@ -180,10 +200,6 @@ class XmlResourceRepresenter(ResourceRepresenter):
         generator.set_option('encoding', self.ENCODING)
         generator.configure(**config)
         return generator
-
-
-# Adapter creating representers from resource instances.
-resource_adapter = XmlResourceRepresenter.create_from_resource
 
 
 class _XmlDataElementMixin(object):
@@ -207,9 +223,6 @@ class _XmlDataElementMixin(object):
 
 class XmlMemberDataElement(objectify.ObjectifiedElement,
                            _XmlDataElementMixin, MemberDataElement):
-
-    # XML schema definitions: schema location, namespace, tag, prefix.
-    # These attributes are set when new data element classes are registered.
 
     def get_nested(self, attr):
         # We only allow *one* child with the given name.
@@ -246,28 +259,8 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         needs_custom_tag = not attr.namespace is None
         if needs_custom_tag:
             custom_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
-#            if hasattr(self, custom_tag):
-#                raise ValueError('Data element has already a child for member '
-#                                 'attribute "%s".' % attr)
             data_element.tag = custom_tag
         self.append(data_element)
-
-#        if isinstance(data_element, XmlLinkedDataElement):
-#            # Link handling: create wrapper tag.
-#            if needs_custom_tag:
-#                wrapper_el = etree.SubElement(self, custom_tag)
-#            else:
-#                ns = data_element.nsmap[data_element.prefix]
-#                wrapper_el = \
-#                    etree.SubElement(self,
-#                                     '{%s}%s' % (ns, attr.repr_name))
-#            wrapper_el.append(data_element)
-#            # Process ID. Only the wrapper element *must* have the id
-#            # attribute set.
-#            id_str = data_element.get('id')
-#            if not id_str is None:
-#                wrapper_el.set('id', id_str)
-#                del data_element.attrib['id']
 
     def get_terminal(self, attr):
         if attr.repr_name == 'id':
@@ -282,10 +275,8 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
             val_el = getattr(self, q_tag, None)
             if not val_el is None:
-                if attr.converter is None:
-                    val = val_el.pyval
-                else:
-                    val = attr.converter.from_xml(val_el.text)
+                val = XmlConverterRegistry.convert_from_xml(val_el.text,
+                                                            attr.value_type)
             else:
                 val = None
         return val
@@ -297,9 +288,9 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         else:
             xml_ns = self.mapping.get_config_option(XML_NAMESPACE_OPTION)
             q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
-            if not attr.converter is None:
-                value = attr.converter.to_xml(value)
-            setattr(self, q_tag, value)
+            xml_value = XmlConverterRegistry.convert_to_xml(value,
+                                                            attr.value_type)
+            setattr(self, q_tag, xml_value)
 
 
 class XmlCollectionDataElement(objectify.ObjectifiedElement,
@@ -336,7 +327,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
     def create_from_resource(cls, resource):
         # Create the wrapping element.
         mp_reg = get_mapping_registry(XmlMime)
-        mp = mp_reg.get_mapping(type(resource))
+        mp = mp_reg.find_or_create_mapping(type(resource))
         options = \
             {XML_NAMESPACE_OPTION:mp.get_config_option(XML_NAMESPACE_OPTION)}
         rc_data_el = mp.create_data_element_from_resource(resource)
@@ -392,12 +383,15 @@ class XmlRepresenterConfiguration(RepresenterConfiguration):
     xml_prefix :
         The XML namespace prefix to use for the represented data element class.
     """
-    _config_option_names = RepresenterConfiguration._config_option_names + \
-                           [XML_TAG_OPTION, XML_SCHEMA_OPTION,
-                            XML_NAMESPACE_OPTION, XML_PREFIX_OPTION]
-    _mapping_option_names = RepresenterConfiguration._mapping_option_names + \
-                            [CONVERTER_MAPPING_OPTION,
-                             NAMESPACE_MAPPING_OPTION]
+    _default_config_options = \
+            dict(RepresenterConfiguration._default_config_options.items() +
+                 [(XML_TAG_OPTION, None),
+                  (XML_SCHEMA_OPTION, None),
+                  (XML_NAMESPACE_OPTION, None),
+                  (XML_PREFIX_OPTION, None)])
+    _default_mapping_options = \
+            dict(RepresenterConfiguration._default_mapping_options.items() +
+                 [(NAMESPACE_MAPPING_OPTION, None)])
 
 
 class XmlMappingRegistry(MappingRegistry):
@@ -419,7 +413,7 @@ class XmlMappingRegistry(MappingRegistry):
 
     def _initialize(self):
         # Create and register the linked data element class.
-        configuration = XmlRepresenterConfiguration()
+        configuration = self.configuration_class()
         mapping = self.create_mapping(Link, configuration)
         self.set_mapping(mapping)
 

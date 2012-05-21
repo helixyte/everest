@@ -8,12 +8,12 @@ Created on May 9, 2012.
 from everest.mime import CsvMime
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.dataelements import DataElementAttributeProxy
 from everest.representers.utils import get_mapping_registry
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.testing import create_entity
-from everest.representers.config import WRITE_AS_LINK_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = []
@@ -25,7 +25,7 @@ class MappingTestCase(ResourceTestCase):
 
     def test_defaults(self):
         mp_reg = get_mapping_registry(CsvMime)
-        mp = mp_reg.get_mapping(MyEntityMember)
+        mp = mp_reg.find_or_create_mapping(MyEntityMember)
         attrs = mp.get_attribute_map()
         self.assert_true(
             attrs['text'].options.get(IGNORE_ON_READ_OPTION) is None)
@@ -44,7 +44,7 @@ class MappingTestCase(ResourceTestCase):
 
     def test_clone_with_options(self):
         mp_reg = get_mapping_registry(CsvMime)
-        mp = mp_reg.get_mapping(MyEntityMember)
+        mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
                 mapping_options={('parent', 'text'):
                                         {IGNORE_ON_READ_OPTION:True}})
@@ -57,7 +57,7 @@ class MappingTestCase(ResourceTestCase):
         entity = create_entity()
         mb = MyEntityMember.create_from_entity(entity)
         mp_reg = get_mapping_registry(CsvMime)
-        mp = mp_reg.get_mapping(MyEntityMember)
+        mp = mp_reg.find_or_create_mapping(MyEntityMember)
         de = mp.map_to_data_element(mb)
         prx = DataElementAttributeProxy(de)
         self.assert_equal(prx.id, 0)
@@ -70,7 +70,7 @@ class MappingTestCase(ResourceTestCase):
         entity = create_entity()
         mb = MyEntityMember.create_from_entity(entity)
         mp_reg = get_mapping_registry(CsvMime)
-        mp = mp_reg.get_mapping(MyEntityMember)
+        mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
             mapping_options={('children',):{IGNORE_ON_WRITE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False},

@@ -37,7 +37,6 @@ __all__ = ['CsvCollectionDataElement',
            'CsvRepresentationParser',
            'CsvRepresenterConfiguration',
            'CsvResourceRepresenter',
-           'resource_adapter',
            ]
 
 
@@ -65,10 +64,10 @@ class CsvRepresentationParser(RepresentationParser):
         else:
             # Collection resource: Create a wrapping collection data element.
             member_cls = get_member_class(self._resource_class)
-            coll_mp = mp_reg.get_mapping(self._resource_class)
+            coll_mp = mp_reg.find_or_create_mapping(self._resource_class)
             coll_data_el = coll_mp.create_data_element()
             result_data_el = coll_data_el
-        mb_mp = mp_reg.get_mapping(member_cls)
+        mb_mp = mp_reg.find_or_create_mapping(member_cls)
         csv_reader = reader(self._stream, self.get_option('dialect'))
         attrs = mb_mp.get_attribute_map()
         header = None
@@ -233,10 +232,6 @@ class CsvResourceRepresenter(ResourceRepresenter):
         generator.set_option('encoding', self.ENCODING)
         generator.configure(**config)
         return generator
-
-
-# Adapter creating representers from resource instances.
-resource_adapter = CsvResourceRepresenter.create_from_resource
 
 
 class CsvMemberDataElement(SimpleMemberDataElement):

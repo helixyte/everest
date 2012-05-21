@@ -6,7 +6,6 @@ Resource attribute handling classes.
 
 Created on Dec 2, 2011.
 """
-
 from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
@@ -14,6 +13,7 @@ from everest.resources.descriptors import terminal_attribute
 from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_member_class
 from everest.utils import OrderedDict
+from everest.resources.descriptors import CARDINALITY
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceAttributeKinds',
@@ -50,16 +50,16 @@ class _ResourceAttribute(object):
     #: :class: `ResourceAttributeKinds` class in derived classes.
     kind = None
 
-    def __init__(self, name, value_type,
-                 entity_name=None, is_required=False):
+    def __init__(self, name, value_type, cardinality, entity_name=None):
         #: The name of the attribute in the resource.
         self.name = name
         #: The type or interface of the attribute in the underlying entity.
         self.value_type = value_type
+        #: For non-terminal attributes, indicates the cardinality of the 
+        #: relationship.
+        self.cardinality = cardinality
         #: The name of the attribute in the underlying entity.
         self.entity_name = entity_name
-        #: Indicates if this attribute is required in the underlying entity.
-        self.is_required = is_required
 
     def __hash__(self):
         return self.entity_name
@@ -71,13 +71,16 @@ class TerminalResourceAttribute(_ResourceAttribute):
     """
     kind = ResourceAttributeKinds.TERMINAL
 
+    def __init__(self, name, value_type, entity_name=None):
+        _ResourceAttribute.__init__(self, name, value_type, None,
+                                    entity_name=entity_name)
+
 
 class _ResourceResourceAttribute(_ResourceAttribute):
-    def __init__(self, name, value_type,
-                 entity_name=None, is_required=False, is_nested=False):
-        _ResourceAttribute.__init__(self, name, value_type,
-                                    entity_name=entity_name,
-                                    is_required=is_required)
+    def __init__(self, name, value_type, cardinality,
+                 entity_name=None, is_nested=False):
+        _ResourceAttribute.__init__(self, name, value_type, cardinality,
+                                    entity_name=entity_name)
         #: If this is set, URLs for this resource attribute will be relative
         #: to the parent resource. 
         self.is_nested = is_nested
@@ -89,12 +92,26 @@ class MemberResourceAttribute(_ResourceResourceAttribute):
     """
     kind = ResourceAttributeKinds.MEMBER
 
+    def __init__(self, name, value_type, cardinality=CARDINALITY.MANYTOONE,
+                 entity_name=None, is_nested=False):
+        _ResourceResourceAttribute.__init__(self, name, value_type,
+                                            cardinality,
+                                            entity_name=entity_name,
+                                            is_nested=is_nested)
+
 
 class CollectionResourceAttribute(_ResourceResourceAttribute):
     """
     Resource attribute class for collection attribute declarations.
     """
     kind = ResourceAttributeKinds.COLLECTION
+
+    def __init__(self, name, value_type, cardinality=CARDINALITY.ONETOMANY,
+                 entity_name=None, is_nested=False):
+        _ResourceResourceAttribute.__init__(self, name, value_type,
+                                            cardinality,
+                                            entity_name=entity_name,
+                                            is_nested=is_nested)
 
 
 class MetaResourceAttributeCollector(type):
@@ -142,10 +159,11 @@ class MetaResourceAttributeCollector(type):
             # in the parameters to the descriptor, so we set it manually
             # here.
             descr.resource_attr = attr_name
-            options = dict(is_required=descr.is_required)
+            options = dict(entity_name=descr.entity_attr)
             if type(descr) is terminal_attribute:
                 rc_attr_cls = TerminalResourceAttribute
             else:
+                options['cardinality'] = descr.cardinality
                 options['is_nested'] = descr.is_nested
                 if type(descr) is member_attribute:
                     rc_attr_cls = MemberResourceAttribute
@@ -153,8 +171,7 @@ class MetaResourceAttributeCollector(type):
                     rc_attr_cls = CollectionResourceAttribute
                 else:
                     raise ValueError('Unknown resource attribute type.')
-            attr = rc_attr_cls(attr_name, descr.attr_type,
-                               entity_name=descr.entity_attr, **options)
+            attr = rc_attr_cls(attr_name, descr.attr_type, **options)
             attr_map[attr_name] = attr
         return attr_map
 

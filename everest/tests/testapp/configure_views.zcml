@@ -23,14 +23,6 @@
         member=".resources.FooMember"
         entity=".entities.FooEntity"
         collection_root_name="foos" />
-
-    <representer
-        for=".resources.FooCollection"
-        content_type="everest.mime.CsvMime" />
-        
-    <representer
-        for=".resources.FooMember"
-        content_type="everest.mime.CsvMime" />
         
     <!-- Views. -->
 

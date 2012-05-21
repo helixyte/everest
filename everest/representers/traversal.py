@@ -4,22 +4,23 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 25, 2012.
 """
+from collections import OrderedDict
 from everest.entities.utils import get_entity_class
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.urlloader import LazyUrlLoader
 from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.descriptors import CARDINALITY
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.kinds import ResourceKinds
+from everest.resources.utils import new_stage_collection
 from everest.url import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.representers.config import WRITE_AS_LINK_OPTION
-from everest.resources.utils import new_stage_collection
-from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = []
@@ -294,12 +295,16 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     def _ignore_attribute(self, attr):
         # Rules for ignoring attributes:
         #  * always ignore when IGNORE_ON_READ_OPTION is set to True
-        #  * also ignore non terminal attributes when IGNORE_ON_READ_OPTION
-        #    is None and the resource attribute was not declared as required.
+        #  * also ignore relation attributes when IGNORE_ON_READ_OPTION is 
+        #    None (=not set) and the cardinality is not MANYTOONE
+        #    (members) or not MANYTOMANY (collections).
         return attr.options.get(IGNORE_ON_READ_OPTION) is True \
                or (attr.options.get(IGNORE_ON_READ_OPTION) is None
-                   and attr.kind != ResourceAttributeKinds.TERMINAL
-                   and not attr.is_required)
+                   and ((attr.kind == ResourceAttributeKinds.MEMBER
+                        and attr.cardinality != CARDINALITY.MANYTOONE)
+                        or (attr.kind == ResourceAttributeKinds.COLLECTION
+                            and attr.cardinality != CARDINALITY.MANYTOMANY))
+                   )
 
 
 class ResourceTreeTraverser(ResourceDataTreeTraverser):
@@ -329,5 +334,8 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
     def _ignore_attribute(self, attr):
         return attr.options.get(IGNORE_ON_WRITE_OPTION) is True \
                or (attr.options.get(IGNORE_ON_WRITE_OPTION) is None
-                   and attr.kind != ResourceAttributeKinds.TERMINAL
-                   and not attr.is_required)
+                   and ((attr.kind == ResourceAttributeKinds.MEMBER
+                        and attr.cardinality != CARDINALITY.MANYTOONE)
+                        or (attr.kind == ResourceAttributeKinds.COLLECTION
+                            and attr.cardinality != CARDINALITY.MANYTOMANY))
+                   )

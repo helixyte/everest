@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    xmlns="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://schemata.everest.org/resource"
+    elementFormDefault="qualified"
+    xmlns:sh="http://schemata.everest.org/resource"
+>
+    <complexType
+        name="ResourceType"
+        abstract="true"
+    >
+        <attribute
+            name="id"
+            use="optional"
+            type="string"
+        ></attribute>
+    </complexType>
+
+    <complexType name="ResourceLinkType">
+        <attribute
+            name="href"
+            use="required"
+            type="anyURI"
+        ></attribute>
+        <attribute
+            name="rel"
+            type="string"
+        >
+        </attribute>
+        <attribute
+            name="kind"
+            use="optional"
+            type="string"
+        ></attribute>
+        <attribute
+            name="title"
+            use="optional"
+            type="string"
+        ></attribute>
+        <attribute
+            name="length"
+            use="optional"
+            type="positiveInteger"
+        ></attribute>
+    </complexType>
+
+</schema>

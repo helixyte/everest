@@ -34,6 +34,7 @@ from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_entity
 from everest.url import resource_to_url
 from pkg_resources import resource_filename # pylint: disable=E0611
+import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
@@ -46,7 +47,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
         self.assert_equal(
                     MyEntityMember.get_attribute_names(),
                     ['id', 'parent', 'nested_parent', 'children', 'text',
-                     'text_rc', 'number', 'parent_text'])
+                     'text_rc', 'number', 'date_time', 'parent_text'])
 
     def test_types(self):
         attrs = MyEntityMember.get_attributes().values()
@@ -106,6 +107,7 @@ class DescriptorsTestCase(ResourceTestCase):
         member = MyEntityMember.create_from_entity(entity)
         self.assert_true(isinstance(member.text, str))
         self.assert_true(isinstance(member.number, int))
+        self.assert_true(isinstance(member.date_time, datetime.datetime))
 
     def test_member_access(self):
         parent = MyEntityParent()

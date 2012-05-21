@@ -4,14 +4,16 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 16, 2011.
 """
-
 from everest.configuration import Configurator
 from everest.repository import REPOSITORIES
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
 from pyramid_zcml import IViewDirective
 from pyramid_zcml import view as pyramid_view
 from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
 from zope.configuration.config import IConfigurationContext # pylint: disable=E0611,F0401
+from zope.configuration.exceptions import ConfigurationError # pylint: disable=E0611,F0401
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Path # pylint: disable=E0611,F0401
@@ -20,6 +22,7 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -202,26 +205,58 @@ class IResourceDirective(Interface):
 #               )
 
 
-def resource(_context, interface, member, entity,
-             collection=None, collection_root_name=None, collection_title=None,
-             repository=None, expose=True):
+class ResourceDirective(GroupingContextDecorator):
     """
     Directive for registering a resource. Calls
     :method:`everest.configuration.Configurator.add_resource`.
     """
-    # Register resources eagerly so the various adapters and utilities are
-    # available for other directives.
-    discriminator = ('resource', interface)
-    _context.action(discriminator=discriminator)
-    reg = get_current_registry()
-    config = Configurator(reg, package=_context.package)
-    config.add_resource(interface, member, entity,
-                        collection=collection,
-                        collection_root_name=collection_root_name,
-                        collection_title=collection_title,
-                        repository=repository,
-                        expose=expose,
-                        _info=_context.info)
+    implements(IConfigurationContext, IResourceDirective)
+
+    def __init__(self, context, interface, member, entity,
+                 collection=None, collection_root_name=None,
+                 collection_title=None, repository=None, expose=True):
+        self.context = context
+        self.interface = interface
+        self.member = member
+        self.entity = entity
+        self.collection = collection
+        self.collection_root_name = collection_root_name
+        self.collection_title = collection_title
+        self.repository = repository
+        self.expose = expose
+        self.representers = {}
+
+    def after(self):
+        # Register resources eagerly so the various adapters and utilities are
+        # available for other directives.
+        discriminator = ('resource', self.interface)
+        self.action(discriminator=discriminator) # pylint: disable=E1101
+        reg = get_current_registry()
+        config = Configurator(reg, package=self.context.package)
+        config.add_resource(self.interface, self.member, self.entity,
+                            collection=self.collection,
+                            collection_root_name=self.collection_root_name,
+                            collection_title=self.collection_title,
+                            repository=self.repository,
+                            expose=self.expose,
+                            _info=self.context.info)
+        for key, value in self.representers.iteritems():
+            cnt_type, rc_kind = key
+            opts, mp_opts = value
+            if rc_kind == RESOURCE_KINDS.member:
+                rc = get_member_class(self.interface)
+            elif rc_kind == RESOURCE_KINDS.collection:
+                rc = get_collection_class(self.interface)
+            else: # None
+                rc = self.interface
+            discriminator = ('resource_representer', rc, cnt_type, rc_kind)
+            self.action(discriminator=discriminator, # pylint: disable=E1101
+                        callable=config.add_resource_representer,
+                        args=(rc, cnt_type),
+                        kw=dict(options=opts,
+                                mapping_options=mp_opts,
+                                _info=self.context.info),
+                        )
 
 
 class ICollectionViewDirective(IViewDirective):
@@ -261,67 +296,96 @@ def member_view(_context,
 
 
 class IRepresenterDirective(Interface):
-    for_ = \
-        Tokens(title=u"The resource classes or interfaces to use this "
-                      "representer with.",
-               required=True,
-               value_type=GlobalObject())
     content_type = \
-        GlobalObject(title=u"The (MIME) content type the representer manages.",
-                     required=True)
-    configuration_class = \
-        GlobalObject(title=u"Old-style configuration class for this "
-                            "representer.",
+        GlobalObject(title=u"The (MIME) content type for the representer "
+                            "to configure. If this is given, the "
+                            "'representer_class' option must not be given.",
                      required=False)
     representer_class = \
-        GlobalObject(title=u"Class to use for the representer. Only needed if "
-                            "a non-standard representer class is used.",
+        GlobalObject(title=u"Class to use for the representer.  If this is "
+                            "given, the 'content_type' option must not be "
+                            "given.",
                      required=False)
 
 
 class RepresenterDirective(GroupingContextDecorator):
+
+    implements(IConfigurationContext, IRepresenterDirective)
+
+    def __init__(self, context, content_type=None, representer_class=None):
+        if content_type is None and representer_class is None:
+            raise ConfigurationError('Must provide either "content_type" or '
+                                     '"representer_class" option.')
+        if not content_type is None and not representer_class is None:
+            raise ConfigurationError('Must not provide both "content_type" '
+                                     'and "representer_class" options.')
+        self.context = context
+        self.content_type = content_type
+        self.representer_class = representer_class
+        self.options = {}
+
+    def after(self):
+        discriminator = \
+            ('representer',
+             self.content_type or self.representer_class.content_type)
+        self.action(discriminator=discriminator) # pylint: disable=E1101
+        # Representers are created eagerly so the resource declarations can use
+        # them.
+        reg = get_current_registry()
+        config = Configurator(reg, package=self.context.package)
+        config.add_representer(content_type=self.content_type,
+                               representer_class=self.representer_class,
+                               options=self.options)
+
+
+class RESOURCE_KINDS(object):
+    member = 'member'
+    collection = 'collection'
+
+
+class IResourceRepresenterDirective(Interface):
+    content_type = \
+        GlobalObject(title=u"The (MIME) content type the representer manages.",
+                     required=True)
+    kind = \
+        Choice(values=(RESOURCE_KINDS.member, RESOURCE_KINDS.collection),
+               title=u"Specifies the kind of resource the representer should "
+                      "be used for ('member' or 'collection'). If this is "
+                      "not provided, the representer is used for both "
+                      "resource kinds.",
+               required=False)
+
+
+class ResourceRepresenterDirective(GroupingContextDecorator):
     """
     Grouping directive for registering a representer for a given resource(s) 
     and content type combination. Delegates the work to a
     :class:`everest.configuration.Configurator`.
     """
-    implements(IConfigurationContext, IRepresenterDirective)
+    implements(IConfigurationContext, IResourceRepresenterDirective)
 
-    def __init__(self, context, for_, content_type,
-                 configuration_class=None, representer_class=None):
+    def __init__(self, context, content_type, kind=None):
         self.context = context
-        self.for_ = for_
         self.content_type = content_type
-        self.configuration_class = configuration_class
-        self.representer_class = representer_class
+        self.kind = kind
         self.options = {}
         self.mapping_options = {}
 
     def after(self):
-        reg = get_current_registry()
-        config = Configurator(reg, package=self.context.package)
         mapping_options = \
             None if len(self.mapping_options) == 0 else self.mapping_options
         options = self.options
-        for rc in self.for_:
-            discriminator = ('representer', rc, self.content_type)
-            self.action(discriminator=discriminator, # pylint: disable=E1101
-                        callable=config.add_representer,
-                        args=(rc, self.content_type),
-                        kw=dict(configuration_class=self.configuration_class,
-                                representer_class=self.representer_class,
-                                options=options,
-                                mapping_options=mapping_options,
-                                _info=self.context.info))
+        self.context.representers[(self.content_type, self.kind)] = \
+                                                (options, mapping_options)
 
 
-class IRepresenterAttributeDirective(Interface):
+class IResourceRepresenterAttributeDirective(Interface):
     name = \
         TextLine(title=u"Name of the representer attribute.")
 
 
-class RepresenterAttributeDirective(GroupingContextDecorator):
-    implements(IConfigurationContext, IRepresenterAttributeDirective)
+class ResourceRepresenterAttributeDirective(GroupingContextDecorator):
+    implements(IConfigurationContext, IResourceRepresenterAttributeDirective)
 
     def __init__(self, context, name):
         self.context = context

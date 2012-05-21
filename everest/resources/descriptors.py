@@ -28,6 +28,15 @@ __all__ = ['attribute_alias',
            ]
 
 
+class CARDINALITY(object):
+    """
+    Cardinality constants for non-terminal resource attributes.
+    """
+    ONETOMANY = 'ONETOMANY'
+    MANYTOONE = 'MANYTOONE'
+    MANYTOMANY = 'MANYTOMANY'
+
+
 class attribute_base(object):
     """
     Abstract base class for all attribute descriptors.
@@ -36,8 +45,8 @@ class attribute_base(object):
       attribute.
     :ivar entity_attr: the entity attribute the descriptor references. May
       be *None*.
-    :ivar is_required: indicates that the controlled entity attribute is 
-      required by the entity. 
+    :ivar cardinality: indicates the cardinality of the relationship for 
+      non-terminal attributes. This is always `None` for terminal attributes. 
     :ivar int id: unique sequential numeric ID for this attribute. Since this
       ID is incremented each time a new resource attribute is declared,
       it can be used to establish a well-defined sorting order on all
@@ -48,13 +57,10 @@ class attribute_base(object):
 
     __id_gen = id_generator()
 
-    def __init__(self, attr_type, entity_attr, is_required):
-        if entity_attr is None and is_required:
-            raise ValueError('Required resource attributes need to reference '
-                             'an entity attribute.')
+    def __init__(self, attr_type, entity_attr, cardinality):
         self.attr_type = attr_type
         self.entity_attr = entity_attr
-        self.is_required = is_required
+        self.cardinality = cardinality
         self.id = self.__id_gen.next()
         self.resource_attr = None
 
@@ -97,12 +103,11 @@ class terminal_attribute(attribute_base):
     into any further for querying or serialization.
     """
 
-    def __init__(self, attr_type, entity_attr, is_required=False):
+    def __init__(self, attr_type, entity_attr):
         if not isinstance(attr_type, type):
             raise ValueError('The attribute type of a terminal attribute '
                              'must be a class.')
-        attribute_base.__init__(self, attr_type, entity_attr,
-                                is_required=is_required)
+        attribute_base.__init__(self, attr_type, entity_attr, None)
 
     def __get__(self, resource, resource_class):
         if resource is None:
@@ -121,8 +126,8 @@ class _relation_attribute(attribute_base):
     Base class for relation resource descriptors (i.e., descriptors managing
     a related member or collection resource).
     """
-    def __init__(self, attr_type,
-                 entity_attr=None, is_required=False, is_nested=False):
+    def __init__(self, attr_type, entity_attr=None,
+                 cardinality=None, is_nested=False):
         """
         :param bool is_nested: indicates if the URLs generated for this
             relation descriptor should be relative to the parent ("nested")
@@ -132,8 +137,7 @@ class _relation_attribute(attribute_base):
                 or IInterface in provided_by(attr_type)):
             raise ValueError('The attribute type of a member or collection '
                              ' attribute must be a class or an interface.')
-        attribute_base.__init__(self, attr_type, entity_attr,
-                                is_required=is_required)
+        attribute_base.__init__(self, attr_type, entity_attr, cardinality)
         self.is_nested = is_nested
 
     def __get__(self, resource, resource_class):
@@ -148,11 +152,11 @@ class member_attribute(_relation_attribute):
     Descriptor for declaring member attributes of a resource as attributes
     from its underlying entity.
     """
-    def __init__(self, attr_type,
-                 entity_attr=None, is_required=True, is_nested=False):
+    def __init__(self, attr_type, entity_attr=None,
+                 cardinality=CARDINALITY.MANYTOONE, is_nested=False):
         _relation_attribute.__init__(self, attr_type,
                                      entity_attr=entity_attr,
-                                     is_required=is_required,
+                                     cardinality=cardinality,
                                      is_nested=is_nested)
 
     def __get__(self, resource, resource_class):
@@ -183,7 +187,8 @@ class collection_attribute(_relation_attribute):
     Descriptor for declaring collection attributes of a resource as attributes
     from its underlying entity.
     """
-    def __init__(self, attr_type, entity_attr=None, is_required=False,
+    def __init__(self, attr_type, entity_attr=None,
+                 cardinality=CARDINALITY.ONETOMANY,
                  is_nested=True, backref=None):
         """
         :param str backref: attribute of the members of the target
@@ -191,7 +196,7 @@ class collection_attribute(_relation_attribute):
         """
         _relation_attribute.__init__(self, attr_type,
                                      entity_attr=entity_attr,
-                                     is_required=is_required,
+                                     cardinality=cardinality,
                                      is_nested=is_nested)
 
         self.backref = backref

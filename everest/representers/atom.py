@@ -9,13 +9,15 @@ Created on May 19, 2011.
 from everest.mime import AtomMime
 from everest.mime import XmlMime
 from everest.representers.base import ResourceRepresenter
+from everest.representers.mapping import Mapping
 from everest.representers.utils import get_mapping_registry
 from everest.representers.xml import XmlMappingRegistry
 from everest.representers.xml import XmlRepresentationGenerator
 from everest.representers.xml import XmlRepresenterConfiguration
-from everest.url import UrlPartsConverter
-from everest.representers.mapping import Mapping
+from everest.resources.base import Collection
+from everest.resources.base import Member
 from everest.resources.utils import provides_member_resource
+from everest.url import UrlPartsConverter
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AtomDataElementRegistry',
@@ -51,10 +53,6 @@ class AtomResourceRepresenter(ResourceRepresenter):
         return generator
 
 
-# Adapter creating representers from resource instances.
-resource_adapter = AtomResourceRepresenter.create_from_resource
-
-
 class AtomMapping(Mapping):
 
     # FIXME: Make the hypermedia type configurable. pylint: disable=W0511
@@ -63,7 +61,7 @@ class AtomMapping(Mapping):
     def map_to_data_element(self, resource):
         # We use the XML mapping for the content serialization.
         xml_mp_reg = get_mapping_registry(XmlMime)
-        xml_mp = xml_mp_reg.get_mapping(type(resource))
+        xml_mp = xml_mp_reg.find_or_create_mapping(type(resource))
         data_el = self.create_data_element_from_resource(resource)
         if provides_member_resource(resource):
             self.__map_member_to_data_element(data_el, resource, xml_mp)
@@ -143,19 +141,36 @@ class AtomMapping(Mapping):
         # Total results.
         tr_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'totalResults')
         setattr(coll_data_el, tr_tag, str(len(collection)))
-        # Start index.
-        si_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'startIndex')
-        setattr(coll_data_el, si_tag, str(collection.slice.start))
-        # Page size.
-        ps_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'itemsPerPage')
-        setattr(coll_data_el, ps_tag,
-                str(collection.slice.stop - collection.slice.start))
+        if not collection.slice is None:
+            # Start index.
+            si_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'startIndex')
+            setattr(coll_data_el, si_tag, str(collection.slice.start))
+            # Page size.
+            ps_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'itemsPerPage')
+            setattr(coll_data_el, ps_tag,
+                    str(collection.slice.stop - collection.slice.start))
 
 
 class AtomMappingRegistry(XmlMappingRegistry):
     #FIXME this override does not work
     NS_MAP = dict(opensearch=XML_NS_OPEN_SEARCH)
     mapping_class = AtomMapping
+
+    def _initialize(self):
+        # Create mappings for Member and Collection resource bases classes.
+        atom_opts = dict(xml_schema='everest:representers/atom.xsd',
+                         xml_ns='http://www.w3.org/2005/Atom',
+                         xml_prefix='atom')
+        mb_config = \
+            self.configuration_class(options=dict(atom_opts.items() +
+                                                  [('xml_tag', 'entry')]))
+        mb_mp = self.create_mapping(Member, mb_config)
+        self.set_mapping(mb_mp)
+        coll_config = \
+            self.configuration_class(options=dict(atom_opts.items() +
+                                                  [('xml_tag', 'feed')]))
+        coll_mp = self.create_mapping(Collection, coll_config)
+        self.set_mapping(coll_mp)
 
 
 AtomRepresenterConfiguration = XmlRepresenterConfiguration

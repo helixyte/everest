@@ -48,8 +48,6 @@ from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import MessageMember
-from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_member_class
 from everest.url import ResourceUrlConverter
 from pyramid.configuration import Configurator as PyramidConfigurator
 from pyramid.interfaces import IRequest
@@ -301,32 +299,45 @@ class Configurator(PyramidConfigurator):
         if expose:
             srvc.register(interface)
 
-    def add_representer(self, resource, content_type,
-                        configuration_class=None, representer_class=None,
-                        options=None, mapping_options=None,
-                        _info=u''):
+    def add_representer(self, content_type=None, representer_class=None,
+                        options=None, _info=u''):
+        if content_type is None and representer_class is None:
+            raise ValueError('Either content type or representer class must '
+                             'be provided.')
+        if not content_type is None and not representer_class is None:
+            raise ValueError('Either content type or representer class may '
+                             'be provided, but not both.')
         rpr_reg = self.get_registered_utility(IRepresenterRegistry)
+        if not representer_class is None:
+            rpr_reg.register_representer_class(representer_class)
+            mp_reg = rpr_reg.get_mapping_registry(
+                                            representer_class.content_type)
+        else:
+            mp_reg = rpr_reg.get_mapping_registry(content_type)
+        for name, value in options.iteritems():
+            mp_reg.configuration_class.set_default_option(name, value)
+
+    def add_resource_representer(self, resource, content_type,
+                                 options=None, mapping_options=None,
+                                 _info=u''):
         if IInterface in provided_by(resource):
             # If we got an interface, we register representers with the same
             # configuration for the registered member and collection resources.
-            rcs = [get_member_class(resource), get_collection_class(resource)]
+            rcs = [self.get_registered_utility(resource,
+                                               name='member-class'),
+                   self.get_registered_utility(resource,
+                                               name='collection-class')]
         else:
             if not issubclass(resource, Resource):
                 raise ValueError('Representers can only be registered for '
                                  'classes inheriting from the Resource base '
                                  'class.')
             rcs = [resource]
-        # Register the representer class, if given and not yet registered.
-        # FIXME: representer class registration should not be a side effect.
-        if not representer_class is None \
-           and not rpr_reg.is_registered_representer_class(representer_class):
-            rpr_reg.register_representer_class(representer_class)
-        # Prepare the representer configuration.
-        if configuration_class is None:
-            mp_reg = rpr_reg.get_mapping_registry(content_type)
-            configuration_class = mp_reg.configuration_class
-        rpr_config = configuration_class(options=options,
-                                         mapping_options=mapping_options)
+        rpr_reg = self.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(content_type)
+        rpr_config = \
+                mp_reg.configuration_class(options=options,
+                                           mapping_options=mapping_options)
         for rc in rcs:
             rpr_reg.register(rc, content_type, configuration=rpr_config)
 

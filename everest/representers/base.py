@@ -149,7 +149,7 @@ class ResourceRepresenter(Representer):
         "write_as_link" and "ignore" options of representer configuration
         objects (:class:`everest.representers.config.RepresenterConfiguration`).
         """
-        mp = self._mapping_registry.get_mapping(type(resource))
+        mp = self._mapping_registry.find_or_create_mapping(type(resource))
         if not mapping_options is None:
             mp = mp.clone(mapping_options=mapping_options)
         return mp.map_to_data_element(resource)
@@ -214,7 +214,7 @@ class RepresenterRegistry(object):
             raise ValueError('The representer class "%s" has already been '
                              'registered.' % representer_class)
         self.__rpr_classes[representer_class.content_type] = representer_class
-        # Create and store a data element registry for the registered resource 
+        # Create and hold a mapping registry for the registered resource 
         # representer class.
         mp_reg = representer_class.make_mapping_registry()
         self.__mp_regs[representer_class.content_type] = mp_reg
@@ -238,25 +238,40 @@ class RepresenterRegistry(object):
         if not issubclass(type(resource_class), type):
             raise ValueError('Representers can only be registered for '
                              'resource classes (got: %s).' % resource_class)
-        # Register customized data element class for the representer
+        if not content_type in self.__rpr_classes:
+            raise ValueError('No representer class has been registered for '
+                             'content type "%s".' % content_type)
+        # Register a customized mapping class for the representer
         # class registered for the given content type.
         rpr_cls = self.__rpr_classes[content_type]
         mp_reg = self.__mp_regs[content_type]
-        mp = mp_reg.create_mapping(resource_class, configuration)
-        mp_reg.set_mapping(mp)
+        mp = mp_reg.find_mapping(resource_class)
+        if mp is None:
+            # No mapping was registered yet for this resource class or any
+            # of its base classes; create a new one on the fly.
+            mp = mp_reg.create_mapping(resource_class, configuration)
+            mp_reg.set_mapping(mp)
+        elif not configuration is None:
+            # We have additional configuration for an existing mapping or 
+            # a configuration for a derived class.
+            mp = mp.clone(options=configuration.get_options(),
+                          mapping_options=configuration.get_mapping_options())
+            mp_reg.set_mapping(mp)
         # Register factory resource -> representer for the given resource
         # class, content type combination.
         self.__rpr_factories[(resource_class, content_type)] = \
                                             rpr_cls.create_from_resource
 
-    def get(self, resource, content_type):
+    def create(self, resource, content_type):
         """
-        Retrieves or creates a representer for the given combination of 
-        resource anc conten type.
+        Creates a representer for the given combination of resource and 
+        content type. This will also find representer factories that were
+        registered for a base class of the given resource.
         """
-        for rc_cls in type(resource).__mro__:
+        rc_cls = type(resource)
+        for base_rc_cls in rc_cls.__mro__:
             try:
-                rpr_fac = self.__rpr_factories[(rc_cls, content_type)]
+                rpr_fac = self.__rpr_factories[(base_rc_cls, content_type)]
             except KeyError:
                 rpr = None
             else:

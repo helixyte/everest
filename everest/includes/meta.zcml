@@ -23,24 +23,34 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             name="orm_repository"
             schema="everest.directives.IOrmRepositoryDirective"
             handler="everest.directives.orm_repository" />
-        <meta:directive
+        <meta:groupingDirective
             name="resource"
             schema="everest.directives.IResourceDirective"
-            handler="everest.directives.resource" />
+            handler="everest.directives.ResourceDirective" />
+        <meta:groupingDirective
+            name="representer"
+            usedIn="everest.directives.IResourceDirective"
+            schema="everest.directives.IResourceRepresenterDirective"
+            handler="everest.directives.ResourceRepresenterDirective" />
+        <meta:directive
+            name="option"
+            usedIn="everest.directives.IResourceRepresenterDirective"
+            schema="everest.directives.IOptionDirective"
+            handler="everest.directives.option" />
+        <meta:groupingDirective
+            name="attribute"
+            usedIn="everest.directives.IResourceRepresenterDirective"
+            schema="everest.directives.IResourceRepresenterAttributeDirective"
+            handler="everest.directives.ResourceRepresenterAttributeDirective" />
+        <meta:directive
+            name="option"
+            usedIn="everest.directives.IResourceRepresenterAttributeDirective"
+            schema="everest.directives.IOptionDirective"
+            handler="everest.directives.option" />
         <meta:groupingDirective
             name="representer"
             schema="everest.directives.IRepresenterDirective"
             handler="everest.directives.RepresenterDirective" />
-        <meta:groupingDirective
-            name="attribute"
-            usedIn="everest.directives.IRepresenterDirective"
-            schema="everest.directives.IRepresenterAttributeDirective"
-            handler="everest.directives.RepresenterAttributeDirective" />
-        <meta:directive
-            name="option"
-            usedIn="everest.directives.IRepresenterAttributeDirective"
-            schema="everest.directives.IOptionDirective"
-            handler="everest.directives.option" />
         <meta:directive
             name="option"
             usedIn="everest.directives.IRepresenterDirective"

@@ -4,8 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 1, 2011.
 """
-
 from everest.entities.base import Entity
+import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MyEntity',
@@ -41,11 +41,13 @@ class MyEntityParent(_MyEntity):
 
 class MyEntity(_MyEntity):
     DEFAULT_NUMBER = 1
+    DEFAULT_DATETIME = datetime.datetime.now()
 
     parent = None
     children = None
 
-    def __init__(self, parent=None, children=None, number=None, **kw):
+    def __init__(self, parent=None, children=None, number=None,
+                 date_time=None, **kw):
         _MyEntity.__init__(self, **kw)
         self.parent = parent
         if children is None:
@@ -54,6 +56,9 @@ class MyEntity(_MyEntity):
         if number is None:
             number = self.DEFAULT_NUMBER
         self.number = number
+        if date_time is None:
+            date_time = self.DEFAULT_DATETIME
+        self.date_time = date_time
 
     def __getitem__(self, name):
         if name == 'children':
