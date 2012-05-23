@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schema
-    targetNamespace="http://test.org/myentity"
+    targetNamespace="http://xml.test.org/tests"
     elementFormDefault="qualified"
     xmlns="http://www.w3.org/2001/XMLSchema"
-    xmlns:ent="http://test.org/myentity"
+    xmlns:tst="http://xml.test.org/tests"
     xmlns:rc="http://schemata.everest.org/resource"
 >
     <import
@@ -18,13 +18,13 @@
                 <choice>
                     <element
                         name="link"
-                        type="ent:MyEntityLinkType"
+                        type="tst:MyEntityLinkType"
                     >
                     </element>
                     <sequence>
-                        <element ref="ent:myentityparent">
+                        <element ref="tst:myentityparent">
                         </element>
-                        <element ref="ent:myentitychilds">
+                        <element ref="tst:myentitychildren">
                         </element>
                         <element
                             name="text"
@@ -47,14 +47,14 @@
     <complexType name="MyEntityCollectionType">
         <choice>
             <element
-                ref="ent:myentity"
+                ref="tst:myentity"
                 maxOccurs="unbounded"
                 minOccurs="0"
             >
             </element>
             <element
                 name="link"
-                type="ent:MyEntityCollectionLinkType"
+                type="tst:MyEntityCollectionLinkType"
                 maxOccurs="1"
                 minOccurs="0"
             >
@@ -92,7 +92,7 @@
                 <choice>
                     <element
                         name="link"
-                        type="ent:MyEntityParentLinkType"
+                        type="tst:MyEntityParentLinkType"
                     >
                     </element>
                     <element
@@ -108,14 +108,14 @@
     <complexType name="MyEntityParentCollectionType">
         <choice>
             <element
-                ref="ent:myentityparent"
+                ref="tst:myentityparent"
                 maxOccurs="unbounded"
                 minOccurs="0"
             >
             </element>
             <element
                 name="link"
-                type="ent:MyEntityParentCollectionLinkType"
+                type="tst:MyEntityParentCollectionLinkType"
                 maxOccurs="1"
                 minOccurs="0"
             >
@@ -153,7 +153,7 @@
                 <choice>
                     <element
                         name="link"
-                        type="ent:MyEntityChildLinkType"
+                        type="tst:MyEntityChildLinkType"
                     >
                     </element>
                     <sequence>
@@ -170,14 +170,14 @@
     <complexType name="MyEntityChildCollectionType">
         <choice>
             <element
-                ref="ent:myentitychild"
+                ref="tst:myentitychild"
                 maxOccurs="unbounded"
                 minOccurs="0"
             >
             </element>
             <element
                 name="link"
-                type="ent:MyEntityChildCollectionLinkType"
+                type="tst:MyEntityChildCollectionLinkType"
                 maxOccurs="1"
                 minOccurs="0"
             >
@@ -215,7 +215,7 @@
                 <choice>
                     <element
                         name="link"
-                        type="ent:MyEntityGrandchildLinkType"
+                        type="tst:MyEntityGrandchildLinkType"
                     >
                     </element>
                     <sequence>
@@ -224,7 +224,7 @@
                             type="string"
                         >
                         </element>
-                        <element ref="ent:myentitychild"></element>
+                        <element ref="tst:myentitychild"></element>
                     </sequence>
                 </choice>
             </extension>
@@ -234,14 +234,14 @@
     <complexType name="MyEntityGrandchildCollectionType">
         <choice>
             <element
-                ref="ent:myentitygrandchild"
+                ref="tst:myentitygrandchild"
                 maxOccurs="unbounded"
                 minOccurs="0"
             >
             </element>
             <element
                 name="link"
-                type="ent:MyEntityGrandchildCollectionLinkType"
+                type="tst:MyEntityGrandchildCollectionLinkType"
                 maxOccurs="1"
                 minOccurs="0"
             >
@@ -275,46 +275,46 @@
 
     <element
         name="myentity"
-        type="ent:MyEntityType"
+        type="tst:MyEntityType"
     >
     </element>
 
     <element
         name="myentitys"
-        type="ent:MyEntityCollectionType"
+        type="tst:MyEntityCollectionType"
     ></element>
 
     <element
         name="myentityparent"
-        type="ent:MyEntityParentType"
+        type="tst:MyEntityParentType"
     >
     </element>
 
     <element
         name="myentityparents"
-        type="ent:MyEntityParentCollectionType"
+        type="tst:MyEntityParentCollectionType"
     ></element>
 
     <element
         name="myentitychild"
-        type="ent:MyEntityChildType"
+        type="tst:MyEntityChildType"
     >
     </element>
 
     <element
-        name="myentitychilds"
-        type="ent:MyEntityChildCollectionType"
+        name="myentitychildren"
+        type="tst:MyEntityChildCollectionType"
     ></element>
 
     <element
         name="myentitygrandchild"
-        type="ent:MyEntityGrandchildType"
+        type="tst:MyEntityGrandchildType"
     >
     </element>
 
     <element
-        name="myentitygrandchilds"
-        type="ent:MyEntityGrandchildCollectionType"
+        name="myentitygrandchildren"
+        type="tst:MyEntityGrandchildCollectionType"
     ></element>
 
 </schema>

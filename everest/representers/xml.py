@@ -17,8 +17,11 @@ from everest.representers.dataelements import MemberDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.mapping import MappingRegistry
 from everest.representers.utils import get_mapping_registry
+from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.kinds import ResourceKinds
 from everest.resources.link import Link
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
@@ -29,8 +32,8 @@ from rfc3339 import rfc3339
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-import iso8601
 import datetime
+import iso8601
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DateTimeConverter',
@@ -114,7 +117,20 @@ class DateTimeConverter(object):
         return rfc3339(value)
 
 
+class BooleanConverter(object):
+    implements(IConverter)
+
+    @classmethod
+    def from_xml(cls, value):
+        return False if value == 'false' else True
+
+    @classmethod
+    def to_xml(cls, value):
+        return str(value).lower()
+
+
 XmlConverterRegistry.register(datetime.datetime, DateTimeConverter)
+XmlConverterRegistry.register(bool, BooleanConverter)
 
 
 class XmlRepresentationParser(RepresentationParser):
@@ -188,14 +204,15 @@ class XmlResourceRepresenter(ResourceRepresenter):
     def _make_representation_parser(self, stream, resource_class, **config):
         parser = XmlRepresentationParser(stream, resource_class)
         mp = self._mapping_registry.find_or_create_mapping(resource_class)
-        xml_schema = mp.get_config_option(XML_SCHEMA_OPTION)
+        xml_schema = mp.configuration.get_option(XML_SCHEMA_OPTION)
         parser.set_option('schema_location', xml_schema)
         parser.set_option('class_lookup',
                           self._mapping_registry.get_parsing_lookup())
         parser.configure(**config)
         return parser
 
-    def _make_representation_generator(self, stream, resource_class, **config):
+    def _make_representation_generator(self, stream, resource_class,
+                                       **config):
         generator = XmlRepresentationGenerator(stream, resource_class)
         generator.set_option('encoding', self.ENCODING)
         generator.configure(**config)
@@ -212,12 +229,20 @@ class _XmlDataElementMixin(object):
     def create_from_resource(cls, resource, ns_map=None): # ignore resource pylint:disable=W0613,W0221
         if ns_map is None:
             mp_reg = get_mapping_registry(XmlMime)
-            ns_map = mp_reg.get_namespace_map()
-        cls_xml_ns = cls.mapping.get_config_option(XML_NAMESPACE_OPTION)
-        cls_xml_tag = cls.mapping.get_config_option(XML_TAG_OPTION)
-        ns_map[None] = cls_xml_ns
+            ns_map = mp_reg.namespace_map
+        cls_xml_tag = cls.mapping.configuration.get_option(XML_TAG_OPTION)
+        if cls_xml_tag is None:
+            raise ValueError('No XML tag registered for mapped class '
+                             '%s.' % cls.mapping.mapped_class)
+        cls_xml_ns = \
+                cls.mapping.configuration.get_option(XML_NAMESPACE_OPTION)
+        if not cls_xml_ns is None:
+            tag = "{%s}%s" % (cls_xml_ns, cls_xml_tag)
+            # FIXME: is this really necessary?
+            ns_map[None] = cls_xml_ns
+        else:
+            tag = cls_xml_tag
         el_fac = XmlParserFactory.get_default().makeelement
-        tag = "{%s}%s" % (cls_xml_ns, cls_xml_tag)
         return el_fac(tag, nsmap=ns_map)
 
 
@@ -226,11 +251,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
 
     def get_nested(self, attr):
         # We only allow *one* child with the given name.
-        if not attr.namespace is None:
-            q_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
-        else:
-            xml_ns = self.mapping.get_config_option(XML_NAMESPACE_OPTION)
-            q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
+        q_tag = self.__get_q_tag(attr)
         child_it = self.iterchildren(q_tag)
         try:
             child = child_it.next()
@@ -271,8 +292,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             else:
                 val = None
         else:
-            xml_ns = self.mapping.get_config_option(XML_NAMESPACE_OPTION)
-            q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
+            q_tag = self.__get_q_tag(attr)
             val_el = getattr(self, q_tag, None)
             if not val_el is None:
                 val = XmlConverterRegistry.convert_from_xml(val_el.text,
@@ -286,11 +306,30 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             # The "special" id attribute.
             self.set('id', str(value))
         else:
-            xml_ns = self.mapping.get_config_option(XML_NAMESPACE_OPTION)
-            q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
+            q_tag = self.__get_q_tag(attr)
             xml_value = XmlConverterRegistry.convert_to_xml(value,
                                                             attr.value_type)
             setattr(self, q_tag, xml_value)
+
+    def __get_q_tag(self, attr):
+        if not attr.namespace is None:
+            q_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
+        else:
+            if attr.kind == ResourceAttributeKinds.TERMINAL:
+                xml_ns = \
+                  self.mapping.configuration.get_option(XML_NAMESPACE_OPTION)
+            else:
+                if attr.kind == ResourceAttributeKinds.MEMBER:
+                    attr_type = get_member_class(attr.value_type)
+                elif attr.kind == ResourceAttributeKinds.COLLECTION:
+                    attr_type = get_collection_class(attr.value_type)
+                mp = self.mapping.mapping_registry.find_mapping(attr_type)
+                xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
+            if not xml_ns is None:
+                q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
+            else:
+                q_tag = attr.repr_name
+        return q_tag
 
 
 class XmlCollectionDataElement(objectify.ObjectifiedElement,
@@ -310,7 +349,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
     @classmethod
     def create(cls, url, kind, relation=None, title=None, **options):
 #        mp_reg = get_mapping_registry(XmlMime)
-#        ns_map = mp_reg.get_namespace_map()
+#        ns_map = mp_reg.namespace_map
         xml_ns = options[XML_NAMESPACE_OPTION]
         el_fac = XmlParserFactory.get_default().makeelement
         tag = '{%s}link' % xml_ns
@@ -328,8 +367,8 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
         # Create the wrapping element.
         mp_reg = get_mapping_registry(XmlMime)
         mp = mp_reg.find_or_create_mapping(type(resource))
-        options = \
-            {XML_NAMESPACE_OPTION:mp.get_config_option(XML_NAMESPACE_OPTION)}
+        xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
+        options = {XML_NAMESPACE_OPTION:xml_ns}
         rc_data_el = mp.create_data_element_from_resource(resource)
         if provides_member_resource(resource):
             link_el = cls.create(resource_to_url(resource),
@@ -405,11 +444,11 @@ class XmlMappingRegistry(MappingRegistry):
     configuration_class = XmlRepresenterConfiguration
 
     #: Static namespace prefix: namespace map.
-    # FIXME: move the opensearch ns to atom.
-    NS_MAP = dict(xsi=XML_NS_XSI,
-                  opensearch=XML_NS_OPEN_SEARCH)
+    NS_MAP = dict(xsi=XML_NS_XSI)
 
-    __ns_map = None
+    def __init__(self):
+        MappingRegistry.__init__(self)
+        self.__ns_map = self.__class__.NS_MAP.copy()
 
     def _initialize(self):
         # Create and register the linked data element class.
@@ -418,22 +457,22 @@ class XmlMappingRegistry(MappingRegistry):
         self.set_mapping(mapping)
 
     def set_mapping(self, mapping):
-        # First, try to record the prefix.
-        ns_map = self.get_namespace_map()
-        xml_prefix = mapping.get_config_option(XML_PREFIX_OPTION)
-        xml_ns = mapping.get_config_option(XML_NAMESPACE_OPTION)
-        ns = ns_map.get(xml_prefix)
-        if ns is None:
-            # New prefix - register.
-            ns_map[xml_prefix] = xml_ns
-        elif xml_ns != ns:
-            raise ValueError('Prefix "%s" is already registered for namespace '
-                             '%s.' % (xml_prefix, ns))
+        # First, record the namespace and prefix, if necessary.
+        xml_ns = mapping.configuration.get_option(XML_NAMESPACE_OPTION)
+        if not xml_ns is None:
+            xml_prefix = mapping.configuration.get_option(XML_PREFIX_OPTION)
+            if not xml_prefix is None:
+                ns = self.__ns_map.get(xml_prefix)
+                if ns is None:
+                    # New prefix - register.
+                    self.__ns_map[xml_prefix] = xml_ns
+                elif xml_ns != ns:
+                    raise ValueError('Prefix "%s" is already registered for '
+                                     'namespace %s.' % (xml_prefix, ns))
         MappingRegistry.set_mapping(self, mapping)
 
-    def get_namespace_map(self):
-        if self.__ns_map is None:
-            self.__ns_map = self.NS_MAP.copy()
+    @property
+    def namespace_map(self):
         return self.__ns_map
 
     def get_parsing_lookup(self):
@@ -443,15 +482,15 @@ class XmlMappingRegistry(MappingRegistry):
             de_cls = reg_item[1].data_element_class
             if issubclass(de_cls, XmlLinkedDataElement):
                 continue
-            xml_ns = de_cls.mapping.get_config_option(XML_NAMESPACE_OPTION)
-            xml_tag = de_cls.mapping.get_config_option(XML_TAG_OPTION)
+            xml_ns = de_cls.mapping.configuration.get_option(XML_NAMESPACE_OPTION)
+            xml_tag = de_cls.mapping.configuration.get_option(XML_TAG_OPTION)
             ns_cls_map = lookup.get_namespace(xml_ns)
             if xml_tag in ns_cls_map:
                 raise ValueError('Duplicate tag "%s" in namespace "%s" '
                                  '(trying to register class %s)'
                                  % (xml_tag, xml_ns, de_cls))
             ns_cls_map[xml_tag] = de_cls
-        for ns in self.get_namespace_map().values():
+        for ns in self.__ns_map.values():
             ns_cls_map = lookup.get_namespace(ns)
             ns_cls_map['link'] = XmlLinkedDataElement
         return lookup

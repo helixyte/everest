@@ -9,25 +9,44 @@ from everest.mime import CsvMime
 from everest.mime import XmlMime
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.urlloader import LazyAttributeLoaderProxy
 from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
+from everest.representers.xml import XML_NAMESPACE_OPTION
+from everest.representers.xml import XML_PREFIX_OPTION
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityParent
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityParent
+from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_entity
 from everest.url import url_to_resource
+from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
+from everest.representers.xml import XML_TAG_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvRepresentationTestCase',
            'LazyAttribteLoaderProxyTestCase',
            'RepresenterConfigurationTestCase',
            ]
+
+# pylint: disable=W0232
+class IDerived(Interface):
+    pass
+# pylint: enable=W0232
+
+
+class DerivedMyEntity(MyEntity):
+    pass
+
+
+class DerivedMyEntityMember(MyEntityMember):
+    pass
 
 
 def _make_collection():
@@ -153,7 +172,7 @@ class AtomRepresentationTestCase(ResourceTestCase):
         rpr = as_representer(coll, AtomMime)
         rpr_str = rpr.to_string(coll)
         self.assert_not_equal(
-            rpr_str.find('<feed xmlns:ent="http://test.org/myentity"'), -1)
+            rpr_str.find('<feed xmlns:ent="http://xml.test.org/tests"'), -1)
 
 
 class RepresenterConfigurationTestCase(ResourceTestCase):
@@ -170,3 +189,58 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         # Now, the collection should be a link.
         self.assert_not_equal(
                 row_data[chld_field_idx].find('my-entities/0/children/'), -1)
+
+    def test_configure_existing(self):
+        bogus_namespace = 'http://bogus.org/foo'
+        my_options = {XML_NAMESPACE_OPTION:bogus_namespace}
+        self.config.add_resource_representer(MyEntityMember, XmlMime,
+                                             options=my_options)
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(XmlMime)
+        mp = mp_reg.find_mapping(MyEntityMember)
+        self.assert_equal(mp.configuration.get_option(XML_NAMESPACE_OPTION),
+                          bogus_namespace)
+
+    def test_configure_derived(self):
+        self.config.add_resource(IDerived, DerivedMyEntityMember,
+                                 DerivedMyEntity,
+                                 collection_root_name='my-derived-entities',
+                                 expose=False)
+        self.config.add_resource_representer(DerivedMyEntityMember, XmlMime)
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(XmlMime)
+        mp = mp_reg.find_mapping(DerivedMyEntityMember)
+        self.assert_true(mp.data_element_class.mapping is mp)
+        self.assert_equal(mp.configuration.get_option(XML_TAG_OPTION),
+                          'myentity')
+
+    def test_configure_derived_with_options(self):
+        self.config.add_resource(IDerived, DerivedMyEntityMember,
+                                 DerivedMyEntity,
+                                 collection_root_name='my-derived-entities',
+                                 expose=False)
+        bogus_namespace = 'http://bogus.org/foo'
+        bogus_prefix = 'foo'
+        my_options = {XML_NAMESPACE_OPTION:bogus_namespace,
+                      XML_PREFIX_OPTION:bogus_prefix}
+        self.config.add_resource_representer(DerivedMyEntityMember, XmlMime,
+                                             options=my_options)
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(XmlMime)
+        mp = mp_reg.find_mapping(DerivedMyEntityMember)
+        self.assert_true(mp.data_element_class.mapping is mp)
+        self.assert_equal(mp.configuration.get_option(XML_NAMESPACE_OPTION),
+                          bogus_namespace)
+        self.assert_equal(mp.configuration.get_option(XML_PREFIX_OPTION),
+                          bogus_prefix)
+        orig_mp = mp_reg.find_mapping(MyEntityMember)
+        self.assert_false(orig_mp is mp)
+        self.assert_true(orig_mp.data_element_class.mapping is orig_mp)
+        self.assert_not_equal(
+                    orig_mp.configuration.get_option(XML_NAMESPACE_OPTION),
+                    bogus_namespace)
+        self.assert_not_equal(
+                    orig_mp.configuration.get_option(XML_PREFIX_OPTION),
+                    bogus_prefix)
+
+

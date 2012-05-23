@@ -108,8 +108,6 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
         if ILinkedDataElement in provided_by(member_node):
             entity = self.__extract_link(member_node)
         else:
-            # Get non-terminal attributes that were put here by the children.
- #           member_data.update(self.__data.get(attribute_key, {}))
             entity_cls = get_entity_class(member_node.mapping.mapped_class)
             entity_data = {}
             nested_entity_data = {}
@@ -134,7 +132,6 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             self.__resource = mapped_cls.create_from_entity(entity)
         else:
             # Nested member. Store in parent data.
-#            parent_data = self.__data.setdefault(attribute_key[:-1], {})
             parent_data[attribute] = entity
 
     def visit_collection(self, attribute_key, attribute, collection_node,
@@ -153,7 +150,6 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             for ent in entities:
                 self.__resource.create_member(ent)
         else:
-#            parent_data = self.__data.setdefault(attribute_key[:-1], {})
             parent_data[attribute] = entities
 
     def __extract_link(self, linked_data_el):
@@ -203,7 +199,9 @@ class ResourceDataTreeTraverser(object):
             visitor.visit_member(attr_key, attr, member_node, member_data,
                                  parent_data, index=index)
         if not self._ignore_node(member_node, attr):
-            for mb_attr in self._mapping.attribute_iterator(attr_key):
+            node_type = self._get_type_from_node(member_node)
+            for mb_attr in self._mapping.attribute_iterator(node_type,
+                                                            attr_key):
                 if self._ignore_attribute(mb_attr):
                     continue
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
@@ -233,15 +231,18 @@ class ResourceDataTreeTraverser(object):
             visitor.visit_collection(attr_key, attr, collection_node,
                                      parent_data)
         if not self._ignore_node(collection_node, attr):
-            all_mb_data = self._get_node_members(collection_node)
-            for idx, mb_data in enumerate(all_mb_data):
-                self._traverse_member(attr_key, attr, mb_data, parent_data,
+            all_mb_nodes = self._get_node_members(collection_node)
+            for idx, mb_node in enumerate(all_mb_nodes):
+                self._traverse_member(attr_key, attr, mb_node, parent_data,
                                       visitor, index=idx)
         if self.__visit_post:
             visitor.visit_collection(attr_key, attr, collection_node,
                                      parent_data)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_type_from_node(self, node):
         raise NotImplementedError('Abstract method.')
 
     def _get_node_terminal(self, node, attr):
@@ -280,6 +281,9 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
                              '"%s".' % node)
         traverse_fn(attr_key, attr, node, parent_data, visitor)
 
+    def _get_type_from_node(self, node):
+        return node.mapping.mapped_class
+
     def _get_node_terminal(self, node, attr):
         return node.get_terminal(attr)
 
@@ -317,6 +321,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
                                       visitor)
         else:
             raise ValueError('Data must be a resource.')
+
+    def _get_type_from_node(self, node):
+        return type(node)
 
     def _get_node_terminal(self, node, attr):
         return getattr(node, attr.name)

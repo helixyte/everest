@@ -241,9 +241,7 @@ class RepresenterRegistry(object):
         if not content_type in self.__rpr_classes:
             raise ValueError('No representer class has been registered for '
                              'content type "%s".' % content_type)
-        # Register a customized mapping class for the representer
-        # class registered for the given content type.
-        rpr_cls = self.__rpr_classes[content_type]
+        # Create or update a mapping.
         mp_reg = self.__mp_regs[content_type]
         mp = mp_reg.find_mapping(resource_class)
         if mp is None:
@@ -252,13 +250,23 @@ class RepresenterRegistry(object):
             mp = mp_reg.create_mapping(resource_class, configuration)
             mp_reg.set_mapping(mp)
         elif not configuration is None:
-            # We have additional configuration for an existing mapping or 
-            # a configuration for a derived class.
-            mp = mp.clone(options=configuration.get_options(),
-                          mapping_options=configuration.get_mapping_options())
-            mp_reg.set_mapping(mp)
+            if resource_class is mp.mapped_class:
+                # We have additional configuration for an existing mapping. 
+                mp.configuration.update(configuration)
+            else:
+                # We have a derived class with additional configuration.
+                new_mp = mp_reg.create_mapping(resource_class,
+                                               configuration=mp.configuration)
+                new_mp.configuration.update(configuration)
+                mp_reg.set_mapping(new_mp)
+        elif not resource_class is mp.mapped_class:
+            # We have a derived class without additional configuration.
+            new_mp = mp_reg.create_mapping(resource_class,
+                                           configuration=mp.configuration)
+            mp_reg.set_mapping(new_mp)
         # Register factory resource -> representer for the given resource
         # class, content type combination.
+        rpr_cls = self.__rpr_classes[content_type]
         self.__rpr_factories[(resource_class, content_type)] = \
                                             rpr_cls.create_from_resource
 

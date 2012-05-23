@@ -315,7 +315,7 @@ class Configurator(PyramidConfigurator):
         else:
             mp_reg = rpr_reg.get_mapping_registry(content_type)
         for name, value in options.iteritems():
-            mp_reg.configuration_class.set_default_option(name, value)
+            mp_reg.set_default_config_option(name, value)
 
     def add_resource_representer(self, resource, content_type,
                                  options=None, mapping_options=None,

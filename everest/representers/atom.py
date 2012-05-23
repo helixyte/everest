@@ -25,6 +25,7 @@ __all__ = ['AtomDataElementRegistry',
            ]
 
 XML_NS_OPEN_SEARCH = 'http://a9.com/-/spec/opensearch/1.1/'
+XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
 
 
 class AtomResourceRepresenter(ResourceRepresenter):
@@ -152,14 +153,14 @@ class AtomMapping(Mapping):
 
 
 class AtomMappingRegistry(XmlMappingRegistry):
-    #FIXME this override does not work
+
     NS_MAP = dict(opensearch=XML_NS_OPEN_SEARCH)
     mapping_class = AtomMapping
 
     def _initialize(self):
         # Create mappings for Member and Collection resource bases classes.
         atom_opts = dict(xml_schema='everest:representers/atom.xsd',
-                         xml_ns='http://www.w3.org/2005/Atom',
+                         xml_ns=XML_NS_ATOM,
                          xml_prefix='atom')
         mb_config = \
             self.configuration_class(options=dict(atom_opts.items() +

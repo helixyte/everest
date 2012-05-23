@@ -36,7 +36,7 @@ class MappingTestCase(ResourceTestCase):
         self.assert_true(
             attrs['parent'].options.get(IGNORE_ON_WRITE_OPTION) is None)
         key = ('parent',)
-        parent_attrs = mp.get_attribute_map(key)
+        parent_attrs = mp.get_attribute_map(key=key)
         self.assert_true(
             parent_attrs['text'].options.get(IGNORE_ON_READ_OPTION) is None)
         self.assert_true(
@@ -49,7 +49,7 @@ class MappingTestCase(ResourceTestCase):
                 mapping_options={('parent', 'text'):
                                         {IGNORE_ON_READ_OPTION:True}})
         key = ('parent',)
-        parent_attrs = mp1.get_attribute_map(key)
+        parent_attrs = mp1.get_attribute_map(key=key)
         self.assert_true(
             parent_attrs['text'].options.get(IGNORE_ON_READ_OPTION) is True)
 

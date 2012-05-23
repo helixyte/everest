@@ -20,8 +20,6 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
-from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_member_class
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 
@@ -41,71 +39,66 @@ class Mapping(object):
     """
 
     def __init__(self, mapping_registry, mapped_class, data_element_class,
-                 options, mapping_options):
+                 configuration):
         """
-        :param options: configuration options dictionary.
-        :param mapping_options: mapping options dictionary (keys are attribute
-          names, values are dictionaries holding mapping option name : value 
-          pairs.
+        :param configuration: mapping configuration object.
         """
         self.__mp_reg = mapping_registry
         self.__mapped_cls = mapped_class
         self.__de_cls = data_element_class
-        # {generic config option name : option value}
-        self.__options = options
-        # {attr key : { attr name : {{option name : option value}}}
-        self.__mapping_options = mapping_options
+        self.__configuration = configuration
         #
         self.__mapped_attr_cache = {}
 
     def clone(self, options=None, mapping_options=None):
-        opts = self.__options.copy()
-        if not options is None:
-            opts.update(options)
-        mp_opts = self.__mapping_options.copy()
-        if not mapping_options is None:
-            for attr, opts in mapping_options.iteritems():
-                mp_opts[attr].update(opts)
-        return self.__class__(self.__mp_reg, self.__mapped_cls, self.__de_cls,
-                              opts, mp_opts)
+        copied_cfg = self.__configuration.copy()
+        upd_cfg = type(copied_cfg)(options=options,
+                                   mapping_options=mapping_options)
+        copied_cfg.update(upd_cfg)
+        return self.__class__(self.__mp_reg, self.__mapped_cls,
+                              self.__de_cls, copied_cfg)
 
-    def get_config_option(self, name):
+    @property
+    def configuration(self):
         """
-        Returns the value for the specified generic configuration option
-        from the underlying configuration object or `None`, if that option 
-        was not set.
+        Returns this mapping's configuration object.
         """
-        return self.__options.get(name)
+        # We clear the cache every time the configuration is accessed since
+        # we can not guarantee that it stays unchanged.
+        self.__mapped_attr_cache.clear()
+        return self.__configuration
 
-    def get_attribute_map(self, key=None):
+    def get_attribute_map(self, mapped_class=None, key=None):
         """
-        Returns a map of all attributes or of the nested attributes of an
-        attribute in this mapping.
+        Returns a map of all attributes of the given mapped class.
         
         :param key: tuple of attribute names specifying a path to a nested
           attribute in a resource tree. If this is not given, all attributes
           in this mapping will be returned.
         """
+        if mapped_class is None:
+            mapped_class = self.__mapped_cls
         if key is None:
             key = () # Top level access.
-        attrs = self.__mapped_attr_cache.get(key)
+        attrs = self.__mapped_attr_cache.get((mapped_class, key))
         if attrs is None:
-            attrs = self.__collect_mapped_attributes(key)
-            self.__mapped_attr_cache[key] = attrs
+            attrs = self.__collect_mapped_attributes(mapped_class, key)
+            self.__mapped_attr_cache[(mapped_class, key)] = attrs
         return attrs
 
-    def attribute_iterator(self, key=None):
-        attr_map = self.get_attribute_map(key=key)
+    def attribute_iterator(self, mapped_class=None, key=None):
+        attr_map = self.get_attribute_map(mapped_class=mapped_class, key=key)
         for attr in attr_map.itervalues():
             yield attr
 
-    def terminal_attribute_iterator(self, key=None):
-        for attr in self.attribute_iterator(key=key):
+    def terminal_attribute_iterator(self, mapped_class, key=None):
+        for attr in self.attribute_iterator(mapped_class, key=key):
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 yield attr
 
-    def nonterminal_attribute_iterator(self, key=None):
-        for attr in self.attribute_iterator(key=key):
+    def nonterminal_attribute_iterator(self, mapped_class=None, key=None):
+        for attr in self.attribute_iterator(mapped_class=mapped_class,
+                                            key=key):
             if attr.kind != ResourceAttributeKinds.TERMINAL:
                 yield attr
 
@@ -140,52 +133,30 @@ class Mapping(object):
     def data_element_class(self):
         return self.__de_cls
 
-    def __collect_mapped_attributes(self, key):
+    @property
+    def mapping_registry(self):
+        return self.__mp_reg
+
+    def __collect_mapped_attributes(self, mapped_class, key):
         new_mp_attrs = OrderedDict()
         if key == ():
             # Top level access - fetch resource attributes.
-            attrs = get_resource_class_attributes(self.__mapped_cls)
+            attrs = get_resource_class_attributes(mapped_class)
         else:
             # Nested access - fetch mapped attributes from other mapping.
-            child_attr_cls = self.__resolve(self.__mapped_cls, key)
-            mp = self.__mp_reg.find_or_create_mapping(child_attr_cls)
+            mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             attrs = mp.get_attribute_map()
         for attr in attrs.values():
-            mp_opts = self.__mapping_options[key + (attr.name,)]
+            attr_mp_opts = \
+                self.__configuration.get_mapping_options(key + (attr.name,))
             if key == ():
                 # Top level access - create new mapped attribute.
-                new_mp_attr = MappedAttribute(attr, options=mp_opts)
+                new_mp_attr = MappedAttribute(attr, options=attr_mp_opts)
             else:
                 # Nested access - clone mapped attribute with new options.
-                new_mp_attr = attr.clone(options=mp_opts)
+                new_mp_attr = attr.clone(options=attr_mp_opts)
             new_mp_attrs[attr.name] = new_mp_attr
         return new_mp_attrs
-
-    def __resolve(self, mapped_cls, attr_key):
-        if len(attr_key) > 1:
-            child_attr_name = attr_key[0]
-            tail = attr_key[1:]
-            child_attr = \
-                get_resource_class_attributes(mapped_cls)[child_attr_name]
-            child_mapped_cls = self.__get_type_from_attr(child_attr)
-            if child_mapped_cls is None:
-                raise ValueError('Can not resolve attribute for terminal '
-                                 'attribute.')
-            attr_cls = self.__resolve(child_mapped_cls, tail)
-        else:
-            child_attr = get_resource_class_attributes(mapped_cls)[attr_key[0]]
-            attr_cls = self.__get_type_from_attr(child_attr)
-        return attr_cls
-
-    def __get_type_from_attr(self, attr):
-        if attr.kind == ResourceAttributeKinds.MEMBER:
-            attr_type = get_member_class(attr.value_type)
-        elif attr.kind == ResourceAttributeKinds.COLLECTION:
-            attr_type = get_collection_class(attr.value_type)
-        else:
-            # For terminals, we do not descend any further.
-            attr_type = None
-        return attr_type
 
 
 class MappingRegistry(object):
@@ -197,13 +168,16 @@ class MappingRegistry(object):
     mapping_class = Mapping
 
     def __init__(self):
-        self.configuration_class = self.__class__.configuration_class.clone()
+        self.__configuration = self.configuration_class() # pylint: disable=E1102
         self.__mappings = {}
         self.__is_initialized = False
 
     def _initialize(self):
         # Implement this for static initializations.
         raise NotImplementedError('Abstract method.')
+
+    def set_default_config_option(self, name, value):
+        self.__configuration.set_option(name, value)
 
     def create_mapping(self, mapped_class, configuration=None):
         """
@@ -214,8 +188,9 @@ class MappingRegistry(object):
         :type configuration: :class:`RepresenterConfiguration`
         :returns: newly created instance of :class:`Mapping`
         """
-        if configuration is None:
-            configuration = self.configuration_class() # pylint: disable=E1102
+        cfg = self.__configuration.copy()
+        if not configuration is None:
+            cfg.update(configuration)
         provided_ifcs = provided_by(object.__new__(mapped_class))
         if IMemberResource in provided_ifcs:
             base_data_element_class = self.member_data_element_base_class
@@ -229,16 +204,15 @@ class MappingRegistry(object):
         name = "%s%s" % (mapped_class.__name__,
                          base_data_element_class.__name__)
         de_cls = type(name, (base_data_element_class,), {})
-        mp = self.mapping_class(self, mapped_class, de_cls,
-                                configuration.get_options(),
-                                configuration.get_mapping_options())
-        # Set the mapping attribute for the new data element class.
+        mp = self.mapping_class(self, mapped_class, de_cls, cfg)
+        # Set the data element class' mapping.
+        # FIXME: This looks like a hack.
         de_cls.mapping = mp
         return mp
 
     def set_mapping(self, mapping):
         """
-        Registers the given mapping.
+        Registers the given mapping, using the mapped class as key.
 
         :param mapping: mapping
         :type mapping: :class:`Mapping`

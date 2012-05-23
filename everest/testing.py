@@ -214,7 +214,7 @@ class ConfiguredTestCase(BaseTestCase):
         # Create and configure a new testing registry.
         reg = Registry('testing')
         self.config = Configurator(registry=reg,
-                               package=self.package_name)
+                                   package=self.package_name)
         if not self.ini_section_name is None:
             settings = self.ini.get_settings(self.ini_section_name)
             self.config.setup_registry(settings=settings)

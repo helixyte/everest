@@ -16,7 +16,7 @@
             value="everest:tests/testapp_db/MyEntity.xsd" />
         <option
             name="xml_ns"
-            value="http://test.org/myentity" />
+            value="http://xml.test.org/tests" />
         <option
             name="xml_prefix"
             value="ent" />
@@ -103,7 +103,7 @@
         >
             <option
                 name="xml_tag"
-                value="myentitychilds" />
+                value="myentitychildren" />
         </representer>
     </resource>
     <resource
@@ -126,7 +126,7 @@
         >
             <option
                 name="xml_tag"
-                value="myentitygrandchilds" />
+                value="myentitygrandchildren" />
         </representer>
     </resource>
 

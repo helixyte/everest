@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 8, 2012.
 """
 from collections import defaultdict
-import inspect
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresenterConfiguration',
@@ -41,7 +40,7 @@ class RepresenterConfiguration(object):
     data:
     
     1) Generic options. These can be any key:value pairs. Derived 
-       classes need to declare the names of valid option names in the 
+       classes need to declare valid options in the 
        :cvar:`_default_config_options` class variable. 
     
     2) Mapping options. These are kept in a dictionary mapping the mapped
@@ -61,42 +60,39 @@ class RepresenterConfiguration(object):
          Ignore this attribute when creating a representation. This is short
          for setting both ignore_on_read and ignore_on_write
             
-       Derived classes may add more allowed mapping options; the names of 
-       these additional options must be declared in the 
-       :cvar:`_default_mapping_options` class variable.
+       Derived classes may add more allowed mapping options; those must be 
+       declared in the :cvar:`_default_mapping_options` class variable.
     """
 
-    #: Default configuration option names.
+    #: Default configuration option names (immutable).
     _default_config_options = {}
-    #: Default mapping option names.
+    #: Default mapping option names (immutable).
     _default_mapping_options = {IGNORE_ON_READ_OPTION:None,
                                 IGNORE_ON_WRITE_OPTION:None,
                                 WRITE_AS_LINK_OPTION:None,
                                 REPR_NAME_OPTION:None}
 
     def __init__(self, options=None, mapping_options=None):
-        # FIXME: remove this when old-style configuration classes are gone
-        self.__options, self.__mapping_options = self.__build()
-        if not options is None:
-            for option_name, option_value in options.iteritems():
-                self.set_option(option_name, option_value)
-        if not mapping_options is None:
-            for attr_name, attr_mp_options in mapping_options.iteritems():
-                for mp_opt_name, mp_opt_value in attr_mp_options.iteritems():
-                    self.set_mapping_option(attr_name,
-                                            mp_opt_name, mp_opt_value)
+        # {generic config option name : option value}
+        self.__options = self._default_config_options.copy()
+        # {attr key : { attr name : {{option name : option value}}}
+        self.__mapping_options = defaultdict(self._default_config_options.copy)
+        self.__update(options, mapping_options)
 
-    @classmethod
-    def clone(cls):
+    def copy(self):
         """
-        Return a clone of this class so that the default options can be 
-        modified without harm.
+        Return a copy of this configuration.
         """
-        return type(cls)('Cloned%s' % cls.__name__, (cls,),
-                         dict(_default_config_options=
-                                        cls._default_config_options.copy(),
-                              _default_mapping_options=
-                                        cls._default_mapping_options.copy()))
+        return self.__class__(options=self.__options,
+                              mapping_options=self.__mapping_options)
+
+    def update(self, configuration):
+        """
+        Update this configuration with the given other configuration. Only
+        not-None values will be overridden.
+        """
+        self.__update(configuration.get_options(),
+                      configuration.get_mapping_options())
 
     def get_option(self, name):
         """
@@ -120,10 +116,6 @@ class RepresenterConfiguration(object):
         Returns a copy of the generic configuration options.
         """
         return self.__options.copy()
-
-    @classmethod
-    def set_default_option(cls, name, value):
-        cls._default_config_options[name] = value
 
     def set_mapping_option(self, attribute_name, option_name, option_value):
         self.__validate_mapping_option_name(option_name)
@@ -152,35 +144,17 @@ class RepresenterConfiguration(object):
             opts.update(self.__mapping_options[attribute_name])
         return opts
 
-    @classmethod
-    def set_default_mapping_option(self, name, value):
-        self._default_mapping_options[name] = value
-
-    def __build(self):
-        options = self._default_config_options.copy()
-        mapping_options = defaultdict(self._default_config_options.copy)
-        for base in self.__class__.__mro__[::-1]:
-            for attr, value in base.__dict__.items():
-                # Ignore protected/private/magic class attributes.
-                if attr.startswith('_'):
-                    continue
-                # Ignore attributes that are public (class) methods.
-                if inspect.isfunction(value) \
-                   or inspect.ismethoddescriptor(value):
-                    continue
-                # Validate all others.
-                self.__validate_option_name(attr)
-                # The mapping is updated rather than replaced.
-                if attr == _MAPPING_CONFIG_OPTION:
-                    # Check that all mapping option dictionaries have only
-                    # valid option keys, then update.
-                    for attr_name, attr_mp_options in value.iteritems():
-                        for mp_opt_name in attr_mp_options.keys():
-                            self.__validate_mapping_option_name(mp_opt_name)
-                        mapping_options[attr_name].update(attr_mp_options)
-                else:
-                    options[attr] = value
-        return options, mapping_options
+    def __update(self, opts, mp_opts):
+        if not opts is None:
+            for option_name, option_value in opts.iteritems():
+                if not option_value is None:
+                    self.set_option(option_name, option_value)
+        if not mp_opts is None:
+            for attr_name, attr_mp_options in mp_opts.iteritems():
+                for mp_opt_name, mp_opt_value in attr_mp_options.iteritems():
+                    if not mp_opt_value is None:
+                        self.set_mapping_option(attr_name,
+                                                mp_opt_name, mp_opt_value)
 
     def __validate_option_name(self, name):
         if not (name in self._default_config_options.keys()
