@@ -63,7 +63,11 @@ class AtomMapping(Mapping):
         # We use the XML mapping for the content serialization.
         xml_mp_reg = get_mapping_registry(XmlMime)
         xml_mp = xml_mp_reg.find_or_create_mapping(type(resource))
-        data_el = self.create_data_element_from_resource(resource)
+        ns_map = self.mapping_registry.namespace_map
+        atom_mp = self.mapping_registry.find_or_create_mapping(type(resource))
+        data_el = \
+            atom_mp.data_element_class.create_from_resource(resource,
+                                                            ns_map=ns_map)
         if provides_member_resource(resource):
             self.__map_member_to_data_element(data_el, resource, xml_mp)
         else:
@@ -134,10 +138,11 @@ class AtomMapping(Mapping):
             sort_terms = ''
         # Query.
         q_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'Query')
-        q_el = \
-            coll_data_el.makeelement(q_tag,
-                                     role='request', searchTerms=search_terms,
-                                     sortTerms=sort_terms)
+        q_el = coll_data_el.makeelement(
+                                q_tag,
+                                nsmap=self.mapping_registry.namespace_map,
+                                role='request', searchTerms=search_terms,
+                                sortTerms=sort_terms)
         coll_data_el.append(q_el)
         # Total results.
         tr_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'totalResults')
@@ -148,8 +153,8 @@ class AtomMapping(Mapping):
             setattr(coll_data_el, si_tag, str(collection.slice.start))
             # Page size.
             ps_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'itemsPerPage')
-            setattr(coll_data_el, ps_tag,
-                    str(collection.slice.stop - collection.slice.start))
+            setattr(coll_data_el, ps_tag, str(collection.slice.stop -
+                                              collection.slice.start))
 
 
 class AtomMappingRegistry(XmlMappingRegistry):
