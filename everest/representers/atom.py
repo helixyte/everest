@@ -173,5 +173,14 @@ class AtomMappingRegistry(XmlMappingRegistry):
         coll_mp = self.create_mapping(Collection, coll_config)
         self.set_mapping(coll_mp)
 
+    @property
+    def namespace_map(self):
+        atom_ns_map = \
+            getattr(XmlMappingRegistry, 'namespace_map').__get__(self)
+        xml_mp_reg = get_mapping_registry(XmlMime)
+        xml_ns_map = xml_mp_reg.namespace_map
+        atom_ns_map.update(xml_ns_map)
+        return atom_ns_map
+
 
 AtomRepresenterConfiguration = XmlRepresenterConfiguration
