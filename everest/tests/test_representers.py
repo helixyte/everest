@@ -191,15 +191,17 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
                 row_data[chld_field_idx].find('my-entities/0/children/'), -1)
 
     def test_configure_existing(self):
-        bogus_namespace = 'http://bogus.org/foo'
-        my_options = {XML_NAMESPACE_OPTION:bogus_namespace}
+        foo_namespace = 'http://bogus.org/foo'
+        foo_prefix = 'foo'
+        my_options = {XML_NAMESPACE_OPTION:foo_namespace,
+                      XML_PREFIX_OPTION:foo_prefix}
         self.config.add_resource_representer(MyEntityMember, XmlMime,
                                              options=my_options)
         rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_mapping(MyEntityMember)
         self.assert_equal(mp.configuration.get_option(XML_NAMESPACE_OPTION),
-                          bogus_namespace)
+                          foo_namespace)
 
     def test_configure_derived(self):
         self.config.add_resource(IDerived, DerivedMyEntityMember,
@@ -219,9 +221,9 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
                                  DerivedMyEntity,
                                  collection_root_name='my-derived-entities',
                                  expose=False)
-        bogus_namespace = 'http://bogus.org/foo'
+        foo_namespace = 'http://bogus.org/foo'
         bogus_prefix = 'foo'
-        my_options = {XML_NAMESPACE_OPTION:bogus_namespace,
+        my_options = {XML_NAMESPACE_OPTION:foo_namespace,
                       XML_PREFIX_OPTION:bogus_prefix}
         self.config.add_resource_representer(DerivedMyEntityMember, XmlMime,
                                              options=my_options)
@@ -230,7 +232,7 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         mp = mp_reg.find_mapping(DerivedMyEntityMember)
         self.assert_true(mp.data_element_class.mapping is mp)
         self.assert_equal(mp.configuration.get_option(XML_NAMESPACE_OPTION),
-                          bogus_namespace)
+                          foo_namespace)
         self.assert_equal(mp.configuration.get_option(XML_PREFIX_OPTION),
                           bogus_prefix)
         orig_mp = mp_reg.find_mapping(MyEntityMember)
@@ -238,7 +240,7 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         self.assert_true(orig_mp.data_element_class.mapping is orig_mp)
         self.assert_not_equal(
                     orig_mp.configuration.get_option(XML_NAMESPACE_OPTION),
-                    bogus_namespace)
+                    foo_namespace)
         self.assert_not_equal(
                     orig_mp.configuration.get_option(XML_PREFIX_OPTION),
                     bogus_prefix)

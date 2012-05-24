@@ -138,25 +138,32 @@ class Mapping(object):
         return self.__mp_reg
 
     def __collect_mapped_attributes(self, mapped_class, key):
-        new_mp_attrs = OrderedDict()
+        collected_mp_attrs = OrderedDict()
         if key == ():
-            # Top level access - fetch resource attributes.
-            attrs = get_resource_class_attributes(mapped_class)
+            # Top level access - fetch resource attributes and create new
+            # mapped attributes.
+            rc_attrs = get_resource_class_attributes(mapped_class)
+            for rc_attr in rc_attrs.itervalues():
+                attr_key = key + (rc_attr.name,)
+                attr_mp_opts = \
+                        self.__configuration.get_mapping_options(attr_key)
+                new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
+                collected_mp_attrs[rc_attr.name] = new_mp_attr
         else:
-            # Nested access - fetch mapped attributes from other mapping.
-            mp = self.__mp_reg.find_or_create_mapping(mapped_class)
-            attrs = mp.get_attribute_map()
-        for attr in attrs.values():
-            attr_mp_opts = \
-                self.__configuration.get_mapping_options(key + (attr.name,))
-            if key == ():
-                # Top level access - create new mapped attribute.
-                new_mp_attr = MappedAttribute(attr, options=attr_mp_opts)
+            # Nested access - fetch mapped attributes from mapping and
+            # clone.
+            if mapped_class is self.__mapped_cls:
+                mp = self
             else:
-                # Nested access - clone mapped attribute with new options.
-                new_mp_attr = attr.clone(options=attr_mp_opts)
-            new_mp_attrs[attr.name] = new_mp_attr
-        return new_mp_attrs
+                mp = self.__mp_reg.find_or_create_mapping(mapped_class)
+            mp_attrs = mp.get_attribute_map()
+            for mp_attr in mp_attrs.itervalues():
+                attr_key = key + (mp_attr.name,)
+                attr_mp_opts = \
+                        self.__configuration.get_mapping_options(attr_key)
+                clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
+                collected_mp_attrs[mp_attr.name] = clnd_mp_attr
+        return collected_mp_attrs
 
 
 class MappingRegistry(object):
@@ -256,12 +263,12 @@ class MappingRegistry(object):
 
     def get_mappings(self):
         """
-        Returns an iterator over all registered mapped class : mapping pairs.
+        Returns an iterator over all registered mappings.
 
         :returns: iterator yielding tuples containing a mapped class as the 
           first and a :class:`Mapping` instance as the second item.
         """
-        return self.__mappings.iteritems()
+        return self.__mappings.itervalues()
 
 
 class SimpleMappingRegistry(MappingRegistry):

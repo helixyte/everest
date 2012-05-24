@@ -247,23 +247,23 @@ class RepresenterRegistry(object):
         if mp is None:
             # No mapping was registered yet for this resource class or any
             # of its base classes; create a new one on the fly.
-            mp = mp_reg.create_mapping(resource_class, configuration)
-            mp_reg.set_mapping(mp)
+            new_mp = mp_reg.create_mapping(resource_class, configuration)
         elif not configuration is None:
             if resource_class is mp.mapped_class:
                 # We have additional configuration for an existing mapping. 
                 mp.configuration.update(configuration)
+                new_mp = mp
             else:
                 # We have a derived class with additional configuration.
                 new_mp = mp_reg.create_mapping(resource_class,
                                                configuration=mp.configuration)
                 new_mp.configuration.update(configuration)
-                mp_reg.set_mapping(new_mp)
         elif not resource_class is mp.mapped_class:
             # We have a derived class without additional configuration.
             new_mp = mp_reg.create_mapping(resource_class,
                                            configuration=mp.configuration)
-            mp_reg.set_mapping(new_mp)
+        # Store the new (or updated) mapping.
+        mp_reg.set_mapping(new_mp)
         # Register factory resource -> representer for the given resource
         # class, content type combination.
         rpr_cls = self.__rpr_classes[content_type]

@@ -138,9 +138,7 @@ class XmlRepresentationParser(RepresentationParser):
     def run(self):
         # Create an XML schema.
         schema_loc = self.get_option('schema_location')
-        class_lookup = self.get_option('class_lookup')
-        parser = XmlParserFactory.create(class_lookup,
-                                         schema_location=schema_loc)
+        parser = XmlParserFactory.create(schema_location=schema_loc)
         try:
             tree = objectify.parse(self._stream, parser)
         except etree.XMLSyntaxError, err:
@@ -164,21 +162,16 @@ class XmlParserFactory(object):
     __parser = None
 
     @classmethod
-    def create(cls, class_lookup, schema_location=None):
+    def create(cls, schema_location=None):
         if not schema_location is None:
             schema = cls.__get_xml_schema(schema_location)
             parser = objectify.makeparser(schema=schema)
         else:
             parser = objectify.makeparser()
-        parser.set_element_class_lookup(class_lookup)
+        # Get the class lookup from the mapping registry.
+        mp_reg = get_mapping_registry(XmlMime)
+        parser.set_element_class_lookup(mp_reg.parsing_lookup)
         return parser
-
-    @classmethod
-    def get_default(cls):
-        if cls.__parser is None:
-            mp_reg = get_mapping_registry(XmlMime)
-            cls.__parser = cls.create(mp_reg.get_parsing_lookup())
-        return cls.__parser
 
     @classmethod
     def __get_xml_schema(cls, xml_schema_path):
@@ -206,8 +199,6 @@ class XmlResourceRepresenter(ResourceRepresenter):
         mp = self._mapping_registry.find_or_create_mapping(resource_class)
         xml_schema = mp.configuration.get_option(XML_SCHEMA_OPTION)
         parser.set_option('schema_location', xml_schema)
-        parser.set_option('class_lookup',
-                          self._mapping_registry.get_parsing_lookup())
         parser.configure(**config)
         return parser
 
@@ -222,7 +213,7 @@ class XmlResourceRepresenter(ResourceRepresenter):
 class _XmlDataElementMixin(object):
     @classmethod
     def create(cls):
-        el_fac = XmlParserFactory.get_default().makeelement
+        el_fac = XmlParserFactory.create().makeelement
         return el_fac()
 
     @classmethod
@@ -242,7 +233,7 @@ class _XmlDataElementMixin(object):
             ns_map[None] = cls_xml_ns
         else:
             tag = cls_xml_tag
-        el_fac = XmlParserFactory.get_default().makeelement
+        el_fac = XmlParserFactory.create().makeelement
         return el_fac(tag, nsmap=ns_map)
 
 
@@ -351,7 +342,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
 #        mp_reg = get_mapping_registry(XmlMime)
 #        ns_map = mp_reg.namespace_map
         xml_ns = options[XML_NAMESPACE_OPTION]
-        el_fac = XmlParserFactory.get_default().makeelement
+        el_fac = XmlParserFactory.create().makeelement
         tag = '{%s}link' % xml_ns
         link_el = el_fac(tag)
         link_el.set('href', url)
@@ -449,6 +440,7 @@ class XmlMappingRegistry(MappingRegistry):
     def __init__(self):
         MappingRegistry.__init__(self)
         self.__ns_map = self.__class__.NS_MAP.copy()
+        self.__ns_lookup = None
 
     def _initialize(self):
         # Create and register the linked data element class.
@@ -464,6 +456,9 @@ class XmlMappingRegistry(MappingRegistry):
             if not xml_prefix is None:
                 ns = self.__ns_map.get(xml_prefix)
                 if ns is None:
+                    # Reset lookup.
+                    if not self.__ns_lookup is None:
+                        self.__ns_lookup = None
                     # New prefix - register.
                     self.__ns_map[xml_prefix] = xml_ns
                 elif xml_ns != ns:
@@ -473,24 +468,28 @@ class XmlMappingRegistry(MappingRegistry):
 
     @property
     def namespace_map(self):
-        return self.__ns_map
+        return self.__ns_map.copy()
 
-    def get_parsing_lookup(self):
+    @property
+    def parsing_lookup(self):
+        if self.__ns_lookup is None:
+            self.__ns_lookup = self.__create_parsing_lookup()
+        return self.__ns_lookup
+
+    def __create_parsing_lookup(self):
         lookup = etree.ElementNamespaceClassLookup(
                                 objectify.ObjectifyElementClassLookup())
-        for reg_item in self.get_mappings():
-            de_cls = reg_item[1].data_element_class
+        for mapping in self.get_mappings():
+            de_cls = mapping.data_element_class
             if issubclass(de_cls, XmlLinkedDataElement):
                 continue
-            xml_ns = de_cls.mapping.configuration.get_option(XML_NAMESPACE_OPTION)
-            xml_tag = de_cls.mapping.configuration.get_option(XML_TAG_OPTION)
+            xml_ns = mapping.configuration.get_option(XML_NAMESPACE_OPTION)
+            xml_tag = mapping.configuration.get_option(XML_TAG_OPTION)
             ns_cls_map = lookup.get_namespace(xml_ns)
             if xml_tag in ns_cls_map:
                 raise ValueError('Duplicate tag "%s" in namespace "%s" '
                                  '(trying to register class %s)'
                                  % (xml_tag, xml_ns, de_cls))
             ns_cls_map[xml_tag] = de_cls
-        for ns in self.__ns_map.values():
-            ns_cls_map = lookup.get_namespace(ns)
             ns_cls_map['link'] = XmlLinkedDataElement
         return lookup
