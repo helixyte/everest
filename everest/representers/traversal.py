@@ -29,10 +29,44 @@ __all__ = []
 class ResourceDataVisitor(object):
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      parent_data, index=None):
+        """
+        Visits a member node in a resource data tree.
+        
+        :param tuple attribute_key: tuple containing the attribute tokens
+          identifying the member node's position in the resource data tree.
+        :param attribute: mapped attribute holding information about the
+          member node's name (in the parent) and type etc.
+        :type attribute:
+          :class:`everest.representers.attributes.MappedAttribute`
+        :param member_node: the node holding resource data. This is either a
+          resource instance (when using a :class:`ResourceTreeTraverser` on
+          a tree of resources) or a data element instance (when using a
+          :class:`DataElementTreeTraverser` on a data element tree.
+        :param dict member_data: dictionary holding all member data
+          extracted during traversal (with mapped attributes as keys). This
+          will be empty during pre-order visits.
+        :param dict parent_data: dictionary holding all parent data extracted
+          during traversal (with mapped attributes as keys).
+        :param int index: this indicates a member node's index in a collection
+          parent node. If the parent node is a member node, it will be `None`.
+        """
         raise NotImplementedError('Abstract method.')
 
     def visit_collection(self, attribute_key, attribute, collection_node,
                          parent_data):
+        """
+        Visits a collection node in a resource data tree.
+        
+        :param tuple attribute_key: tuple containing the attribute tokens
+          identifying the collection node's position in the resource data 
+          tree.
+        :param attribute: mapped attribute holding information about the
+          collection node's name (in the parent) and type etc.
+        :type attribute:
+          :class:`everest.representers.attributes.MappedAttribute`
+        :param dict parent_data: dictionary holding all parent data extracted
+          during traversal (with mapped attributes as keys).
+        """
         raise NotImplementedError('Abstract method.')
 
 
@@ -56,9 +90,6 @@ class DataElementBuilderResourceTreeVisitor(ResourceDataVisitor):
                     mb_data_el.set_terminal(attr, value)
                 else:
                     mb_data_el.set_nested(attr, value)
-#            # Process non-terminal attributes put here by the children.
-#            for attr, value in self.__data.get(attribute_key, {}).iteritems():
-#                mb_data_el.set_nested(attr, value)
         if not index is None:
             # Member of a collection. Store with indexed key.
             self.__data[attribute_key + (index,)] = mb_data_el
@@ -67,7 +98,6 @@ class DataElementBuilderResourceTreeVisitor(ResourceDataVisitor):
             self.__data[()] = mb_data_el
         else:
             # Nested member. Store in parent data.
-#            parent_data = self.__data.setdefault(attribute_key[:-1], {})
             parent_data[attribute] = mb_data_el
 
     def visit_collection(self, attribute_key, attribute, collection_node,
@@ -84,7 +114,6 @@ class DataElementBuilderResourceTreeVisitor(ResourceDataVisitor):
         if attribute_key == (): # Top level.
             self.__data[()] = coll_data_el
         else:
-#            parent_data = self.__data.setdefault(attribute_key[:-1], {})
             parent_data[attribute] = coll_data_el
 
     @property
@@ -170,7 +199,10 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
 
 
 class ResourceDataTreeTraverser(object):
-    def __init__(self, mapping, root, visit_pre=True, visit_post=True):
+    """
+    Traverser for a resource data tree.
+    """
+    def __init__(self, mapping, root, visit_pre=False, visit_post=True):
         self._mapping = mapping
         self.__root = root
         self.__visit_pre = visit_pre
@@ -202,7 +234,7 @@ class ResourceDataTreeTraverser(object):
             node_type = self._get_type_from_node(member_node)
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
-                if self._ignore_attribute(mb_attr):
+                if self.__ignore_attribute(mb_attr, attr_key):
                     continue
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
                     # Terminal attribute - extract.
@@ -257,8 +289,26 @@ class ResourceDataTreeTraverser(object):
     def _ignore_node(self, node, attr):
         raise NotImplementedError('Abstract method.')
 
-    def _ignore_attribute(self, attr):
+    def _get_ignore_option(self, attr):
         raise NotImplementedError('Abstract method.')
+
+    def __ignore_attribute(self, attr, attr_key):
+        # Rules for ignoring attributes:
+        #  * always ignore when IGNORE_ON_XXX_OPTION is set to True
+        #  * always include when IGNORE_ON_XXX_OPTION is set to False
+        #  * also ignore member attributes when the length of the attribute
+        #    key is > 1 or the cardinality is not MANYTOONE
+        #  * also ignore collection attributes when the length of the 
+        #    attribute key is > 1 or the cardinality is not MANYTOMANY
+        do_ignore = self._get_ignore_option(attr)
+        if do_ignore is None:
+            if attr.kind == ResourceAttributeKinds.MEMBER:
+                do_ignore = len(attr_key) > 1 \
+                            or attr.cardinality != CARDINALITY.MANYTOONE
+            elif attr.kind == ResourceAttributeKinds.COLLECTION:
+                do_ignore = len(attr_key) > 1 \
+                            or attr.cardinality != CARDINALITY.MANYTOMANY
+        return do_ignore
 
 
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
@@ -296,19 +346,8 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     def _ignore_node(self, node, attr):
         return ILinkedDataElement in provided_by(node)
 
-    def _ignore_attribute(self, attr):
-        # Rules for ignoring attributes:
-        #  * always ignore when IGNORE_ON_READ_OPTION is set to True
-        #  * also ignore relation attributes when IGNORE_ON_READ_OPTION is 
-        #    None (=not set) and the cardinality is not MANYTOONE
-        #    (members) or not MANYTOMANY (collections).
-        return attr.options.get(IGNORE_ON_READ_OPTION) is True \
-               or (attr.options.get(IGNORE_ON_READ_OPTION) is None
-                   and ((attr.kind == ResourceAttributeKinds.MEMBER
-                        and attr.cardinality != CARDINALITY.MANYTOONE)
-                        or (attr.kind == ResourceAttributeKinds.COLLECTION
-                            and attr.cardinality != CARDINALITY.MANYTOMANY))
-                   )
+    def _get_ignore_option(self, attr):
+        return attr.options.get(IGNORE_ON_READ_OPTION)
 
 
 class ResourceTreeTraverser(ResourceDataTreeTraverser):
@@ -338,11 +377,5 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
         return not attr is None and \
                attr.options.get(WRITE_AS_LINK_OPTION) is True
 
-    def _ignore_attribute(self, attr):
-        return attr.options.get(IGNORE_ON_WRITE_OPTION) is True \
-               or (attr.options.get(IGNORE_ON_WRITE_OPTION) is None
-                   and ((attr.kind == ResourceAttributeKinds.MEMBER
-                        and attr.cardinality != CARDINALITY.MANYTOONE)
-                        or (attr.kind == ResourceAttributeKinds.COLLECTION
-                            and attr.cardinality != CARDINALITY.MANYTOMANY))
-                   )
+    def _get_ignore_option(self, attr):
+        return attr.options.get(IGNORE_ON_WRITE_OPTION)
