@@ -172,7 +172,7 @@ class AtomRepresentationTestCase(ResourceTestCase):
         rpr = as_representer(coll, AtomMime)
         rpr_str = rpr.to_string(coll)
         self.assert_not_equal(
-            rpr_str.find('<atom:feed xmlns:ent="http://xml.test.org/tests"'), -1)
+            rpr_str.find('<feed xmlns:ent="http://xml.test.org/tests"'), -1)
 
 
 class RepresenterConfigurationTestCase(ResourceTestCase):

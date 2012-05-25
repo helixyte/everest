@@ -26,6 +26,8 @@ __all__ = ['AtomDataElementRegistry',
 
 XML_NS_OPEN_SEARCH = 'http://a9.com/-/spec/opensearch/1.1/'
 XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
+XML_PREFIX_OPEN_SEARCH = 'opensearch'
+XML_PREFIX_ATOM = 'atom'
 
 
 class AtomResourceRepresenter(ResourceRepresenter):
@@ -140,9 +142,10 @@ class AtomMapping(Mapping):
         q_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'Query')
         q_el = coll_data_el.makeelement(
                                 q_tag,
-                                nsmap=self.mapping_registry.namespace_map,
-                                role='request', searchTerms=search_terms,
-                                sortTerms=sort_terms)
+                                attrib=dict(role='request',
+                                            searchTerms=search_terms,
+                                            sortTerms=sort_terms),
+                                nsmap=self.mapping_registry.namespace_map)
         coll_data_el.append(q_el)
         # Total results.
         tr_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'totalResults')
@@ -166,7 +169,7 @@ class AtomMappingRegistry(XmlMappingRegistry):
         # Create mappings for Member and Collection resource bases classes.
         atom_opts = dict(xml_schema='everest:representers/atom.xsd',
                          xml_ns=XML_NS_ATOM,
-                         xml_prefix='atom')
+                         xml_prefix=XML_PREFIX_ATOM)
         mb_config = \
             self.configuration_class(options=dict(atom_opts.items() +
                                                   [('xml_tag', 'entry')]))
@@ -185,6 +188,9 @@ class AtomMappingRegistry(XmlMappingRegistry):
         xml_mp_reg = get_mapping_registry(XmlMime)
         xml_ns_map = xml_mp_reg.namespace_map
         atom_ns_map.update(xml_ns_map)
+        # Make ATOM namespace the default.
+        del atom_ns_map[XML_PREFIX_ATOM]
+        atom_ns_map[None] = XML_NS_ATOM
         return atom_ns_map
 
 

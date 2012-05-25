@@ -456,7 +456,7 @@ class XmlMappingRegistry(MappingRegistry):
             if not xml_prefix is None:
                 ns = self.__ns_map.get(xml_prefix)
                 if ns is None:
-                    # Reset lookup.
+                    # Delete the cached lookup.
                     if not self.__ns_lookup is None:
                         self.__ns_lookup = None
                     # New prefix - register.
