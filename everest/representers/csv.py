@@ -9,6 +9,7 @@ Created on May 19, 2011.
 from __future__ import absolute_import # Makes the import below absolute
 from collections import OrderedDict
 from csv import Dialect
+from csv import QUOTE_ALL
 from csv import QUOTE_NONNUMERIC
 from csv import reader
 from csv import register_dialect
@@ -40,7 +41,7 @@ __all__ = ['CsvCollectionDataElement',
            ]
 
 
-class _DefaultDialect(Dialect): # ignore no __init__ pylint: disable=W0232
+class _DefaultExportDialect(Dialect): # ignore no __init__ pylint: disable=W0232
     """
     Default dialect to use when exporting resources to CSV.
     """
@@ -50,7 +51,20 @@ class _DefaultDialect(Dialect): # ignore no __init__ pylint: disable=W0232
     skipinitialspace = False
     lineterminator = '\n'
     quoting = QUOTE_NONNUMERIC
-register_dialect('default', _DefaultDialect)
+register_dialect('export', _DefaultExportDialect)
+
+
+class _DefaultImportDialect(Dialect): # ignore no __init__ pylint: disable=W0232
+    """
+    Default dialect to use when importing resources from CSV.
+    """
+    delimiter = ','
+    quotechar = '"'
+    doublequote = True
+    skipinitialspace = False
+    lineterminator = '\n'
+    quoting = QUOTE_ALL
+register_dialect('import', _DefaultImportDialect)
 
 
 class CsvRepresentationParser(RepresentationParser):
@@ -91,8 +105,9 @@ class CsvRepresentationParser(RepresentationParser):
                     link = CsvLinkedDataElement.create(value, attr.kind)
                     mb_data_el.set_nested(attr, link)
                 else:
-                    # Treat everything else as a terminal.
-                    mb_data_el.set_terminal(attr, value)
+                    # Treat everything else as a terminal. We do not need
+                    # to convert to a representation, so use set_raw.
+                    mb_data_el.set_raw(attr, value)
             if is_member_rpr:
                 result_data_el = mb_data_el
             else:
@@ -211,9 +226,11 @@ class CsvResourceRepresenter(ResourceRepresenter):
 
     content_type = CsvMime
 
-    #: The CSV dialect to use for reading and writing CSV data.
-    CSV_DIALECT = 'default'
-    #: The encoding to use for reading and writing CSV data.
+    #: The CSV dialect to use for exporting CSV data.
+    CSV_EXPORT_DIALECT = 'export'
+    #: The CSV dialect to use for importing CSV data.
+    CSV_IMPORT_DIALECT = 'import'
+    #: The encoding to use for exporting and importing CSV data.
     ENCODING = 'utf-8'
 
     @classmethod
@@ -222,20 +239,21 @@ class CsvResourceRepresenter(ResourceRepresenter):
 
     def _make_representation_parser(self, stream, resource_class, **config):
         parser = CsvRepresentationParser(stream, resource_class)
-        parser.set_option('dialect', self.CSV_DIALECT)
+        parser.set_option('dialect', self.CSV_IMPORT_DIALECT)
         parser.configure(**config)
         return parser
 
     def _make_representation_generator(self, stream, resource_class, **config):
         generator = CsvRepresentationGenerator(stream, resource_class)
-        generator.set_option('dialect', self.CSV_DIALECT)
+        generator.set_option('dialect', self.CSV_EXPORT_DIALECT)
         generator.set_option('encoding', self.ENCODING)
         generator.configure(**config)
         return generator
 
 
 class CsvMemberDataElement(SimpleMemberDataElement):
-    pass
+    def set_raw(self, attr, representation_value):
+        setattr(self, attr.repr_name, representation_value)
 
 
 class CsvCollectionDataElement(SimpleCollectionDataElement):

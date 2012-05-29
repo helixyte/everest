@@ -8,9 +8,10 @@ from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ["IDeSerializer",
-           "ISerializer",
-           "IRepresenter"
+__all__ = ['IDeSerializer',
+           'ISerializer',
+           'IRepresentationConverter',
+           'IRepresenter'
            ]
 
 # interfaces do not provide a constructor. pylint: disable=W0232
@@ -215,5 +216,17 @@ class IRepresenterRegistry(Interface):
     """
     Marker interface for the representer registry.
     """
+
+
+class IRepresentationConverter(Interface):
+    def from_representation(value):
+        """
+        Converts the given representation string to a Python value object.
+        """
+
+    def to_representation(value):
+        """
+        Converts the given Python value object into a representation string.
+        """
 
 # pylint: enable=W0232,E0213,E0211

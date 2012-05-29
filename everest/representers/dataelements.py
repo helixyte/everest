@@ -7,6 +7,7 @@ Data element classes.
 Created on Apr 25, 2012
 """
 from everest.representers.base import data_element_tree_to_string
+from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
@@ -136,10 +137,16 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
     __nested = None
 
     def get_terminal(self, attr):
-        return getattr(self, attr.repr_name, None)
+        rpr_val = getattr(self, attr.repr_name, None)
+        return SimpleConverterRegistry.convert_from_representation(
+                                                            rpr_val,
+                                                            attr.value_type)
 
     def set_terminal(self, attr, value):
-        setattr(self, attr.repr_name, value)
+        rpr_val = SimpleConverterRegistry.convert_to_representation(
+                                                            value,
+                                                            attr.value_type)
+        setattr(self, attr.repr_name, rpr_val)
 
     def get_nested(self, attr):
         nested = self.__get_nested()
@@ -261,22 +268,22 @@ class DataElementAttributeProxy(object):
 
     def __getattr__(self, name):
         try:
-            value = getattr(self.__data_element, name)
+            attr = self.__attr_map[name]
         except AttributeError:
             try:
-                attr = self.__attr_map[name]
+                value = getattr(self.__data_element, name)
             except KeyError:
                 raise AttributeError(name)
+        else:
+            if attr.kind == ResourceAttributeKinds.TERMINAL:
+                value = self.__data_element.get_terminal(attr)
             else:
-                if attr.kind == ResourceAttributeKinds.TERMINAL:
-                    value = self.__data_element.get_terminal(attr)
+                nested_data_el = self.__data_element.get_nested(attr)
+                if nested_data_el is None:
+                    value = None
+                elif attr.kind == ResourceAttributeKinds.MEMBER:
+                    value = DataElementAttributeProxy(nested_data_el)
                 else:
-                    nested_data_el = self.__data_element.get_nested(attr)
-                    if nested_data_el is None:
-                        value = None
-                    elif attr.kind == ResourceAttributeKinds.MEMBER:
-                        value = DataElementAttributeProxy(nested_data_el)
-                    else:
-                        value = [DataElementAttributeProxy(mb_el)
-                                 for mb_el in nested_data_el.get_members()]
+                    value = [DataElementAttributeProxy(mb_el)
+                             for mb_el in nested_data_el.get_members()]
         return value

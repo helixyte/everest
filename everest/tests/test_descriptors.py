@@ -90,8 +90,6 @@ class DescriptorsTestCase(ResourceTestCase):
                                       'testapp.ini')
     ini_section_name = 'app:testapp_db'
 
-    metadata = None
-
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
 

@@ -122,26 +122,27 @@ class RepresenterConfiguration(object):
         mp_options = self.__mapping_options.setdefault(attribute_name, {})
         mp_options[option_name] = option_value
 
-    def get_mapping_option(self, attribute_name, option_name):
+    def get_mapping_option(self, attribute_key, option_name):
         self.__validate_mapping_option_name(option_name)
-        return self.__mapping_options[attribute_name].get(option_name)
+        return self.__mapping_options[attribute_key].get(option_name)
 
-    def get_mapping_options(self, attribute_name=None):
+    def get_mapping_options(self, attribute_key=None):
         """
         Returns a copy of the mapping options for the given attribute name
         or a copy of all mapping options, if no attribute name is provided.
         All options that were not explicitly configured are given a default
         value of `None`.
 
+        :param tuple attribute_key: tuple specifying an attribute path.
         :returns: mapping options dictionary (including default `None` values)
         """
-        if attribute_name is None:
+        if attribute_key is None:
             opts = defaultdict(self._default_mapping_options.copy)
             for attr, mp_options in self.__mapping_options.iteritems():
                 opts[attr].update(mp_options)
         else:
             opts = self._default_mapping_options.copy()
-            opts.update(self.__mapping_options[attribute_name])
+            opts.update(self.__mapping_options[attribute_key])
         return opts
 
     def __update(self, opts, mp_opts):
