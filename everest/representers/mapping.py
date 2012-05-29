@@ -83,7 +83,7 @@ class Mapping(object):
         attrs = self.__mapped_attr_cache.get((mapped_class, key))
         if attrs is None:
             attrs = self.__collect_mapped_attributes(mapped_class, key)
-            self.__mapped_attr_cache[(mapped_class, key)] = attrs
+#            self.__mapped_attr_cache[(mapped_class, key)] = attrs
         return attrs
 
     def attribute_iterator(self, mapped_class=None, key=None):

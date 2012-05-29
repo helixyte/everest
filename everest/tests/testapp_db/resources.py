@@ -8,6 +8,7 @@ from everest.resources.base import Member
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
+from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
 from everest.tests.testapp_db.interfaces import IMyEntityParent
@@ -51,6 +52,8 @@ class MyEntityMember(Member):
 
 class MyEntityChildMember(Member):
     relation = 'http://test.org/myentity-child'
+    # Member.
+    parent = member_attribute(IMyEntity, 'parent')
     # Collection built from backreferences.
     children = collection_attribute(IMyEntityGrandchild,
                                     entity_attr='children',

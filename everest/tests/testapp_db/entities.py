@@ -60,11 +60,6 @@ class MyEntity(_MyEntity):
             date_time = self.DEFAULT_DATETIME
         self.date_time = date_time
 
-    def __getitem__(self, name):
-        if name == 'children':
-            return self.children
-        return super(MyEntity, self).__getitem__(name)
-
 
 class MyEntityChild(_MyEntity):
 
@@ -77,11 +72,6 @@ class MyEntityChild(_MyEntity):
         if children is None:
             children = []
         self.children = children
-
-    def __getitem__(self, name):
-        if name == 'children':
-            return self.children
-        return super(MyEntityChild, self).__getitem__(name)
 
 
 class MyEntityGrandchild(_MyEntity):

@@ -128,7 +128,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
         rpr_str = rpr.representation_from_data(data)
         lines = rpr_str.split(os.linesep)
         self.assert_equal(lines[0], '"id","parent","nested_parent",'
-                                    '"children.id","children.children",'
+                                    '"children.id","children.parent",'
+                                    '"children.children",'
                                     '"children.no_backref_children",'
                                     '"children.text","children.text_rc",'
                                     '"text","text_rc","number","date_time",'
