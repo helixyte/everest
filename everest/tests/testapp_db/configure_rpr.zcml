@@ -65,6 +65,18 @@
                     type="zope.configuration.fields.Bool" />
             </attribute>
         </representer>
+        <representer content_type="everest.mime.XmlMime">
+            <attribute name="parent">
+                <option
+                    name="repr_name"
+                    value="myentityparent" />
+            </attribute>
+            <attribute name="children">
+                <option
+                    name="repr_name"
+                    value="myentitychildren" />
+            </attribute>
+        </representer>
         <representer
             content_type="everest.mime.XmlMime"
             kind="member"
@@ -79,7 +91,7 @@
         >
             <option
                 name="xml_tag"
-                value="myentitys" />
+                value="myentities" />
         </representer>
     </resource>
 

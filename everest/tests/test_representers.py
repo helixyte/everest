@@ -28,6 +28,7 @@ from everest.url import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
 from everest.representers.xml import XML_TAG_OPTION
+from everest.tests.testapp_db.interfaces import IMyEntityChild
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvRepresentationTestCase',
@@ -53,8 +54,15 @@ def _make_collection():
     my_entity0 = create_entity(entity_id=0)
     my_entity1 = create_entity(entity_id=1)
     coll = get_root_collection(IMyEntity)
-    coll.create_member(my_entity0)
-    coll.create_member(my_entity1)
+    my_mb0 = coll.create_member(my_entity0)
+    my_mb1 = coll.create_member(my_entity1)
+    # FIXME: This should really be done automatically.
+    parent_coll = get_root_collection(IMyEntityParent)
+    parent_coll.add(my_mb0.parent)
+    parent_coll.add(my_mb1.parent)
+    children_coll = get_root_collection(IMyEntityChild)
+    children_coll.add(list(my_mb0.children)[0])
+    children_coll.add(list(my_mb1.children)[0])
     return coll
 
 

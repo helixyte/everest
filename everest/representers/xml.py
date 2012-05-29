@@ -198,10 +198,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         return child
 
     def set_nested(self, attr, data_element):
-        needs_custom_tag = not attr.namespace is None
-        if needs_custom_tag:
-            custom_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
-            data_element.tag = custom_tag
+        data_element.tag = self.__get_q_tag(attr)
         self.append(data_element)
 
     def get_terminal(self, attr):
