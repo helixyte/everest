@@ -75,7 +75,8 @@ class MappingTestCase(ResourceTestCase):
             mapping_options={('children',):{IGNORE_ON_WRITE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False},
                              ('children', 'children'):
-                                        {IGNORE_ON_WRITE_OPTION:False}
+                                        {IGNORE_ON_WRITE_OPTION:False,
+                                         WRITE_AS_LINK_OPTION:False}
                              })
         de = mp1.map_to_data_element(mb)
         prx = DataElementAttributeProxy(de)

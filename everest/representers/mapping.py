@@ -139,7 +139,7 @@ class Mapping(object):
 
     def __collect_mapped_attributes(self, mapped_class, key):
         collected_mp_attrs = OrderedDict()
-        if key == ():
+        if len(key) == 0:
             # Top level access - fetch resource attributes and create new
             # mapped attributes.
             rc_attrs = get_resource_class_attributes(mapped_class)
@@ -160,7 +160,11 @@ class Mapping(object):
             for mp_attr in mp_attrs.itervalues():
                 attr_key = key + (mp_attr.name,)
                 attr_mp_opts = \
-                        self.__configuration.get_mapping_options(attr_key)
+                    dict(((k, v)
+                          for (k, v) in
+                            self.__configuration \
+                                    .get_mapping_options(attr_key).iteritems()
+                          if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.name] = clnd_mp_attr
         return collected_mp_attrs

@@ -111,6 +111,7 @@ class CsvRepresentationTestCase(ResourceTestCase):
         self.assert_equal(lines[1][0], '0')
         self.assert_equal(lines[2][0], '1')
         row_data = lines[1].split(',')
+        # By default, members are represented as links.
         self.assert_not_equal(row_data[1].find('my-entity-parents/0/'), -1)
         # By default, collections are not processed.
         self.assert_equal(row_data[3], '""')
@@ -143,8 +144,10 @@ class CsvRepresentationTestCase(ResourceTestCase):
                                     '"text","text_rc","number","date_time",'
                                     '"parent_text"')
         row_data = lines[1].split(',')
-        # Third field should now be "children.id" and contains 0.
+        # Third field should now be "children.id" and contain 0.
         self.assert_equal(row_data[3], '0')
+        # Fifth field should be "children.parent" and contain a link.
+        self.assert_not_equal(row_data[4].find('my-entities/0/'), -1)
 
 
 class XmlRepresentationTestCase(ResourceTestCase):
