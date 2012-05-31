@@ -40,13 +40,8 @@ class MappedAttribute(object):
         # Process the "ignore" option..
         do_ignore = options.get(IGNORE_OPTION)
         if not do_ignore is None:
-            if not options.get(IGNORE_ON_READ_OPTION) in (None, do_ignore):
-                raise ValueError('Value for "ignore" option conflicts with '
-                                 'given value for "ignore_on_read" option.')
+            # The IGNORE option always overrides settings for IGNORE_ON_XXX.
             options[IGNORE_ON_READ_OPTION] = do_ignore
-            if not options.get(IGNORE_ON_WRITE_OPTION) in (None, do_ignore):
-                raise ValueError('Value for "ignore" option conflicts with '
-                                 'given value for "ignore_on_write" option.')
             options[IGNORE_ON_WRITE_OPTION] = do_ignore
         self.options = options
         #
