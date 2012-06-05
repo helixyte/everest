@@ -142,7 +142,8 @@ class RepresenterConfiguration(object):
                 opts[attr].update(mp_options)
         else:
             opts = self._default_mapping_options.copy()
-            opts.update(self.__mapping_options[attribute_key])
+            attr_opts = self.__mapping_options[attribute_key]
+            opts.update(attr_opts)
         return opts
 
     def __update(self, opts, mp_opts):

@@ -24,10 +24,12 @@ def create_entity(entity_id=0):
     my_entity_child = MyEntityChild()
     my_entity_child.id = entity_id
     my_entity_child.parent = my_entity
-    if len(my_entity.children) == 0:
-        # Tests that use the ORM will not need to go here.
-        my_entity.children.append(my_entity_child)
     my_entity_grandchild = MyEntityGrandchild()
     my_entity_grandchild.id = entity_id
-    my_entity_child.children.append(my_entity_grandchild)
+    my_entity_grandchild.parent = my_entity_child
+    # Tests that use the ORM will not need this.
+    if len(my_entity.children) == 0:
+        my_entity.children.append(my_entity_child)
+    if len(my_entity_child.children) == 0:
+        my_entity_child.children.append(my_entity_grandchild)
     return my_entity

@@ -84,15 +84,33 @@
                     value="true" 
                     type="zope.configuration.fields.Bool" />
             </attribute>
-            <attribute name="parent">
-                <option
-                    name="repr_name"
-                    value="myentityparent" />
-            </attribute>
             <attribute name="children">
                 <option
                     name="repr_name"
                     value="myentitychildren" />
+                <option 
+                    name="ignore"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+                <option 
+                    name="write_as_link"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="children.children">
+                <option 
+                    name="ignore"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+                <option 
+                    name="write_as_link"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="parent">
+                <option
+                    name="repr_name"
+                    value="myentityparent" />
             </attribute>
         </representer>
         <representer

@@ -21,6 +21,7 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.representers.traversal import AttributeKey
 
 
 __docformat__ = 'reStructuredText en'
@@ -79,7 +80,7 @@ class Mapping(object):
         if mapped_class is None:
             mapped_class = self.__mapped_cls
         if key is None:
-            key = () # Top level access.
+            key = AttributeKey(()) # Top level access.
         attrs = self.__mapped_attr_cache.get((mapped_class, key))
         if attrs is None:
             attrs = self.__collect_mapped_attributes(mapped_class, key)

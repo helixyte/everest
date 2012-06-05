@@ -157,6 +157,12 @@
                     >
                     </element>
                     <sequence>
+                        <element ref="tst:myentity">
+                        </element>
+                        <element ref="tst:myentitygrandchildren"
+                                 maxOccurs="unbounded"
+                                 minOccurs="0" >
+                        </element>
                         <element
                             name="text"
                             type="string"

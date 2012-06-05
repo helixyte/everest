@@ -29,6 +29,7 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
 from everest.representers.xml import XML_TAG_OPTION
 from everest.tests.testapp_db.interfaces import IMyEntityChild
+from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvRepresentationTestCase',
@@ -63,6 +64,9 @@ def _make_collection():
     children_coll = get_root_collection(IMyEntityChild)
     children_coll.add(list(my_mb0.children)[0])
     children_coll.add(list(my_mb1.children)[0])
+    grandchildren_coll = get_root_collection(IMyEntityGrandchild)
+    grandchildren_coll.add(list(list(my_mb0.children)[0].children)[0])
+    grandchildren_coll.add(list(list(my_mb1.children)[0].children)[0])
     return coll
 
 
@@ -160,7 +164,7 @@ class XmlRepresentationTestCase(ResourceTestCase):
         rpr_str = rpr.to_string(coll)
         self.assert_not_equal(rpr_str.find('<ent:myentityparent id="0">'), -1)
 
-    def test_xml_roundtrip(self):
+    def test_xml_with_children(self):
         coll = _make_collection()
         rpr = as_representer(coll, XmlMime)
         mapping_options = {('nested_parent',):{IGNORE_OPTION:True},
@@ -170,6 +174,33 @@ class XmlRepresentationTestCase(ResourceTestCase):
                                           WRITE_AS_LINK_OPTION:True},
                            }
         data = rpr.data_from_resource(coll, mapping_options=mapping_options)
+        rpr_str = rpr.representation_from_data(data)
+        reloaded_coll = rpr.from_string(rpr_str)
+        self.assert_equal(len(reloaded_coll), 2)
+
+    def test_xml_with_grandchildren(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, XmlMime)
+        mapping_options = \
+            {('children',):{IGNORE_OPTION:False,
+                            WRITE_AS_LINK_OPTION:False},
+             ('children', 'children'):{IGNORE_OPTION:False,
+                                       WRITE_AS_LINK_OPTION:False},
+             }
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
+        rpr_str = rpr.representation_from_data(data)
+        reloaded_coll = rpr.from_string(rpr_str)
+        self.assert_equal(len(reloaded_coll), 2)
+
+
+class XmlRepresentationZcmlConfiguredTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_rpr_customized.zcml'
+
+    def test_xml(self):
+        coll = _make_collection()
+        rpr = as_representer(coll, XmlMime)
+        data = rpr.data_from_resource(coll)
         rpr_str = rpr.representation_from_data(data)
         reloaded_coll = rpr.from_string(rpr_str)
         self.assert_equal(len(reloaded_coll), 2)
