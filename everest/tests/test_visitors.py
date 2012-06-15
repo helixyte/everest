@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
 """
-
+from everest.orm import OrderClauseList
 from everest.orm import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import SqlFilterSpecificationVisitor
@@ -16,7 +16,6 @@ from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
-from sqlalchemy.sql.expression import ClauseList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
@@ -456,22 +455,22 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes(self):
-        expected_expr = ClauseList(Person.name.asc(), Person.age.asc())
+        expected_expr = OrderClauseList(Person.name.asc(), Person.age.asc())
         expr = self._run_visitor('two-asc-asc')
         self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_left_reversed(self):
-        expected_expr = ClauseList(Person.name.desc(), Person.age.asc())
+        expected_expr = OrderClauseList(Person.name.desc(), Person.age.asc())
         expr = self._run_visitor('two-desc-asc')
         self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_right_reversed(self):
-        expected_expr = ClauseList(Person.name.asc(), Person.age.desc())
+        expected_expr = OrderClauseList(Person.name.asc(), Person.age.desc())
         expr = self._run_visitor('two-asc-desc')
         self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_both_reversed(self):
-        expected_expr = ClauseList(Person.name.desc(), Person.age.desc())
+        expected_expr = OrderClauseList(Person.name.desc(), Person.age.desc())
         expr = self._run_visitor('two-desc-desc')
         self.assert_equal(str(expr), str(expected_expr))
 
@@ -479,12 +478,14 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         # This emulates customized comparators which return clause lists
         # for .asc and .desc operations.
         old_asc = Person.name.asc
-        expected_expr = ClauseList(Person.id.asc(),
-                                   Person.name.asc(),
-                                   Person.age.asc())
+        expected_expr = OrderClauseList(Person.id.asc(),
+                                        Person.name.asc(),
+                                        Person.age.asc())
+        self.assert_equal(str(expected_expr),
+                          'person.id ASC, person.name ASC, person.age ASC')
         try:
-            Person.name.asc = lambda : ClauseList(Person.id.asc(),
-                                                  old_asc())
+            Person.name.asc = lambda : OrderClauseList(Person.id.asc(),
+                                                       old_asc())
             expr = self._run_visitor('two-asc-asc')
             self.assert_equal(str(expr), str(expected_expr))
         finally:

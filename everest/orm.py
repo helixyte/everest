@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
-
 from inspect import isdatadescriptor
 from sqlalchemy import String
 from sqlalchemy import func
@@ -16,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.sql.expression import cast
 from threading import Lock
+from sqlalchemy.sql.expression import ClauseList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_slug_expression',
@@ -115,6 +115,16 @@ reset_metadata = _MetaDataManager.reset
 #: The scoped session maker. Instantiate this to obtain a thread local
 #: session instance.
 Session = scoped_session(sessionmaker()) # extension=ZopeTransactionExtension()))
+
+
+class OrderClauseList(ClauseList):
+    """
+    Custom clause list for ORDER BY clauses.
+    
+    Suppresses the grouping parentheses which would trigger a syntax error.
+    """
+    def self_group(self, against=None):
+        return self
 
 
 def commit_veto(environ, status, headers): # unused pylint: disable=W0613

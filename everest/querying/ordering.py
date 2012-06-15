@@ -15,9 +15,9 @@ S. Merritt, "An Inverted Taxonomy of Sorting Algorithms" Comm. of the ACM,
 
 Created on Jul 5, 2011.
 """
-
 from everest.entities.attributes import EntityAttributeKinds
 from everest.entities.utils import slug_from_identifier
+from everest.orm import OrderClauseList
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationBuilder
 from everest.querying.base import SpecificationDirector
@@ -217,7 +217,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
                 clauses.extend(expr.clauses)
             else:
                 clauses.append(expr)
-        return ClauseList(*clauses)
+        return OrderClauseList(*clauses)
 
     def _asc_op(self, spec):
         return self.__build(spec.attr_name, 'asc')
