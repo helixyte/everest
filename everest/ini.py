@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 30, 2012.
 """
 from ConfigParser import SafeConfigParser
+from StringIO import StringIO
 import nose.plugins
 import os
 
@@ -61,6 +62,8 @@ class EverestIni(object):
 
     def __init__(self, ini_file_path=None):
         if ini_file_path is None:
+            # Revert to the .ini configured through the --app-ini-file option
+            # or initialize empty.
             self.__ini_parser = self.__check_ini_file()
         else:
             self.__ini_parser = self.__make_parser()
@@ -94,18 +97,20 @@ class EverestIni(object):
 
     @classmethod
     def __check_ini_file(cls):
-        if cls.ini_file_path is None:
-            raise ValueError('You need to set an application '
-                             'initialization file path (e.g., through '
-                             'the EverestAppNosePlugin).')
         if cls.__ini_parser is None:
             cls.__ini_parser = cls.__make_parser()
-            cls.__ini_parser.read(cls.ini_file_path)
+            if cls.ini_file_path is None:
+                # Initialize with empty ini file.
+                strm = StringIO('[DEFAULT]')
+                cls.__ini_parser.readfp(strm)
+            else:
+                cls.__ini_parser.read(cls.ini_file_path)
         return cls.__ini_parser
 
     @classmethod
     def __make_parser(cls):
-        return SafeConfigParser(
-                    defaults={'here':os.path.dirname(cls.ini_file_path)})
-
-
+        if not cls.ini_file_path is None:
+            defaults = {'here':os.path.dirname(cls.ini_file_path)}
+        else:
+            defaults = {}
+        return SafeConfigParser(defaults=defaults)
