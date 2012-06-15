@@ -15,7 +15,6 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
-from pyramid.traversal import find_root
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
@@ -178,8 +177,11 @@ class member_attribute(_relation_attribute):
         return member
 
     def __set__(self, resource, value):
-        self._set_nested(resource.get_entity(), self.entity_attr,
-                         value.get_entity())
+        if not value is None:
+            ent = value.get_entity()
+        else:
+            ent = None
+        self._set_nested(resource.get_entity(), self.entity_attr, ent)
 
 
 class collection_attribute(_relation_attribute):
@@ -194,15 +196,18 @@ class collection_attribute(_relation_attribute):
         :param str backref: attribute of the members of the target
           collection which back-references the current resource (parent).
         """
+        if entity_attr is None and backref is None:
+            raise ValueError('Either the entity_attr or the backref parameter '
+                             'to a collection attribute may be None, but '
+                             'not both.')
         _relation_attribute.__init__(self, attr_type,
                                      entity_attr=entity_attr,
                                      cardinality=cardinality,
                                      is_nested=is_nested)
-
         self.backref = backref
         self.__resource_backref = None
         self.__entity_backref = None
-        self.__need_backref_setup = True
+        self.__need_backref_setup = not backref is None
 
     def __get__(self, resource, resource_class):
         if self.__need_backref_setup:
@@ -214,75 +219,66 @@ class collection_attribute(_relation_attribute):
             parent = resource.get_entity()
             if not self.entity_attr is None:
                 children = self._get_nested(parent, self.entity_attr)
-                if children is None:
-                    coll = None
-                else:
-                    coll = self.__make_collection(resource, parent, children)
             else:
-                coll = self.__make_backref_collection(resource, parent)
+                children = None
+            coll = self.__make_collection(resource, parent, children)
         else:
             # Class level access.
             coll = self
         return coll
 
+# FIXME: Not sure if we want to support replacement of child containers.
+#    def __set__(self, resource, value):
+#        ent_coll = self._get_nested(resource.get_entity(), self.entity_attr)
+#        ent_coll_cls = type(ent_coll)
+#        new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])
+#        self._set_nested(resource.get_entity(), self.entity_attr, new_ent_coll)
+
     def __set__(self, resource, value):
-        ent_coll = self._get_nested(resource.get_entity(), self.entity_attr)
-        ent_coll_cls = type(ent_coll)
-        new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])
-        self._set_nested(resource.get_entity(), self.entity_attr, new_ent_coll)
+        raise NotImplementedError('Abstract method')
 
     def __setup_backref(self):
-        attr_mb_class = get_member_class(self.attr_type)
         if not self.backref is None:
-            backref_rc_descr = getattr(attr_mb_class,
-                                       self.backref, None)
-            if not backref_rc_descr is None:
-                self.__resource_backref = self.backref
-                self.__entity_backref = backref_rc_descr.entity_attr
-            else:
-                self.__entity_backref = self.backref
+            # We require the backref to be a resource attribute of the target.
+            attr_mb_class = get_member_class(self.attr_type)
+            backref_rc_descr = getattr(attr_mb_class, self.backref, None)
+            if backref_rc_descr is None:
+                raise ValueError('The "backref" attribute must be a '
+                                 'resource attribute declared on the '
+                                 'target of the descriptor.')
+            self.__resource_backref = self.backref
+            self.__entity_backref = backref_rc_descr.entity_attr
         self.__need_backref_setup = False
 
-    def __make_backref_collection(self, resource, parent):
-        # FIXME: hack alert pylint: disable=W0511
-        coll = get_root_collection(self.attr_type)
-        rel = Relationship(parent, None,
-                           backref=self.__entity_backref)
-        coll.filter = rel.specification
-        self.__check_parent(resource, coll)
-        return coll
-
     def __make_collection(self, resource, parent, children):
+        # Create a new collection.
         if not resource.__parent__ is None:
             # Find the resource repository used for this resource's parent
-            # and use it to create the new collection.
-            rc_repo = \
-                    ResourceRepository.get_repository(resource.__parent__)
+            # and use it to create a new collection.
+            rc_repo = ResourceRepository.get_repository(resource.__parent__)
             coll = rc_repo.get(self.attr_type)
         else:
             # This is a floating member, assume stage repository.
             coll = new_stage_collection(self.attr_type)
-        # All resource references are relationships; we need to set this 
-        # up on the aggregate.
+        # Set up entity access in the new collection.
+        agg_relationship = Relationship(parent, children,
+                                        backref=self.__entity_backref)
         agg = coll.get_aggregate()
-        rel = Relationship(parent, children,
-                           backref=self.__entity_backref)
-        agg.set_relationship(rel)
-        self.__check_parent(resource, coll)
-        return coll
-
-    def __check_parent(self, resource, coll):
+        agg.set_relationship(agg_relationship)
+        # Set up URL generation.
         if self.is_nested:
             # Make URL generation relative to the resource.
-            coll.set_parent(resource)
+            coll.__parent__ = resource
             # Set the collection's name to the descriptor's resource
             # attribute name.
             coll.__name__ = slug_from_identifier(self.resource_attr)
         else:
-            # Make URL generation relative to the app root.
-            rel = Relationship(resource, coll,
-                               backref=self.__resource_backref)
-            coll.set_parent(find_root(resource), relation=rel)
+            # Add a filter specification for the root collection through
+            # a relationship.
+            coll_relationship = Relationship(resource, coll,
+                                             backref=self.__resource_backref)
+            coll.set_relationship(coll_relationship)
+        return coll
 
 
 class attribute_alias(object):

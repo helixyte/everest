@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 19, 2011.
 """
-
 from everest.entities.attributes import EntityAttributeKinds
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationFactory
@@ -48,12 +47,6 @@ class OrmAttributeInspector(object):
     """
 
     __cache = {}
-
-    def __init__(self, orm_class):
-        """
-        :param orm_class: ORM class to inspect mapped attributes of.
-        """
-        self.__orm_class = orm_class
 
     @staticmethod
     def inspect(orm_class, attribute_name):
@@ -124,6 +117,6 @@ class OrmAttributeInspector(object):
             elif attr.property.direction == MANYTOONE:
                 kind = EntityAttributeKinds.ENTITY
             else:
-                raise ValueError('Unsupported relationship direction "%s".'
+                raise ValueError('Unsupported relationship direction "%s".' # pragma: no cover
                                  % attr.property.direction)
         return kind, target_type

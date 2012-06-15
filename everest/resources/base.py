@@ -64,8 +64,6 @@ class Resource(object):
     title = ''
     #: Detailed description of this resource.
     description = ''
-    #: Caching time in seconds or None for no caching.
-    cache_for = None
 
     def __init__(self):
         """
@@ -190,7 +188,8 @@ class Member(ResourceAttributeControllerMixin, Resource):
          `:class:everest.resources.representers.interfaces.IExplicitDataElement`
 
         """
-        for attr in data_element.mapping.attribute_iterator():
+        mp = data_element.mapping
+        for attr in mp.attribute_iterator():
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 other_value = data_element.get_terminal(attr)
                 if other_value is None:
@@ -198,8 +197,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
                     continue
                 else:
                     setattr(self, attr.name, other_value)
-            elif attr.kind in (ResourceAttributeKinds.MEMBER,
-                               ResourceAttributeKinds.COLLECTION):
+            else: # attr.kind MEMBER or COLLECTION
                 rc_data_el = data_element.get_nested(attr)
                 if rc_data_el is None:
                     # Optional attribute - continue.
@@ -216,12 +214,10 @@ class Member(ResourceAttributeControllerMixin, Resource):
                     setattr(self, attr.name, new_rc)
                 else:
                     if self_rc is None:
-                        new_rc = attr.value_type.create_from_data(rc_data_el)
+                        new_rc = mp.map_to_resource(rc_data_el)
                         setattr(self, attr.name, new_rc)
                     else:
                         self_rc.update_from_data(rc_data_el)
-            else:
-                raise ValueError('Invalid resource attribute kind.')
 
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
@@ -311,7 +307,7 @@ class Collection(Resource):
         # The underlying aggregate.
         self.__aggregate = aggregate
         #
-        self.__relation = None
+        self.__relationship = None
 
     @classmethod
     def create_from_aggregate(cls, aggregate):
@@ -324,20 +320,17 @@ class Collection(Resource):
         """
         return cls(aggregate)
 
-    def set_parent(self, parent, relation=None):
+    def set_relationship(self, relationship):
         """
-        Sets the traversal parent of this resource and optionally a relation
-        parent.
+        Sets the relation parent for this collection.
 
-        The traversal parent determines the URL, the relation parent affects
-        the expressions built for filter and order operations.
+        The relation parent affects the expressions built for filter and order 
+        operations.
 
-        :param parent: parent resource.
-        :param relatin: relation with another resource, encapsulated in a
-          :class:`everest.relation.Relation` instance.
+        :param relationship: relation with another resource, encapsulated in a
+          :class:`everest.relationship.Relationship` instance.
         """
-        self.__parent__ = parent
-        self.__relation = relation
+        self.__relationship = relationship
 
     def get_aggregate(self):
         """
@@ -455,29 +448,29 @@ class Collection(Resource):
         new_mb_els = []
         self_id_map = dict([(self_mb.id, self_mb) for self_mb in iter(self)])
         for member_el in data_element.get_members():
-            if ILinkedDataElement in provided_by(member_el):
-                # Found a link - do not do anything.
-                mb_id = member_el.get_id()
+#            if ILinkedDataElement in provided_by(member_el):
+#                # Found a link - do not do anything.
+#                mb_id = member_el.get_id()
+#            else:
+            mb_id = member_el.get_terminal(id_attr)
+            if mb_id is None:
+                # New data element without an ID - queue for adding.
+                new_mb_els.append(member_el)
+                continue
             else:
-                mb_id = member_el.get_terminal(id_attr)
-                if mb_id is None:
-                    # New data element without an ID - queue for adding.
-                    new_mb_els.append(member_el)
-                    continue
+                self_mb = self_id_map.get(mb_id)
+                if not self_mb is None:
+                    # Found an existing member - update.
+                    self_mb.update_from_data(member_el)
                 else:
-                    self_mb = self_id_map.get(mb_id)
-                    if not self_mb is None:
-                        # Found an existing member - update.
-                        self_mb.update_from_data(member_el)
-                    else:
-                        # New data element with a new ID. This is suspicious.
-                        raise ValueError('New member data should not provide '
-                                         'an ID attribute.')
+                    # New data element with a new ID. This is suspicious.
+                    raise ValueError('New member data should not provide '
+                                     'an ID attribute.')
             update_ids.add(mb_id)
         # Before adding any new members, check for delete operations.
         for self_mb in iter(self):
             if not self_mb.id in update_ids:
-                # Found an existing member ID that was not supplierd with
+                # Found an existing member ID that was not supplied with
                 # the update data- remove.
                 self.remove(self_mb)
         # Now, add new members.
@@ -487,27 +480,30 @@ class Collection(Resource):
             self.add(new_member)
 
     def _get_filter(self):
-        if self.__relation is None:
+        if self.__relationship is None:
             filter_spec = self._filter_spec
         else:
-            # If we have nesting information, we need to prepend the
-            # relation specification to the current filter specification.
+            # Prepend the relationship specification to the current filter 
+            # specification.
             if self._filter_spec is None:
-                filter_spec = self.__relation.specification
+                filter_spec = self.__relationship.specification
             else:
                 spec_fac = get_filter_specification_factory()
-                filter_spec = \
-                    spec_fac.create_conjunction(self.__relation.specification,
-                                                self._filter_spec)
+                filter_spec = spec_fac.create_conjunction(
+                                            self.__relationship.specification,
+                                            self._filter_spec)
         return filter_spec
 
     def _set_filter(self, filter_spec):
-        # Translate to entity filter expression before passing on to the
-        # aggregate.
-        visitor = ResourceToEntityFilterSpecificationVisitor(
-                                                    get_member_class(self))
-        filter_spec.accept(visitor)
-        self.__aggregate.filter = visitor.expression
+        if not filter_spec is None:
+            # Translate to entity filter expression before passing on to the
+            # aggregate.
+            visitor = ResourceToEntityFilterSpecificationVisitor(
+                                                        get_member_class(self))
+            filter_spec.accept(visitor)
+            self.__aggregate.filter = visitor.expression
+        else:
+            self.__aggregate.filter = None
         self._filter_spec = filter_spec
 
     filter = property(_get_filter, _set_filter)
@@ -540,15 +536,13 @@ class Collection(Resource):
         """
         agg = self.__aggregate.clone()
         clone = self.create_from_aggregate(agg)
-        clone.set_parent(self.__parent__, self.__relation)
+        clone.__parent__ = self.__parent__
+        clone.set_relationship(self.__relationship)
         # Pass filter and order specs explicitly (may differ from the ones
         # at the aggregate level).
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         return clone
-
-    def _format_name(self, name):
-        return unicode(name)
 
 
 class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):

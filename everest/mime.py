@@ -18,14 +18,17 @@ from everest.interfaces import IHtmlMime
 from everest.interfaces import IHtmlRequest
 from everest.interfaces import IJsonMime
 from everest.interfaces import IJsonRequest
+from everest.interfaces import IMime
 from everest.interfaces import ITextPlainMime
 from everest.interfaces import IXlsMime
 from everest.interfaces import IXlsRequest
 from everest.interfaces import IXmlMime
 from everest.interfaces import IXmlRequest
-from everest.interfaces import IZipRequest
 from everest.interfaces import IZipMime
-from zope.interface import implements # pylint: disable=E0611,F0401
+from everest.interfaces import IZipRequest
+from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.utils import BidirectionalLookup
 
 __docformat__ = "reStructuredText en"
 __all__ = ['JSON_MIME',
@@ -45,10 +48,14 @@ __all__ = ['JSON_MIME',
 class MimeTypeRegistry(object):
 
     __mime_string_map = {}
-    __file_extension_map = {}
+    __file_extension_map = BidirectionalLookup()
 
     @classmethod
     def register(cls, mime_type):
+        if not [ifc for ifc in provided_by(mime_type)
+                if issubclass(ifc, IMime)]:
+            raise ValueError('MIME type to register must implement the '
+                             'IMime interface.')
         if mime_type.mime_string in cls.__mime_string_map:
             raise ValueError('Duplicate MIME string detected.')
         if mime_type.file_extension in cls.__file_extension_map:
@@ -68,15 +75,21 @@ class MimeTypeRegistry(object):
     def get_type_for_string(cls, mime_string):
         return cls.__mime_string_map[mime_string]
 
+    @classmethod
+    def get_type_for_extension(cls, file_extension):
+        return cls.__file_extension_map[file_extension]
+
 
 register_mime_type = MimeTypeRegistry.register
 get_registered_mime_strings = MimeTypeRegistry.get_strings
 get_registered_mime_types = MimeTypeRegistry.get_types
 get_registered_mime_type_for_string = MimeTypeRegistry.get_type_for_string
+get_registered_mime_type_for_extension = \
+                                    MimeTypeRegistry.get_type_for_extension
 
 
 class JsonMime(object):
-    implements(IJsonMime)
+    class_provides(IJsonMime)
     mime_string = 'application/json'
     file_extension = '.json'
 
@@ -86,7 +99,7 @@ register_mime_type(JsonMime)
 
 
 class AtomMime(object):
-    implements(IAtomMime)
+    class_provides(IAtomMime)
     mime_string = 'application/atom+xml'
     file_extension = '.atom'
 
@@ -96,28 +109,28 @@ register_mime_type(AtomMime)
 
 
 class AtomFeedMime(AtomMime):
-    implements(IAtomFeedMime)
+    class_provides(IAtomFeedMime)
     mime_string = 'application/atom+xml;type=feed'
 
 ATOM_FEED_MIME = AtomFeedMime.mime_string
 
 
 class AtomEntryMime(AtomMime):
-    implements(IAtomEntryMime)
+    class_provides(IAtomEntryMime)
     mime_string = 'application/atom+xml;type=entry'
 
 ATOM_ENTRY_MIME = AtomFeedMime.mime_string
 
 
 class AtomServiceMime(AtomMime):
-    implements(IAtomServiceMime)
+    class_provides(IAtomServiceMime)
     mime_string = 'application/atomsvc+xml'
 
 ATOM_SERVICE_MIME = AtomFeedMime.mime_string
 
 
 class XmlMime(object):
-    implements(IXmlMime)
+    class_provides(IXmlMime)
     mime_string = 'application/xml'
     file_extension = '.xml'
 
@@ -127,7 +140,7 @@ register_mime_type(XmlMime)
 
 
 class CsvMime(object):
-    implements(ICsvMime)
+    class_provides(ICsvMime)
     mime_string = 'application/csv'
     file_extension = '.csv'
 
@@ -137,7 +150,7 @@ register_mime_type(CsvMime)
 
 
 class HtmlMime(object):
-    implements(IHtmlMime)
+    class_provides(IHtmlMime)
     mime_string = 'text/html'
     file_extension = '.html'
 
@@ -147,7 +160,7 @@ register_mime_type(HtmlMime)
 
 
 class TextPlainMime(object):
-    implements(ITextPlainMime)
+    class_provides(ITextPlainMime)
     mime_string = 'text/plain'
     file_extension = '.txt'
 
@@ -157,7 +170,7 @@ register_mime_type(TextPlainMime)
 
 
 class XlsMime(object):
-    implements(IXlsMime)
+    class_provides(IXlsMime)
     mime_string = 'application/vnd.xls'
     file_extension = '.xls'
 
@@ -167,7 +180,7 @@ register_mime_type(XlsMime)
 
 
 class ZipMime(object):
-    implements(IZipMime)
+    class_provides(IZipMime)
     mime_string = 'application/zip'
     file_extension = '.zip'
 

@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 22, 2011.
 """
-
 from everest.messaging import IUserMessageEventNotifier
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooMember
@@ -13,7 +12,8 @@ from everest.views.putmember import PutMemberView
 from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['UserMessagePostCollectionView',
+__all__ = ['UserMessagePutMemberView',
+           'UserMessagePostCollectionView',
            ]
 
 
@@ -37,3 +37,32 @@ class UserMessagePutMemberView(PutMemberView):
 
     def _process_request_data(self, data):
         return dict(context=data)
+
+
+class _ExtractDataExceptionViewMixin(object):
+    def _extract_request_data(self):
+        raise ValueError()
+
+class _ProcessDataExceptionViewMixin(object):
+    def _process_request_data(self, data): # pylint: disable=W0613
+        raise ValueError()
+
+
+class ExceptionPutMemberView(_ExtractDataExceptionViewMixin, PutMemberView):
+    pass
+
+
+class ExceptionPostCollectionView(_ProcessDataExceptionViewMixin,
+                                  PutMemberView):
+    pass
+
+
+class DummyUserMessageAndExceptionView(PostCollectionView):
+    def _has_user_messages(self):
+        return True
+
+    def _handle_user_messages(self):
+        return None
+
+    def _process_request_data(self, data):
+        raise ValueError()

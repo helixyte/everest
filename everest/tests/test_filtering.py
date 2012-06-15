@@ -4,26 +4,30 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-
 from everest.querying.filtering import FilterSpecificationBuilder
+from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import ValueContainedFilterSpecification
 from everest.querying.specifications import ValueContainsFilterSpecification
 from everest.querying.specifications import ValueEndsWithFilterSpecification
 from everest.querying.specifications import ValueEqualToFilterSpecification
+from everest.querying.specifications import ValueInRangeFilterSpecification
+from everest.querying.specifications import ValueLessThanFilterSpecification
+from everest.querying.specifications import ValueStartsWithFilterSpecification
 from everest.querying.specifications import \
         ValueGreaterThanFilterSpecification
 from everest.querying.specifications import \
         ValueGreaterThanOrEqualToFilterSpecification
-from everest.querying.specifications import ValueInRangeFilterSpecification
-from everest.querying.specifications import ValueLessThanFilterSpecification
 from everest.querying.specifications import \
         ValueLessThanOrEqualToFilterSpecification
-from everest.querying.specifications import ValueStartsWithFilterSpecification
 from everest.testing import BaseTestCase
+from everest.testing import Pep8CompliantTestCase
+from everest.tests.testapp.entities import FooEntity
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CriterionFilterSpecificationBuilderTestCase',
+__all__ = ['CompositeFilterSpecificationBuilderTestCase',
+           'CriterionFilterSpecificationBuilderTestCase',
+           'SqlFilterSpecificationVisitorTestCase',
            ]
 
 
@@ -187,3 +191,16 @@ class CompositeFilterSpecificationBuilderTestCase(BaseTestCase):
         self.builder.build_equal_to(name, [values[0]])
         self.assert_raises(ValueError, self.builder.build_equal_to,
                            name, [values[1]])
+
+
+class SqlFilterSpecificationVisitorTestCase(Pep8CompliantTestCase):
+    def test_custom_clause(self):
+        obj = object()
+        func = lambda value: obj
+        spec = ValueEqualToFilterSpecification('foo', 'bar')
+        factory_map = {('foo', spec.operator.name):func}
+        visitor = SqlFilterSpecificationVisitor(FooEntity,
+                                                custom_clause_factories=
+                                                                 factory_map)
+        visitor.visit_nullary(spec)
+        self.assert_true(visitor.expression is obj)

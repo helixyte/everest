@@ -4,13 +4,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
-
 from everest.querying.ordering import BubbleSorter
 from everest.querying.ordering import OrderSpecificationBuilder
+from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.testing import BaseTestCase
+from everest.testing import Pep8CompliantTestCase
+from everest.tests.testapp.entities import FooEntity
 import random
 
 __docformat__ = 'reStructuredText en'
@@ -179,3 +181,18 @@ class SorterTestCase(BaseTestCase):
         sorter.sort(self.persons)
         self.assert_equal(self.persons,
                           self.get_persons_reversed_ordered_by_name_and_age())
+
+
+class SqlOrderingSpecificationVisitorTestCase(Pep8CompliantTestCase):
+    class MySqlOrderSpecificationVisitor(SqlOrderSpecificationVisitor):
+        def _asc_op(self, spec):
+            return lambda value: None
+    def test_custom_clause(self):
+        obj = object()
+        spec = AscendingOrderSpecification('id')
+        join_map = {'id':[obj]}
+        visitor = self.MySqlOrderSpecificationVisitor(FooEntity,
+                                                      custom_join_clauses=
+                                                                    join_map)
+        visitor.visit_nullary(spec)
+        self.assert_equal(visitor.get_joins(), set([obj]))

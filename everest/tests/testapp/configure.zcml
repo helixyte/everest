@@ -7,8 +7,6 @@
     <include
         package="everest.includes" />
 
-    <!-- Representers. -->
-
     <!-- Resource declarations. -->
 
     <resource

@@ -69,7 +69,9 @@ class FilterSpecificationDirector(SpecificationDirector):
             if self.__is_empty_string(v):
                 continue
             elif self.__is_url(v):
-                v = url_to_resource(''.join(v))
+                # URLs - convert to resource and extract entity.
+                rc = url_to_resource(''.join(v))
+                v = rc.get_entity()
             if not v in prepared:
                 prepared.append(v)
         return prepared
@@ -139,8 +141,8 @@ class FilterSpecificationBuilder(SpecificationBuilder):
     def build_not_contained(self, attr_name, attr_values):
         # For the CONTAINED spec, we treat all parsed values as one value.
         spec = self.__build_spec(self._spec_factory.create_contained,
-                                 attr_name, [attr_values])
-        self._record_specification(spec).not_()
+                                 attr_name, [attr_values]).not_()
+        self._record_specification(spec)
 
     def build_contains(self, attr_name, attr_values):
         spec = self.__build_spec(self._spec_factory.create_contains,
@@ -416,46 +418,35 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
             FilterSpecificationVisitor.visit_nullary(self, spec)
 
     def _starts_with_op(self, spec):
-        return self.__build(spec.attr_name, 'startswith',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'startswith', spec.attr_value)
 
     def _ends_with_op(self, spec):
-        return self.__build(spec.attr_name, 'endswith',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'endswith', spec.attr_value)
 
     def _contains_op(self, spec):
-        return self.__build(spec.attr_name, 'contains',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'contains', spec.attr_value)
 
     def _contained_op(self, spec):
-        return self.__build(spec.attr_name, 'in_',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, 'in_', spec.attr_value)
 
     def _equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__eq__',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, '__eq__', spec.attr_value)
 
     def _less_than_op(self, spec):
-        return self.__build(spec.attr_name, '__lt__',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, '__lt__', spec.attr_value)
 
     def _less_than_or_equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__le__',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, '__le__', spec.attr_value)
 
     def _greater_than_op(self, spec):
-        return self.__build(spec.attr_name, '__gt__',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, '__gt__', spec.attr_value)
 
     def _greater_than_or_equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__ge__',
-                            self.__preprocess_value(spec.attr_value))
+        return self.__build(spec.attr_name, '__ge__', spec.attr_value)
 
     def _in_range_op(self, spec):
         from_value, to_value = spec.attr_value
-        return self.__build(spec.attr_name, 'between',
-                            self.__preprocess_value(from_value),
-                            self.__preprocess_value(to_value))
+        return self.__build(spec.attr_name, 'between', from_value, to_value)
 
     def _conjunction_op(self, spec, *expressions):
         return sqlalchemy_and(*expressions)
@@ -465,13 +456,6 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
 
     def _negation_op(self, spec, expression):
         return sqlalchemy_not(expression)
-
-    def __preprocess_value(self, value):
-        if IResource.providedBy(value): # pylint: disable=E1101
-            conv_value = value.get_entity()
-        else:
-            conv_value = value
-        return conv_value
 
     def __build(self, attribute_name, sql_op, *values):
         # Builds an SQL expression from the given (possibly dotted) 

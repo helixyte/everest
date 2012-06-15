@@ -30,13 +30,4 @@
         entity="plantscribe.entities.incidence.Incidence"
         expose="false" />
 
-    <representer
-        for="plantscribe.interfaces.ICustomer
-             plantscribe.interfaces.IProject
-             plantscribe.interfaces.ISite             
-             plantscribe.interfaces.ISpecies             
-             plantscribe.interfaces.IIncidence             
-             "
-        content_type="everest.mime.CsvMime" />
-
 </configure>

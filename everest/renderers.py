@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created Oct 7, 2011.
 """
-
 from everest.mime import AtomMime
 from everest.mime import CsvMime
 from everest.representers.utils import as_representer
@@ -75,9 +74,6 @@ class AtomRenderer(ResourceRenderer):
     def _prepare_response(self, system):
         request = system['request']
         request.response.content_type = self._format
-        context = system['context']
-        if context.cache_for is not None:
-            request.response_cache_for = context.cache_for
 
 
 class CsvRenderer(ResourceRenderer):

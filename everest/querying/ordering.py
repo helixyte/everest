@@ -228,11 +228,9 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
             kind, entity_attr = info
             if idx == count - 1:
                 expr = getattr(entity_attr, sql_op)()
-                if not isinstance(expr, tuple):
-                    exprs = (expr,)
-                else:
-                    exprs = expr
-            elif kind == EntityAttributeKinds.ENTITY:
+                exprs = (expr,)
+            elif kind != EntityAttributeKinds.TERMINAL:
+                # FIXME: Avoid adding multiple attrs with the same target here.
                 self.__joins.add(entity_attr)
         return exprs
 

@@ -91,7 +91,7 @@ class Service(Resource):
                              ' already exists.' % coll.__name__)
         # We replace the repository collection with a clone that has the
         # service as the parent so that URL generation works.
-        coll.set_parent(self)
+        coll.__parent__ = self
         repo.set(irc, coll)
         # 
         self.__collections[coll.__name__] = irc

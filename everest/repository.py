@@ -1,5 +1,4 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -7,18 +6,17 @@ The repository base class.
 
 Created on Jan 17, 2012.
 """
-
 from everest.interfaces import IRepository
+from pyramid.threadlocal import get_current_registry
 from weakref import WeakKeyDictionary
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['Repository',
+__all__ = ['REPOSITORIES',
+           'Repository',
            'as_repository',
-           'get_repository',
            ]
 
 
@@ -45,12 +43,15 @@ class Repository(object):
         # The accessor cache (keys are registered resource classes, values
         # are accessors).
         self.__obj_cache = {}
+        self.__is_initializing = False
 
     def new(self, rc):
         """
         Returns a new accessor for the given registered resource.
         """
-        raise NotImplementedError('Abstract method.')
+        if not (self.is_initialized or self.__is_initializing):
+            raise RuntimeError('Repository has not been initialized yet.')
+        return self._new(rc)
 
     def configure(self, **config):
         """
@@ -62,7 +63,9 @@ class Repository(object):
         """
         Initializes this repository.
         """
-        raise NotImplementedError('Abstract method.')
+        self.__is_initializing = True
+        self._initialize()
+        self.__is_initializing = False
 
     def set(self, rc, obj):
         """
@@ -111,6 +114,18 @@ class Repository(object):
         accessor object, or None if it was not created through a repository.
         """
         return cls.__get_repo_cache().get(obj)
+
+    def _initialize(self):
+        """
+        Implements initialization of this repository.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def _new(self, rc):
+        """
+        Implements creation of a new accessor for the given resource.
+        """
+        raise NotImplementedError('Abstract method.')
 
     @classmethod
     def __get_repo_cache(cls):

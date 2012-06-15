@@ -4,14 +4,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
-
 from copy import deepcopy
 from everest.batch import Batch
 from everest.resources.base import Link
 from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
 from everest.views.base import GetResourceView
-from urllib import unquote
 
 __docformat__ = "reStructuredText en"
 __all__ = ['GetCollectionView',
@@ -68,25 +66,6 @@ class GetCollectionView(GetResourceView):
                                  batch.start + batch.size)
         return Link(coll_clone, rel, self.context.title)
 
-    def _get_query(self):
-        query = self.request.params.get('q')
-        if query is not None:
-            query = unquote(query)
-        return query
-
-    def _get_sort_order(self):
-        order = self.request.params.get('sort')
-        if order is not None:
-            order = unquote(order)
-        return order
-
-    def _get_default_order(self):
-        sort_order = None
-        if self.context.order is not None:
-            sort_order = \
-                UrlPartsConverter.make_order_string(self.context.order)
-        return sort_order
-
     def __filter_collection(self):
         query_string = self.request.params.get('q')
         if not query_string is None:
@@ -111,7 +90,8 @@ class GetCollectionView(GetResourceView):
         slice_key = UrlPartsConverter.make_slice_key(start_string, size_string)
         if slice_key.stop - slice_key.start > self.context.max_limit:
             # Apply maximum batch size, if necessary.
-            slice_key.stop = slice_key.start + self.context.max_limit
+            slice_key = slice(slice_key.start,
+                              slice_key.start + self.context.max_limit)
         self.context.slice = slice_key
 
     def __ensure_default_order(self):

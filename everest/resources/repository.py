@@ -6,7 +6,6 @@ The resource repository class.
 
 Created on Jan 13, 2012.
 """
-
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.aggregates import OrmAggregate
 from everest.entities.repository import EntityRepository
@@ -17,9 +16,11 @@ from everest.resources.entitystores import FileSystemEntityStore
 from everest.resources.entitystores import OrmEntityStore
 from everest.resources.io import load_collection_from_url
 from everest.resources.utils import get_collection_class
+from everest.utils import id_generator
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ResourceRepository',
+__all__ = ['RepositoryManager',
+           'ResourceRepository',
            ]
 
 
@@ -31,11 +32,6 @@ class ResourceRepository(Repository):
         Repository.__init__(self)
         self.__managed_collections = set()
         self.__entity_repository = entity_repository
-
-    def new(self, rc):
-        agg = self.__entity_repository.new(rc)
-        coll_cls = get_collection_class(rc)
-        return coll_cls.create_from_aggregate(agg)
 
     def clear(self, rc):
         Repository.clear(self, rc)
@@ -62,18 +58,29 @@ class ResourceRepository(Repository):
     def configure(self, **config):
         self.__entity_repository.configure(**config)
 
-    def initialize(self):
+    def _initialize(self):
         self.__entity_repository.initialize()
+
+    def _new(self, rc):
+        agg = self.__entity_repository.new(rc)
+        coll_cls = get_collection_class(rc)
+        return coll_cls.create_from_aggregate(agg)
 
     @property
     def is_initialized(self):
         return self.__entity_repository.is_initialized
+
+    @property
+    def name(self):
+        return self.__entity_repository.name
 
     def _make_key(self, rc):
         return get_collection_class(rc)
 
 
 class RepositoryManager(object):
+    __repo_id_gen = id_generator()
+
     def __init__(self):
         self.__repositories = {}
         self.__default_repo = None
@@ -81,7 +88,8 @@ class RepositoryManager(object):
     def get(self, name):
         return self.__repositories.get(name)
 
-    def set(self, name, repo, make_default=False):
+    def set(self, repo, make_default=False):
+        name = repo.name
         if name in self.__repositories \
            and self.__repositories[name].is_initialized:
             raise ValueError('Can not replace repositories that have been '
@@ -93,16 +101,15 @@ class RepositoryManager(object):
     def get_default(self):
         return self.__default_repo
 
-    def new(self, repo_type,
-            name=None, entity_store_class=None,
-            aggregate_class=None):
+    def new(self, repo_type, name=None,
+            entity_store_class=None, aggregate_class=None):
         if name == repo_type:
             # This is a root repository.
             is_root_repository = True
         else:
             is_root_repository = False
             if name is None:
-                name = 'TMP'
+                name = "%s%d" % (repo_type, self.__repo_id_gen.next())
         if repo_type == REPOSITORIES.MEMORY:
             if entity_store_class is None:
                 entity_store_class = CachingEntityStore

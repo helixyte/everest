@@ -7,14 +7,20 @@ Representers for resources and entities.
 Created on May 18, 2011.
 """
 from StringIO import StringIO
+from everest.representers.interfaces import ICollectionDataElement
+from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.utils import get_mapping_registry
 from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.base import Resource
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RepresentationHandler',
+__all__ = ['RepresentationGenerator',
+           'RepresentationParser',
            'Representer',
            'RepresenterRegistry',
            'ResourceRepresenter',
+           'data_element_tree_to_string',
            ]
 
 
@@ -179,26 +185,6 @@ class ResourceRepresenter(Representer):
         raise NotImplementedError('Abstract method.')
 
 
-class RepresentationHandler(object):
-    """
-    Base class for representation handlers (parsers and generators) responsible
-    for the conversion data element tree <-> representation.
-    """
-    def __init__(self, stream, resource_class):
-        self._stream = stream
-        self._resource_class = resource_class
-        self.__config = {}
-
-    def configure(self, **config):
-        self.__config.update(config)
-
-    def get_option(self, option, default=None):
-        return self.__config.get(option, default)
-
-    def set_option(self, option, value):
-        self.__config[option] = value
-
-
 class RepresenterRegistry(object):
     """
     Registry for representer classes and representer factories.
@@ -210,7 +196,7 @@ class RepresenterRegistry(object):
         self.__rpr_factories = {}
 
     def register_representer_class(self, representer_class):
-        if representer_class in self.__rpr_classes:
+        if representer_class in self.__rpr_classes.values():
             raise ValueError('The representer class "%s" has already been '
                              'registered.' % representer_class)
         self.__rpr_classes[representer_class.content_type] = representer_class
@@ -220,7 +206,7 @@ class RepresenterRegistry(object):
         self.__mp_regs[representer_class.content_type] = mp_reg
 
     def is_registered_representer_class(self, representer_class):
-        return representer_class in self.__rpr_classes
+        return representer_class in self.__rpr_classes.values()
 
     def get_mapping_registry(self, content_type):
         return self.__mp_regs.get(content_type)
@@ -235,7 +221,7 @@ class RepresenterRegistry(object):
         :type configuration: 
             :class:`everest.representers.config.RepresenterConfiguration`
         """
-        if not issubclass(type(resource_class), type):
+        if not issubclass(resource_class, Resource):
             raise ValueError('Representers can only be registered for '
                              'resource classes (got: %s).' % resource_class)
         if not content_type in self.__rpr_classes:
@@ -262,8 +248,13 @@ class RepresenterRegistry(object):
             # We have a derived class without additional configuration.
             new_mp = mp_reg.create_mapping(resource_class,
                                            configuration=mp.configuration)
-        # Store the new (or updated) mapping.
-        mp_reg.set_mapping(new_mp)
+        else:
+            # We found a dynamically created mapping for the right class
+            # without additional configuration; do not create a new one.
+            new_mp = None
+        if not new_mp is None:
+            # Store the new (or updated) mapping.
+            mp_reg.set_mapping(new_mp)
         # Register factory resource -> representer for the given resource
         # class, content type combination.
         rpr_cls = self.__rpr_classes[content_type]
@@ -329,37 +320,46 @@ def data_element_tree_to_string(data_element):
     """
     Creates a string representation of the given data element tree.
     """
+    # FIXME: rewrite this as a visitor to use the data element tree traverser.
     def __dump(data_el, stream, offset):
         name = data_el.__class__.__name__
-        stream.write("%s(" % name)
+        stream.write("%s" % name)
         offset = offset + len(name) + 1
-        first_attr = True
-        for attr in data_el.mapping.attribute_iterator():
-            if first_attr:
-                first_attr = False
-            else:
-                stream.write(',\n' + ' ' * offset)
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                stream.write("%s=%s" % (attr.name,
-                                        str(data_el.get_terminal(attr)))
-                             )
-            else:
-                nested_el = data_el.get_nested(attr)
-                if attr.kind == ResourceAttributeKinds.COLLECTION:
-                    stream.write('%s=[' % attr.name)
-                    first_member = True
-                    for member_el in nested_el.get_members():
-                        if first_member:
-                            stream.write('\n' + ' ' * (offset + 2))
-                            first_member = False
-                        else:
-                            stream.write(',\n' + ' ' * (offset + 2))
-                        __dump(member_el, stream, offset + 2)
-                    stream.write('\n' + ' ' * (offset + 2) + ']')
+        ifcs = provided_by(data_el)
+        if ICollectionDataElement in ifcs:
+            stream.write("[")
+            first_member = True
+            for member_data_el in data_el.get_members():
+                if first_member:
+                    stream.write('\n' + ' ' * (offset + 2))
+                    first_member = False
                 else:
-                    stream.write("%s=" % attr.name)
-                    __dump(nested_el, stream, offset)
-        stream.write(')')
+                    stream.write(',\n' + ' ' * (offset + 2))
+                __dump(member_data_el, stream, offset)
+            stream.write("]")
+        else:
+            stream.write("(")
+            if ILinkedDataElement in ifcs:
+                stream.write("url=%s, kind=%s, relation=%s" %
+                             (data_el.get_url(), data_el.get_kind(),
+                              data_el.get_relation()))
+            else:
+                first_attr = True
+                for attr in data_el.mapping.attribute_iterator():
+                    if first_attr:
+                        first_attr = False
+                    else:
+                        stream.write(',\n' + ' ' * offset)
+                    if attr.kind == ResourceAttributeKinds.TERMINAL:
+                        stream.write(
+                            "%s=%s" % (attr.name,
+                                       str(data_el.get_terminal(attr))))
+                    else:
+                        nested_el = data_el.get_nested(attr)
+                        if nested_el is None:
+                            continue
+                        __dump(nested_el, stream, offset)
+            stream.write(')')
     stream = StringIO()
     __dump(data_element, stream, 0)
     return stream.getvalue()

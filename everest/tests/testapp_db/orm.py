@@ -55,7 +55,7 @@ def create_metadata(engine):
                      ForeignKey(my_entity_tbl.c.my_entity_id),
                      nullable=False),
               )
-    # n:m MyEntity child <-> MyEntityGrandchild
+    # n:m MyEntityChild <-> MyEntityGrandchild
     my_entity_grandchild_tbl = \
         Table('my_entity_grandchild', metadata,
               Column('text', String),

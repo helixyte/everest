@@ -71,7 +71,14 @@ class CqlExpression(object):
         return self._as_string()
 
     def __and__(self, other):
-        return CqlExpressionList([self, other])
+        if isinstance(other, CqlExpression):
+            res = CqlExpressionList([self, other])
+        elif isinstance(other, CqlExpressionList):
+            res = CqlExpressionList([self] + other.expressions)
+        else:
+            raise TypeError("unsupported operand type(s) for &: "
+                            "'CqlExpression' and '%s'" % type(other))
+        return res
 
     def _as_string(self):
         raise NotImplementedError('Abstract method.')
@@ -137,7 +144,7 @@ class SpecificationDirector(object):
             self._logger.debug('Expression received: %s' % expression)
             result = self.__parser(expression)
         except ParseException, err:
-            # FIXME: show better error messages # pylint: disable=W0511
+            # FIXME: show better error messages.
             self.__errors.append('Expression parameters have errors. %s' % err)
         else:
             self._process_parse_result(result)

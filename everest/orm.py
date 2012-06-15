@@ -34,15 +34,6 @@ __all__ = ['as_slug_expression',
            'Session',
            ]
 
-#cache_opt = { # FIXME: move to config file # pylint: disable=W0511
-#    'cache.regions': 'short_term',
-#    'cache.short_term.expire': '3600',
-#    }
-#cache_manager = beaker_cache.CacheManager(**parse_cache_config_options(cache_opt))
-#Session = scoped_session(
-#    sessionmaker(query_cls=CachingQueryFactory(cache_manager),
-#                 extension=ZopeTransactionExtension())
-#    )
 
 class _GlobalObjectManager(object):
     _globs = None
@@ -91,6 +82,12 @@ class _DbEngineManager(_GlobalObjectManager):
     _globs = {}
     _lock = Lock()
 
+    @classmethod
+    def reset(cls):
+        for engine in cls._globs.values():
+            engine.dispose()
+        super(_DbEngineManager, cls).reset()
+
 get_engine = _DbEngineManager.get
 set_engine = _DbEngineManager.set
 is_engine_initialized = _DbEngineManager.is_initialized
@@ -103,6 +100,9 @@ class _MetaDataManager(_GlobalObjectManager):
 
     @classmethod
     def reset(cls):
+        for md in cls._globs.values():
+            if not md.bind is None:
+                md.drop_all()
         clear_mappers()
         super(_MetaDataManager, cls).reset()
 
@@ -154,6 +154,11 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
     
     If you (e.g., for testing purposes) want to clear mappers created with
     this function, use the :func:`clear_mappers` function in this module.
+    
+    :param str id_attribute: the name of the column in the table to use as
+      ID column (will be aliased to a new "id" attribute in the mapped class)
+    :param slug_expression: function to generate a slug SQL expression given
+      the mapped class as argument.
     """
     mpr = sa_mapper(class_, local_table=local_table, *args, **kwargs)
     # Set up the ID attribute as a hybrid property, if necessary.
@@ -161,9 +166,11 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         # Make sure we are not overwriting an already mapped or customized
         # 'id' attribute.
         if 'id' in mpr.columns:
+            mpr.dispose()
             raise ValueError('Attempting to overwrite the mapped "id" '
                              'attribute.')
         elif isdatadescriptor(getattr(class_, 'id', None)):
+            mpr.dispose()
             raise ValueError('Attempting to overwrite the custom data '
                              'descriptor defined for the "id" attribute.')
         fget = lambda obj: getattr(obj, id_attribute)

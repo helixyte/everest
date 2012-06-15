@@ -32,15 +32,14 @@ class MemoryAggregate(Aggregate):
     """
 
     def count(self):
-        if self._relationship is None:
-            count = len(self._session.get_all(self.entity_class))
-        else:
-            count = len(self._relationship.children)
-        return count
+        return len(self.__get_entities())
 
     def get_by_id(self, id_key):
         if self._relationship is None:
             ent = self._session.get_by_id(self.entity_class, id_key)
+            if not self._filter_spec is None \
+               and not self._filter_spec.is_satisfied_by(ent):
+                ent = None
         else:
             ent = self.__filter_by_attr(self._relationship.children,
                                         'id', id_key)
@@ -49,27 +48,16 @@ class MemoryAggregate(Aggregate):
     def get_by_slug(self, slug):
         if self._relationship is None:
             ent = self._session.get_by_slug(self.entity_class, slug)
+            if not self._filter_spec is None \
+               and not self._filter_spec.is_satisfied_by(ent):
+                ent = None
         else:
             ent = self.__filter_by_attr(self._relationship.children,
                                         'slug', slug)
         return ent
 
     def iterator(self):
-        if self._relationship is None:
-            ents = self._session.get_all(self.entity_class)
-        else:
-            ents = self._relationship.children
-        if not self._filter_spec is None:
-            visitor = get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
-            self._filter_spec.accept(visitor)
-            ents = visitor.expression(ents)
-        if not self._order_spec is None:
-            visitor = get_order_specification_visitor(EXPRESSION_KINDS.EVAL)()
-            self._order_spec.accept(visitor)
-            ents = visitor.expression(ents)
-        if not self._slice_key is None:
-            ents = ents[self._slice_key]
-        for ent in ents:
+        for ent in self.__get_entities():
             yield ent
 
     def add(self, entity):
@@ -99,6 +87,23 @@ class MemoryAggregate(Aggregate):
     def _apply_slice(self):
         pass
 
+    def __get_entities(self):
+        if self._relationship is None or self._relationship.children is None:
+            ents = self._session.get_all(self.entity_class)
+        else:
+            ents = self._relationship.children
+        if not self._filter_spec is None:
+            visitor = get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
+            self._filter_spec.accept(visitor)
+            ents = visitor.expression(ents)
+        if not self._order_spec is None:
+            visitor = get_order_specification_visitor(EXPRESSION_KINDS.EVAL)()
+            self._order_spec.accept(visitor)
+            ents = visitor.expression(ents)
+        if not self._slice_key is None:
+            ents = ents[self._slice_key]
+        return ents
+
     def __check_existing(self, ents, entity):
         found = [ent for ent in ents
                  if ent.id == entity.id or ent.slug == entity.slug]
@@ -110,14 +115,15 @@ class MemoryAggregate(Aggregate):
                 [ent for ent in ents if getattr(ent, attr) == value]
         else:
             matching_ents = \
-                [ent for ent in ents if getattr(ent, attr) == value
-                 if self._filter_spec.is_satisfied_by(ent)]
+                [ent for ent in ents
+                 if (getattr(ent, attr) == value
+                     and self._filter_spec.is_satisfied_by(ent))]
         if len(matching_ents) == 1:
             ent = matching_ents[0]
         elif len(matching_ents) == 0:
             ent = None
         else:
-            raise DuplicateException('Duplicates found for "%s" value of '
+            raise DuplicateException('Duplicates found for "%s" value of ' # pragma: no cover
                                      '"%s" attribue.' % (value, attr))
         return ent
 
@@ -126,8 +132,8 @@ class OrmAggregate(Aggregate):
     """
     ORM implementation for aggregates.
     """
-    def __init__(self, entity_class, session, search_mode=False):
-        Aggregate.__init__(self, entity_class, session)
+    def __init__(self, entity_class, session_factory, search_mode=False):
+        Aggregate.__init__(self, entity_class, session_factory)
         self._search_mode = search_mode
 
     def count(self):
@@ -148,7 +154,7 @@ class OrmAggregate(Aggregate):
             ent = query.filter_by(id=id_key).one()
         except NoResultFound:
             ent = None
-        except MultipleResultsFound:
+        except MultipleResultsFound: # pragma: no cover
             raise DuplicateException('Duplicates found for ID "%s".' % id_key)
         return ent
 
@@ -158,7 +164,7 @@ class OrmAggregate(Aggregate):
             ent = query.filter_by(slug=slug).one()
         except NoResultFound:
             ent = None
-        except MultipleResultsFound:
+        except MultipleResultsFound: # pragma: no cover
             raise DuplicateException('Duplicates found for slug "%s".' % slug)
         return ent
 
@@ -169,7 +175,7 @@ class OrmAggregate(Aggregate):
             # relation filter spec.
             self._session.flush()
         if self.__defaults_empty:
-            yield
+            raise StopIteration()
         else:
             # We need a flush here because we may have newly added entities
             # in the aggregate which need to get an ID *before* we build the
@@ -244,7 +250,7 @@ class OrmAggregate(Aggregate):
             visitor = self._order_visitor_factory()
             self._order_spec.accept(visitor)
             for join_expr in visitor.get_joins():
-                # FIXME: only join when needed here # pylint:disable=W0511
+                # FIXME: only join when needed here.
                 query = query.outerjoin(join_expr)
             query = query.order_by(*visitor.expression)
         return query

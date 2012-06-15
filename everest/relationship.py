@@ -6,7 +6,6 @@ Resource relation classes.
 
 Created on Sep 30, 2011.
 """
-
 from everest.querying.utils import get_filter_specification_factory
 
 __docformat__ = 'reStructuredText en'
@@ -27,7 +26,7 @@ class Relationship(object):
     :ivar backref: name of the attribute referencing the parent in
         each child object.
     """
-    def __init__(self, parent, children, backref=None):
+    def __init__(self, parent, children=None, backref=None):
         self.parent = parent
         self.children = children
         self.backref = backref

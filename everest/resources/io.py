@@ -6,7 +6,6 @@ Input/Output operations on resources.
 
 Created on Jan 27, 2012.
 """
-
 from StringIO import StringIO
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
@@ -56,25 +55,28 @@ def load_collection_from_url(collection, url,
 def load_collection_from_file(collection, filename,
                               content_type=None, resolve_urls=True):
     """
-    Loads a collection resource of the given registered resource type from a 
-    representation contained in the given file name.
+    Loads resources from the specified file into the given collection
+    resource.
     
-    :returns: collection resource
+    If no content type is provided, an attempt is made to look up the 
+    extension of the given filename in the MIME content type registry.
     """
     if content_type is None:
-        ext = filename.split('.')[1]
-        for content_type in MimeTypeRegistry.get_types():
-            if content_type.file_extension == ext:
-                break
-        if content_type is None:
-            raise ValueError('Unknown file extension "%s".' % ext)
+        ext = os.path.splitext(filename)[1]
+        try:
+            content_type = MimeTypeRegistry.get_type_for_extension(ext)
+        except KeyError:
+            raise ValueError('Could not infer MIME type for file extension '
+                             '"%s".' % ext)
     load_collection_from_stream(collection, open(filename, 'rU'),
-                                content_type=content_type,
-                                resolve_urls=resolve_urls)
+                                content_type, resolve_urls=resolve_urls)
 
 
-def load_collection_from_stream(collection, stream,
-                                content_type=None, resolve_urls=True):
+def load_collection_from_stream(collection, stream, content_type,
+                                resolve_urls=True):
+    """
+    Loads resources from the given stream into the given collection resource.
+    """
     rpr = as_representer(collection, content_type)
     with stream:
         data_el = rpr.data_from_stream(stream)
@@ -83,26 +85,45 @@ def load_collection_from_stream(collection, stream,
         collection.add(mb)
 
 
-def load_collections_from_zipfile(collections, zipfile, content_type=None,
-                                  resolve_urls=True):
-    if content_type is None:
-        content_type = CsvMime
+def load_collections_from_zipfile(collections, zipfile, resolve_urls=True):
+    """
+    Loads resources contained in the given ZIP archive into each of the
+    given collections. 
+    
+    The ZIP file is expected to contain a list of file names obtained with
+    the :func:`get_collection_filename` function, each pointing to a file
+    of zipped collection resource data.
+    
+    :param collections: sequence of collection resources
+    :param str zipfile: ZIP file name
+    :param bool resolve_urls: Flag indicating if URLs should be resolved 
+      during loading.
+    """
     with ZipFile(zipfile) as zipf:
         names = zipf.namelist()
+        name_map = dict([(os.path.splitext(name)[0], index)
+                         for (index, name) in enumerate(names)])
         for collection in collections:
-            coll_fn = get_collection_filename(collection, content_type)
-            if not coll_fn in names:
+            coll_name = get_collection_name(collection)
+            index = name_map.get(coll_name)
+            if index is None:
                 continue
+            coll_fn = names[index]
+            ext = os.path.splitext(coll_fn)[1]
+            try:
+                content_type = MimeTypeRegistry.get_type_for_extension(ext)
+            except KeyError:
+                raise ValueError('Could not infer MIME type for file '
+                                 'extension "%s".' % ext)
             load_collection_from_stream(collection, zipf.open(coll_fn, 'r'),
-                                        content_type=content_type,
+                                        content_type,
                                         resolve_urls=resolve_urls)
 
 
 def dump_resource(resource, stream, content_type=None):
     """
     Dumps the given resource to the given stream using the specified MIME
-    content type (defaults to CSV). If no stream is provided, a 
-    :class:`StringIO` stream is returned.
+    content type (defaults to CSV).
     """
     if content_type is None:
         content_type = CsvMime
@@ -245,10 +266,10 @@ class ResourceGraph(digraph):
         key = self.__make_key(node)
         self.__entities.add(key)
 
-    def del_node(self, node):
-        digraph.del_node(self, node)
-        key = self.__make_key(node)
-        self.__entities.remove(key)
+#    def del_node(self, node):
+#        digraph.del_node(self, node)
+#        key = self.__make_key(node)
+#        self.__entities.remove(key)
 
     def has_node(self, node):
         return self.__make_key(node) in self.__entities
@@ -262,7 +283,7 @@ class ConnectedResourcesSerializer(object):
     """
     Serializer for a graph of connected resources.
     """
-    def __init__(self, content_type=None, dependency_graph=None):
+    def __init__(self, content_type, dependency_graph=None):
         """
         :param content_type: MIME content type to use for representations
         :type content_type: object implementing 
@@ -271,8 +292,6 @@ class ConnectedResourcesSerializer(object):
             to follow when the graph of connected resources for a given
             resource is built.
         """
-        if content_type is None:
-            content_type = CsvMime
         self.__content_type = content_type
         self.__dependency_graph = dependency_graph
 
@@ -296,13 +315,11 @@ class ConnectedResourcesSerializer(object):
             rpr_map[mb_cls] = strm.getvalue()
         return rpr_map
 
-    def to_files(self, resource, directory=None):
+    def to_files(self, resource, directory):
         """
         Dumps the given resource and all resources linked to it into a set of
         representation files in the given directory.
         """
-        if directory is None:
-            directory = os.getcwd()
         collections = \
             find_connected_resources(resource,
                                      dependency_graph=self.__dependency_graph)
@@ -330,37 +347,55 @@ def dump_resource_to_files(resource, content_type=None, directory=None):
     Convenience function. See 
     :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
     details.
+    
+    If no directory is given, the current working directory is used. 
+    The :param:`content_type` defaults to CSV.
     """
-    srl = ConnectedResourcesSerializer(content_type=content_type)
+    if directory is None:
+        directory = os.getcwd() # pragma: no cover
+    if content_type is None:
+        content_type = CsvMime
+    srl = ConnectedResourcesSerializer(content_type)
     srl.to_files(resource, directory=directory)
 
 
 def dump_resource_to_zipfile(resource, zipfile, content_type=None):
     """
     Convenience function. See 
-    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
+    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_zipfile` for 
     details.
+    
+    The :param:`content_type` defaults to CSV.
     """
-    srl = ConnectedResourcesSerializer(content_type=content_type)
+    if content_type is None:
+        content_type = CsvMime
+    srl = ConnectedResourcesSerializer(content_type)
     srl.to_zipfile(resource, zipfile)
 
 
-def get_collection_filename(rc_class, content_type):
+def get_collection_name(rc_class):
     coll_cls = get_member_class(rc_class)
     collection_name = coll_cls.relation.split('/')[-1]
-    return "%s-collection%s" % (collection_name, content_type.file_extension)
+    return "%s-collection" % collection_name
+
+
+def get_collection_filename(rc_class, content_type=None):
+    if content_type is None:
+        content_type = CsvMime
+    return "%s%s" % (get_collection_name(rc_class),
+                     content_type.file_extension)
 
 
 def get_write_collection_path(collection_class, content_type, directory=None):
     if directory is None:
-        directory = os.getcwd()
+        directory = os.getcwd() # pragma: no cover
     coll_fn = get_collection_filename(collection_class, content_type)
     return os.path.join(directory, coll_fn)
 
 
 def get_read_collection_path(collection_class, content_type, directory=None):
     if directory is None:
-        directory = os.getcwd()
+        directory = os.getcwd() # pragma: no cover
     coll_fn = get_collection_filename(collection_class, content_type)
     fn = os.path.join(directory, coll_fn)
     if os.path.isfile(fn):

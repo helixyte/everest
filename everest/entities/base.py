@@ -83,7 +83,7 @@ class Aggregate(object):
             raise NotImplementedError('Abstract class.')
         #: Entity class (type) of the entities in this aggregate.
         self.entity_class = entity_class
-        #: The session.
+        #: The session factory.
         self._session_factory = session_factory
         #: Relationship of entities in this aggregate to a parent entity.
         self._relationship = None

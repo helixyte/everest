@@ -73,12 +73,28 @@ class UtilsTestCase(Pep8CompliantTestCase):
         self.assert_equal(bl.get('b'), 2)
         self.assert_equal(bl.get(2), 'b')
         self.assert_is_none(bl.get('not there'))
+        self.assert_raises(ValueError, bl.__setitem__, 2, 'c')
+        self.assert_raises(ValueError, bl.__setitem__, 0, 'b')
         self.assert_equal(bl.pop_left('not there', 5), 5)
         self.assert_equal(bl.pop_right('not there', 5), 5)
+        bl['c'] = 2
+        self.assert_true(2 in bl)
+        self.assert_false('b' in bl)
+        bl['c'] = 1
+        self.assert_true(1 in bl)
+        self.assert_false(2 in bl)
+        bl['x'] = 3
+        bl['y'] = 4
+        self.assert_true('x' in bl)
+        self.assert_true(4 in bl)
+        del bl['x']
+        del bl[4]
+        self.assert_raises(KeyError, bl.__delitem__, 'x')
+        self.assert_false('x' in bl)
+        self.assert_false(4 in bl)
         bl.clear()
         self.assert_equal(len(bl.left_keys()), 0)
         self.assert_equal(len(bl.right_keys()), 0)
-
 
     def test_weaklist(self):
         class _X(object):
@@ -154,7 +170,13 @@ class UtilsTestCase(Pep8CompliantTestCase):
             self.assertEqual(last_rank <= item.rank, True)
             last_rank = item.rank
         del item
+        # append.
+        obj_c4 = C()
+        weak_list.append(obj_c4)
+        self.assert_true(weak_list[-1] is obj_c4)
+        # add.
+        self.assert_equal(len(weak_list + weak_list), 2 * len(weak_list))
         # clean up.
-        del obj_c1, obj_c2, obj_c3
+        del obj_c1, obj_c2, obj_c3, obj_c4
         del obj_a, obj_c
         self.assertEqual(len(weak_list), 0)

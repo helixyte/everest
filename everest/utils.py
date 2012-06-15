@@ -135,15 +135,20 @@ class BidirectionalLookup(object):
                 self.__setitem__(left, right)
 
     def __setitem__(self, left_item, right_item):
-        is_in_left = right_item in self.__left
-        is_in_right = left_item in self.__right
-        in_both = is_in_left and is_in_right
-        if is_in_left or is_in_right and not in_both:
+        is_right_in_left = right_item in self.__left
+        is_left_in_right = left_item in self.__right
+        in_both = is_right_in_left and is_left_in_right
+        if is_right_in_left or is_left_in_right and not in_both:
             raise ValueError('Cannot use the existing item "%s" from the %s '
-                             'set as item in the %s set!' % is_in_right and
-                             (left_item, 'right', 'left') or
-                             (right_item, 'left', 'right'))
+                             'set as item in the %s set!'
+                             % ((left_item, 'right', 'left') if
+                                is_left_in_right else
+                                (right_item, 'left', 'right')))
+        if left_item in self.__left:
+            del self.__right[self.__left[left_item]]
         self.__left[left_item] = right_item
+        if right_item in self.__right:
+            del self.__left[self.__right[right_item]]
         self.__right[right_item] = left_item
 
     def __delitem__(self, left_or_right_item):

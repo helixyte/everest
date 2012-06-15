@@ -25,7 +25,6 @@ from everest.resources.kinds import ResourceKinds
 from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from lxml import etree
@@ -108,9 +107,14 @@ class XmlParserFactory(object):
         try:
             doc = etree.parse(resource_filename(*xml_schema_path.split(':')))
         except etree.XMLSyntaxError, err:
-            raise SyntaxError('Could not parse %s.\n%s' %
+            raise SyntaxError('Could not parse XML schema %s.\n%s' %
                               (xml_schema_path, err.msg))
-        return etree.XMLSchema(doc)
+        try:
+            schema = etree.XMLSchema(doc)
+        except etree.XMLSchemaParseError, err:
+            raise SyntaxError('Invalid XML schema.\n Parser message: %s'
+                              % err.message)
+        return schema
 
 
 class XmlResourceRepresenter(ResourceRepresenter):
@@ -142,12 +146,15 @@ class XmlResourceRepresenter(ResourceRepresenter):
 
 class _XmlDataElementMixin(object):
     @classmethod
-    def create(cls):
-        el_fac = XmlParserFactory.create().makeelement
-        return el_fac()
+    def create(cls, ns_map=None):
+        return cls._create(ns_map)
 
     @classmethod
     def create_from_resource(cls, resource, ns_map=None): # ignore resource pylint:disable=W0613,W0221
+        return cls._create(ns_map)
+
+    @classmethod
+    def _create(cls, ns_map):
         if ns_map is None:
             mp_reg = get_mapping_registry(XmlMime)
             ns_map = mp_reg.namespace_map
@@ -184,8 +191,9 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             except StopIteration:
                 pass
             else:
-                raise ValueError('More than one child for member attribute '
-                                 '"%s" found.' % attr)
+                # This should never happen.
+                raise ValueError('More than one child for member '
+                                 'attribute "%s" found.' % attr) # pragma: no cover
             # Link handling: look for wrapper tag with *one* link child.
             if child.countchildren() == 1:
                 grand_child = child.getchildren()[0]
@@ -298,7 +306,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
                                  **options)
             rc_data_el.set('id', str(resource.id))
             rc_data_el.append(link_el)
-        elif provides_collection_resource(resource):
+        else: # collection resource.
             # Collection links only get an actual link element if they
             # contain any members.
             link_el = cls.create(resource_to_url(resource),
@@ -307,8 +315,6 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
                                  title=resource.title,
                                  **options)
             rc_data_el.append(link_el)
-        else:
-            raise ValueError('"%s" is not a resource.' % resource)
         return rc_data_el
 
     def get_url(self):
@@ -385,14 +391,14 @@ class XmlMappingRegistry(MappingRegistry):
             if not xml_prefix is None:
                 ns = self.__ns_map.get(xml_prefix)
                 if ns is None:
-                    # Delete the cached lookup.
-                    if not self.__ns_lookup is None:
-                        self.__ns_lookup = None
                     # New prefix - register.
                     self.__ns_map[xml_prefix] = xml_ns
                 elif xml_ns != ns:
                     raise ValueError('Prefix "%s" is already registered for '
                                      'namespace %s.' % (xml_prefix, ns))
+            # Make sure we rebuild the lookup.
+            if not self.__ns_lookup is None:
+                self.__ns_lookup = None
         MappingRegistry.set_mapping(self, mapping)
 
     @property

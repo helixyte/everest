@@ -34,7 +34,6 @@ from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.repository import REPOSITORIES
-from everest.repository import as_repository
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
@@ -190,17 +189,19 @@ class Configurator(PyramidConfigurator):
                      collection=None,
                      collection_root_name=None, collection_title=None,
                      expose=True, repository=None, _info=u''):
+        if not IInterface in provided_by(interface):
+            raise ValueError('The interface argument must be an Interface.')
         if not (isinstance(member, type)
                 and IMemberResource in provided_by(object.__new__(member))):
-            raise ValueError('The member must be a class that implements '
-                             'IMemberResource.')
+            raise ValueError('The member argument must be a class that '
+                             'implements IMemberResource.')
         if member.relation is None:
             raise ValueError('The member class must have a "relation" '
                              'attribute.')
         if not (isinstance(entity, type)
                 and IEntity in provided_by(object.__new__(entity))):
-            raise ValueError('The entity must be a class that implements '
-                             'IEntity.')
+            raise ValueError('The entity argument must be a class that '
+                             'implements IEntity.')
         # Configure or create the collection class.
         if collection is None:
             collection = type('%sCollection' % member.__name__,
@@ -217,17 +218,17 @@ class Configurator(PyramidConfigurator):
         else:
             repo = repo_mgr.get(repository)
             if repo is None:
-                # Add a builtin repository on the fly. 
+                # Add a builtin repository with default configuration on
+                # the fly. 
                 repo_type = getattr(REPOSITORIES, repository, None)
                 if repo_type is None:
                     raise ValueError('Unknown repository type "%s".'
                                      % repository)
-                if repo_type == REPOSITORIES.MEMORY:
-                    self.add_memory_repository()
-                elif repo_type == REPOSITORIES.ORM:
-                    self.add_orm_repository()
+                if repo_type == REPOSITORIES.ORM:
+                    self.add_orm_repository(name=REPOSITORIES.ORM)
                 elif repo_type == REPOSITORIES.FILE_SYSTEM:
-                    self.add_filesystem_repository()
+                    self.add_filesystem_repository(
+                                            name=REPOSITORIES.FILE_SYSTEM)
                 else:
                     raise NotImplementedError()
                 repo = repo_mgr.get(repository)
@@ -236,14 +237,11 @@ class Configurator(PyramidConfigurator):
             collection.root_name = collection_root_name
         if not collection_title is None:
             collection.title = collection_title
-        if expose:
-            srvc = self.query_registered_utilities(IService)
-            if srvc is None:
-                raise ValueError('Need a IService utility to expose a '
-                                 'resource.')
-            if collection.root_name is None:
-                raise ValueError('To expose a collection resource in the '
-                                 'service (=root), a root name is required.')
+        if expose and collection.root_name is None:
+            # Check that we have a root collection name *before* we register
+            # all the adapters and utilities.
+            raise ValueError('To expose a collection resource in the '
+                             'service (=root), a root name is required.')
         # Register the entity instance -> member instance adapter.
         mb_factory = member.create_from_entity
         self._register_adapter(mb_factory, (interface,), IMemberResource,
@@ -297,6 +295,7 @@ class Configurator(PyramidConfigurator):
                                info=_info)
         # Expose (=register with the service) if requested.
         if expose:
+            srvc = self.query_registered_utilities(IService)
             srvc.register(interface)
 
     def add_representer(self, content_type=None, representer_class=None,
@@ -307,6 +306,8 @@ class Configurator(PyramidConfigurator):
         if not content_type is None and not representer_class is None:
             raise ValueError('Either content type or representer class may '
                              'be provided, but not both.')
+        if options is None:
+            options = {}
         rpr_reg = self.get_registered_utility(IRepresenterRegistry)
         if not representer_class is None:
             rpr_reg.register_representer_class(representer_class)
@@ -341,14 +342,6 @@ class Configurator(PyramidConfigurator):
         for rc in rcs:
             rpr_reg.register(rc, content_type, configuration=rpr_config)
 
-    def initialize_repositories(self):
-        for coll_cls in [util.component
-                         for util in self.registry.getRegisteredUtilities()# pylint: disable=E1103
-                         if util.name == 'collection-class']:
-            repo = as_repository(coll_cls)
-            if not repo.is_initialized:
-                repo.initialize()
-
     def _register_utility(self, *args, **kw):
         return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
 
@@ -377,7 +370,7 @@ class Configurator(PyramidConfigurator):
         # for all resources that do not specify a repository.
         mem_repo = repo_mgr.new(REPOSITORIES.MEMORY,
                                 name=REPOSITORIES.MEMORY)
-        repo_mgr.set(REPOSITORIES.MEMORY, mem_repo, make_default=True)
+        repo_mgr.set(mem_repo, make_default=True)
         # Set up filter and order specification factories.
         if filter_specification_factory is None:
             filter_specification_factory = FilterSpecificationFactory()
@@ -461,7 +454,7 @@ class Configurator(PyramidConfigurator):
                             entity_store_class=ent_store_cls,
                             aggregate_class=agg_cls)
         repo.configure(**cnf)
-        repo_mgr.set(name, repo, make_default=make_default)
+        repo_mgr.set(repo, make_default=make_default)
 
     def __cnf_from_settings(self, setting_info):
         settings = self.get_settings()

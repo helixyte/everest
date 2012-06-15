@@ -25,6 +25,12 @@
         collection_root_name="foos" />
         
     <!-- Views. -->
+    
+    <member_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        renderer="csv"
+        request_method="GET" />
 
     <collection_view
         for="everest.tests.testapp.interfaces.IFoo"

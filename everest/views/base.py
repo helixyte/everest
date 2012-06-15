@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.j
 """
-
 from everest.entities.system import Message
 from everest.messaging import UserMessageHandler
 from everest.mime import get_registered_mime_type_for_string

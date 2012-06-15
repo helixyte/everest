@@ -7,15 +7,29 @@ Created on Mar 2, 2012.
 from everest.mime import AtomMime
 from everest.mime import CsvMime
 from everest.mime import XmlMime
+from everest.querying.utils import get_filter_specification_factory
+from everest.querying.utils import get_order_specification_factory
+from everest.representers.attributes import MappedAttribute
+from everest.representers.base import data_element_tree_to_string
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.urlloader import LazyAttributeLoaderProxy
 from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
+from everest.representers.xml import NAMESPACE_MAPPING_OPTION
 from everest.representers.xml import XML_NAMESPACE_OPTION
 from everest.representers.xml import XML_PREFIX_OPTION
+from everest.representers.xml import XML_SCHEMA_OPTION
+from everest.representers.xml import XML_TAG_OPTION
+from everest.resources.kinds import ResourceKinds
+from everest.resources.link import Link
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
+from everest.resources.utils import new_stage_collection
+from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityParent
@@ -23,58 +37,117 @@ from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.testapp_db.testing import create_collection
 from everest.url import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
-from everest.representers.xml import XML_TAG_OPTION
-from everest.tests.testapp_db.interfaces import IMyEntityChild
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CsvRepresentationTestCase',
+__all__ = ['AttributesTestCase',
+           'AttributesTestCase',
+           'CsvRepresentationTestCase',
            'LazyAttribteLoaderProxyTestCase',
            'RepresenterConfigurationTestCase',
+           'RepresenterRegistryTestCase',
+           'UpdateResourceFromDataTestCase',
+           'XmlRepresentationTestCase',
            ]
 
-# pylint: disable=W0232
-class IDerived(Interface):
-    pass
-# pylint: enable=W0232
 
-
-class DerivedMyEntity(MyEntity):
-    pass
-
-
-class DerivedMyEntityMember(MyEntityMember):
-    pass
-
-
-def _make_collection():
-    my_entity0 = create_entity(entity_id=0)
-    my_entity1 = create_entity(entity_id=1)
-    coll = get_root_collection(IMyEntity)
-    my_mb0 = coll.create_member(my_entity0)
-    my_mb1 = coll.create_member(my_entity1)
-    # FIXME: This should really be done automatically.
-    parent_coll = get_root_collection(IMyEntityParent)
-    parent_coll.add(my_mb0.parent)
-    parent_coll.add(my_mb1.parent)
-    children_coll = get_root_collection(IMyEntityChild)
-    children_coll.add(list(my_mb0.children)[0])
-    children_coll.add(list(my_mb1.children)[0])
-    return coll
-
-
-class LazyAttribteLoaderProxyTestCase(ResourceTestCase):
+class RepresenterRegistryTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
+
+    def test_register_representer_class(self):
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        self.assert_raises(ValueError, rpr_reg.register_representer_class,
+                           CsvResourceRepresenter)
+
+    def test_register_representer(self):
+        class MyMime(object):
+            mime_string = 'application/mymime'
+            file_extension = '.mymime'
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        with self.assert_raises(ValueError) as cm:
+            rpr_reg.register(MyEntity, CsvMime)
+        exc_msg = 'Representers can only be registered for resource classes'
+        with self.assert_raises(ValueError) as cm:
+            rpr_reg.register(MyEntityMember, MyMime)
+        exc_msg = 'No representer class has been registered for content type'
+        self.assert_true(cm.exception.message.startswith(exc_msg))
+
+    def test_autocreate_mapping(self):
+        coll = create_collection()
+        # This registers a representer (factory) and creates a mapping for
+        # the collection.
+        coll_rpr = as_representer(coll, CsvMime)
+        mb = iter(coll).next()
+        # This auto-creates a mapping for the member.
+        coll_rpr.data_from_resource(mb)
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(CsvMime)
+        mp_before = mp_reg.find_mapping(type(mb))
+        # This registers a representer (factory) for the member and finds
+        # the previously created mapping for the member.
+        as_representer(mb, CsvMime)
+        mp_after = mp_reg.find_mapping(type(mb))
+        self.assert_true(mp_before is mp_after)
+
+
+class AttributesTestCase(Pep8CompliantTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_no_orm.zcml'
+
+    def test_defaults(self):
+        rc_attr = MyEntityMember.get_attributes()['number']
+        mp_attr = MappedAttribute(rc_attr)
+        self.assert_equal(mp_attr.repr_name, rc_attr.name)
+        self.assert_raises(AttributeError, getattr, mp_attr, 'foo')
+        self.assert_true(str(mp_attr).startswith(mp_attr.__class__.__name__))
+
+    def test_ignore(self):
+        rc_attr = MyEntityMember.get_attributes()['number']
+        mp_attr = MappedAttribute(rc_attr,
+                                  options={IGNORE_OPTION:False})
+        self.assert_true(mp_attr.ignore_on_read is False)
+        self.assert_true(mp_attr.ignore_on_write is False)
+
+    def test_clone(self):
+        rc_attr = MyEntityMember.get_attributes()['number']
+        mp_attr = MappedAttribute(rc_attr)
+        mp_attr_clone = mp_attr.clone()
+        self.assert_equal(mp_attr.options, mp_attr_clone.options)
+        self.assert_equal(mp_attr.name, mp_attr_clone.name)
+        self.assert_equal(mp_attr.kind, mp_attr_clone.kind)
+        self.assert_equal(mp_attr.value_type, mp_attr_clone.value_type)
+        self.assert_equal(mp_attr.entity_name, mp_attr_clone.entity_name)
+        self.assert_equal(mp_attr.cardinality, mp_attr_clone.cardinality)
+
+
+class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_no_orm.zcml'
+
+    def test_lazy_loading_cornercases(self):
+        # Passing no _loader map to constructor raises ValueError.
+        self.assert_raises(LazyAttributeLoaderProxy)
+        # Passing non-dictionary as _loader_map to constructor raises error.
+        self.assert_raises(ValueError, LazyAttributeLoaderProxy,
+                           _loader_map=['foo'])
+        # Passing empty dictionary as _loader_map to constructor raises error.
+        self.assert_raises(ValueError, LazyAttributeLoaderProxy,
+                           _loader_map={})
+        # No dynamic attribute - create "normal" entity.
+        my_entity = LazyAttributeLoaderProxy.create(MyEntity,
+                                                    dict(id=0))
+        self.assert_false(isinstance(my_entity, LazyAttributeLoaderProxy))
 
     def test_lazy_loading(self):
         loader = LazyUrlLoader('http://localhost/my-entity-parents/0',
                                url_to_resource)
-        my_entity = LazyAttributeLoaderProxy.create(MyEntity,
-                                                    dict(id=0, parent=loader))
+        my_entity = LazyAttributeLoaderProxy.create(
+                                    MyEntity,
+                                    dict(id=0, parent=loader))
         self.assert_true(isinstance(my_entity, LazyAttributeLoaderProxy))
         coll = get_root_collection(IMyEntity)
         mb = coll.create_member(my_entity)
@@ -98,8 +171,23 @@ class CsvRepresentationTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
 
+    def test_data_element_tree_to_string(self):
+        coll = create_collection()
+        rpr = as_representer(coll, CsvMime)
+        mapping_options = \
+                {('children',):{IGNORE_OPTION:False,
+                                WRITE_AS_LINK_OPTION:False},
+                 ('children', 'children'):{IGNORE_OPTION:False,
+                                           WRITE_AS_LINK_OPTION:True}
+                 }
+        data_el = rpr.data_from_resource(coll,
+                                         mapping_options=mapping_options)
+        rpr_str = data_element_tree_to_string(data_el)
+        self.assert_true(rpr_str.startswith(data_el.__class__.__name__))
+        self.assert_true(rpr_str.endswith(']'))
+
     def test_csv_with_defaults(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, CsvMime)
         rpr_str = rpr.to_string(coll)
         self.assert_true(len(rpr_str) > 0)
@@ -117,7 +205,7 @@ class CsvRepresentationTestCase(ResourceTestCase):
         self.assert_equal(row_data[3], '""')
 
     def test_csv_with_collection_link(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, CsvMime)
         mapping_options = {('children',):{IGNORE_OPTION:False,
                                           WRITE_AS_LINK_OPTION:True}}
@@ -125,11 +213,36 @@ class CsvRepresentationTestCase(ResourceTestCase):
         rpr_str = rpr.representation_from_data(data)
         lines = rpr_str.split(os.linesep)
         row_data = lines[1].split(',')
-        # Now, the collection should be a link.
+        # Now, the collection should be a URL.
         self.assert_not_equal(row_data[3].find('my-entities/0/children/'), -1)
+        # Reload from URLs.
+        reloaded_coll = \
+            rpr.resource_from_data(data, mapping_options=mapping_options)
+        self.assert_equal(iter(reloaded_coll).next().id,
+                          iter(coll).next().id)
+        # Reloading collections lazily from URLs is not supported
+        self.assert_raises(NotImplementedError,
+                           rpr.resource_from_data, data,
+                           mapping_options=mapping_options,
+                           resolve_urls=False)
+
+    def test_csv_with_member_expanded(self):
+        coll = create_collection()
+        rpr = as_representer(coll, CsvMime)
+        mapping_options = {('parent',):{WRITE_AS_LINK_OPTION:False}}
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
+        rpr_str = rpr.representation_from_data(data)
+        lines = rpr_str.split(os.linesep)
+        self.assert_equal(lines[0], '"id","parent.id","parent.text",'
+                                    '"parent.text_rc","nested_parent",'
+                                    '"children","text","text_rc","number",'
+                                    '"date_time","parent_text"')
+        row_data = lines[1].split(',')
+        # Second field should be "parent.id" and contain '0'.
+        self.assert_equal(row_data[1], '0')
 
     def test_csv_with_collection_expanded(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, CsvMime)
         mapping_options = {('children',):{IGNORE_OPTION:False,
                                           WRITE_AS_LINK_OPTION:False}}
@@ -140,14 +253,52 @@ class CsvRepresentationTestCase(ResourceTestCase):
                                     '"children.id","children.parent",'
                                     '"children.children",'
                                     '"children.no_backref_children",'
+                                    '"children.backref_only_children",'
                                     '"children.text","children.text_rc",'
                                     '"text","text_rc","number","date_time",'
                                     '"parent_text"')
         row_data = lines[1].split(',')
-        # Third field should now be "children.id" and contain 0.
+        # Fourth field should now be "children.id" and contain '0'.
         self.assert_equal(row_data[3], '0')
         # Fifth field should be "children.parent" and contain a link.
         self.assert_not_equal(row_data[4].find('my-entities/0/'), -1)
+        # Reload from data, ignoring the parent.
+        mapping_options = {('parent',):{IGNORE_OPTION:True, },
+                           ('nested_parent',):{IGNORE_OPTION:True, },
+                           ('parent_text',):{IGNORE_OPTION:True, }}
+        loaded_coll = rpr.resource_from_data(data,
+                                             mapping_options=mapping_options)
+        self.assert_true(iter(loaded_coll).next().parent is None)
+
+    def test_csv_with_two_collections_expanded_fails(self):
+        coll = create_collection()
+        rpr = as_representer(coll, CsvMime)
+        mapping_options = \
+            {('children',):{IGNORE_OPTION:False,
+                            WRITE_AS_LINK_OPTION:False},
+             ('children', 'children'):{IGNORE_OPTION:False,
+                                      WRITE_AS_LINK_OPTION:False},
+             ('children', 'no_backref_children'):{IGNORE_OPTION:False,
+                                                 WRITE_AS_LINK_OPTION:False},
+             }
+        data = rpr.data_from_resource(coll, mapping_options=mapping_options)
+        with self.assert_raises(ValueError) as cm:
+            rpr.representation_from_data(data)
+        exc_msg = 'In CSV representations, all but one'
+        self.assert_true(cm.exception.message.startswith(exc_msg))
+
+    def test_csv_data_from_representation(self):
+        rc = object.__new__(get_collection_class(IMyEntity))
+        rpr = CsvResourceRepresenter.create_from_resource(rc)
+        csv_invalid_field = '"id","text","number","foo"\n0,"abc",0,"xyz"'
+        with self.assert_raises(ValueError) as cm:
+            rpr.data_from_representation(csv_invalid_field)
+        self.assert_true(cm.exception.message.startswith('Invalid field'))
+        csv_invalid_row_length = '"id","text","number"\n0,"abc",0,"xyz"'
+        with self.assert_raises(ValueError) as cm:
+            rpr.data_from_representation(csv_invalid_row_length)
+        self.assert_true(
+                    cm.exception.message.startswith('Invalid row length'))
 
 
 class XmlRepresentationTestCase(ResourceTestCase):
@@ -155,13 +306,13 @@ class XmlRepresentationTestCase(ResourceTestCase):
     config_file_name = 'configure_rpr.zcml'
 
     def test_xml_with_defaults(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, XmlMime)
         rpr_str = rpr.to_string(coll)
         self.assert_not_equal(rpr_str.find('<ent:myentityparent id="0">'), -1)
 
     def test_xml_roundtrip(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, XmlMime)
         mapping_options = {('nested_parent',):{IGNORE_OPTION:True},
                            ('text_rc',):{IGNORE_OPTION:True},
@@ -174,17 +325,157 @@ class XmlRepresentationTestCase(ResourceTestCase):
         reloaded_coll = rpr.from_string(rpr_str)
         self.assert_equal(len(reloaded_coll), 2)
 
+    def test_id_attr(self):
+        mp = self.__get_member_mapping_and_representer()[0]
+        id_attr = mp.get_attribute_map()['id']
+        de = mp.data_element_class.create()
+        self.assert_true(de.get_terminal(id_attr) is None)
+
+    def test_create(self):
+        mp = self.__get_collection_mapping_and_representer()[0]
+        xml_tag = mp.configuration.get_option(XML_TAG_OPTION)
+        xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
+        de = mp.data_element_class.create()
+        self.assert_equal(de.tag, '{%s}%s' % (xml_ns, xml_tag))
+        self.assert_equal(de.nsmap[None], xml_ns)
+
+    def test_create_no_namespace(self):
+        mp = self.__get_collection_mapping_and_representer()[0]
+        xml_tag = mp.configuration.get_option(XML_TAG_OPTION)
+        mp.configuration.set_option(XML_NAMESPACE_OPTION, None)
+        de = mp.data_element_class.create()
+        self.assert_equal(de.tag, xml_tag)
+
+    def test_create_with_attr_namespace(self):
+        coll = create_collection()
+        mb = iter(coll).next()
+        ns = 'foo'
+        mp = self.__get_member_mapping_and_representer()[0]
+        mp.configuration.set_mapping_option(('parent',),
+                                            NAMESPACE_MAPPING_OPTION, ns)
+        mp.configuration.set_mapping_option(('parent',),
+                                            WRITE_AS_LINK_OPTION, False)
+        attr = mp.get_attribute_map()['parent']
+        self.assert_equal(attr.namespace, ns)
+        de = mp.map_to_data_element(mb)
+        parent_de = de.get_nested(attr)
+        self.assert_true(parent_de.tag.startswith('{%s}' % ns))
+
+    def test_create_with_attr_no_namespace(self):
+        coll = create_collection()
+        mb = iter(coll).next()
+        ns = None
+        mp = self.__get_member_mapping_and_representer()[0]
+        parent_mp = mp.mapping_registry.find_mapping(MyEntityParentMember)
+        parent_mp.configuration.set_option(XML_NAMESPACE_OPTION, ns)
+        mp.configuration.set_mapping_option(('parent',),
+                                            WRITE_AS_LINK_OPTION, False)
+        # This is a hack: the parent's text attribute would cause objectify
+        # to complain that the "text" attribute is not writable (because the
+        # test strips its usual namespace), so we ignore it alltogether.
+        mp.configuration.set_mapping_option(('parent', 'text',),
+                                            IGNORE_OPTION, True)
+        attr = mp.get_attribute_map()['parent']
+        self.assert_equal(attr.namespace, ns)
+        de = mp.map_to_data_element(mb)
+        parent_de = de.get_nested(attr)
+        self.assert_equal(parent_de.tag.find('{'), -1)
+
+    def test_create_no_tag_raises_error(self):
+        mp = self.__get_collection_mapping_and_representer()[0]
+        mp.configuration.set_option(XML_TAG_OPTION, None)
+        self.assert_raises(ValueError, mp.data_element_class.create)
+
+    def test_create_link(self):
+        coll = create_collection()
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(XmlMime)
+        mp = mp_reg.find_mapping(Link)
+        de = mp.data_element_class.create_from_resource(coll)
+        link_el = de.iterchildren().next()
+        self.assert_equal(link_el.get_kind(), ResourceKinds.COLLECTION)
+        self.assert_not_equal(link_el.get_relation().find('myentity'), -1)
+        self.assert_true(link_el.get_title().startswith('Collection of'))
+        self.assert_true(link_el.get_id() is None)
+
+    def test_create_link_from_non_resource_raises_error(self):
+        non_rc = NonResource()
+        rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
+        mp_reg = rpr_reg.get_mapping_registry(XmlMime)
+        mp = mp_reg.find_mapping(Link)
+        self.assert_raises(ValueError,
+                           mp.data_element_class.create_from_resource,
+                           non_rc)
+
+    def test_invalid_xml(self):
+        coll = object.__new__(get_collection_class(IMyEntity))
+        rpr = as_representer(coll, XmlMime)
+        with self.assert_raises(SyntaxError) as cm:
+            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?><murks/>')
+        exc_msg = 'Could not parse XML document for schema'
+        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+
+    def test_no_xml_string_as_schema(self):
+        mp, rpr = self.__get_collection_mapping_and_representer()
+        mp.configuration.set_option(XML_SCHEMA_OPTION,
+                                    'everest:tests/testapp_db/NoXml.xsd')
+        with self.assert_raises(SyntaxError) as cm:
+            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
+        exc_msg = 'Could not parse XML schema'
+        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+
+    def test_no_schema_xml_string_as_schema(self):
+        mp, rpr = self.__get_collection_mapping_and_representer()
+        mp.configuration.set_option(XML_SCHEMA_OPTION,
+                                    'everest:tests/testapp_db/NoSchema.xsd')
+        with self.assert_raises(SyntaxError) as cm:
+            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
+        exc_msg = 'Invalid XML schema'
+        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+
+    def __get_collection_mapping_and_representer(self):
+        rc_type = get_collection_class(IMyEntity)
+        return self.__get_mapping_and_representer(rc_type)
+
+    def __get_member_mapping_and_representer(self):
+        rc_type = get_member_class(IMyEntity)
+        return self.__get_mapping_and_representer(rc_type)
+
+    def __get_mapping_and_representer(self, rc_type):
+        rc = object.__new__(rc_type)
+        rpr = as_representer(rc, XmlMime)
+        mp_reg = rpr._mapping_registry # accessing protected pylint: disable=W0212
+        mp = mp_reg.find_or_create_mapping(rc_type)
+        return mp, rpr
+
 
 class AtomRepresentationTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_rpr.zcml'
 
-    def test_atom_with_defaults(self):
-        coll = _make_collection()
-        rpr = as_representer(coll, AtomMime)
-        rpr_str = rpr.to_string(coll)
+    def test_atom_collection(self):
+        def _test(rc):
+            rpr = as_representer(rc, AtomMime)
+            rpr_str = rpr.to_string(rc)
+            self.assert_not_equal(
+              rpr_str.find('<feed xmlns:ent="http://xml.test.org/tests"'), -1)
+        coll = create_collection()
+        _test(coll)
+        coll.slice = slice(0, 1)
+        filter_spec_fac = get_filter_specification_factory()
+        filter_spec = filter_spec_fac.create_equal_to('id', 0)
+        coll.filter = filter_spec
+        order_spec_fac = get_order_specification_factory()
+        order_spec = order_spec_fac.create_ascending('id')
+        coll.order = order_spec
+        _test(coll)
+
+    def test_atom_member(self):
+        mb = iter(create_collection()).next()
+        rpr = as_representer(mb, AtomMime)
+        rpr_str = rpr.to_string(mb)
         self.assert_not_equal(
-            rpr_str.find('<feed xmlns:ent="http://xml.test.org/tests"'), -1)
+            rpr_str.find('<entry xmlns:ent="http://xml.test.org/tests"'), -1)
 
 
 class RepresenterConfigurationTestCase(ResourceTestCase):
@@ -192,7 +483,7 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
     config_file_name = 'configure_rpr.zcml'
 
     def test_configure_rpr_with_zcml(self):
-        coll = _make_collection()
+        coll = create_collection()
         rpr = as_representer(coll, CsvMime)
         rpr_str = rpr.to_string(coll)
         lines = rpr_str.split(os.linesep)
@@ -207,13 +498,24 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         foo_prefix = 'foo'
         my_options = {XML_NAMESPACE_OPTION:foo_namespace,
                       XML_PREFIX_OPTION:foo_prefix}
-        self.config.add_resource_representer(MyEntityMember, XmlMime,
-                                             options=my_options)
+        my_mapping_options = {('parent',):{IGNORE_OPTION:True}, }
+        self.config.add_resource_representer(
+                                        MyEntityMember, XmlMime,
+                                        options=my_options,
+                                        mapping_options=my_mapping_options)
         rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_mapping(MyEntityMember)
         self.assert_equal(mp.configuration.get_option(XML_NAMESPACE_OPTION),
                           foo_namespace)
+        self.assert_equal(mp.configuration.get_mapping_option(('parent',),
+                                                              IGNORE_OPTION),
+                          True)
+        #
+        self.assert_raises(ValueError, mp.configuration.set_option,
+                           'nonsense', True)
+        self.assert_raises(ValueError, mp.configuration.set_mapping_option,
+                           ('parent',), 'nonsense', True)
 
     def test_configure_derived(self):
         self.config.add_resource(IDerived, DerivedMyEntityMember,
@@ -258,3 +560,50 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
                     bogus_prefix)
 
 
+class UpdateResourceFromDataTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp_db'
+    config_file_name = 'configure_no_orm.zcml'
+
+    def test_update_collection_from_data_with_id_raises_error(self):
+        coll = create_collection()
+        rpr = as_representer(coll, CsvMime)
+        upd_coll = new_stage_collection(IMyEntity)
+        ent = MyEntity(id=2)
+        upd_coll.create_member(ent)
+        de = rpr.data_from_resource(upd_coll)
+        with self.assert_raises(ValueError) as cm:
+            coll.update_from_data(de)
+        exc_msg = 'New member data should not provide an ID attribute.'
+        self.assert_equal(cm.exception.message, exc_msg)
+
+    def test_update_nested_member_from_data(self):
+        # Set up member that does not have a parent.
+        ent = MyEntity(id=1)
+        mb = MyEntityMember.create_from_entity(ent)
+        # Set up second member with same ID that does have a parent.
+        parent = MyEntityParent(id=0)
+        upd_ent = MyEntity(id=1, parent=parent)
+        upd_mb = MyEntityMember.create_from_entity(upd_ent)
+        rpr = as_representer(mb, CsvMime)
+        mapping_options = {('parent',):{WRITE_AS_LINK_OPTION:False}, }
+        de = rpr.data_from_resource(upd_mb, mapping_options=mapping_options)
+        mb.update_from_data(de)
+        self.assert_equal(mb.parent.id, parent.id)
+
+
+# pylint: disable=W0232
+class IDerived(Interface):
+    pass
+# pylint: enable=W0232
+
+
+class DerivedMyEntity(MyEntity):
+    pass
+
+
+class DerivedMyEntityMember(MyEntityMember):
+    pass
+
+
+class NonResource(object):
+    pass
