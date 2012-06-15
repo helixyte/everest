@@ -4,19 +4,25 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-from everest.orm import get_metadata
-from everest.orm import is_metadata_initialized
 from everest.orm import reset_metadata
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
-from everest.repository import REPOSITORIES
+from everest.querying.utils import OrmAttributeInspector
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.attributes import get_resource_class_attribute_names
+from everest.resources.attributes import is_collection_attribute
+from everest.resources.attributes import is_member_attribute
+from everest.resources.attributes import is_terminal_attribute
 from everest.resources.base import Collection
+from everest.resources.base import Member
 from everest.resources.base import ResourceToEntityFilterSpecificationVisitor
+from everest.resources.descriptors import attribute_alias
+from everest.resources.descriptors import collection_attribute
+from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
@@ -31,6 +37,7 @@ from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
+from everest.tests.testapp_db.testing import create_collection
 from everest.tests.testapp_db.testing import create_entity
 from everest.url import resource_to_url
 from pkg_resources import resource_filename # pylint: disable=E0611
@@ -41,37 +48,44 @@ __all__ = ['AttributesTestCase',
            'DescriptorsTestCase',
            ]
 
+ATTRIBUTE_NAMES = ['id', 'parent', 'nested_parent', 'children', 'text',
+                     'text_rc', 'number', 'date_time', 'parent_text']
+
 
 class AttributesTestCase(Pep8CompliantTestCase):
     def test_names(self):
-        self.assert_equal(
-                    MyEntityMember.get_attribute_names(),
-                    ['id', 'parent', 'nested_parent', 'children', 'text',
-                     'text_rc', 'number', 'date_time', 'parent_text'])
+        self.assert_equal(MyEntityMember.get_attribute_names(),
+                          ATTRIBUTE_NAMES)
 
     def test_types(self):
         attrs = MyEntityMember.get_attributes().values()
-        self.assert_equal(attrs[0].name, 'id')
+        self.assert_equal(attrs[0].name, ATTRIBUTE_NAMES[0])
         self.assert_equal(attrs[0].kind, ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attrs[0].entity_name, 'id')
         self.assert_equal(attrs[0].value_type, int)
-        self.assert_equal(attrs[1].name, 'parent')
+        self.assert_equal(attrs[1].name, ATTRIBUTE_NAMES[1])
         self.assert_equal(attrs[1].kind, ResourceAttributeKinds.MEMBER)
         self.assert_equal(attrs[1].entity_name, 'parent')
         self.assert_equal(attrs[1].value_type, IMyEntityParent)
-        self.assert_equal(attrs[3].name, 'children')
+        self.assert_equal(attrs[3].name, ATTRIBUTE_NAMES[3])
         self.assert_equal(attrs[3].kind,
                           ResourceAttributeKinds.COLLECTION)
         self.assert_equal(attrs[3].entity_name, 'children')
         self.assert_equal(attrs[3].value_type, IMyEntityChild)
-        self.assert_equal(attrs[4].name, 'text')
+        self.assert_equal(attrs[4].name, ATTRIBUTE_NAMES[4])
         self.assert_equal(attrs[4].kind, ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attrs[4].entity_name, 'text')
         self.assert_equal(attrs[4].value_type, str)
-        self.assert_equal(attrs[6].name, 'number')
+        self.assert_equal(attrs[6].name, ATTRIBUTE_NAMES[6])
         self.assert_equal(attrs[6].kind, ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attrs[6].entity_name, 'number')
         self.assert_equal(attrs[6].value_type, int)
+        self.assert_true(MyEntityMember.is_member('parent'))
+        self.assert_true(MyEntityMember.is_collection('children'))
+        self.assert_true(MyEntityMember.is_resource('parent'))
+        self.assert_true(MyEntityMember.is_resource('children'))
+        self.assert_true(isinstance(getattr(MyEntityMember, 'id'),
+                                    terminal_attribute))
 
     def test_inheritance(self):
         class MyEntityDerivedMember(MyEntityMember):
@@ -82,6 +96,21 @@ class AttributesTestCase(Pep8CompliantTestCase):
                           ResourceAttributeKinds.TERMINAL)
         self.assert_equal(attr.entity_name, 'text')
         self.assert_equal(attr.value_type, int)
+
+    def test_invalid_derived_descriptor(self):
+        class my_descriptor(member_attribute):
+            pass
+        with self.assert_raises(ValueError) as cm:
+            type('my_rc', (Member,),
+                 dict(foo=my_descriptor(IMyEntityParent, 'foo')))
+        exc_msg = 'Unknown resource attribute type'
+        self.assert_true(cm.exception.message.startswith(exc_msg))
+
+    def test_invalid_descriptor_parameters(self):
+        self.assert_raises(ValueError,
+                           terminal_attribute, 'not-a-type', 'foo')
+        self.assert_raises(ValueError,
+                           member_attribute, 'not-a-resource', 'foo')
 
 
 class DescriptorsTestCase(ResourceTestCase):
@@ -95,10 +124,14 @@ class DescriptorsTestCase(ResourceTestCase):
 
     @classmethod
     def teardown_class(cls):
-        if is_metadata_initialized(REPOSITORIES.ORM):
-            metadata = get_metadata(REPOSITORIES.ORM)
-            metadata.drop_all()
-            reset_metadata()
+        reset_metadata()
+
+    def test_attribute_checkers(self):
+        self.assert_true(is_terminal_attribute(IMyEntity, 'text'))
+        self.assert_true(is_member_attribute(IMyEntity, 'parent'))
+        self.assert_true(is_collection_attribute(IMyEntity, 'children'))
+        attr_names = get_resource_class_attribute_names(MyEntityMember)
+        self.assert_equal(attr_names, ATTRIBUTE_NAMES)
 
     def test_terminal_access(self):
         entity = MyEntity()
@@ -275,6 +308,19 @@ class DescriptorsTestCase(ResourceTestCase):
         context.update_from_data(data_el)
         self.assert_equal(len(context.children), 2)
 
+    def test_orm_attribute_inspector(self):
+        with self.assert_raises(ValueError) as cm:
+            OrmAttributeInspector.inspect(MyEntity, 'children')
+        self.assert_true(cm.exception.message.endswith(
+                                    'references an aggregate attribute.'))
+        with self.assert_raises(ValueError) as cm:
+            OrmAttributeInspector.inspect(MyEntity, 'text.something')
+        self.assert_true(cm.exception.message.endswith(
+                                    'references a terminal attribute.'))
+        with self.assert_raises(ValueError) as cm:
+            OrmAttributeInspector.inspect(MyEntity, 'DEFAULT_TEXT')
+        self.assert_true(cm.exception.message.endswith('not mapped.'))
+
     def test_filter_specification_visitor(self):
         coll = get_root_collection(IMyEntity)
         mb_cls = get_member_class(coll)
@@ -323,11 +369,40 @@ class DescriptorsTestCase(ResourceTestCase):
             new_spec.accept(visitor)
             self.assert_equal(str(visitor.expression), str(expr))
 
-    def test_nested_access(self):
+    def test_nested_get(self):
         my_entity = create_entity()
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
+
+    def test_nested_set(self):
+        ent = MyEntity()
+        mb = MyEntityMember.create_from_entity(ent)
+        self.assert_true(mb.parent is None)
+        self.assert_raises(AttributeError, setattr, mb, 'parent_text', 'foo')
+
+    def test_invalid_descriptors(self):
+        with self.assert_raises(ValueError) as cm:
+            collection_attribute(IMyEntity)
+        exc_msg = 'may be None, but not both.'
+        self.assert_true(cm.exception.message.endswith(exc_msg))
+
+    def test_backref_only_collection(self):
+        coll = create_collection()
+        child_mb = iter(iter(coll).next().children).next()
+        self.assert_equal(len(child_mb.backref_only_children), 1)
+        grandchild_mb = iter(child_mb.children).next()
+        grandchild_mb.parent = None
+        self.assert_equal(len(child_mb.backref_only_children), 0)
+
+    def test_alias(self):
+        ent = MyEntityParent()
+        mb = MyEntityParentMember.create_from_entity(ent)
+        alias_descr = getattr(MyEntityParentMember, 'text_alias')
+        self.assert_true(isinstance(alias_descr, attribute_alias))
+        self.assert_equal(mb.text_alias, mb.text)
+        mb.text_alias = 'altered text'
+        self.assert_equal(mb.text, mb.text_alias)
 
     def test_urls(self):
         my_entity = create_entity()

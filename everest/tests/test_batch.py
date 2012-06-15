@@ -24,6 +24,9 @@ class BatchTestCase(Pep8CompliantTestCase):
         for idx in range(10):
             self.assert_equal(btch.index, idx)
             self.assert_equal(btch.start, idx * 100)
+            if idx > 0:
+                self.assert_equal(btch.previous.start,
+                                  btch.start - btch.size)
             if idx < 9:
                 btch = btch.next
         self.assert_equal(btch.index, 9)
@@ -37,10 +40,11 @@ class BatchTestCase(Pep8CompliantTestCase):
         btch = self._make_batch(start=199, size=100)
         self.assert_equal(btch.start, 100)
 
+    def test_invalid_size(self):
+        self.assert_raises(ValueError, self._make_batch, 0, -10)
+
     def test_invalid_start(self):
-        self.assert_raises(ValueError,
-                           self._make_batch,
-                           - 1)
+        self.assert_raises(ValueError, self._make_batch, -1)
 
     def test_empty_batch(self):
         btch = self._make_batch(0, 20, 0)

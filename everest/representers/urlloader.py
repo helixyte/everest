@@ -29,8 +29,10 @@ class LazyAttributeLoaderProxy(object):
     through a URL-linked resource.
     """
     def __init__(self, _loader_map=None, **kw):
-        if _loader_map is None:
-            _loader_map = {}
+        if _loader_map is None \
+           or not (isinstance(_loader_map, dict) and len(_loader_map) > 0):
+            raise ValueError('Must pass _loader_map dictionary containing '
+                             'at least one attribute to load lazily.')
         self._loader_map = _loader_map
         super(LazyAttributeLoaderProxy, self).__init__(**kw)
 

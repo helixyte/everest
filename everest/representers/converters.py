@@ -1,13 +1,14 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 25, 2012.
 """
 from everest.representers.interfaces import IRepresentationConverter
+from iso8601.iso8601 import FixedOffset
 from rfc3339 import rfc3339
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import datetime
 import iso8601
 
@@ -19,6 +20,19 @@ __all__ = ['BooleanConverter',
            ]
 
 
+# FIXME: Monkey-patching FixedOffset to fix problem with deepcopy
+#        See http://code.google.com/p/pyiso8601/issues/detail?id=20
+def _reduce(self):
+    hrs, secs = \
+        divmod(self._FixedOffset__offset.seconds, 3600) # pylint: disable=W0212
+    mins = int(secs / 60)
+    return (self.__class__,
+            (hrs, mins, self._FixedOffset__name), {}) # pylint: disable=W0212
+FixedOffset.__reduce__ = _reduce
+del FixedOffset
+del _reduce
+
+
 class ConverterRegistry(object):
     __converters = None
 
@@ -27,9 +41,12 @@ class ConverterRegistry(object):
         if cls.__converters is None: # Lazy initialization.
             cls.__converters = {}
         if value_type in cls.__converters:
-            raise ValueError('For the "%s" data type, a converter has '
-                             'already been registered (%s).'
+            raise ValueError('For %s, a converter has already been '
+                             'registered (%s).'
                              % (value_type, cls.__converters[value_type]))
+        if not IRepresentationConverter in provided_by(converter_class):
+            raise ValueError('Converter class must provide '
+                             'IRepresenterConverter.')
         cls.__converters[value_type] = converter_class
 
     @classmethod
@@ -65,7 +82,7 @@ class SimpleConverterRegistry(ConverterRegistry):
 
 
 class DateTimeConverter(object):
-    implements(IRepresentationConverter)
+    class_provides(IRepresentationConverter)
 
     @classmethod
     def from_representation(cls, value):
@@ -81,7 +98,7 @@ class DateTimeConverter(object):
 
 
 class BooleanConverter(object):
-    implements(IRepresentationConverter)
+    class_provides(IRepresentationConverter)
 
     @classmethod
     def from_representation(cls, value):

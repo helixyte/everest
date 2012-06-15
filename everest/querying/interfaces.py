@@ -99,7 +99,7 @@ class IOrderSpecificationFactory(Interface):
 class ISpecificationDirector(Interface):
     """
     A specification director coordinates an expression parser and a 
-    specification builder to generate a specification.
+    specification builder to generate a specification from an expression.
     """
 
     def construct(expression):

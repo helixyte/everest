@@ -61,9 +61,6 @@ class _ResourceAttribute(object):
         #: The name of the attribute in the underlying entity.
         self.entity_name = entity_name
 
-    def __hash__(self):
-        return self.entity_name
-
 
 class TerminalResourceAttribute(_ResourceAttribute):
     """
@@ -239,7 +236,7 @@ def is_terminal_attribute(rc, attr_name):
 
 def is_member_attribute(rc, attr_name):
     mb_cls = get_member_class(rc)
-    return mb_cls.is_atomic(attr_name)
+    return mb_cls.is_member(attr_name)
 
 
 def is_collection_attribute(rc, attr_name):

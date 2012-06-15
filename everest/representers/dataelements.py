@@ -19,6 +19,7 @@ from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.url import url_to_resource
 
 
 class DataElement(object):
@@ -258,22 +259,33 @@ class SimpleLinkedDataElement(LinkedDataElement):
 
 
 class DataElementAttributeProxy(object):
+    """
+    Convenience proxy for accessing data from data elements.
+    
+    The proxy allows you to transparently access terminal, member, and
+    collection attributes. Nested access is also supported.
+    
+    Example: ::
+    
+    prx = DataElementAttributeProxy(data_element)
+    de_id = prx.id                              # terminal access
+    de_parent = prx.parent                      # member access
+    de_child = prx.children[0]                  # collection access
+    de_grandchild = prx.children[0].children[0] # nested collection access
+    """
     def __init__(self, data_element):
+        if ILinkedDataElement in provided_by(data_element):
+            raise ValueError('Do not use data element proxies with linked '
+                             'data elements.')
         self.__data_element = data_element
-        if not ILinkedDataElement in provided_by(data_element):
-            attrs = data_element.mapping.attribute_iterator()
-        else:
-            attrs = ()
+        attrs = data_element.mapping.attribute_iterator()
         self.__attr_map = dict([(attr.repr_name, attr) for attr in attrs])
 
     def __getattr__(self, name):
         try:
             attr = self.__attr_map[name]
-        except AttributeError:
-            try:
-                value = getattr(self.__data_element, name)
-            except KeyError:
-                raise AttributeError(name)
+        except KeyError:
+            raise AttributeError(name)
         else:
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 value = self.__data_element.get_terminal(attr)
@@ -281,6 +293,11 @@ class DataElementAttributeProxy(object):
                 nested_data_el = self.__data_element.get_nested(attr)
                 if nested_data_el is None:
                     value = None
+                elif ILinkedDataElement in provided_by(nested_data_el):
+                    try:
+                        value = url_to_resource(nested_data_el.get_url())
+                    except KeyError: # traversal did not find anything.
+                        value = None
                 elif attr.kind == ResourceAttributeKinds.MEMBER:
                     value = DataElementAttributeProxy(nested_data_el)
                 else:

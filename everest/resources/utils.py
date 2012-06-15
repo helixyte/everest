@@ -6,7 +6,6 @@ Utilities for dealing with resources.
 
 Created on Nov 3, 2011.
 """
-
 from everest.interfaces import IRepositoryManager
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
@@ -190,7 +189,7 @@ def get_registered_collection_resources():
     """
     reg = get_current_registry()
     return [util.component
-            for util in reg.getRegisteredUtilities()
+            for util in reg.registeredUtilities()
             if util.name == 'collection-class']
 
 

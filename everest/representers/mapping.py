@@ -81,7 +81,8 @@ class Mapping(object):
             mapped_class = self.__mapped_cls
         if key is None:
             key = AttributeKey(()) # Top level access.
-        attrs = self.__mapped_attr_cache.get((mapped_class, key))
+        # FIXME: Investigate caching of mapped attributes.
+        attrs = None # self.__mapped_attr_cache.get((mapped_class, key))
         if attrs is None:
             attrs = self.__collect_mapped_attributes(mapped_class, key)
 #            self.__mapped_attr_cache[(mapped_class, key)] = attrs
@@ -92,7 +93,7 @@ class Mapping(object):
         for attr in attr_map.itervalues():
             yield attr
 
-    def terminal_attribute_iterator(self, mapped_class, key=None):
+    def terminal_attribute_iterator(self, mapped_class=None, key=None):
         for attr in self.attribute_iterator(mapped_class, key=key):
             if attr.kind == ResourceAttributeKinds.TERMINAL:
                 yield attr
@@ -117,13 +118,13 @@ class Mapping(object):
     def map_to_resource(self, data_element, resolve_urls=True):
         trv = DataElementTreeTraverser(self, data_element)
         visitor = ResourceBuilderDataElementTreeVisitor(resolve_urls)
-        trv.run_post_order(visitor)
+        trv.run(visitor)
         return visitor.resource
 
     def map_to_data_element(self, resource):
         trv = ResourceTreeTraverser(self, resource)
         visitor = DataElementBuilderResourceTreeVisitor(self)
-        trv.run_post_order(visitor)
+        trv.run(visitor)
         return visitor.data_element
 
     @property

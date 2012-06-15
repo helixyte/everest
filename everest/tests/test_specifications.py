@@ -4,27 +4,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
-
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from everest.querying.base import Operator
-from everest.querying.specifications import ConjuctionFilterSpecification
-from everest.querying.specifications import DisjuctionFilterSpecification
 from everest.querying.specifications import FilterSpecification
-from everest.querying.specifications import NegationFilterSpecification
-from everest.querying.specifications import ValueContainedFilterSpecification
-from everest.querying.specifications import ValueContainsFilterSpecification
-from everest.querying.specifications import ValueEndsWithFilterSpecification
-from everest.querying.specifications import ValueEqualToFilterSpecification
-from everest.querying.specifications import ValueGreaterThanFilterSpecification
-from everest.querying.specifications import ValueInRangeFilterSpecification
-from everest.querying.specifications import ValueLessThanFilterSpecification
-from everest.querying.specifications import ValueStartsWithFilterSpecification
-from everest.querying.specifications import \
-    ValueGreaterThanOrEqualToFilterSpecification
-from everest.querying.specifications import \
-    ValueLessThanOrEqualToFilterSpecification
+from everest.querying.specifications import FilterSpecificationFactory
 from everest.testing import BaseTestCase
 from nose.tools import raises
+from everest.querying.specifications import OrderSpecificationFactory
+from everest.querying.specifications import NaturalOrderSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjuctionFilterSpecification',
@@ -96,7 +84,7 @@ class AlwaysFalseFilterSpecification(FilterSpecification):
         pass
 
 
-class CriterionFilterSpecificationTestCase(BaseTestCase):
+class _CriterionFilterSpecificationTestCase(BaseTestCase):
 
     TEXT_VALUE = 'Beta-2'
     GREATER_THAN_TEXT_VALUE = 'Gamma-3'
@@ -115,13 +103,11 @@ class CriterionFilterSpecificationTestCase(BaseTestCase):
     LIST_VALUES = [1, 2, 3, 4, 5]
 
     def set_up(self):
+        self.factory = FilterSpecificationFactory()
         self.candidate = self.create_candidate(text_attr=self.TEXT_VALUE,
                                                number_attr=self.NUMBER_VALUE,
                                                date_attr=self.DATE_VALUE,
                                                list_attr=self.LIST_VALUES)
-
-    def tear_down(self):
-        pass
 
     def create_candidate(self, **attributes):
         return Candidate(**attributes)
@@ -141,12 +127,22 @@ class CriterionFilterSpecificationTestCase(BaseTestCase):
     def create_spec(self, attr_name, attr_value):
         raise NotImplementedError('Abstract method')
 
+    def test_basics(self):
+        spec = self.create_spec('foo', 'bar')
+        self.assert_equal(spec, spec)
+        spec_other_attr = self.create_spec('bar', 'bar')
+        self.assert_not_equal(spec, spec_other_attr)
+        spec_other_value = self.create_spec('foo', 'bar1')
+        self.assert_not_equal(spec, spec_other_value)
+        str_str = '<%s op_name:' % spec.__class__.__name__
+        self.assert_equal(str(spec)[:len(str_str)], str_str)
 
-class TestValueEqualToFilterSpecification(
-                                        CriterionFilterSpecificationTestCase):
+
+class ValueEqualToFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueEqualToFilterSpecification(attr_name, attr_value)
+        return self.factory.create_equal_to(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.TEXT_VALUE)
@@ -173,10 +169,11 @@ class TestValueEqualToFilterSpecification(
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueGreaterThanFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueGreaterThanFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueGreaterThanFilterSpecification(attr_name, attr_value)
+        return self.factory.create_greater_than(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.LESS_THAN_TEXT_VALUE)
@@ -203,10 +200,11 @@ class TestValueGreaterThanFilterSpecification(CriterionFilterSpecificationTestCa
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueLessThanFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueLessThanFilterSpecificationTestCase(
+                                    _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueLessThanFilterSpecification(attr_name, attr_value)
+        return self.factory.create_less_than(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.GREATER_THAN_TEXT_VALUE)
@@ -233,10 +231,12 @@ class TestValueLessThanFilterSpecification(CriterionFilterSpecificationTestCase)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueGreaterThanOrEqualToFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueGreaterThanOrEqualToFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueGreaterThanOrEqualToFilterSpecification(attr_name, attr_value)
+        return self.factory.create_greater_than_or_equal_to(attr_name,
+                                                            attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.LESS_THAN_TEXT_VALUE)
@@ -272,10 +272,12 @@ class TestValueGreaterThanOrEqualToFilterSpecification(CriterionFilterSpecificat
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueLessThanOrEqualToFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueLessThanOrEqualToFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueLessThanOrEqualToFilterSpecification(attr_name, attr_value)
+        return self.factory.create_less_than_or_equal_to(attr_name,
+                                                         attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.GREATER_THAN_TEXT_VALUE)
@@ -311,12 +313,22 @@ class TestValueLessThanOrEqualToFilterSpecification(CriterionFilterSpecification
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueInRangeFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueInRangeFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
         from_value, to_value = attr_value
-        return ValueInRangeFilterSpecification(attr_name,
-                                               (from_value, to_value))
+        return self.factory.create_in_range(attr_name, (from_value, to_value))
+
+    def test_basics(self):
+        spec = self.create_spec('foo', ('bar0', 'bar1'))
+        self.assert_equal(spec.from_value, 'bar0')
+        self.assert_equal(spec.to_value, 'bar1')
+        self.assert_equal(spec, spec)
+        spec_other_value = self.create_spec('foo', ('bar0', 'bar2'))
+        self.assert_not_equal(spec, spec_other_value)
+        spec_other_attr = self.create_spec('bar', ('bar0', 'bar1'))
+        self.assert_not_equal(spec, spec_other_attr)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec((self.LESS_THAN_TEXT_VALUE,
@@ -349,10 +361,11 @@ class TestValueInRangeFilterSpecification(CriterionFilterSpecificationTestCase):
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueStartsWithFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueStartsWithFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueStartsWithFilterSpecification(attr_name, attr_value)
+        return self.factory.create_starts_with(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.TEXT_VALUE[0])
@@ -381,10 +394,11 @@ class TestValueStartsWithFilterSpecification(CriterionFilterSpecificationTestCas
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueEndsWithFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueEndsWithFilterSpecificationTestCase(
+                                    _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueEndsWithFilterSpecification(attr_name, attr_value)
+        return self.factory.create_ends_with(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.TEXT_VALUE[-1])
@@ -413,10 +427,11 @@ class TestValueEndsWithFilterSpecification(CriterionFilterSpecificationTestCase)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueContainsFilterSpecification(CriterionFilterSpecificationTestCase):
+class ValueContainsFilterSpecificationTestCase(
+                                    _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueContainsFilterSpecification(attr_name, attr_value)
+        return self.factory.create_contains(attr_name, attr_value)
 
     def test_text_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.TEXT_VALUE[2])
@@ -445,11 +460,11 @@ class TestValueContainsFilterSpecification(CriterionFilterSpecificationTestCase)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
 
-class TestValueContainedFilterSpecification(
-                                        CriterionFilterSpecificationTestCase):
+class ValueContainedFilterSpecificationTestCase(
+                                       _CriterionFilterSpecificationTestCase):
 
     def create_spec(self, attr_name, attr_value):
-        return ValueContainedFilterSpecification(attr_name, attr_value)
+        return self.factory.create_contained(attr_name, attr_value)
 
     def test_contained_list_value_is_statisfied_by_candidate(self):
         spec = self.create_text_value_spec(self.TEXT_VALUE_LIST)
@@ -463,66 +478,86 @@ class TestValueContainedFilterSpecification(
 class CompositeFilterSpecificationTestCase(BaseTestCase):
 
     def set_up(self):
+        self.factory = FilterSpecificationFactory()
         self.candidate = object()
         self.always_true = AlwaysTrueFilterSpecification()
         self.always_false = AlwaysFalseFilterSpecification()
 
-    def tear_down(self):
-        pass
-
     def create_conjuction_spec(self, left_spec, right_spec):
-        return ConjuctionFilterSpecification(left_spec, right_spec)
+        return self.factory.create_conjunction(left_spec, right_spec)
 
     def create_disjunction_spec(self, left_spec, right_spec):
-        return DisjuctionFilterSpecification(left_spec, right_spec)
+        return self.factory.create_disjunction(left_spec, right_spec)
+
+    def test_basics(self):
+        conj_spec = self.create_conjuction_spec(self.always_true,
+                                                self.always_false)
+        self.assert_equal(conj_spec, conj_spec)
+        conj_spec_other_spec = self.create_conjuction_spec(self.always_false,
+                                                           self.always_true)
+        self.assert_not_equal(conj_spec, conj_spec_other_spec)
+        str_str = '<%s left_spec:' % conj_spec.__class__.__name__
+        self.assert_equal(str(conj_spec)[:len(str_str)], str_str)
 
 
-class TestConjuctionFilterSpecification(CompositeFilterSpecificationTestCase):
+class ConjuctionFilterSpecificationTestCase(
+                                     CompositeFilterSpecificationTestCase):
 
     def test_conjuction_is_statisfied_by_candidate(self):
         spec = self.create_conjuction_spec(self.always_true, self.always_true)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_conjuction_is_not_statisfied_by_candidate(self):
-        spec = self.create_conjuction_spec(self.always_false, self.always_true)
+        spec = self.create_conjuction_spec(self.always_false,
+                                           self.always_true)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
-        spec = self.create_conjuction_spec(self.always_true, self.always_false)
+        spec = self.create_conjuction_spec(self.always_true,
+                                           self.always_false)
+        self.assert_false(spec.is_satisfied_by(self.candidate))
+        spec = self.create_conjuction_spec(self.always_false,
+                                           self.always_false)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
-        spec = self.create_conjuction_spec(self.always_false, self.always_false)
-        self.assert_false(spec.is_satisfied_by(self.candidate))
 
-
-class TestDisjuctionFilterSpecification(CompositeFilterSpecificationTestCase):
+class DisjuctionFilterSpecificationTestCase(
+                                    CompositeFilterSpecificationTestCase):
 
     def test_is_statisfied_by_candidate(self):
-        spec = self.create_disjunction_spec(self.always_false, self.always_true)
+        spec = self.create_disjunction_spec(self.always_false,
+                                            self.always_true)
         self.assert_true(spec.is_satisfied_by(self.candidate))
-
-        spec = self.create_disjunction_spec(self.always_true, self.always_false)
+        spec = self.create_disjunction_spec(self.always_true,
+                                            self.always_false)
         self.assert_true(spec.is_satisfied_by(self.candidate))
-
-        spec = self.create_disjunction_spec(self.always_true, self.always_true)
+        spec = self.create_disjunction_spec(self.always_true,
+                                            self.always_true)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_disjunction_is_not_statisfied_by_candidate(self):
-        spec = self.create_disjunction_spec(self.always_false, self.always_false)
+        spec = self.create_disjunction_spec(self.always_false,
+                                            self.always_false)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class TestNegationFilterSpecification(BaseTestCase):
+class NegationFilterSpecificationTestCase(BaseTestCase):
 
     def set_up(self):
+        self.factory = FilterSpecificationFactory()
         self.candidate = object()
         self.always_true = AlwaysTrueFilterSpecification()
         self.always_false = AlwaysFalseFilterSpecification()
 
-    def tear_down(self):
-        pass
-
     def create_negation_spec(self, wrapped_spec):
-        return NegationFilterSpecification(wrapped_spec)
+        return self.factory.create_negation(wrapped_spec)
+
+    def test_basics(self):
+        spec = self.create_negation_spec(self.always_false)
+        self.assert_equal(spec, spec)
+        spec_other_spec = self.create_negation_spec(self.always_true)
+        self.assert_not_equal(spec, spec_other_spec)
+        str_str = '<%s wrapped_spec:' % spec.__class__.__name__
+        self.assert_equal(str(spec)[:len(str_str)], str_str)
 
     def test_negation_is_satisfied_by_candidate(self):
         spec = self.create_negation_spec(self.always_false)
@@ -531,3 +566,73 @@ class TestNegationFilterSpecification(BaseTestCase):
     def test_negation_is_not_satisfied_by_candidate(self):
         spec = self.create_negation_spec(self.always_true)
         self.assert_false(spec.is_satisfied_by(self.candidate))
+
+
+class OrderSpecificationTestCase(BaseTestCase):
+    def set_up(self):
+        self.factory = OrderSpecificationFactory()
+
+    def create_ascending_spec(self, attr_name):
+        return self.factory.create_ascending(attr_name)
+
+    def create_descending_spec(self, attr_name):
+        return self.factory.create_descending(attr_name)
+
+    def create_natural_spec(self, attr_name):
+        return NaturalOrderSpecification(attr_name)
+
+    def test_operations(self):
+        first_candidate = Candidate(number_attr=0, text_attr='a')
+        second_candidate = Candidate(number_attr=1, text_attr='b')
+        def _test(attr):
+            spec_asc = self.create_ascending_spec(attr)
+            spec_desc = self.create_descending_spec(attr)
+            self.assert_equal(spec_asc.attr_name, attr)
+            self.assert_equal(spec_desc.attr_name, attr)
+            self.assert_false(spec_asc.eq(first_candidate, second_candidate))
+            self.assert_false(spec_desc.eq(first_candidate, second_candidate))
+            self.assert_true(spec_asc.ne(first_candidate, second_candidate))
+            self.assert_true(spec_desc.ne(first_candidate, second_candidate))
+            self.assert_true(spec_asc.lt(first_candidate, second_candidate))
+            self.assert_false(spec_desc.lt(first_candidate, second_candidate))
+            self.assert_false(spec_asc.ge(first_candidate, second_candidate))
+            self.assert_true(spec_desc.ge(first_candidate, second_candidate))
+            self.assert_true(spec_asc.le(first_candidate, second_candidate))
+            self.assert_false(spec_desc.le(first_candidate, second_candidate))
+            self.assert_false(spec_asc.gt(first_candidate, second_candidate))
+            self.assert_true(spec_desc.gt(first_candidate, second_candidate))
+        _test('number_attr')
+        _test('text_attr')
+
+    def test_basics(self):
+        spec = self.create_ascending_spec('foo')
+        str_str = '<%s attr_name:' % spec.__class__.__name__
+        self.assert_equal(str(spec)[:len(str_str)], str_str)
+
+    def test_natural(self):
+        first_candidate = Candidate(number_attr=0, text_attr='a10')
+        second_candidate = Candidate(number_attr=1, text_attr='a9')
+        text_spec = self.create_natural_spec('text_attr')
+        self.assert_false(text_spec.lt(first_candidate, second_candidate))
+        number_spec = self.create_natural_spec('number_attr')
+        self.assert_true(number_spec.lt(first_candidate, second_candidate))
+
+    def test_conjunction(self):
+        first_candidate = Candidate(number_attr=0, text_attr='a')
+        second_candidate = Candidate(number_attr=0, text_attr='b')
+        text_spec = self.create_natural_spec('text_attr')
+        number_spec = self.create_natural_spec('number_attr')
+        conj_spec = self.factory.create_conjunction(number_spec, text_spec)
+        str_str = '<%s left:' % conj_spec.__class__.__name__
+        self.assert_equal(str(conj_spec)[:len(str_str)], str_str)
+        self.assert_true(conj_spec.lt(first_candidate, second_candidate))
+        self.assert_true(conj_spec.le(first_candidate, second_candidate))
+        self.assert_false(conj_spec.eq(first_candidate, second_candidate))
+        self.assert_equal(conj_spec.cmp(first_candidate, second_candidate),
+                          - 1)
+        conj_spec = self.factory.create_conjunction(text_spec, number_spec)
+        self.assert_true(conj_spec.lt(first_candidate, second_candidate))
+        self.assert_true(conj_spec.le(first_candidate, second_candidate))
+        self.assert_false(conj_spec.eq(first_candidate, second_candidate))
+        self.assert_equal(conj_spec.cmp(first_candidate, second_candidate),
+                          - 1)

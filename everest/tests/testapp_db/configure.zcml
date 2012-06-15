@@ -1,19 +1,16 @@
-<configure
-    xmlns="http://pylonshq.com/pyramid"
->
+<configure xmlns="http://pylonshq.com/pyramid">
 
     <!-- Include special directives. -->
 
-    <include
-        package="everest.includes" />
+    <include package="everest.includes" />
 
     <!-- Utilities -->
 
     <!-- Repositories. -->
-    
+
     <orm_repository
         make_default="true"
-        metadata_factory="everest.tests.testapp_db.orm.create_metadata"/>
+        metadata_factory="everest.tests.testapp_db.orm.create_metadata" />
 
     <!-- Resources. -->
 
@@ -21,7 +18,7 @@
         interface='.interfaces.IMyEntityParent'
         member=".resources.MyEntityParentMember"
         entity=".entities.MyEntityParent"
-        collection_root_name="my-entity-parents"/>
+        collection_root_name="my-entity-parents" />
 
     <resource
         interface='.interfaces.IMyEntity'

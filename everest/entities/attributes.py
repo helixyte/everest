@@ -6,7 +6,8 @@ Created on Dec 2, 2011.
 """
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['EntityAttributeKinds'
+           ]
 
 
 class EntityAttributeKinds(object):

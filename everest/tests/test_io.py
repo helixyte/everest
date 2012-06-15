@@ -1,5 +1,4 @@
 """
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -7,18 +6,23 @@ Created on Feb 21, 2012.
 """
 from StringIO import StringIO
 from everest.mime import CsvMime
-from everest.orm import get_metadata
-from everest.orm import is_metadata_initialized
 from everest.orm import reset_metadata
-from everest.repository import REPOSITORIES
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph
+from everest.resources.io import dump_resource
+from everest.resources.io import dump_resource_to_files
 from everest.resources.io import dump_resource_to_zipfile
 from everest.resources.io import find_connected_resources
+from everest.resources.io import get_collection_filename
+from everest.resources.io import get_collection_name
+from everest.resources.io import load_collection_from_file
+from everest.resources.io import load_collection_from_url
 from everest.resources.io import load_collections_from_zipfile
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
+from everest.resources.utils import get_stage_collection
 from everest.resources.utils import new_stage_collection
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
@@ -31,6 +35,11 @@ from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.tests.testapp_db.resources import MyEntityChildMember
 from everest.tests.testapp_db.resources import MyEntityGrandchildMember
+import glob
+import os
+import shutil
+import tempfile
+import zipfile
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConnectedResourcesTestCase',
@@ -82,9 +91,15 @@ class ResourceDependencyGraphTestCase(ResourceGraphTestCase):
 
 class ConnectedResourcesTestCase(ResourceGraphTestCase):
 
-    def test_find_connected(self):
+    def test_find_connected_with_member(self):
         member = _make_test_entity_member()
         coll_map = find_connected_resources(member)
+        for coll in coll_map.itervalues():
+            self.assert_equal(len(coll), 1)
+
+    def test_find_connected_with_collection(self):
+        member = _make_test_entity_member()
+        coll_map = find_connected_resources(member.__parent__)
         for coll in coll_map.itervalues():
             self.assert_equal(len(coll), 1)
 
@@ -128,7 +143,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         self.assert_equal(len(rpr_map), 4)
 
 
-class _ResourceLoadingTestCaseBase(ResourceTestCase):
+class _ResourceIoTestCaseBase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
 
     def set_up(self):
@@ -140,6 +155,8 @@ class _ResourceLoadingTestCaseBase(ResourceTestCase):
                                      ('children',):{IGNORE_OPTION:True}
                                      })
 
+
+class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
     def test_load_from_zipfile(self):
         member = _make_test_entity_member()
         strm = StringIO('w')
@@ -157,16 +174,83 @@ class _ResourceLoadingTestCaseBase(ResourceTestCase):
         self.assert_equal(len(colls[3]), 1)
 
 
-class ResourceLoadingTestCaseNoOrm(_ResourceLoadingTestCaseBase):
+class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
     config_file_name = 'configure_no_orm.zcml'
 
+    def test_load_from_zipfile_invalid_extension(self):
+        strm = StringIO('w')
+        zipf = zipfile.ZipFile(strm, 'w')
+        coll_name = get_collection_name(get_collection_class(IMyEntity))
+        zipf.writestr('%s.foo' % coll_name, '')
+        zipf.close()
+        colls = [get_root_collection(IMyEntity)]
+        with self.assert_raises(ValueError) as cm:
+            load_collections_from_zipfile(colls, strm)
+        exc_msg = 'Could not infer MIME type'
+        self.assert_true(cm.exception.message.startswith(exc_msg))
 
-class ResourceLoadingTestCaseOrm(_ResourceLoadingTestCaseBase):
+    def test_load_from_zipfile_filename_not_found(self):
+        strm = StringIO('w')
+        zipf = zipfile.ZipFile(strm, 'w')
+        zipf.writestr('foo.foo', '')
+        zipf.close()
+        colls = [get_stage_collection(IMyEntity)]
+        load_collections_from_zipfile(colls, strm)
+        self.assert_equal(len(colls[0]), 0)
+
+
+class ZipResourceIoTestCaseOrm(_ZipResourceIoTestCaseBase):
     config_file_name = 'configure.zcml'
 
     @classmethod
     def teardown_class(cls):
-        if is_metadata_initialized(REPOSITORIES.ORM):
-            metadata = get_metadata(REPOSITORIES.ORM)
-            metadata.drop_all()
-            reset_metadata()
+        reset_metadata()
+
+
+class StreamResourceIoTestCase(_ResourceIoTestCaseBase):
+    config_file_name = 'configure_no_orm.zcml'
+    def test_dump_no_content_type(self):
+        member = _make_test_entity_member()
+        strm = StringIO()
+        dump_resource(member, strm)
+        self.assert_true(strm.getvalue().startswith('"id",'))
+
+
+class FileResourceIoTestCase(_ResourceIoTestCaseBase):
+    config_file_name = 'configure_no_orm.zcml'
+    def _test_load(self, load_func, fn_func):
+        member = _make_test_entity_member()
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            dump_resource_to_files(member, directory=tmp_dir)
+            file_names = glob.glob1(tmp_dir, "*.csv")
+            self.assert_equal(len(file_names), 4)
+            for ifc in [IMyEntityParent,
+                        IMyEntity,
+                        IMyEntityChild,
+                        IMyEntityGrandchild]:
+                coll = get_root_collection(ifc)
+                file_name = get_collection_filename(type(coll))
+                load_func(coll, fn_func(os.path.join(tmp_dir, file_name)))
+                self.assert_equal(len(coll), 1)
+        finally:
+            shutil.rmtree(tmp_dir)
+
+    def test_load_from_invalid_file(self):
+        coll = get_root_collection(IMyEntity)
+        with self.assert_raises(ValueError) as cm:
+            load_collection_from_file(coll, 'my-entity-collection.foo')
+        exc_msg = 'Could not infer MIME type'
+        self.assert_true(cm.exception.message.startswith(exc_msg))
+
+    def test_load_from_file(self):
+        self._test_load(load_collection_from_file, lambda fn: fn)
+
+    def test_load_from_file_url(self):
+        self._test_load(load_collection_from_url, lambda fn: "file://%s" % fn)
+
+    def test_load_from_invalid_file_url(self):
+        self.assert_raises(ValueError,
+                           self._test_load,
+                           load_collection_from_url,
+                           lambda fn: "http://%s" % fn)

@@ -8,9 +8,9 @@ Created on Nov 3, 2011.
 """
 
 from everest.entities.interfaces import IEntity
-from everest.interfaces import IRepository
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
+from everest.utils import get_repository_manager
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
@@ -42,8 +42,8 @@ def get_stage_aggregate(rc):
     Returns an aggregate from the stage entity repository for the given 
     registered resource.
     """
-    reg = get_current_registry()
-    repo = reg.getUtility(IRepository, name=REPOSITORIES.MEMORY)
+    repo_mgr = get_repository_manager()
+    repo = repo_mgr.get(REPOSITORIES.MEMORY)
     coll = repo.get(rc)
     return coll.get_aggregate()
 

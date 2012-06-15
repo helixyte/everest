@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
 """
-
+from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
 from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPCreated
@@ -31,16 +31,26 @@ class PostCollectionView(PutOrPostResourceView):
         return self.representer.from_string(self.request.body)
 
     def _process_request_data(self, data):
-        if self.context.get(data.__name__) is not None:
-            # We have a member with the same name - 409 Conflict.
-            response = self._handle_conflict(data.__name__)
+        member_was_posted = provides_member_resource(data)
+        if member_was_posted:
+            new_members = [data]
         else:
-            # All is good - 201 Created.
-            self.context.add(data)
+            new_members = data
+        was_created = True
+        for new_member in new_members:
+            if self.context.get(new_member.__name__) is not None:
+                # We have a member with the same name - 409 Conflict.
+                response = self._handle_conflict(new_member.__name__)
+                was_created = False
+                break
+            else:
+                self.context.add(new_member)
+        if was_created:
+            if member_was_posted:
+                new_location = resource_to_url(data, request=self.request)
+            else:
+                new_location = resource_to_url(self.context, request=self.request)
             self.request.response.status = self._status(HTTPCreated)
-            self.request.response.headerlist = [
-                ('Location',
-                 resource_to_url(data, request=self.request))
-                ]
+            self.request.response.headerlist = [('Location', new_location)]
             response = {'context' : data}
         return response

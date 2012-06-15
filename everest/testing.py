@@ -31,8 +31,6 @@ __all__ = ['BaseTestCase',
            'DummyContext',
            'DummyModule',
            'EntityTestCase',
-           'EverestIni',
-           'EverestNosePlugin',
            'FunctionalTestCase',
            'OrmContextManager',
            'Pep8CompliantTestCase',
@@ -190,11 +188,11 @@ class ResourceTestCase(ConfiguredTestCase):
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
         self._request.root = srvc
-        # Start the service.
-        srvc.start()
         # Initialize all root repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
+        # Start the service.
+        srvc.start()
 
     def tear_down(self):
         transaction.abort()

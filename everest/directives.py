@@ -13,7 +13,6 @@ from pyramid_zcml import IViewDirective
 from pyramid_zcml import view as pyramid_view
 from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
 from zope.configuration.config import IConfigurationContext # pylint: disable=E0611,F0401
-from zope.configuration.exceptions import ConfigurationError # pylint: disable=E0611,F0401
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
 from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Path # pylint: disable=E0611,F0401
@@ -89,7 +88,7 @@ class IMemoryRepositoryDirective(IRepositoryDirective):
 
 
 def memory_repository(_context, name=None, make_default=False,
-                      aggregate_class=None, entity_store_class=False):
+                      aggregate_class=None, entity_store_class=None):
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
                 REPOSITORIES.MEMORY, 'add_memory_repository', {})
@@ -313,12 +312,6 @@ class RepresenterDirective(GroupingContextDecorator):
     implements(IConfigurationContext, IRepresenterDirective)
 
     def __init__(self, context, content_type=None, representer_class=None):
-        if content_type is None and representer_class is None:
-            raise ConfigurationError('Must provide either "content_type" or '
-                                     '"representer_class" option.')
-        if not content_type is None and not representer_class is None:
-            raise ConfigurationError('Must not provide both "content_type" '
-                                     'and "representer_class" options.')
         self.context = context
         self.content_type = content_type
         self.representer_class = representer_class

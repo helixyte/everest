@@ -16,6 +16,7 @@ from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
+from sqlalchemy.sql.expression import ClauseList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
@@ -445,44 +446,49 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         OrderVisitorTestCase.set_up(self)
 
     def test_simple_order_by_one_attribute(self):
-        expected_expr = [Person.name.asc()]
+        expected_expr = Person.name.asc()
         expr = self._run_visitor('one-asc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_reversed_order_by_one_attribute(self):
-        expected_expr = [Person.name.desc()]
+        expected_expr = Person.name.desc()
         expr = self._run_visitor('one-desc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes(self):
-        expected_expr = [Person.name.asc(), Person.age.asc()]
+        expected_expr = ClauseList(Person.name.asc(), Person.age.asc())
         expr = self._run_visitor('two-asc-asc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
-        self.assert_equal(str(expr[1]), str(expected_expr[1]))
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_left_reversed(self):
-        expected_expr = [Person.name.desc(), Person.age.asc()]
+        expected_expr = ClauseList(Person.name.desc(), Person.age.asc())
         expr = self._run_visitor('two-desc-asc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
-        self.assert_equal(str(expr[1]), str(expected_expr[1]))
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_right_reversed(self):
-        expected_expr = [Person.name.asc(), Person.age.desc()]
+        expected_expr = ClauseList(Person.name.asc(), Person.age.desc())
         expr = self._run_visitor('two-asc-desc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
-        self.assert_equal(str(expr[1]), str(expected_expr[1]))
+        self.assert_equal(str(expr), str(expected_expr))
 
     def test_simple_order_by_two_attributes_both_reversed(self):
-        expected_expr = [Person.name.desc(), Person.age.desc()]
+        expected_expr = ClauseList(Person.name.desc(), Person.age.desc())
         expr = self._run_visitor('two-desc-desc')
-        self.assert_equal(len(expr), len(expected_expr))
-        self.assert_equal(str(expr[0]), str(expected_expr[0]))
-        self.assert_equal(str(expr[1]), str(expected_expr[1]))
+        self.assert_equal(str(expr), str(expected_expr))
+
+    def test_order_clause_list(self):
+        # This emulates customized comparators which return clause lists
+        # for .asc and .desc operations.
+        old_asc = Person.name.asc
+        expected_expr = ClauseList(Person.id.asc(),
+                                   Person.name.asc(),
+                                   Person.age.asc())
+        try:
+            Person.name.asc = lambda : ClauseList(Person.id.asc(),
+                                                  old_asc())
+            expr = self._run_visitor('two-asc-asc')
+            self.assert_equal(str(expr), str(expected_expr))
+        finally:
+            Person.name.asc = old_asc
 
 
 class CqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):

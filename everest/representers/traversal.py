@@ -12,6 +12,7 @@ from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
+from everest.representers.urlloader import LazyAttributeLoaderProxy
 from everest.representers.urlloader import LazyUrlLoader
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.descriptors import CARDINALITY
@@ -23,10 +24,23 @@ from everest.url import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['AttributeKey',
+           'DataElementBuilderResourceTreeVisitor',
+           'DataElementTreeTraverser',
+           'ResourceBuilderDataElementTreeVisitor',
+           'ResourceDataTreeTraverser',
+           'ResourceDataVisitor',
+           'ResourceTreeTraverser',
+           ]
 
 
 class AttributeKey(object):
+    """
+    Value object used as a key during resource data tree traversal.
+    
+    Each key consists of a tuple of attribute strings that uniquely 
+    determine a node's position in the resource data tree.
+    """
     def __init__(self, data):
         self.__data = tuple(data)
         self.offset = 0
@@ -36,9 +50,6 @@ class AttributeKey(object):
 
     def __eq__(self, other):
         return self.__data == tuple(other)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def __getitem__(self, index):
         return self.__data.__getitem__(index)
@@ -166,7 +177,12 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
         if is_link_node:
-            entity = self.__extract_link(member_node)
+            url = member_node.get_url()
+            if self.__resolve_urls:
+                rc = url_to_resource(url)
+                entity = rc.get_entity()
+            else:
+                entity = LazyUrlLoader(url, url_to_resource)
         else:
             entity_cls = get_entity_class(member_node.mapping.mapped_class)
             entity_data = {}
@@ -176,12 +192,18 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                     nested_entity_data[attr.entity_name] = value
                 else:
                     entity_data[attr.entity_name] = value
-            entity = entity_cls.create_from_data(entity_data)
+            if self.__resolve_urls:
+                entity = entity_cls.create_from_data(entity_data)
+            else:
+                entity = LazyAttributeLoaderProxy.create(entity_cls,
+                                                         entity_data)
             # Set nested attribute values.
+            # FIXME: lazy loading of nested attributes is not supported.
             for nested_attr, value in nested_entity_data.iteritems():
                 tokens = nested_attr.split('.')
                 parent = reduce(getattr, tokens[:-1], entity)
-                setattr(parent, tokens[-1], value)
+                if not parent is None:
+                    setattr(parent, tokens[-1], value)
         if not index is None:
             # Collection member. Store with indexed key.
             self.__data[attribute_key + (index,)] = entity
@@ -197,7 +219,13 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
     def visit_collection(self, attribute_key, attribute, collection_node,
                          is_link_node, parent_data):
         if is_link_node:
-            entities = self.__extract_link(collection_node)
+            url = collection_node.get_url()
+            if self.__resolve_urls:
+                coll = url_to_resource(url)
+                entities = [mb.get_entity() for mb in coll]
+            else:
+                raise NotImplementedError('Lazy-loading of collection links is '
+                                          'not supported.')
         else:
             entities = []
             for idx in range(len(collection_node)):
@@ -212,18 +240,6 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
         else:
             parent_data[attribute] = entities
 
-    def __extract_link(self, linked_data_el):
-        url = linked_data_el.get_url()
-        if self.__resolve_urls:
-            rc = url_to_resource(url)
-            if IMemberResource in provided_by(rc):
-                rc_data = rc.get_entity()
-            else:
-                rc_data = [mb.get_entity() for mb in rc]
-        else:
-            rc_data = LazyUrlLoader(url, url_to_resource)
-        return rc_data
-
     @property
     def resource(self):
         return self.__resource
@@ -233,11 +249,9 @@ class ResourceDataTreeTraverser(object):
     """
     Abstract base class for resource data tree traversers.
     """
-    def __init__(self, mapping, root, visit_pre=False, visit_post=True):
+    def __init__(self, mapping, root):
         self._mapping = mapping
         self.__root = root
-        self.__visit_pre = visit_pre
-        self.__visit_post = visit_post
 
     def run(self, visitor):
         """
@@ -245,23 +259,10 @@ class ResourceDataTreeTraverser(object):
         """
         self._dispatch(AttributeKey(()), None, self.__root, None, visitor)
 
-    def run_post_order(self, visitor):
-        self.__visit_pre = False
-        self.__visit_post = True
-        self._dispatch(AttributeKey(()), None, self.__root, None, visitor)
-
-    def run_pre_order(self, visitor):
-        self.__visit_pre = True
-        self.__visit_post = False
-        self._dispatch(AttributeKey(()), None, self.__root, None, visitor)
-
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
                          visitor, index=None):
         member_data = OrderedDict()
         is_link_node = self._is_link_node(member_node, attr)
-        if self.__visit_pre:
-            visitor.visit_member(attr_key, attr, member_node, member_data,
-                                 is_link_node, parent_data, index=index)
         # Ignore links for traversal.
         if not is_link_node:
             node_type = self._get_node_type(member_node)
@@ -294,24 +295,19 @@ class ResourceDataTreeTraverser(object):
                         nested_attr_key.offset = len(nested_attr_key)
                     self._dispatch(nested_attr_key, mb_attr, nested_node,
                                    member_data, visitor)
-        if self.__visit_post:
-            visitor.visit_member(attr_key, attr, member_node, member_data,
-                                 is_link_node, parent_data, index=index)
+        visitor.visit_member(attr_key, attr, member_node, member_data,
+                             is_link_node, parent_data, index=index)
 
     def _traverse_collection(self, attr_key, attr, collection_node,
                              parent_data, visitor):
         is_link_node = self._is_link_node(collection_node, attr)
-        if self.__visit_pre:
-            visitor.visit_collection(attr_key, attr, collection_node,
-                                     is_link_node, parent_data)
         if not is_link_node:
             all_mb_nodes = self._get_node_members(collection_node)
             for idx, mb_node in enumerate(all_mb_nodes):
                 self._traverse_member(attr_key, attr, mb_node, parent_data,
                                       visitor, index=idx)
-        if self.__visit_post:
-            visitor.visit_collection(attr_key, attr, collection_node,
-                                     is_link_node, parent_data)
+        visitor.visit_collection(attr_key, attr, collection_node,
+                                 is_link_node, parent_data)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         raise NotImplementedError('Abstract method.')
@@ -354,10 +350,8 @@ class ResourceDataTreeTraverser(object):
 
 
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
-    def __init__(self, mapping, root, visit_pre=False, visit_post=True):
-        ResourceDataTreeTraverser.__init__(self, mapping, root,
-                                           visit_pre=visit_pre,
-                                           visit_post=visit_post)
+    def __init__(self, mapping, root):
+        ResourceDataTreeTraverser.__init__(self, mapping, root)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
@@ -369,10 +363,8 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
             kind = node.get_kind()
             if kind == ResourceKinds.MEMBER:
                 traverse_fn = self._traverse_member
-            elif kind == ResourceKinds.COLLECTION:
+            else: # kind == ResourceKinds.COLLECTION
                 traverse_fn = self._traverse_collection
-            else:
-                raise ValueError('Invalid resource kind "%s".' % kind)
         else:
             raise ValueError('Need MEMBER or COLLECTION data element; found '
                              '"%s".' % node)

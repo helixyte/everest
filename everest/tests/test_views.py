@@ -4,46 +4,185 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
 """
-
 from everest.messaging import IUserMessageEvent
 from everest.messaging import IUserMessageEventNotifier
 from everest.messaging import UserMessageEventNotifier
 from everest.messaging import UserMessageHandler
+from everest.mime import CsvMime
+from everest.renderers import RendererFactory
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
+from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
 from everest.testing import FunctionalTestCase
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
+from everest.tests.testapp.views import DummyUserMessageAndExceptionView
+from everest.tests.testapp.views import ExceptionPostCollectionView
+from everest.tests.testapp.views import ExceptionPutMemberView
 from everest.tests.testapp.views import UserMessagePostCollectionView
 from everest.tests.testapp.views import UserMessagePutMemberView
+from everest.tests.testapp_db.entities import MyEntity
+from everest.tests.testapp_db.interfaces import IMyEntity
+from everest.tests.testapp_db.testing import create_collection
+from everest.views.getcollection import GetCollectionView
+from everest.views.getmember import GetMemberView
+from everest.views.postcollection import PostCollectionView
+from everest.views.putmember import PutMemberView
 from pkg_resources import resource_filename # pylint: disable=E0611
 import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ViewsTestCase',
+__all__ = ['BasicViewsTestCase',
+           'WarningViewsTestCase',
            ]
 
 
-class ViewsTestCase(FunctionalTestCase):
+class BasicViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    app_name = 'testapp_db'
+    path = '/my-entities'
+
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
+        self.config.add_renderer('csv', RendererFactory)
+        self.config.add_view(context=get_member_class(IMyEntity),
+                             view=GetMemberView,
+                             renderer='csv',
+                             request_method='GET')
+        self.config.add_view(context=get_collection_class(IMyEntity),
+                             view=GetCollectionView,
+                             renderer='csv',
+                             request_method='GET')
+        self.config.add_view(context=get_member_class(IMyEntity),
+                             view=PutMemberView,
+                             renderer='csv',
+                             request_method='PUT')
+        self.config.add_view(context=get_collection_class(IMyEntity),
+                             view=PostCollectionView,
+                             renderer='csv',
+                             request_method='POST')
+
+    def test_get_collection_defaults(self):
+        res = self.app.get(self.path, status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_slice_larger_max_size(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(size=10000), status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_invalid_slice_raises_error(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(size='foo'), status=500)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_slice_size(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(size=1),
+                           status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_slice_start(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(start=1, size=1),
+                           status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_filter(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(q='id:equal-to:0'),
+                           status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_collection_with_order(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(sort='id:asc'),
+                           status=200)
+        self.assert_is_not_none(res)
+
+    def test_get_member_default_content_type(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        coll.create_member(ent)
+        res = self.app.get("%s/0" % self.path, status=200)
+        self.assert_is_not_none(res)
+
+    def test_put_member(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        mb = coll.create_member(ent)
+        self.assert_equal(mb.__name__, '0')
+        req_body = '"id","text","number"\n1,"abc",2\n'
+        res = self.app.put("%s/0" % self.path,
+                           params=req_body,
+                           content_type=CsvMime.mime_string,
+                           status=200)
+        self.assert_is_not_none(res)
+        mb = iter(coll).next()
+        self.assert_equal(mb.__name__, '1')
+        self.assert_equal(mb.text, 'abc')
+
+    def test_post_collection(self):
+        req_body = '"id","text","number"\n0,"abc",2\n'
+        res = self.app.post("%s" % self.path,
+                            params=req_body,
+                            content_type=CsvMime.mime_string,
+                            status=201)
+        self.assert_is_not_none(res)
+        coll = get_root_collection(IMyEntity)
+        mb = coll['0']
+        self.assert_equal(mb.text, 'abc')
+
+
+class ExceptionViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    app_name = 'testapp_db'
+    path = '/my-entities'
+
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml(
+                        'everest.tests.testapp_db:configure_no_orm.zcml')
+        self.config.add_view(context=get_member_class(IMyEntity),
+                             view=ExceptionPutMemberView,
+                             request_method='PUT')
+        self.config.add_view(context=get_collection_class(IMyEntity),
+                             view=ExceptionPostCollectionView,
+                             request_method='POST')
+
+    def test_put_member_raises_error(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        coll.create_member(ent)
+        self.app.put("%s/0" % self.path,
+                     params='dummy body',
+                     status=500)
+
+    def test_post_collection_raises_error(self):
+        req_body = '"id","text","number"\n0,"abc",2\n'
+        self.app.post("%s" % self.path,
+                     params=req_body,
+                     content_type=CsvMime.mime_string,
+                     status=500)
+
+
+class WarningViewTestCase(FunctionalTestCase):
     package_name = 'everest.tests.testapp'
-    ini_file_path = resource_filename('everest.tests.testapp', 'testapp.ini')
+    ini_file_path = resource_filename('everest.tests.testapp',
+                                      'testapp_views.ini')
     app_name = 'testapp'
     path = '/foos'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
-
-    def test_get_collection_default_content_type(self):
-        res = self.app.get(self.path, status=200)
-        self.assert_is_not_none(res)
-
-
-class WarningViewsTestCase(ViewsTestCase):
-    ini_file_path = resource_filename('everest.tests.testapp',
-                                      'testapp_views.ini')
-    def set_up(self):
-        ViewsTestCase.set_up(self)
         reg = self.config.registry
         reg.registerUtility(UserMessageEventNotifier(), # pylint:disable=E1103
                             IUserMessageEventNotifier)
@@ -94,6 +233,14 @@ class WarningViewsTestCase(ViewsTestCase):
         finally:
             UserMessagePostCollectionView.message = old_msg
 
+    def test_post_collection_warning_exception_with_query_string(self):
+        old_path = self.path
+        self.path = '/foos?q=id=0'
+        try:
+            self.test_post_collection_warning_exception()
+        finally:
+            self.path = old_path
+
     def test_put_member_warning_exception(self):
         root = get_service()
         # Need to start the service manually - no request root has been set 
@@ -105,12 +252,36 @@ class WarningViewsTestCase(ViewsTestCase):
         transaction.commit()
         path = '/'.join((self.path, '0'))
         # First PUT - get back a 307.
-        res1 = self.app.put(path, params='foo name',
+        res1 = self.app.put(path,
+                            params='foo name',
                             status=307)
         self.assert_true(
                     res1.body.startswith('307 Temporary Redirect'))
-        # Second PUT to redirection location - get back a 201.
+        # Second PUT to redirection location - get back a 200.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.put(resubmit_location1, params='foo name',
                             status=200)
         self.assert_true(not res2 is None)
+
+
+class WarningWithExceptionViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    app_name = 'testapp_db'
+    path = '/my-entities'
+
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml(
+                        'everest.tests.testapp_db:configure_no_orm.zcml')
+        self.config.add_view(context=get_collection_class(IMyEntity),
+                             view=DummyUserMessageAndExceptionView,
+                             request_method='POST')
+
+    def test_post_collection_raises_error(self):
+        req_body = '"id","text","number"\n0,"abc",2\n'
+        self.app.post("%s" % self.path,
+                     params=req_body,
+                     content_type=CsvMime.mime_string,
+                     status=500)

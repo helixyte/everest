@@ -6,7 +6,6 @@ The entity repository class.
 
 Created on Jan 11, 2012.
 """
-
 from everest.entities.utils import get_entity_class
 from everest.repository import Repository
 
@@ -31,23 +30,25 @@ class EntityRepository(Repository):
         # The underlying entity store.
         self.__entity_store = entity_store
 
-    def new(self, rc):
-        entity_cls = get_entity_class(rc)
-        session_factory = self.__entity_store.session_factory
-        if session_factory is None:
-            raise RuntimeError('Repository has not been initialized yet.')
-        agg = self.aggregate_class.create(entity_cls, session_factory)
-        return agg
-
     def configure(self, **config):
         self.__entity_store.configure(**config)
 
-    def initialize(self):
+    def _initialize(self):
         self.__entity_store.initialize()
+
+    def _new(self, rc):
+        entity_cls = get_entity_class(rc)
+        session_factory = self.__entity_store.session_factory
+        agg = self.aggregate_class.create(entity_cls, session_factory)
+        return agg
 
     @property
     def is_initialized(self):
         return self.__entity_store.is_initialized
+
+    @property
+    def name(self):
+        return self.__entity_store.name
 
     def _make_key(self, rc):
         return get_entity_class(rc)

@@ -64,6 +64,10 @@ def convert_date(seq):
     return res
 
 
+def convert_range(seq):
+    return (seq.range[0], seq.range[-1])
+
+
 colon = Literal(':')
 comma = Literal(',')
 dot = Literal('.')
@@ -98,9 +102,14 @@ domain = Combine(OneOrMore(CharsNotIn('/')))
 path = Combine(slash + OneOrMore(CharsNotIn(',~?&')))
 cql_url = Combine(protocol + '://' + domain + path)
 
-# FIXME: Value ranges are not supported yet # pylint:disable=W0511
+# Number range.
+# FIXME: char ranges are not supported yet
+cql_number_range = Group(cql_number + '-' + cql_number
+                           ).setParseAction(convert_range)
+
 cql_values = Group(
     delimitedList(
+        cql_number_range('range') |
         cql_number('number') |
         cql_date('date') |
         cql_string('string') |

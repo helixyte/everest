@@ -138,17 +138,9 @@ class CsvRepresentationGenerator(RepresentationGenerator):
                 self.__fields.append(field)
             num_rows = len(self.__data)
             if row_index > (num_rows - 1):
-                if num_rows - row_index - 1 > 0:
-                    raise ValueError('Can not auto-append beyond the last '
-                                     'data row.')
                 self.__data.append(dict())
             field_index = self.__field_indices[field]
             self.__data[row_index][field_index] = value
-
-        def __getitem__(self, key):
-            row_index, field = key
-            field_index = self.__field_indices[field]
-            return self.__data[row_index][field_index]
 
         def __iter__(self):
             last_row_data = {}
@@ -201,8 +193,6 @@ class CsvRepresentationGenerator(RepresentationGenerator):
                     rows_data[key] = None
                 elif isinstance(value, CsvLinkedDataElement):
                     rows_data[key] = self.__encode(value.get_url())
-#                    raise ValueError('CSV representations must encode nested '
-#                                     'resources as a link.')
                 elif attr.kind == ResourceAttributeKinds.MEMBER:
                     self.__process_data(value, rows_data,
                                         row_index, attr_name_str)

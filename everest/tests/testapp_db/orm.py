@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 1, 2011.
 """
-
 from everest.orm import mapper
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
@@ -55,7 +54,7 @@ def create_metadata(engine):
                      ForeignKey(my_entity_tbl.c.my_entity_id),
                      nullable=False),
               )
-    # n:m MyEntity child <-> MyEntityGrandchild
+    # n:m MyEntityChild <-> MyEntityGrandchild
     my_entity_grandchild_tbl = \
         Table('my_entity_grandchild', metadata,
               Column('text', String),

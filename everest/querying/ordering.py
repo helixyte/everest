@@ -27,8 +27,8 @@ from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
 from everest.querying.utils import OrmAttributeInspector
-from operator import add as add_operator
 from operator import and_ as and_operator
+from sqlalchemy.sql.expression import ClauseList
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -211,7 +211,13 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         return self.__joins.copy()
 
     def _conjunction_op(self, spec, *expressions):
-        return reduce(add_operator, expressions)
+        clauses = []
+        for expr in expressions:
+            if isinstance(expr, ClauseList):
+                clauses.extend(expr.clauses)
+            else:
+                clauses.append(expr)
+        return ClauseList(*clauses)
 
     def _asc_op(self, spec):
         return self.__build(spec.attr_name, 'asc')
@@ -220,7 +226,7 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
         return self.__build(spec.attr_name, 'desc')
 
     def __build(self, attribute_name, sql_op):
-        exprs = ()
+        expr = None
         infos = OrmAttributeInspector.inspect(self.__entity_class,
                                               attribute_name)
         count = len(infos)
@@ -228,13 +234,10 @@ class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
             kind, entity_attr = info
             if idx == count - 1:
                 expr = getattr(entity_attr, sql_op)()
-                if not isinstance(expr, tuple):
-                    exprs = (expr,)
-                else:
-                    exprs = expr
-            elif kind == EntityAttributeKinds.ENTITY:
+            elif kind != EntityAttributeKinds.TERMINAL:
+                # FIXME: Avoid adding multiple attrs with the same target here.
                 self.__joins.add(entity_attr)
-        return exprs
+        return expr
 
 
 class EvalOrderSpecificationVisitor(OrderSpecificationVisitor):

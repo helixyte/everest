@@ -13,7 +13,6 @@ __all__ = ['app_factory',
            ]
 
 
-
 def app_factory(global_settings, **local_settings): # pylint: disable=W0613
     config = Configurator()
     config.setup_registry(settings=local_settings,

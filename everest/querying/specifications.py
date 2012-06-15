@@ -34,7 +34,7 @@ import re
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeFilterSpecification',
-           'ConjuctionFilterSpecification',
+           'ConjunctionFilterSpecification',
            'ConjuctionOrderSpecification',
            'DisjuctionFilterSpecification',
            'FilterSpecification',
@@ -84,14 +84,14 @@ class FilterSpecification(Specification):
 
     def and_(self, other):
         """
-        Generative method to create a :class:`ConjuctionFilterSpecification`.
+        Generative method to create a :class:`ConjunctionFilterSpecification`.
 
         :param other: the other specification
         :type other: :class:`FilterSpecification`
         :returns: a new conjuction specification
-        :rtype: :class:`ConjuctionFilterSpecification`
+        :rtype: :class:`ConjunctionFilterSpecification`
         """
-        return ConjuctionFilterSpecification(self, other)
+        return ConjunctionFilterSpecification(self, other)
 
     def or_(self, other):
         """
@@ -213,7 +213,7 @@ class CompositeFilterSpecification(FilterSpecification):
                 and self.right_spec == other.right_spec)
 
     def __ne__(self, other):
-        return not (self == other)
+        return not self.__eq__(other)
 
     def accept(self, visitor):
         self.left_spec.accept(visitor)
@@ -233,7 +233,7 @@ class CompositeFilterSpecification(FilterSpecification):
                                    self.right_spec.is_satisfied_by(candidate))
 
 
-class ConjuctionFilterSpecification(CompositeFilterSpecification):
+class ConjunctionFilterSpecification(CompositeFilterSpecification):
     """
     Concrete conjuction specification.
     """
@@ -421,7 +421,7 @@ class FilterSpecificationFactory(object):
         return ValueInRangeFilterSpecification(attr_name, range_tuple)
 
     def create_conjunction(self, left_spec, right_spec):
-        return ConjuctionFilterSpecification(left_spec, right_spec)
+        return ConjunctionFilterSpecification(left_spec, right_spec)
 
     def create_disjunction(self, left_spec, right_spec):
         return DisjuctionFilterSpecification(left_spec, right_spec)
@@ -519,7 +519,7 @@ class NaturalOrderSpecification(ObjectOrderSpecification):
     operator = ASCENDING
 
     def _get_value(self, obj):
-        value = self._get_value(obj)
+        value = ObjectOrderSpecification._get_value(self, obj)
         if isinstance(value, basestring):
             res = [self.__convert(c) for c in re.split(r'([0-9]+)', value)]
         else:

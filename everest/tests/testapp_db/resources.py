@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 1, 2011.
 """
 from everest.resources.base import Member
+from everest.resources.descriptors import attribute_alias
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
@@ -28,6 +29,8 @@ class MyEntityParentMember(Member):
     text = terminal_attribute(str, 'text')
     # String terminal with different name in entity.
     text_rc = terminal_attribute(str, 'text_ent')
+    #
+    text_alias = attribute_alias('text')
 
 
 class MyEntityMember(Member):
@@ -54,15 +57,21 @@ class MyEntityChildMember(Member):
     relation = 'http://test.org/myentity-child'
     # Member.
     parent = member_attribute(IMyEntity, 'parent')
-    # Collection built from backreferences.
+    # Collection accessed as entity attribute and represented as 
+    # "parent equal to parent member" specification.
     children = collection_attribute(IMyEntityGrandchild,
                                     entity_attr='children',
                                     is_nested=False,
                                     backref='parent')
-    # Collection built from IDs.
+    # Collection accessed as entity attribute and represented as 
+    # "ID in set of child IDs" (backreferencing) specification.
     no_backref_children = collection_attribute(IMyEntityGrandchild,
                                                entity_attr='children',
                                                is_nested=False)
+    # Collection accessed and represented as backreferencing specification.
+    backref_only_children = collection_attribute(IMyEntityGrandchild,
+                                                 backref='parent',
+                                                 is_nested=False)
     # String terminal.
     text = terminal_attribute(str, 'text')
     # String terminal with different name in entity.

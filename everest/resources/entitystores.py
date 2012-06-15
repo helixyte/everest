@@ -6,9 +6,9 @@ Entity stores and helper classes.
 
 Created on Jan 31, 2012.
 """
-
 from collections import defaultdict
 from copy import deepcopy
+from everest.mime import CsvMime
 from everest.orm import Session as SaSessionFactory
 from everest.orm import get_engine
 from everest.orm import get_metadata
@@ -16,7 +16,6 @@ from everest.orm import is_engine_initialized
 from everest.orm import is_metadata_initialized
 from everest.orm import set_engine
 from everest.orm import set_metadata
-from everest.mime import CsvMime
 from everest.resources.interfaces import IEntityStore
 from everest.resources.io import dump_resource
 from everest.resources.io import get_read_collection_path
@@ -48,7 +47,9 @@ class EntityStore(object):
     Base class for all entity stores.
     
     An entity store is responsible for configuration and initialization of a
-    storage backend for entities. It also creates and holds a session factory.
+    storage backend for entities. It also creates and holds a session factory
+    which is used to create a (thread-local) session. The session alone
+    provides access to the entities loaded from the entity store. 
     """
     implements(IEntityStore)
 
@@ -114,7 +115,7 @@ class SessionFactory(object):
 
 class OrmSessionFactory(SessionFactory):
     def __call__(self):
-        if self._join_transaction:
+        if self._join_transaction and not SaSessionFactory.registry.has():
             # Enable the transaction extension.
             SaSessionFactory.configure(extension=ZopeTransactionExtension())
         return SaSessionFactory()
@@ -154,14 +155,6 @@ class OrmEntityStore(EntityStore):
     def _make_session_factory(self):
         return OrmSessionFactory(self._join_transaction)
 
-    @property
-    def engine(self):
-        return get_engine(self.name)
-
-    @property
-    def metadata(self):
-        return get_metadata(self.name)
-
 
 class InMemorySessionFactory(SessionFactory):
     """
@@ -173,7 +166,6 @@ class InMemorySessionFactory(SessionFactory):
         SessionFactory.__init__(self, join_transaction)
         self.__entity_store = entity_store
         self.__autoflush = autoflush
-        self.__join_transaction = join_transaction
         self.__session_registry = local()
 
     def __call__(self):
@@ -224,26 +216,11 @@ class CachingEntityStore(EntityStore):
         return InMemorySessionFactory(self,
                                       join_transaction=self._join_transaction)
 
-    def _load(self):
-        pass
-
     def copy(self):
         """
         Returns a deep copy of the entire entity cache.
         """
         return deepcopy(self.__entities)
-
-    def get_by_id(self, entity_cls, entity_id):
-        cache = self.__entities[entity_cls]
-        return cache.get_by_id(entity_id)
-
-    def get_by_slug(self, entity_cls, entity_slug):
-        cache = self.__entities[entity_cls]
-        return cache.get_by_slug(entity_slug)
-
-    def get_all(self, entity_cls):
-        cache = self.__entities[entity_cls]
-        return cache.get_all()
 
     def get_id(self, entity_cls):
         id_gen = self._id_generators[entity_cls]
@@ -271,10 +248,11 @@ class FileSystemEntityStore(CachingEntityStore):
         the store.
         """
         CachingEntityStore.commit(self, session)
-        repo = self.__get_repo()
-        for entity_cls in session.dirty.keys():
-            coll = repo.get(entity_cls)
-            self.__dump_collection(coll)
+        if self.is_initialized:
+            repo = self.__get_repo()
+            for entity_cls in session.dirty.keys():
+                coll = repo.get(entity_cls)
+                self.__dump_collection(coll)
 
     def _make_session_factory(self):
         return InMemorySessionFactory(self,
@@ -285,6 +263,9 @@ class FileSystemEntityStore(CachingEntityStore):
         repo = self.__get_repo()
         for coll_cls in repo.managed_collections:
             self.__load_collection(repo, coll_cls)
+        # This pushes the loaded entities to the store's cache and clears
+        # the session that was used during resource loading.
+        transaction.commit()
 
     def __dump_collection(self, collection):
         fn = get_write_collection_path(collection,
@@ -301,7 +282,8 @@ class FileSystemEntityStore(CachingEntityStore):
         if not fn is None:
             url = 'file://%s' % fn
             repo.load_representation(coll_cls, url,
-                                     content_type=self._config['content_type'],
+                                     content_type=
+                                            self._config['content_type'],
                                      resolve_urls=False)
 
     def __get_repo(self):
@@ -495,8 +477,8 @@ class InMemorySession(object):
         self.__dirty.clear()
         self.__added.clear()
         self.__removed.clear()
-        self.__entities.clear()
-        #
+        for cache in self.__entities.itervalues():
+            cache.clear()
         self.__needs_flush = False
         self.__needs_sync = True
 
@@ -529,7 +511,12 @@ class InMemorySession(object):
             removed = self.__removed[entity_cls]
             removed.add(entity)
         # Update session cache.
-        self.__entities[entity_cls].remove(entity)
+        cache = self.__entities[entity_cls]
+        cache.remove(entity)
+        # If the removed entity was marked as dirty, discard. 
+        self.__dirty[entity_cls].discard(entity)
+        # Mark for flush.
+        self.__needs_flush = True
 
     def get_by_id(self, entity_cls, entity_id):
         if self.__needs_sync:
@@ -557,7 +544,7 @@ class InMemorySession(object):
         if self.__needs_flush and self.autoflush:
             self.flush()
         entities = self.__entities[entity_cls].get_all()
-        self.__dirty[entity_cls].union(entities)
+        self.__dirty[entity_cls].update(entities)
         return entities
 
     def flush(self):
@@ -576,10 +563,6 @@ class InMemorySession(object):
         if rebuild_cache:
             for cache in self.__entities.itervalues():
                 cache.rebuild()
-
-    @property
-    def is_dirty(self):
-        return len(self.__dirty) > 0
 
     @property
     def added(self):

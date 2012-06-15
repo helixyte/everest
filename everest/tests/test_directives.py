@@ -7,7 +7,6 @@ Adapted from the ZCML unit tests in BFG.
 Created on Jun 17, 2011.
 """
 from everest.configuration import Configurator
-from everest.entities.aggregates import MemoryAggregate
 from everest.entities.interfaces import IEntity
 from everest.interfaces import IRepositoryManager
 from everest.mime import CsvMime
@@ -18,7 +17,6 @@ from everest.resources.base import Collection
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
-from everest.resources.utils import get_repository
 from everest.testing import Pep8CompliantTestCase
 from everest.tests import testapp as package
 from everest.tests.testapp.entities import FooEntity
@@ -92,31 +90,15 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         rpr = as_representer(coll, CsvMime)
         self.assert_true(isinstance(rpr, Representer))
 
-    def test_custom_repository(self):
-        class MyMemoryAggregate(MemoryAggregate):
-            pass
-        reg = self._registry
-        config = Configurator(registry=reg)
-        config.add_memory_repository('test',
-                                     aggregate_class=MyMemoryAggregate)
-        config.add_resource(IFoo, FooMember, FooEntity,
-                            collection_root_name="foos",
-                            repository='test')
-        member = object.__new__(FooMember)
-        coll_cls = reg.queryAdapter(member, ICollectionResource,
-                                    name='collection-class')
-        repo = get_repository('test')
-        coll = repo.new(coll_cls)
-        agg = coll.get_aggregate()
-        self.assert_true(isinstance(agg, MyMemoryAggregate))
-        entity = FooEntity(id=1)
-        agg.add(entity)
-        self.assert_true(agg.count() == 1)
-        self.assert_true(list(agg.iterator())[0] is entity)
-        self.assert_true(agg.get_by_id(1) is entity)
-        self.assert_true(agg.get_by_slug('1') is entity)
-        agg.remove(entity)
-        self.assert_true(agg.count() == 0)
+    def test_configure_with_custom_repo_zcml(self):
+        repo_mgr = self._registry.queryUtility(IRepositoryManager)
+        self.assert_is_none(repo_mgr.get('CUSTOM_MEMORY'))
+        self.assert_is_none(repo_mgr.get('CUSTOM_FILESYSTEM'))
+        self.assert_is_none(repo_mgr.get('CUSTOM_ORM'))
+        self._config.load_zcml('everest.tests.testapp:configure_repos.zcml')
+        self.assert_is_not_none(repo_mgr.get('CUSTOM_MEMORY'))
+        self.assert_is_not_none(repo_mgr.get('CUSTOM_FILESYSTEM'))
+        self.assert_is_not_none(repo_mgr.get('CUSTOM_ORM'))
 
     def __check(self, reg, member, ent, coll):
         for idx, obj in enumerate((member, coll, ent)):

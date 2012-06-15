@@ -117,9 +117,9 @@ class RepresenterConfiguration(object):
         """
         return self.__options.copy()
 
-    def set_mapping_option(self, attribute_name, option_name, option_value):
+    def set_mapping_option(self, attribute_key, option_name, option_value):
         self.__validate_mapping_option_name(option_name)
-        mp_options = self.__mapping_options.setdefault(attribute_name, {})
+        mp_options = self.__mapping_options.setdefault(attribute_key, {})
         mp_options[option_name] = option_value
 
     def get_mapping_option(self, attribute_key, option_name):

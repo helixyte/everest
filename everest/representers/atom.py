@@ -133,11 +133,9 @@ class AtomMapping(Mapping):
             search_terms = ''
         if collection.order:
             sort_terms = UrlPartsConverter.make_order_string(collection.order)
-        elif collection.default_order:
+        else:
             sort_terms = UrlPartsConverter.make_order_string(
                                                     collection.default_order)
-        else:
-            sort_terms = ''
         # Query.
         q_tag = '{%s}%s' % (XML_NS_OPEN_SEARCH, 'Query')
         q_el = coll_data_el.makeelement(
