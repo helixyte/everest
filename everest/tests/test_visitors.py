@@ -16,6 +16,7 @@ from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
+from everest.orm import Session
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
@@ -490,6 +491,10 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
             self.assert_equal(str(expr), str(expected_expr))
         finally:
             Person.name.asc = old_asc
+        # Make sure the correct ORDER BY clause is generated.
+        q = Session.query(Person).order_by(expr) # pylint: disable=E1101
+        q_str = str(q.statement)
+        self.assert_not_equal(q_str.find("ORDER BY %s" % expr), -1)
 
 
 class CqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
