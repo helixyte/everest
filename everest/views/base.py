@@ -4,20 +4,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.j
 """
-from everest.entities.system import Message
-from everest.messaging import UserMessageHandler
+from everest.messaging import UserMessageChecker
+from everest.messaging import UserMessageHandlingContextManager
 from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import as_representer
-from everest.resources.system import MessageMember
+from everest.resources.system import UserMessageMember
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
 from paste.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
 from paste.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
+from pyramid.threadlocal import get_current_request
 from webob.exc import HTTPBadRequest
 from webob.exc import HTTPConflict
 from zope.interface import implements # pylint: disable=E0611,F0401
 import logging
-import os
 import re
 
 __docformat__ = "reStructuredText en"
@@ -36,7 +36,7 @@ class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=
                   'the warnings.'
     template = '%(explanation)s\r\n' \
                'Location: <a href="%(location)s">%(location)s</a>\r\n' \
-               'Warning Message: %(detail)s\r\n' \
+               'Warning UserMessage: %(detail)s\r\n' \
                '<!-- %(comment)s -->'
 
 
@@ -109,16 +109,10 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
     Abstract base class for all member views
     """
 
-    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
-
     def __init__(self, resource, request):
         if self.__class__ is PutOrPostResourceView:
             raise NotImplementedError('Abstract class')
         ResourceView.__init__(self, resource, request)
-        # Set up user message handling machinery.
-        self.__message_handler = UserMessageHandler()
-        UserMessageHandler.register(self.__message_handler, request)
-        request.add_finished_callback(UserMessageHandler.unregister)
 
     def __call__(self):
         self._logger.debug('Request received on %s' % self.request.url)
@@ -127,31 +121,20 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
             # Empty body - return 400 Bad Request.
             response = self._handle_empty_body()
         else:
+            checker = ViewUserMessageChecker()
             try:
-                data = self._extract_request_data()
+                with UserMessageHandlingContextManager(checker):
+                    data = self._extract_request_data()
+                if not checker.vote is True:
+                    response = checker.create_307_response()
+                else:
+                    with UserMessageHandlingContextManager(checker):
+                        response = self._process_request_data(data)
+                    if not checker.vote is True:
+                        response = checker.create_307_response()
             except Exception, err: # catch Exception pylint: disable=W0703
                 response = self._handle_unknown_exception(err.message,
                                                           get_traceback())
-            else:
-                if self._has_user_messages():
-                    # Some user messages were collected during the call - 
-                    # possibly return a 307 reponse with a warning.
-                    response = self._handle_user_messages()
-                    if response is None:
-                        # User message ignored - continue processing.
-                        try:
-                            response = self._process_request_data(data)
-                        except Exception, err: # catch Exception pylint: disable=W0703
-                            response = \
-                                self._handle_unknown_exception(err.message,
-                                                               get_traceback())
-                else:
-                    try:
-                        response = self._process_request_data(data)
-                    except Exception, err:  # catch Exception pylint: disable=W0703
-                        response = \
-                            self._handle_unknown_exception(err.message,
-                                                           get_traceback())
         return response
 
     def _extract_request_data(self):
@@ -176,12 +159,6 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
         """
         raise NotImplementedError('Abstract method.')
 
-    def _has_user_messages(self):
-        """
-        Check if user messages have been sent during request processing. 
-        """
-        return self.__message_handler.has_messages()
-
     def _handle_empty_body(self):
         """
         Handles requests with an empty body.
@@ -190,43 +167,6 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
         """
         http_exc = HTTPBadRequest("Request's body is empty!")
         return self.request.get_response(http_exc)
-
-    def _handle_user_messages(self):
-        """
-        Handles user messages that were sent during request processing.
-        
-        Respond with a 307 "Temporary Redirect" including a HTTP Warning 
-        header with code 299 that contains the user concatenated user
-        messages. If the request has an explicit "ignore-message" parameter 
-        pointing to an identical message from a previous request, None is
-        returned, indicating that the request should be processed as if no
-        warning had occurred.
-        """
-        text = os.linesep.join(self.__message_handler.get_messages())
-        ignore_guid = self.request.params.get('ignore-message')
-        coll = self.request.root['_messages']
-        modify_response = True
-        if ignore_guid:
-            ignore_mb = coll.get(ignore_guid)
-            if not ignore_mb is None and ignore_mb.text == text:
-                modify_response = False
-        if modify_response:
-            msg = Message(text)
-            msg_mb = MessageMember(msg)
-            coll.add(msg_mb)
-            # Figure out the new location URL.
-            qs = self.__get_new_query_string(self.request.query_string,
-                                             msg.slug)
-            resubmit_url = "%s?%s" % (self.request.path_url, qs)
-            headers = [('Location', resubmit_url),
-                       ('Warning', '299 %s' % text),
-#                       ('Content-Type', cnt_type),
-                       ]
-            http_exc = HttpWarningResubmit(text, headers=headers)
-            response = self.request.get_response(http_exc)
-        else:
-            response = None
-        return response
 
     def _handle_conflict(self, name):
         """
@@ -244,6 +184,52 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
         """
         return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
 
+
+class ViewUserMessageChecker(UserMessageChecker):
+    """
+    Custom user message checker for views.
+    """
+    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
+
+    def check(self):
+        """
+        Implements user message checking for views.
+        
+        Checks if the current request has an explicit "ignore-message" 
+        parameter (a GUID) pointing to a message with identical text from a 
+        previous request, in which case further processing is allowed.        
+        """
+        request = get_current_request()
+        ignore_guid = request.params.get('ignore-message')
+        coll = request.root['_messages']
+        vote = False
+        if ignore_guid:
+            ignore_mb = coll.get(ignore_guid)
+            if not ignore_mb is None and ignore_mb.text == self.message.text:
+                vote = True
+        return vote
+
+    def create_307_response(self):
+        """
+        Creates a 307 "Temporary Redirect" response including a HTTP Warning 
+        header with code 299 that contains the user message received during
+        processing the request.
+        """
+        request = get_current_request()
+        msg_mb = UserMessageMember(self.message)
+        coll = request.root['_messages']
+        coll.add(msg_mb)
+        # Figure out the new location URL.
+        qs = self.__get_new_query_string(request.query_string,
+                                         self.message.slug)
+        resubmit_url = "%s?%s" % (request.path_url, qs)
+        headers = [('Location', resubmit_url),
+                   ('Warning', '299 %s' % self.message.text),
+#                       ('Content-Type', cnt_type),
+                   ]
+        http_exc = HttpWarningResubmit(self.message.text, headers=headers)
+        return request.get_response(http_exc)
+
     def __get_new_query_string(self, old_query_string, new_guid):
         # In absence of a function to manipulate the URL query string in place
         # (the request URL params are read-only), resorting to explicit
@@ -260,5 +246,3 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
         else:
             qs = "ignore-message=%s" % new_guid
         return qs
-
-

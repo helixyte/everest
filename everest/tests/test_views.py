@@ -4,10 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
 """
-from everest.messaging import IUserMessageEvent
-from everest.messaging import IUserMessageEventNotifier
-from everest.messaging import UserMessageEventNotifier
-from everest.messaging import UserMessageHandler
+from everest.messaging import IUserMessageNotifier
+from everest.messaging import UserMessageNotifier
 from everest.mime import CsvMime
 from everest.renderers import RendererFactory
 from everest.resources.utils import get_collection_class
@@ -18,7 +16,7 @@ from everest.testing import FunctionalTestCase
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
-from everest.tests.testapp.views import DummyUserMessageAndExceptionView
+from everest.tests.testapp.views import DummyExceptionView
 from everest.tests.testapp.views import ExceptionPostCollectionView
 from everest.tests.testapp.views import ExceptionPutMemberView
 from everest.tests.testapp.views import UserMessagePostCollectionView
@@ -184,10 +182,8 @@ class WarningViewTestCase(FunctionalTestCase):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
         reg = self.config.registry
-        reg.registerUtility(UserMessageEventNotifier(), # pylint:disable=E1103
-                            IUserMessageEventNotifier)
-        reg.registerHandler(UserMessageHandler.handle_user_message_event,
-                            required=(IUserMessageEvent,))
+        reg.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
+                            IUserMessageNotifier)
         self.config.add_view(context=FooCollection,
                              view=UserMessagePostCollectionView,
                              renderer='csv',
@@ -276,7 +272,7 @@ class WarningWithExceptionViewTestCase(FunctionalTestCase):
         self.config.load_zcml(
                         'everest.tests.testapp_db:configure_no_orm.zcml')
         self.config.add_view(context=get_collection_class(IMyEntity),
-                             view=DummyUserMessageAndExceptionView,
+                             view=DummyExceptionView,
                              request_method='POST')
 
     def test_post_collection_raises_error(self):

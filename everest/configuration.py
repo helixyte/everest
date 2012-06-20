@@ -7,7 +7,7 @@ Configurators for the various subsystems of :mod:`everest`.
 Created on Jun 22, 2011.
 """
 from everest.entities.interfaces import IEntity
-from everest.entities.system import Message
+from everest.entities.system import UserMessage
 from everest.interfaces import IMessage
 from everest.interfaces import IRepository
 from everest.interfaces import IRepositoryManager
@@ -46,7 +46,7 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
-from everest.resources.system import MessageMember
+from everest.resources.system import UserMessageMember
 from everest.url import ResourceUrlConverter
 from pyramid.configuration import Configurator as PyramidConfigurator
 from pyramid.interfaces import IRequest
@@ -443,7 +443,7 @@ class Configurator(PyramidConfigurator):
         self._register_adapter(url_converter, (IRequest,),
                                IResourceUrlConverter)
         # Register system resources provided as a service to the application.
-        self.add_resource(IMessage, MessageMember, Message,
+        self.add_resource(IMessage, UserMessageMember, UserMessage,
                           repository=REPOSITORIES.MEMORY,
                           collection_root_name='_messages')
 

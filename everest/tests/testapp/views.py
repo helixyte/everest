@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 22, 2011.
 """
-from everest.messaging import IUserMessageEventNotifier
+from everest.messaging import IUserMessageNotifier
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.resources import FooMember
 from everest.views.postcollection import PostCollectionView
@@ -20,18 +20,21 @@ __all__ = ['UserMessagePutMemberView',
 class UserMessagePostCollectionView(PostCollectionView):
     message = 'This is my warning message'
     def _extract_request_data(self):
-        reg = get_current_registry()
-        msg_notifier = reg.getUtility(IUserMessageEventNotifier)
-        msg_notifier.notify(self.message)
         foo = FooEntity(name=self.request.body)
         return FooMember(foo)
+
+    def _process_request_data(self, data):
+        reg = get_current_registry()
+        msg_notifier = reg.getUtility(IUserMessageNotifier)
+        if msg_notifier.notify(self.message):
+            return PostCollectionView._process_request_data(self, data)
 
 
 class UserMessagePutMemberView(PutMemberView):
     message = 'This is my member warning message'
     def _extract_request_data(self):
         reg = get_current_registry()
-        msg_notifier = reg.getUtility(IUserMessageEventNotifier)
+        msg_notifier = reg.getUtility(IUserMessageNotifier)
         msg_notifier.notify(self.message)
         return self.context
 
@@ -42,6 +45,7 @@ class UserMessagePutMemberView(PutMemberView):
 class _ExtractDataExceptionViewMixin(object):
     def _extract_request_data(self):
         raise ValueError()
+
 
 class _ProcessDataExceptionViewMixin(object):
     def _process_request_data(self, data): # pylint: disable=W0613
@@ -57,12 +61,6 @@ class ExceptionPostCollectionView(_ProcessDataExceptionViewMixin,
     pass
 
 
-class DummyUserMessageAndExceptionView(PostCollectionView):
-    def _has_user_messages(self):
-        return True
-
-    def _handle_user_messages(self):
-        return None
-
+class DummyExceptionView(PostCollectionView):
     def _process_request_data(self, data):
         raise ValueError()

@@ -4,84 +4,86 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 24, 2011.
 """
-
+from everest.entities.system import UserMessage
+from everest.interfaces import IUserMessage
+from everest.interfaces import IUserMessageChecker
+from everest.interfaces import IUserMessageNotifier
 from pyramid.threadlocal import get_current_registry
-from pyramid.threadlocal import get_current_request
-from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['IUserMessageEvent',
-           'IUserMessageEventNotifier',
-           'UserMessageEvent',
-           'UserMessageEventNotifier',
-           'UserMessageHandler',
+__all__ = ['UserMessageChecker',
+           'UserMessageNotifier',
+           'UserMessageHandlingContextManager',
            ]
 
 
-# begin interface pylint: disable=W0232
-class IUserMessageEvent(Interface):
-    pass
-
-class IUserMessageEventNotifier(Interface):
-    pass
-# end interface pylint: enable=W0232
-
-
-class UserMessageEvent(object):
+class UserMessageNotifier(object):
     """
-    Simple user message.
+    Notifier for user messages.
     """
-    implements(IUserMessageEvent)
+    implements(IUserMessageNotifier)
 
-    def __init__(self, request, message):
-        self.request = request
-        self.message = message
-
-
-class UserMessageEventNotifier(object):
-    """
-    User Message Event notifier service.
-    """
-    implements(IUserMessageEventNotifier)
-
-    def notify(self, message):
-        """
-        Notifies all handlers registered to :class:`IUserMessageEvent` events
-        of the given message.
-        """
+    def notify(self, message_text):
+        msg = UserMessage(message_text)
         reg = get_current_registry()
-        reg.handle(UserMessageEvent(get_current_request(), message))
+        vote = True
+        checkers = reg.subscribers([msg], IUserMessageChecker)
+        for checker in checkers:
+            vote = checker.check()
+            if vote is False:
+                # No further processing.
+                break
+            elif vote is None:
+                # Unconditional further procesing.
+                vote = True
+                break
+        # Inform all checkers of the final vote.
+        for checker in checkers:
+            checker.vote = vote
+        return vote
 
 
-class UserMessageHandler(object):
-    """
-    Handler for user messages delivered through the 
-    :class:`IUserMessageEventNotifier` service.
-    """
-    __handler_map = {}
-
+class UserMessageChecker(object):
+    implements(IUserMessageChecker)
     def __init__(self):
-        self.__messages = []
+        self.__message = None
+        # The default vote is True, i.e., continue processing.
+        self.vote = True
 
-    def has_messages(self):
-        return len(self.__messages) > 0
+    def __call__(self, message):
+        self.vote = True
+        self.__message = message
+        return self
 
-    def add_message(self, message):
-        self.__messages.append(message)
+    @property
+    def message(self):
+        return self.__message
 
-    def get_messages(self):
-        return self.__messages[:]
+    def check(self):
+        raise NotImplementedError('Abstract method.')
 
-    @classmethod
-    def register(cls, handler, request):
-        cls.__handler_map[request] = handler
 
-    @classmethod
-    def unregister(cls, request):
-        cls.__handler_map.pop(request, None)
+class UserMessageHandlingContextManager(object):
+    """
+    A context which sets up a user message checker as a subscriber to 
+    user messages.
+    """
+    def __init__(self, checker):
+        """
+        Constructor.
+        
+        :param checker: The user message checker to subscribe to user messages.
+        :type checker: :class:`everest.messaging.UserMessageChecker` instance.
+        """
+        self.__checker = checker
 
-    @classmethod
-    def handle_user_message_event(cls, event):
-        handler = cls.__handler_map[event.request]
-        handler.add_message(event.message)
+    def __enter__(self):
+        reg = get_current_registry()
+        reg.registerSubscriptionAdapter(self.__checker, (IUserMessage,),
+                                        IUserMessageChecker)
+
+    def __exit__(self, ext_type, value, tb):
+        reg = get_current_registry()
+        reg.unregisterSubscriptionAdapter(self.__checker, (IUserMessage,),
+                                          IUserMessageChecker)
