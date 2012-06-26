@@ -35,7 +35,7 @@ class MemoryAggregate(Aggregate):
         return len(self.__get_entities())
 
     def get_by_id(self, id_key):
-        if self._relationship is None:
+        if self._relationship is None or self._relationship.children is None:
             ent = self._session.get_by_id(self.entity_class, id_key)
             if not self._filter_spec is None \
                and not self._filter_spec.is_satisfied_by(ent):
@@ -46,7 +46,7 @@ class MemoryAggregate(Aggregate):
         return ent
 
     def get_by_slug(self, slug):
-        if self._relationship is None:
+        if self._relationship is None or self._relationship.children is None:
             ent = self._session.get_by_slug(self.entity_class, slug)
             if not self._filter_spec is None \
                and not self._filter_spec.is_satisfied_by(ent):
