@@ -35,7 +35,7 @@ class UserMessageNotifier(object):
                 # No further processing.
                 break
             elif vote is None:
-                # Unconditional further procesing.
+                # Unconditional further processing.
                 vote = True
                 break
         # Inform all checkers of the final vote.
@@ -45,6 +45,13 @@ class UserMessageNotifier(object):
 
 
 class UserMessageChecker(object):
+    """
+    Abstract base class for user message checkers.
+    
+    User message checkers can be used to decide if further processing
+    should be stopped in response to a non-critical event reported through
+    a user message.
+    """
     implements(IUserMessageChecker)
     def __init__(self):
         self.__message = None

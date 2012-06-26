@@ -131,6 +131,8 @@ class IUserMessageNotifier(Interface):
 class IUserMessageChecker(Interface):
     def __call__(message):
         """
+        This is required so that instances of user message checkers can
+        serve as an adapter to a user message.
         
         :param message: message to check
         :type message: :class:`everest.entities.system.UserMessage`.
