@@ -1,5 +1,8 @@
-In this section, you will find a step-by-step guide on how to design a RESTful
-application with :mod:`everest`.
+Building :mod:`everest` applications
+====================================
+
+In this section, you will find a step-by-step guide on how to design and
+implement a RESTful application with :mod:`everest`.
 
 1. The application
 
@@ -7,14 +10,33 @@ Suppose you want to write a program that helps a garden designer with composing
 lists of beautiful perennials and shrubs that she intends to plant in her
 customer's gardens. Let's call this fancy application "Plant Scribe". In its
 simplest possible form, this application will have to handle customers,
-projects (per customer), sites (per project), and lists of plant species (one
-per site).
+projects (per customer), sites (per project), and lists of plant species (per
+site).
 
 
-2. Design the entity model
+2. Designing the entity model
 
-First, we decide which data we want to store in our entity model. We start with
-the customer:
+:mod:`everest` applications keep their value state in :term:`entity` objects.
+
+.. sidebar:: Entities and Resources
+
+   The entity model implements the *domain logic* of the application by
+   enforcing all value state constraints at all times.
+
+   Entities are manipulated through :term:`resource` objects. A resource
+   object provides access either to a single entity object
+   (:term:`member resource`) or to a collection of entities of the same kind
+   (:term:`collection resource`). Resources can call other resources to modify
+   other parts of the entity model, thus implementing the *business logic* of
+   the application.
+
+   Collection resources use :term:`aggregate`s to provide access to the
+   underlying entities. They support slicing, filtering, and ordering
+   operations.
+
+The first step on our way to the Plant Scribe application is therefore
+to decide which data we want to store in our entity model. We start with the
+customer:
 
 .. literalinclude:: ../demoapp/v0/plantscribe/entities/customer.py
    :lineno: 
@@ -55,7 +77,7 @@ which quantity is modeled as an "incidence" entity:
    :lineno:
 
 
-3. Design the resource layer
+3. Designingbuild the resource layer
 
 With the entity model in place, we can  now proceed to designing the resource
 layer. The first step here is to define the marker interfaces that
@@ -65,13 +87,29 @@ This is very straightforward to do:
 .. literalinclude:: ../demoapp/v0/plantscribe/interfaces.py
    :lineno:
 
-Next, we write the member resource classes. This is where we decide which
-attributes of the entity model will be accessible from the outside and how they
-will be exposed. In our basic example, the resources mostly declare the public
-attributes of the underlying entities as attributes using the
-:func:`member_attribute` descriptor for member resource attributes, the
-:func:`collection_attribute` descriptor for collection resource attributes and
-the :func:`terminal_attribute` for non-resource attributes:
+.. sidebar:: Resource Attribute Kinds 
+
+   There are three kinds of resource attributes in :mod:`everest`: Terminal 
+   attributes, member attributes, and collection
+   attributes. A *terminal* resource attribute references an object of an
+   atomic type or some other type that is not a resource itself. A *member*
+   resource attribute references another member resource and a *collection*
+   resource attribute references another collection resource.
+   
+   Resource attributes are declared using the :function:`terminal_attribute`,
+   :function:`member_attribute`, and :function:`collection_attribute`
+   descriptor generating functions from the :mod:`resources.descriptors`
+   module. 
+   
+Each resource attribute descriptor maps a single attribute from the resource's
+entity and makes it available for access from the outside. Next, we write the
+member resource classes. This is where we decide which attributes of the entity
+model will be accessible from the outside and how they will be exposed. In our
+basic example, the resources mostly declare the public attributes of the
+underlying entities as attributes using the :func:`member_attribute` descriptor
+for member resource attributes, the :func:`collection_attribute` descriptor for
+collection resource attributes and the :func:`terminal_attribute` for
+non-resource attributes:
 
 .. literalinclude:: ../demoapp/v0/plantscribe/resources/customer.py
    :lineno:
@@ -92,29 +130,25 @@ In the simple case where the resource attribute descriptor declares a public
 attribute of the underlying entity, it expects a type or an interface of the
 target object and the name of the corresponding entity attribute as arguments.
 
-For :func:`member_attribute` and :func:`collection_attribute` descriptors there
-is also an optional argument `is_nested`, which determines if the URL for the
-target resource is going to be formed relative to the root (i.e., as an
-absolute path) or relative to the parent resource declaring the attribute.
+.. sidebar:: URL resolution 
 
-
-.. sidebar:: URL resolution
-   
-   :mod:`everest` favors and facilitates object traversal for URL resolution. 
+   :mod:`everest` favors and facilitates object traversal for URL resolution.
    In particular, all resource attributes that target a member or collection
    resource can be used directly for URL traversal unless they are specifically
-   set as non-nested resource in the corresponding resource attribute declaration.
-   
+   set as non-nested resource in the corresponding resource attribute
+   declaration.
+
+For :func:`member_attribute` and :func:`collection_attribute` descriptors there
+is also an optional argument :param:`is_nested` which determines if the URL for
+the target resource is going to be formed relative to the root (i.e., as an
+absolute path) or relative to the parent resource declaring the attribute.
 
 We also have the possibility to declare resource attributes that do not
 reference the target resource directly through an entity attribute, but
-indirectly through a "backreferencing" attribute. This is how we can now have
-the :class:`CustomerMember` resource have a 'projects' attribute linking to a
-collection resource for :class:`IProject` by means of the "customer" Add
-'backreference' to dictionary, even though, as noted above, the underlying
-:class:`Customer` entity is not linked to its sequence of :class:`Project`
-entities.
-
+indirectly through a "backreferencing" attribute. In the example code, this is
+demonstrated in the `projects` attribute of the :class:`CustomerMember`
+resource which allows us to access a customer's projects at the resource level
+even though the underlying entity does not reference the projects directly.
 
 4. Configuring the application
 
