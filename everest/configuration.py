@@ -319,7 +319,7 @@ class Configurator(PyramidConfigurator):
             mp_reg.set_default_config_option(name, value)
 
     def add_resource_representer(self, resource, content_type,
-                                 options=None, mapping_options=None,
+                                 options=None, attribute_options=None,
                                  _info=u''):
         if IInterface in provided_by(resource):
             # If we got an interface, we register representers with the same
@@ -338,7 +338,7 @@ class Configurator(PyramidConfigurator):
         mp_reg = rpr_reg.get_mapping_registry(content_type)
         rpr_config = \
                 mp_reg.configuration_class(options=options,
-                                           mapping_options=mapping_options)
+                                           attribute_options=attribute_options)
         for rc in rcs:
             rpr_reg.register(rc, content_type, configuration=rpr_config)
 

@@ -51,7 +51,7 @@ class MappingTestCase(ResourceTestCase):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
-                mapping_options={('parent', 'text'):
+                attribute_options={('parent', 'text'):
                                         {IGNORE_ON_READ_OPTION:True}})
         key = ('parent',)
         parent_attrs = mp1.get_attribute_map(key=key)
@@ -83,7 +83,7 @@ class MappingTestCase(ResourceTestCase):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
-            mapping_options={('parent',):{WRITE_AS_LINK_OPTION:False},
+            attribute_options={('parent',):{WRITE_AS_LINK_OPTION:False},
                              })
         de = mp1.map_to_data_element(mb)
         prx = DataElementAttributeProxy(de)
@@ -100,7 +100,7 @@ class MappingTestCase(ResourceTestCase):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
-            mapping_options={('children',):{IGNORE_ON_WRITE_OPTION:False,
+            attribute_options={('children',):{IGNORE_ON_WRITE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False},
                              ('children', 'children'):
                                         {IGNORE_ON_WRITE_OPTION:False,

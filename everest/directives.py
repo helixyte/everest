@@ -253,7 +253,7 @@ class ResourceDirective(GroupingContextDecorator):
                         callable=config.add_resource_representer,
                         args=(rc, cnt_type),
                         kw=dict(options=opts,
-                                mapping_options=mp_opts,
+                                attribute_options=mp_opts,
                                 _info=self.context.info),
                         )
 
@@ -362,14 +362,14 @@ class ResourceRepresenterDirective(GroupingContextDecorator):
         self.content_type = content_type
         self.kind = kind
         self.options = {}
-        self.mapping_options = {}
+        self.attribute_options = {}
 
     def after(self):
-        mapping_options = \
-            None if len(self.mapping_options) == 0 else self.mapping_options
+        attribute_options = None if len(self.attribute_options) == 0 \
+                            else self.attribute_options
         options = self.options
         self.context.representers[(self.content_type, self.kind)] = \
-                                                (options, mapping_options)
+                                                (options, attribute_options)
 
 
 class IResourceRepresenterAttributeDirective(Interface):
@@ -388,7 +388,7 @@ class ResourceRepresenterAttributeDirective(GroupingContextDecorator):
     def after(self):
         # Convert the (nested) attribute names into keys.
         key = tuple(self.name.split('.'))
-        self.context.mapping_options[key] = self.options
+        self.context.attribute_options[key] = self.options
 
 
 class IOptionDirective(Interface):

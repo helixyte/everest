@@ -239,9 +239,9 @@ class DescriptorsTestCase(ResourceTestCase):
         coll = new_stage_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
-        mapping_options = {('parent',):{WRITE_AS_LINK_OPTION:True},
+        attribute_options = {('parent',):{WRITE_AS_LINK_OPTION:True},
                            ('nested_parent',):{IGNORE_OPTION:True}}
-        mp_cloned = mp.clone(mapping_options=mapping_options)
+        mp_cloned = mp.clone(attribute_options=attribute_options)
         data_el = mp_cloned.map_to_data_element(member)
         # The linked-to parent needs to be in the root collection.
         my_entity.parent = None
@@ -438,7 +438,7 @@ class DescriptorsTestCase(ResourceTestCase):
                                              IGNORE_OPTION:False},
                    ('children', 'no_backref_children'):{IGNORE_OPTION:True},
                    }
-        conf = RepresenterConfiguration(mapping_options=mp_opts)
+        conf = RepresenterConfiguration(attribute_options=mp_opts)
         mp = reg.create_mapping(MyEntityMember, conf)
         reg.set_mapping(mp)
         return mp

@@ -10,8 +10,9 @@ from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.traversal import AttributeKey
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
-from everest.representers.traversal import DataElementTreeTraverser
+from everest.representers.traversal import MappingDataElementTreeTraverser
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import ResourceAttributeKinds
@@ -21,7 +22,6 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.representers.traversal import AttributeKey
 
 
 __docformat__ = 'reStructuredText en'
@@ -33,7 +33,8 @@ __all__ = ['Mapping',
 
 class Mapping(object):
     """
-    Performs configurable resource <-> data element tree mappings.
+    Performs configurable resource <-> data element tree <-> representation
+    mappings.
     
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
@@ -51,10 +52,10 @@ class Mapping(object):
         #
         self.__mapped_attr_cache = {}
 
-    def clone(self, options=None, mapping_options=None):
+    def clone(self, options=None, attribute_options=None):
         copied_cfg = self.__configuration.copy()
         upd_cfg = type(copied_cfg)(options=options,
-                                   mapping_options=mapping_options)
+                                   attribute_options=attribute_options)
         copied_cfg.update(upd_cfg)
         return self.__class__(self.__mp_reg, self.__mapped_cls,
                               self.__de_cls, copied_cfg)
@@ -116,13 +117,13 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resolve_urls=True):
-        trv = DataElementTreeTraverser(self, data_element)
+        trv = MappingDataElementTreeTraverser(data_element, mapping=self)
         visitor = ResourceBuilderDataElementTreeVisitor(resolve_urls)
         trv.run(visitor)
         return visitor.resource
 
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(self, resource)
+        trv = ResourceTreeTraverser(resource, self)
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
@@ -148,7 +149,7 @@ class Mapping(object):
             for rc_attr in rc_attrs.itervalues():
                 attr_key = key + (rc_attr.name,)
                 attr_mp_opts = \
-                        self.__configuration.get_mapping_options(attr_key)
+                        self.__configuration.get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
                 collected_mp_attrs[rc_attr.name] = new_mp_attr
         else:
@@ -165,7 +166,7 @@ class Mapping(object):
                     dict(((k, v)
                           for (k, v) in
                             self.__configuration \
-                                    .get_mapping_options(attr_key).iteritems()
+                                    .get_attribute_options(attr_key).iteritems()
                           if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.name] = clnd_mp_attr

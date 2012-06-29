@@ -26,9 +26,9 @@ import gc
 import glob
 import os
 import shutil
+import tempfile
 import threading
 import transaction
-import tempfile
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['FileSystemEntityStoreTestCase',
@@ -184,11 +184,14 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         orig_data_dir = os.path.join(self.__data_dir, 'original')
         for fn in glob.glob1(orig_data_dir, "*.csv"):
             shutil.copy(os.path.join(orig_data_dir, fn), self.__data_dir)
-        ResourceTestCase.set_up(self)
+        try:
+            ResourceTestCase.set_up(self)
+        except: # justified catch all pylint: disable=W0702
+            self.__remove_data_files() # Always remove the copied files.
+            raise
 
     def tear_down(self):
-        for fn in glob.glob1(self.__data_dir, '*.csv'):
-            os.unlink(os.path.join(self.__data_dir, fn))
+        self.__remove_data_files()
         transaction.abort()
 
     def test_initialization(self):
@@ -245,7 +248,7 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
                   'rU') as data_file:
             lines = data_file.readlines()
         data = lines[1].split(',')
-        self.assert_equal(data[4], '"%s"' % TEXT)
+        self.assert_equal(data[3], '"%s"' % TEXT)
 
     def test_abort(self):
         coll = get_root_collection(IMyEntity)
@@ -267,6 +270,10 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         repo_mgr = get_repository_manager()
         repo = repo_mgr.get(REPOSITORIES.FILE_SYSTEM)
         self.assert_raises(ValueError, repo.configure, foo='bar')
+
+    def __remove_data_files(self):
+        for fn in glob.glob1(self.__data_dir, '*.csv'):
+            os.unlink(os.path.join(self.__data_dir, fn))
 
 
 class _MyEntity(Entity):

@@ -4,9 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
-
 from pyramid.traversal import ModelGraphTraverser # pylint: disable-msg=E0611, F0401
-from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
 
 __docformat__ = 'reStructuredText en'
@@ -17,7 +15,7 @@ __all__ = ['CollectionTraverser',
 class CollectionTraverser(ModelGraphTraverser): # pylint: disable-msg=W0232
     """
     A custom model traverser that allows us to specify the representation
-    for collection resources with a suffix as in `http://everest/racks.csv`.
+    for resources with a suffix as in `http://everest/racks.csv`.
 
     Rather than to reproduce the functionality of the `__call__` method, we
     check if base part of the current view name (`racks` in the example) can
@@ -36,7 +34,7 @@ class CollectionTraverser(ModelGraphTraverser): # pylint: disable-msg=W0232
             except KeyError:
                 pass
             else:
-                if ICollectionResource.providedBy(collection): # pylint: disable=E1101
+                if IResource.providedBy(collection): # pylint: disable=E1101
                     system['context'] = collection
                     system['view_name'] = repr_name
         return system

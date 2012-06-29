@@ -12,19 +12,12 @@ __all__ = ['RepresenterConfiguration',
 
 # Configuration option name declarations.
 
-_MAPPING_CONFIG_OPTION = 'mapping'
-VALID_CONFIG_OPTIONS = []
-
+_ATTRIBUTES_CONFIG_OPTION = 'attributes'
 IGNORE_OPTION = 'ignore' # deprecated
 IGNORE_ON_READ_OPTION = 'ignore_on_read'
 IGNORE_ON_WRITE_OPTION = 'ignore_on_write'
 WRITE_AS_LINK_OPTION = 'write_as_link'
 REPR_NAME_OPTION = 'repr_name'
-VALID_MAPPING_OPTIONS = [IGNORE_ON_READ_OPTION,
-                         IGNORE_ON_WRITE_OPTION,
-                         WRITE_AS_LINK_OPTION,
-                         REPR_NAME_OPTION,
-                         ]
 
 
 class RepresenterConfiguration(object):
@@ -43,48 +36,49 @@ class RepresenterConfiguration(object):
        classes need to declare valid options in the 
        :cvar:`_default_config_options` class variable. 
     
-    2) Mapping options. These are kept in a dictionary mapping the mapped
-       attribute name to a dictionary of mapping options. Valid mapping 
-       option name for a given attribute are:
+    2) Attributes options. These are kept in a dictionary mapping the mapped
+       attribute name to a dictionary of options which control the way each
+       attribute is mapped. Valid option names for a given attribute are:
 
-       repr_name :
+       %(REPR_NAME_OPTION)s :
          The name to use for this attribute in the representation.
-       write_as_link :
+       %(WRITE_AS_LINK_OPTION)s :
          Write this mapped attribute as a link rather than as a full
          representation.
-       ignore_on_read:
+       %(IGNORE_ON_READ_OPTION)s:
          Ignore this attribute when reading a representation.
-       ignore_on_write:
+       %(IGNORE_ON_WRITE_OPTION)s:
          Ignore this attribute when writing a representation.
-       ignore :
+       %(IGNORE_OPTION)s :
          Ignore this attribute when creating a representation. This is short
          for setting both ignore_on_read and ignore_on_write
             
        Derived classes may add more allowed mapping options; those must be 
-       declared in the :cvar:`_default_mapping_options` class variable.
-    """
+       declared in the :cvar:`_default_attributes_options` class variable.
+    """ % globals() # doc string must not be assigned pylint: disable=W0106
 
     #: Default configuration option names (immutable).
     _default_config_options = {}
     #: Default mapping option names (immutable).
-    _default_mapping_options = {IGNORE_ON_READ_OPTION:None,
-                                IGNORE_ON_WRITE_OPTION:None,
-                                WRITE_AS_LINK_OPTION:None,
-                                REPR_NAME_OPTION:None}
+    _default_attributes_options = {IGNORE_ON_READ_OPTION:None,
+                                   IGNORE_ON_WRITE_OPTION:None,
+                                   WRITE_AS_LINK_OPTION:None,
+                                   REPR_NAME_OPTION:None}
 
-    def __init__(self, options=None, mapping_options=None):
+    def __init__(self, options=None, attribute_options=None):
         # {generic config option name : option value}
         self.__options = self._default_config_options.copy()
         # {attr key : { attr name : {{option name : option value}}}
-        self.__mapping_options = defaultdict(self._default_config_options.copy)
-        self.__update(options, mapping_options)
+        self.__attribute_options = \
+                        defaultdict(self._default_config_options.copy)
+        self.__update(options, attribute_options)
 
     def copy(self):
         """
         Return a copy of this configuration.
         """
         return self.__class__(options=self.__options,
-                              mapping_options=self.__mapping_options)
+                              attribute_options=self.__attribute_options)
 
     def update(self, configuration):
         """
@@ -92,7 +86,7 @@ class RepresenterConfiguration(object):
         not-None values will be overridden.
         """
         self.__update(configuration.get_options(),
-                      configuration.get_mapping_options())
+                      configuration.get_attribute_options())
 
     def get_option(self, name):
         """
@@ -117,16 +111,16 @@ class RepresenterConfiguration(object):
         """
         return self.__options.copy()
 
-    def set_mapping_option(self, attribute_key, option_name, option_value):
-        self.__validate_mapping_option_name(option_name)
-        mp_options = self.__mapping_options.setdefault(attribute_key, {})
+    def set_attribute_option(self, attribute_key, option_name, option_value):
+        self.__validate_attribute_option_name(option_name)
+        mp_options = self.__attribute_options.setdefault(attribute_key, {})
         mp_options[option_name] = option_value
 
-    def get_mapping_option(self, attribute_key, option_name):
-        self.__validate_mapping_option_name(option_name)
-        return self.__mapping_options[attribute_key].get(option_name)
+    def get_attribute_option(self, attribute_key, option_name):
+        self.__validate_attribute_option_name(option_name)
+        return self.__attribute_options[attribute_key].get(option_name)
 
-    def get_mapping_options(self, attribute_key=None):
+    def get_attribute_options(self, attribute_key=None):
         """
         Returns a copy of the mapping options for the given attribute name
         or a copy of all mapping options, if no attribute name is provided.
@@ -137,12 +131,12 @@ class RepresenterConfiguration(object):
         :returns: mapping options dictionary (including default `None` values)
         """
         if attribute_key is None:
-            opts = defaultdict(self._default_mapping_options.copy)
-            for attr, mp_options in self.__mapping_options.iteritems():
+            opts = defaultdict(self._default_attributes_options.copy)
+            for attr, mp_options in self.__attribute_options.iteritems():
                 opts[attr].update(mp_options)
         else:
-            opts = self._default_mapping_options.copy()
-            attr_opts = self.__mapping_options[attribute_key]
+            opts = self._default_attributes_options.copy()
+            attr_opts = self.__attribute_options[attribute_key]
             opts.update(attr_opts)
         return opts
 
@@ -155,19 +149,19 @@ class RepresenterConfiguration(object):
             for attr_name, attr_mp_options in mp_opts.iteritems():
                 for mp_opt_name, mp_opt_value in attr_mp_options.iteritems():
                     if not mp_opt_value is None:
-                        self.set_mapping_option(attr_name,
+                        self.set_attribute_option(attr_name,
                                                 mp_opt_name, mp_opt_value)
 
     def __validate_option_name(self, name):
         if not (name in self._default_config_options.keys()
-                or name == _MAPPING_CONFIG_OPTION):
+                or name == _ATTRIBUTES_CONFIG_OPTION):
             raise ValueError('Invalid configuration option name "%s" for '
                              '%s representer.' %
                              (name, self.__class__.__name__))
 
-    def __validate_mapping_option_name(self, name):
-        if not (name in self._default_mapping_options.keys()
+    def __validate_attribute_option_name(self, name):
+        if not (name in self._default_attributes_options.keys()
                 or name == IGNORE_OPTION):
-            raise ValueError('Invalid mapping option name "%s" '
+            raise ValueError('Invalid attribute option name "%s" '
                              'for %s representer.'
                              % (name, self.__class__.__name__))

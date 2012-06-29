@@ -8,11 +8,12 @@ Created on May 18, 2011.
 """
 from StringIO import StringIO
 from everest.representers.interfaces import ICollectionDataElement
+from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.utils import get_mapping_registry
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.base import Resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+import os
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresentationGenerator',
@@ -67,28 +68,34 @@ class ResourceRepresenter(Representer):
         element tree into a representation.
     """
 
-    def __init__(self, resource_class, mapping_registry):
+    def __init__(self, resource_class, mapping):
         Representer.__init__(self)
         self.resource_class = resource_class
-        self._mapping_registry = mapping_registry
+        self._mapping = mapping
 
     @classmethod
     def create_from_resource(cls, rc):
         mp_reg = get_mapping_registry(cls.content_type)
-        return cls(type(rc), mp_reg)
+        rc_cls = type(rc)
+        mp = mp_reg.find_or_create_mapping(rc_cls)
+        return cls(rc_cls, mp)
 
     @classmethod
     def make_mapping_registry(cls):
         raise NotImplementedError('Abstract method.')
 
     def from_stream(self, stream):
-        parser = self._make_representation_parser(stream, self.resource_class)
-        return self._parse(parser)
+        parser = self._make_representation_parser(stream, self.resource_class,
+                                                  self._mapping)
+        data_el = parser.run()
+        return self.resource_from_data(data_el)
 
     def to_stream(self, resource, stream):
+        data_el = self.data_from_resource(resource)
         generator = \
-            self._make_representation_generator(stream, self.resource_class)
-        return self._generate(generator, resource)
+            self._make_representation_generator(stream, self.resource_class,
+                                                self._mapping)
+        return generator.run(data_el)
 
     def data_from_stream(self, stream):
         """
@@ -97,7 +104,8 @@ class ResourceRepresenter(Representer):
         :returns: object implementing 
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
-        parser = self._make_representation_parser(stream, self.resource_class)
+        parser = self._make_representation_parser(stream, self.resource_class,
+                                                  self._mapping)
         return parser.run()
 
     def data_from_representation(self, representation):
@@ -118,12 +126,12 @@ class ResourceRepresenter(Representer):
         """
         stream = StringIO()
         generator = \
-            self._make_representation_generator(stream, self.resource_class)
+            self._make_representation_generator(stream, self.resource_class,
+                                                self._mapping)
         generator.run(data_element)
         return stream.getvalue()
 
-    def resource_from_data(self, data_element,
-                           resolve_urls=True, mapping_options=None):
+    def resource_from_data(self, data_element, resolve_urls=True):
         """
         Extracts serialized data from the given data element and constructs
         a resource from it.
@@ -133,12 +141,10 @@ class ResourceRepresenter(Representer):
         :returns: object implementing
           :class:`everest.resources.interfaces.IResource`
         """
-        mp = data_element.mapping
-        if not mapping_options is None:
-            mp = mp.clone(mapping_options=mapping_options)
-        return mp.map_to_resource(data_element, resolve_urls=resolve_urls)
+        return self._mapping.map_to_resource(data_element,
+                                             resolve_urls=resolve_urls)
 
-    def data_from_resource(self, resource, mapping_options=None):
+    def data_from_resource(self, resource):
         """
         Extracts managed attributes from a resource and constructs a data
         element for serialization from it.
@@ -155,20 +161,22 @@ class ResourceRepresenter(Representer):
         "write_as_link" and "ignore" options of representer configuration
         objects (:class:`everest.representers.config.RepresenterConfiguration`).
         """
-        mp = self._mapping_registry.find_or_create_mapping(type(resource))
-        if not mapping_options is None:
-            mp = mp.clone(mapping_options=mapping_options)
-        return mp.map_to_data_element(resource)
+        return self._mapping.map_to_data_element(resource)
 
-    def _parse(self, parser):
-        data_el = parser.run()
-        return self.resource_from_data(data_el)
+    def configure(self, options=None, attribute_options=None):
+        """
+        Configures the attribute mapping for this representer.
+        
+        :param dict options: configuration options for the mapping associated
+          with this representer.
+        :param dict attribute_options: attribute options for the mapping
+          associated with this representer.
+        """
+        self._mapping = \
+                self._mapping.clone(options=options,
+                                    attribute_options=attribute_options)
 
-    def _generate(self, generator, resource):
-        data_el = self.data_from_resource(resource)
-        return generator.run(data_el)
-
-    def _make_representation_parser(self, stream, resource_class):
+    def _make_representation_parser(self, stream, resource_class, mapping):
         """
         Creates a representation parser from the given arguments. This parser
         has a `run` method which reads and parses the serialized resource from
@@ -176,7 +184,7 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
-    def _make_representation_generator(self, stream, resource_class):
+    def _make_representation_generator(self, stream, resource_class, mapping):
         """
         Creates a representation generator from the given arguments. This
         generator has a `run` method which writes out the serialized
@@ -283,9 +291,10 @@ class _RepresentationHandler(object):
     """
     Base class for objects handling a representation stream.
     """
-    def __init__(self, stream, resource_class):
+    def __init__(self, stream, resource_class, mapping):
         self._stream = stream
         self._resource_class = resource_class
+        self._mapping = mapping
         self.__config = {}
 
     def configure(self, **config):
@@ -323,18 +332,18 @@ def data_element_tree_to_string(data_element):
     # FIXME: rewrite this as a visitor to use the data element tree traverser.
     def __dump(data_el, stream, offset):
         name = data_el.__class__.__name__
-        stream.write("%s" % name)
-        offset = offset + len(name) + 1
+        stream.write("%s%s" % (' ' * offset, name))
+        offset += 2
         ifcs = provided_by(data_el)
         if ICollectionDataElement in ifcs:
             stream.write("[")
             first_member = True
             for member_data_el in data_el.get_members():
                 if first_member:
-                    stream.write('\n' + ' ' * (offset + 2))
+                    stream.write('%s' % os.linesep + ' ' * offset)
                     first_member = False
                 else:
-                    stream.write(',\n' + ' ' * (offset + 2))
+                    stream.write(',%s' % os.linesep + ' ' * offset)
                 __dump(member_data_el, stream, offset)
             stream.write("]")
         else:
@@ -345,20 +354,18 @@ def data_element_tree_to_string(data_element):
                               data_el.get_relation()))
             else:
                 first_attr = True
-                for attr in data_el.mapping.attribute_iterator():
+                for attr_name, attr_value in data_el.data.iteritems():
                     if first_attr:
                         first_attr = False
                     else:
-                        stream.write(',\n' + ' ' * offset)
-                    if attr.kind == ResourceAttributeKinds.TERMINAL:
-                        stream.write(
-                            "%s=%s" % (attr.name,
-                                       str(data_el.get_terminal(attr))))
+                        stream.write(',%s' % os.linesep
+                                     + ' ' * (offset + len(name) + 1))
+                    if attr_value is None:
+                        continue
+                    if not IDataElement in provided_by(attr_value):
+                        stream.write("%s=%s" % (attr_name, attr_value))
                     else:
-                        nested_el = data_el.get_nested(attr)
-                        if nested_el is None:
-                            continue
-                        __dump(nested_el, stream, offset)
+                        __dump(attr_value, stream, offset)
             stream.write(')')
     stream = StringIO()
     __dump(data_element, stream, 0)

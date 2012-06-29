@@ -6,6 +6,7 @@ Data element classes.
 
 Created on Apr 25, 2012
 """
+from collections import OrderedDict
 from everest.representers.base import data_element_tree_to_string
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
@@ -17,9 +18,20 @@ from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
+from everest.url import url_to_resource
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.url import url_to_resource
+
+__docformat__ = 'reStructuredText en'
+__all__ = ['CollectionDataElement',
+           'DataElement',
+           'DataElementAttributeProxy',
+           'LinkedDataElement',
+           'MemberDataElement',
+           'SimpleCollectionDataElement',
+           'SimpleLinkedDataElement',
+           'SimpleMemberDataElement',
+           ]
 
 
 class DataElement(object):
@@ -62,37 +74,44 @@ class MemberDataElement(DataElement):
 
     implements(IMemberDataElement)
 
-    def get_terminal(self, attr):
+    def get_mapped_terminal(self, attr):
         """
         Returns the value for the given mapped terminal resource attribute.
 
-        @return: attribute value or `None` if no value is found for the given
+        :param attr: attribute to retrieve.
+        :type attr: :class:`everest.representers.attributes.MappedAttribute`
+        :returns: attribute value or `None` if no value is found for the given
             attribute name.
         """
         raise NotImplementedError('Abstract method.')
 
-    def set_terminal(self, attr, value):
+    def set_mapped_terminal(self, attr, value):
         """
         Sets the value for the given mapped terminal resource attribute.
+
+        :type attr: :class:`everest.representers.attributes.MappedAttribute`
+        :param value: value of the attribute to set.
         """
         raise NotImplementedError('Abstract method.')
 
-    def get_nested(self, attr):
+    def get_mapped_nested(self, attr):
         """
         Returns the mapped nested resource attribute (either a member or a
         collection resource attribute).
 
-        @returns: object implementing `:class:IDataelement` or
+        :type attr: :class:`everest.representers.attributes.MappedAttribute`
+        :returns: object implementing `:class:IDataelement` or
           `None` if no nested resource is found for the given attribute name.
         """
         raise NotImplementedError('Abstract method.')
 
-    def set_nested(self, attr, data_element):
+    def set_mapped_nested(self, attr, data_element):
         """
         Sets the value for the given mapped nested resource attribute (either
         a member or a collection resource attribute).
 
-        @param data_element: a :class:DataElement or :class:LinkedDataElement
+        :type attr: :class:`everest.representers.attributes.MappedAttribute`
+        :param data_element: a :class:DataElement or :class:LinkedDataElement
           object containing nested resource data.
         """
         raise NotImplementedError('Abstract method.')
@@ -135,32 +154,82 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
     """
     Basic implementation of a member data element.
     """
-    __nested = None
+    __data = None
 
-    def get_terminal(self, attr):
-        rpr_val = getattr(self, attr.repr_name, None)
+    @property
+    def terminals(self):
+        if self.__data is None:
+            self.__data = OrderedDict()
+        return ((k, v)
+                for (k, v) in self.__data.iteritems()
+                if not isinstance(v, DataElement))
+
+    @property
+    def nesteds(self):
+        if self.__data is None:
+            self.__data = OrderedDict()
+        return ((k, v)
+                for (k, v) in self.__data.iteritems()
+                if isinstance(v, DataElement))
+
+    @property
+    def data(self):
+        if self.__data is None:
+            self.__data = OrderedDict()
+        return self.__data
+
+    def get_terminal(self, attr_name):
+        """
+        Returns the (raw) value of the specified attribute.
+        
+        :param str attr_name: name of the attribute to retrieve.
+        """
+        return self.data.get(attr_name)
+
+    def set_terminal(self, attr_name, value):
+        """
+        Sets the (raw) value of the specified attribute.
+
+        :param str attr_name: name of the attribute to set.
+        :param str value: value of the attribute to set.
+        """
+        self.data[attr_name] = value
+
+    def get_nested(self, attr_name):
+        """
+        Returns the (raw) value of the specified attribute.
+        
+        :param str attr_name: name of the attribute to retrieve.
+        """
+        return self.data[attr_name]
+
+    def set_nested(self, attr_name, data_element):
+        """
+        Sets the (raw) value of the specified attribute.
+
+        :param str attr_name: name of the attribute to set.
+        @param data_element: a :class:DataElement or :class:LinkedDataElement
+          object containing nested resource data.
+        """
+        self.data[attr_name] = data_element
+
+    def get_mapped_terminal(self, attr):
+        rpr_val = self.data.get(attr.repr_name)
         return SimpleConverterRegistry.convert_from_representation(
                                                             rpr_val,
                                                             attr.value_type)
 
-    def set_terminal(self, attr, value):
+    def set_mapped_terminal(self, attr, value):
         rpr_val = SimpleConverterRegistry.convert_to_representation(
                                                             value,
                                                             attr.value_type)
-        setattr(self, attr.repr_name, rpr_val)
+        self.data[attr.repr_name] = rpr_val
 
-    def get_nested(self, attr):
-        nested = self.__get_nested()
-        return nested.get(attr.repr_name)
+    def get_mapped_nested(self, attr):
+        return self.data.get(attr.repr_name)
 
-    def set_nested(self, attr, data_element):
-        nested = self.__get_nested()
-        nested[attr.repr_name] = data_element
-
-    def __get_nested(self):
-        if self.__nested is None:
-            self.__nested = {}
-        return self.__nested
+    def set_mapped_nested(self, attr, data_element):
+        self.data[attr.repr_name] = data_element
 
 
 class SimpleCollectionDataElement(_SimpleDataElementMixin,
@@ -171,13 +240,13 @@ class SimpleCollectionDataElement(_SimpleDataElementMixin,
     __members = None
 
     def add_member(self, data_element):
-        members = self.__get_members()
-        members.append(data_element)
+        self.members.append(data_element)
 
     def get_members(self):
-        return self.__get_members()
+        return self.members
 
-    def __get_members(self):
+    @property
+    def members(self):
         if self.__members is None:
             self.__members = []
         return self.__members
@@ -288,9 +357,9 @@ class DataElementAttributeProxy(object):
             raise AttributeError(name)
         else:
             if attr.kind == ResourceAttributeKinds.TERMINAL:
-                value = self.__data_element.get_terminal(attr)
+                value = self.__data_element.get_mapped_terminal(attr)
             else:
-                nested_data_el = self.__data_element.get_nested(attr)
+                nested_data_el = self.__data_element.get_mapped_nested(attr)
                 if nested_data_el is None:
                     value = None
                 elif ILinkedDataElement in provided_by(nested_data_el):

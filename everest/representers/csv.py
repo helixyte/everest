@@ -23,11 +23,13 @@ from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.mapping import SimpleMappingRegistry
+from everest.representers.traversal import MappingDataElementTreeTraverser
+from everest.representers.traversal import ResourceDataVisitor
 from everest.representers.utils import get_mapping_registry
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
+from itertools import product
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvCollectionDataElement',
@@ -100,19 +102,118 @@ class CsvRepresentationParser(RepresentationParser):
                 raise ValueError("Invalid row length (found: %s, expected: "
                                  "%s)." % (len(row), len(header)))
             for csv_attr, value in zip(header, row):
+                if value == '':
+                    value = None
                 attr = attrs[csv_attr]
                 if is_resource_url(value):
                     link = CsvLinkedDataElement.create(value, attr.kind)
-                    mb_data_el.set_nested(attr, link)
+                    mb_data_el.set_nested(attr.repr_name, link)
                 else:
                     # Treat everything else as a terminal. We do not need
-                    # to convert to a representation, so use set_raw.
-                    mb_data_el.set_raw(attr, value)
+                    # to convert to a representation, so use set_terminal.
+                    mb_data_el.set_terminal(attr.repr_name, value)
             if is_member_rpr:
                 result_data_el = mb_data_el
             else:
                 coll_data_el.add_member(mb_data_el)
         return result_data_el
+
+
+class CsvData(object):
+    def __init__(self, data=None):
+        if data is None:
+            data = {}
+        self.fields = []
+        self.data = []
+        for attr_name, value in data.iteritems():
+            if not isinstance(value, CsvData):
+                self.fields.append(attr_name)
+                if len(self.data) == 0:
+                    self.data.append([value])
+                else:
+                    for row in self.data:
+                        row.append(value)
+            else:
+                self.expand(value)
+
+    def expand(self, other):
+        if len(self.data) == 0:
+            self.data = other.data
+        else:
+            new_data = []
+            for self_row, other_row in list(product(self.data, other.data)):
+                new_data.append(self_row + other_row)
+            self.data = new_data
+        self.fields = self.fields + other.fields
+
+    def append(self, other):
+        if len(self.data) == 0:
+            self.data = other.data
+            self.fields = other.fields
+        else:
+            for row in other.data:
+                self.data.append(row)
+
+
+class CsvDataElementTreeVisitor(ResourceDataVisitor):
+    def __init__(self, encoding):
+        ResourceDataVisitor.__init__(self)
+        self.__encoding = encoding
+        self.__csv_data = None
+
+    def visit_member(self, attribute_key, attribute, member_node, member_data,
+                     is_link_node, parent_data, index=None):
+        if is_link_node:
+            new_field_name = self.__get_field_name(attribute_key[:-1],
+                                                   attribute)
+            mb_data = CsvData({new_field_name:member_node.get_url()})
+        else:
+            rpr_mb_data = OrderedDict()
+            for attr, value in member_data.iteritems():
+                new_field_name = self.__get_field_name(attribute_key, attr)
+                rpr_mb_data[new_field_name] = value
+            mb_data = CsvData(rpr_mb_data)
+        if not index is None:
+            # Collection member. Store in parent data with index as key.
+            parent_data[index] = mb_data
+        elif len(attribute_key) == 0:
+            # Top level - store as CSV data..
+            self.__csv_data = mb_data
+        else:
+            # Nested member. Store in parent data with attribute as key.
+            parent_data[attribute] = mb_data
+
+    def visit_collection(self, attribute_key, attribute, collection_node,
+                         collection_data, is_link_node, parent_data):
+        if is_link_node:
+            new_field_name = self.__get_field_name(attribute_key[:-1],
+                                                   attribute)
+            coll_data = CsvData({new_field_name:collection_node.get_url()})
+        else:
+            coll_data = CsvData()
+            for item in sorted(collection_data.items()):
+                mb_data = item[1]
+                coll_data.append(mb_data)
+        if len(attribute_key) == 0:
+            self.__csv_data = coll_data
+        else:
+            parent_data[attribute] = coll_data
+
+    @property
+    def csv_data(self):
+        return self.__csv_data
+
+    def __get_field_name(self, attribute_key, attribute):
+        if attribute.name != attribute.repr_name:
+            field_name = attribute.repr_name
+        else:
+            field_name = '.'.join(attribute_key + (attribute.name,))
+        return field_name
+
+    def __encode(self, item):
+        if isinstance(item, unicode):
+            item = item.encode(self.__encoding)
+        return item
 
 
 class CsvRepresentationGenerator(RepresentationGenerator):
@@ -121,95 +222,16 @@ class CsvRepresentationGenerator(RepresentationGenerator):
 
     Handles linked resources and nested member and collection resources.
     """
-    class __CsvData(object):
-        def __init__(self):
-            self.__data = []
-            self.__fields = []
-            self.__field_indices = OrderedDict()
-
-        @property
-        def header(self):
-            return self.__field_indices.keys()
-
-        def __setitem__(self, key, value):
-            row_index, field = key
-            if not field in self.__fields:
-                self.__field_indices[field] = len(self.__fields)
-                self.__fields.append(field)
-            num_rows = len(self.__data)
-            if row_index > (num_rows - 1):
-                self.__data.append(dict())
-            field_index = self.__field_indices[field]
-            self.__data[row_index][field_index] = value
-
-        def __iter__(self):
-            last_row_data = {}
-            for row_data in self.__data:
-                row_values = []
-                for field_index in self.__field_indices.values():
-                    cell_value = row_data.get(field_index)
-                    if cell_value is None:
-                        cell_value = last_row_data.get(field_index)
-                        row_data[field_index] = cell_value
-                    row_values.append(cell_value)
-                yield row_values
-                last_row_data = row_data
-
-        def __len__(self):
-            return len(self.__data)
-
-    def __init__(self, stream, resource_class):
-        RepresentationGenerator.__init__(self, stream, resource_class)
-        self.__is_header_written = False
 
     def run(self, data_element):
+        trv = MappingDataElementTreeTraverser(data_element, self._mapping)
+        vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
+        trv.run(vst)
         csv_writer = writer(self._stream, dialect=self.get_option('dialect'))
-        is_member_rpr = provides_member_resource(self._resource_class)
-        rows_data = self.__CsvData()
-        if is_member_rpr:
-            mb_data_els = [data_element]
-        else:
-            mb_data_els = data_element.get_members()
-        for mb_data_el in mb_data_els:
-            self.__process_data(mb_data_el, rows_data, len(rows_data), None)
-        csv_writer.writerow(rows_data.header)
-        for row_data in rows_data:
+        csv_data = vst.csv_data
+        csv_writer.writerow(csv_data.fields)
+        for row_data in csv_data.data:
             csv_writer.writerow(row_data)
-
-    def __process_data(self, data_el, rows_data, row_index, prefix):
-        has_found_collection = False
-        attrs = data_el.mapping.get_attribute_map()
-        for attr in attrs.values():
-            attr_name_str = self.__encode(attr.repr_name)
-            if not prefix is None:
-                attr_name_str = "%s.%s" % (prefix, attr_name_str)
-            key = (row_index, attr_name_str)
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                value = data_el.get_terminal(attr)
-                rows_data[key] = value
-            else:
-                value = data_el.get_nested(attr)
-                if value is None:
-                    rows_data[key] = None
-                elif isinstance(value, CsvLinkedDataElement):
-                    rows_data[key] = self.__encode(value.get_url())
-                elif attr.kind == ResourceAttributeKinds.MEMBER:
-                    self.__process_data(value, rows_data,
-                                        row_index, attr_name_str)
-                elif attr.kind == ResourceAttributeKinds.COLLECTION:
-                    if not has_found_collection:
-                        has_found_collection = True
-                    else:
-                        raise ValueError('In CSV representations, all but '
-                                         'one collection attribute must be '
-                                         'represented as links.')
-                    for mb_cnt, mb_data_el in enumerate(value.get_members()):
-                        self.__process_data(mb_data_el, rows_data,
-                                            row_index + mb_cnt, attr_name_str)
-
-    def __encode(self, item):
-        encoding = self.get_option('encoding')
-        return isinstance(item, unicode) and item.encode(encoding) or item
 
 
 class CsvResourceRepresenter(ResourceRepresenter):
@@ -227,24 +249,20 @@ class CsvResourceRepresenter(ResourceRepresenter):
     def make_mapping_registry(cls):
         return CsvMappingRegistry()
 
-    def _make_representation_parser(self, stream, resource_class, **config):
-        parser = CsvRepresentationParser(stream, resource_class)
+    def _make_representation_parser(self, stream, resource_class, mapping):
+        parser = CsvRepresentationParser(stream, resource_class, mapping)
         parser.set_option('dialect', self.CSV_IMPORT_DIALECT)
-        parser.configure(**config)
         return parser
 
-    def _make_representation_generator(self, stream, resource_class, **config):
-        generator = CsvRepresentationGenerator(stream, resource_class)
+    def _make_representation_generator(self, stream, resource_class, mapping):
+        generator = CsvRepresentationGenerator(stream, resource_class, mapping)
         generator.set_option('dialect', self.CSV_EXPORT_DIALECT)
         generator.set_option('encoding', self.ENCODING)
-        generator.configure(**config)
         return generator
 
 
 class CsvMemberDataElement(SimpleMemberDataElement):
-    def set_raw(self, attr, representation_value):
-        setattr(self, attr.repr_name, representation_value)
-
+    pass
 
 class CsvCollectionDataElement(SimpleCollectionDataElement):
     pass

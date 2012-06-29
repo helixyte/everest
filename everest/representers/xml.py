@@ -128,19 +128,16 @@ class XmlResourceRepresenter(ResourceRepresenter):
     def make_mapping_registry(cls):
         return XmlMappingRegistry()
 
-    def _make_representation_parser(self, stream, resource_class, **config):
-        parser = XmlRepresentationParser(stream, resource_class)
-        mp = self._mapping_registry.find_or_create_mapping(resource_class)
+    def _make_representation_parser(self, stream, resource_class, mapping):
+        parser = XmlRepresentationParser(stream, resource_class, mapping)
+        mp = self._mapping
         xml_schema = mp.configuration.get_option(XML_SCHEMA_OPTION)
         parser.set_option('schema_location', xml_schema)
-        parser.configure(**config)
         return parser
 
-    def _make_representation_generator(self, stream, resource_class,
-                                       **config):
-        generator = XmlRepresentationGenerator(stream, resource_class)
+    def _make_representation_generator(self, stream, resource_class, mapping):
+        generator = XmlRepresentationGenerator(stream, resource_class, mapping)
         generator.set_option('encoding', self.ENCODING)
-        generator.configure(**config)
         return generator
 
 
@@ -177,7 +174,7 @@ class _XmlDataElementMixin(object):
 class XmlMemberDataElement(objectify.ObjectifiedElement,
                            _XmlDataElementMixin, MemberDataElement):
 
-    def get_nested(self, attr):
+    def get_mapped_nested(self, attr):
         # We only allow *one* child with the given name.
         q_tag = self.__get_q_tag(attr)
         child_it = self.iterchildren(q_tag)
@@ -205,11 +202,11 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                     child = grand_child
         return child
 
-    def set_nested(self, attr, data_element):
+    def set_mapped_nested(self, attr, data_element):
         data_element.tag = self.__get_q_tag(attr)
         self.append(data_element)
 
-    def get_terminal(self, attr):
+    def get_mapped_terminal(self, attr):
         if attr.repr_name == 'id':
             # The "special" id attribute.
             xml_val = self.get('id')
@@ -228,7 +225,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 val = None
         return val
 
-    def set_terminal(self, attr, value):
+    def set_mapped_terminal(self, attr, value):
         if attr.repr_name == 'id':
             # The "special" id attribute.
             self.set('id', str(value))
@@ -238,6 +235,18 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                                                             value,
                                                             attr.value_type)
             setattr(self, q_tag, xml_value)
+
+    @property
+    def data(self):
+        data_map = {}
+        for child in self.iterchildren():
+            idx = child.tag.find('}')
+            if idx != -1:
+                tag = child.tag[idx + 1:]
+            else:
+                tag = child.tag
+            data_map[tag] = child.text
+        return data_map
 
     def __get_q_tag(self, attr):
         if not attr.namespace is None:
@@ -349,14 +358,12 @@ class XmlRepresenterConfiguration(RepresenterConfiguration):
         The XML namespace prefix to use for the represented data element class.
     """
     _default_config_options = \
-            dict(RepresenterConfiguration._default_config_options.items() +
-                 [(XML_TAG_OPTION, None),
-                  (XML_SCHEMA_OPTION, None),
-                  (XML_NAMESPACE_OPTION, None),
-                  (XML_PREFIX_OPTION, None)])
-    _default_mapping_options = \
-            dict(RepresenterConfiguration._default_mapping_options.items() +
-                 [(NAMESPACE_MAPPING_OPTION, None)])
+            dict(RepresenterConfiguration._default_config_options.items()
+                 + [(XML_TAG_OPTION, None), (XML_SCHEMA_OPTION, None),
+                    (XML_NAMESPACE_OPTION, None), (XML_PREFIX_OPTION, None)])
+    _default_attributes_options = \
+            dict(RepresenterConfiguration._default_attributes_options.items()
+                 + [(NAMESPACE_MAPPING_OPTION, None)])
 
 
 class XmlMappingRegistry(MappingRegistry):

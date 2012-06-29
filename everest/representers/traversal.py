@@ -9,6 +9,7 @@ from everest.entities.utils import get_entity_class
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.dataelements import DataElement
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
@@ -26,11 +27,14 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
            'DataElementBuilderResourceTreeVisitor',
-           'DataElementTreeTraverser',
+           'DataElementTreeTraverserMixin',
+           'DataTreeTraverser',
+           'MappingDataElementTreeTraverser',
+           'MappingResourceDataTreeTraverser',
            'ResourceBuilderDataElementTreeVisitor',
-           'ResourceDataTreeTraverser',
            'ResourceDataVisitor',
            'ResourceTreeTraverser',
+           'NonMappingDataElementTreeTraverser',
            ]
 
 
@@ -79,7 +83,7 @@ class ResourceDataVisitor(object):
         :param member_node: the node holding resource data. This is either a
           resource instance (when using a :class:`ResourceTreeTraverser` on
           a tree of resources) or a data element instance (when using a
-          :class:`DataElementTreeTraverser` on a data element tree.
+          :class:`MappingDataElementTreeTraverser` on a data element tree.
         :param dict member_data: dictionary holding all member data
           extracted during traversal (with mapped attributes as keys). This
           will be empty during pre-order visits.
@@ -92,7 +96,7 @@ class ResourceDataVisitor(object):
         raise NotImplementedError('Abstract method.')
 
     def visit_collection(self, attribute_key, attribute, collection_node,
-                         is_link_node, parent_data):
+                         collection_data, is_link_node, parent_data):
         """
         Visits a collection node in a resource data tree.
         
@@ -106,7 +110,9 @@ class ResourceDataVisitor(object):
         :param collection_node: the node holding resource data. This is either
           a resource instance (when using a :class:`ResourceTreeTraverser` on
           a tree of resources) or a data element instance (when using a
-          :class:`DataElementTreeTraverser` on a data element tree.
+          :class:`MappingDataElementTreeTraverser` on a data element tree.
+        :param dict collection_data: dictionary mapping member index to member
+          data for each member in the visited collection.
         :param bool is_link_node: indicates if the given member node is a link.
         :param dict parent_data: dictionary holding all parent data extracted
           during traversal (with mapped attributes as keys).
@@ -118,7 +124,7 @@ class DataElementBuilderResourceTreeVisitor(ResourceDataVisitor):
     def __init__(self, mapping):
         ResourceDataVisitor.__init__(self)
         self.__mapping = mapping
-        self.__data = {}
+        self.__data_el = None
 
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
@@ -130,37 +136,36 @@ class DataElementBuilderResourceTreeVisitor(ResourceDataVisitor):
             # Process attributes.
             for attr, value in member_data.iteritems():
                 if attr.kind == ResourceAttributeKinds.TERMINAL:
-                    mb_data_el.set_terminal(attr, value)
+                    mb_data_el.set_mapped_terminal(attr, value)
                 else:
-                    mb_data_el.set_nested(attr, value)
+                    mb_data_el.set_mapped_nested(attr, value)
         if not index is None:
-            # Member of a collection. Store with indexed key.
-            self.__data[attribute_key + (index,)] = mb_data_el
+            # Collection member. Store in parent data with index as key.
+            parent_data[index] = mb_data_el
         elif len(attribute_key) == 0:
             # Top level - store root data element.
-            self.__data[()] = mb_data_el
+            self.__data_el = mb_data_el
         else:
-            # Nested member. Store in parent data.
+            # Nested member. Store in parent data with attribute as key.
             parent_data[attribute] = mb_data_el
 
     def visit_collection(self, attribute_key, attribute, collection_node,
-                         is_link_node, parent_data):
+                         collection_data, is_link_node, parent_data):
         if is_link_node:
             coll_data_el = self.__write_link(collection_node)
         else:
             coll_data_el = \
               self.__mapping.create_data_element_from_resource(collection_node)
-            for idx in range(len(collection_node)):
-                mb_data_el = self.__data[attribute_key + (idx,)]
-                coll_data_el.add_member(mb_data_el)
+            for item in sorted(collection_data.items()):
+                coll_data_el.add_member(item[1])
         if len(attribute_key) == 0: # Top level.
-            self.__data[()] = coll_data_el
+            self.__data_el = coll_data_el
         else:
             parent_data[attribute] = coll_data_el
 
     @property
     def data_element(self):
-        return self.__data.get(())
+        return self.__data_el
 
     def __write_link(self, resource):
         return \
@@ -171,7 +176,6 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
     def __init__(self, resolve_urls=True):
         ResourceDataVisitor.__init__(self)
         self.__resolve_urls = resolve_urls
-        self.__data = dict()
         self.__resource = None
 
     def visit_member(self, attribute_key, attribute, member_node, member_data,
@@ -205,19 +209,18 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                 if not parent is None:
                     setattr(parent, tokens[-1], value)
         if not index is None:
-            # Collection member. Store with indexed key.
-            self.__data[attribute_key + (index,)] = entity
+            # Collection member. Store in parent data with index as key.
+            parent_data[index] = entity
         elif len(attribute_key) == 0:
             # Top level. Store root entity and create resource.
-            self.__data[()] = entity
             mapped_cls = member_node.mapping.mapped_class
             self.__resource = mapped_cls.create_from_entity(entity)
         else:
-            # Nested member. Store in parent data.
+            # Nested member. Store in parent data with attribute as key.
             parent_data[attribute] = entity
 
     def visit_collection(self, attribute_key, attribute, collection_node,
-                         is_link_node, parent_data):
+                         collection_data, is_link_node, parent_data):
         if is_link_node:
             url = collection_node.get_url()
             if self.__resolve_urls:
@@ -228,11 +231,9 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                                           'not supported.')
         else:
             entities = []
-            for idx in range(len(collection_node)):
-                entity = self.__data[attribute_key + (idx,)]
-                entities.append(entity)
+            for item in sorted(collection_data.items()):
+                entities.append(item[1])
         if len(attribute_key) == 0: # Top level.
-            self.__data[attribute_key] = entities
             mapped_cls = collection_node.mapping.mapped_class
             self.__resource = new_stage_collection(mapped_cls)
             for ent in entities:
@@ -245,12 +246,8 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
         return self.__resource
 
 
-class ResourceDataTreeTraverser(object):
-    """
-    Abstract base class for resource data tree traversers.
-    """
-    def __init__(self, mapping, root):
-        self._mapping = mapping
+class DataTreeTraverser(object):
+    def __init__(self, root):
         self.__root = root
 
     def run(self, visitor):
@@ -258,6 +255,68 @@ class ResourceDataTreeTraverser(object):
         Runs this traverser.
         """
         self._dispatch(AttributeKey(()), None, self.__root, None, visitor)
+
+    def _traverse_collection(self, attr_key, attr, collection_node,
+                             parent_data, visitor):
+        is_link_node = self._is_link_node(collection_node, attr)
+        collection_data = {}
+        if not is_link_node:
+            all_mb_nodes = self._get_node_members(collection_node)
+            for idx, mb_node in enumerate(all_mb_nodes):
+                self._traverse_member(attr_key, attr, mb_node, collection_data,
+                                      visitor, index=idx)
+        visitor.visit_collection(attr_key, attr, collection_node,
+                                 collection_data, is_link_node, parent_data)
+
+    def _traverse_member(self, attr_key, attr, member_node, parent_data,
+                         visitor, index=None):
+        raise NotImplementedError('Abstract method.')
+
+    def _is_link_node(self, node, attr):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_node_members(self, node):
+        raise NotImplementedError('Abstract method.')
+
+    def _dispatch(self, attr_key, attr, node, parent_data, visitor):
+        raise NotImplementedError('Abstract method.')
+
+
+class DataElementTreeTraverserMixin(object):
+    def _dispatch(self, attr_key, attr, node, parent_data, visitor):
+        ifcs = provided_by(node)
+        if IMemberDataElement in ifcs:
+            traverse_fn = self._traverse_member
+        elif ICollectionDataElement in ifcs:
+            traverse_fn = self._traverse_collection
+        elif ILinkedDataElement in ifcs:
+            kind = node.get_kind()
+            if kind == ResourceKinds.MEMBER:
+                traverse_fn = self._traverse_member
+            else: # kind == ResourceKinds.COLLECTION
+                traverse_fn = self._traverse_collection
+        else:
+            raise ValueError('Need MEMBER or COLLECTION data element; found '
+                             '"%s".' % node)
+        traverse_fn(attr_key, attr, node, parent_data, visitor)
+
+    def _get_node_members(self, node):
+        return node.get_members()
+
+    def _is_link_node(self, node, attr): # pylint: disable=W0613
+        return ILinkedDataElement in provided_by(node)
+
+
+
+class MappingResourceDataTreeTraverser(DataElementTreeTraverserMixin,
+                                       DataTreeTraverser):
+    """
+    Abstract base class for resource data tree traversers.
+    """
+    def __init__(self, root, mapping):
+        DataElementTreeTraverserMixin.__init__(self)
+        DataTreeTraverser.__init__(self, root)
+        self._mapping = mapping
 
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
                          visitor, index=None):
@@ -290,27 +349,13 @@ class ResourceDataTreeTraverser(object):
                     nested_attr_key = attr_key + (mb_attr.name,)
                     if ignore_opt is False:
                         # The offset in the attribute key ensures that 
-                        # the nested attribute is treated as if it was
-                        # at the top level.
+                        # the defaults for ignoring attributes of the 
+                        # nested attribute can be retrieved correctly.
                         nested_attr_key.offset = len(nested_attr_key)
                     self._dispatch(nested_attr_key, mb_attr, nested_node,
                                    member_data, visitor)
         visitor.visit_member(attr_key, attr, member_node, member_data,
                              is_link_node, parent_data, index=index)
-
-    def _traverse_collection(self, attr_key, attr, collection_node,
-                             parent_data, visitor):
-        is_link_node = self._is_link_node(collection_node, attr)
-        if not is_link_node:
-            all_mb_nodes = self._get_node_members(collection_node)
-            for idx, mb_node in enumerate(all_mb_nodes):
-                self._traverse_member(attr_key, attr, mb_node, parent_data,
-                                      visitor, index=idx)
-        visitor.visit_collection(attr_key, attr, collection_node,
-                                 is_link_node, parent_data)
-
-    def _dispatch(self, attr_key, attr, node, parent_data, visitor):
-        raise NotImplementedError('Abstract method.')
 
     def _get_node_type(self, node):
         raise NotImplementedError('Abstract method.')
@@ -319,12 +364,6 @@ class ResourceDataTreeTraverser(object):
         raise NotImplementedError('Abstract method.')
 
     def _get_node_nested(self, node, attr):
-        raise NotImplementedError('Abstract method.')
-
-    def _get_node_members(self, node):
-        raise NotImplementedError('Abstract method.')
-
-    def _is_link_node(self, node, attr):
         raise NotImplementedError('Abstract method.')
 
     def _get_ignore_option(self, attr):
@@ -349,47 +388,49 @@ class ResourceDataTreeTraverser(object):
         return do_ignore
 
 
-class DataElementTreeTraverser(ResourceDataTreeTraverser):
-    def __init__(self, mapping, root):
-        ResourceDataTreeTraverser.__init__(self, mapping, root)
-
-    def _dispatch(self, attr_key, attr, node, parent_data, visitor):
-        ifcs = provided_by(node)
-        if IMemberDataElement in ifcs:
-            traverse_fn = self._traverse_member
-        elif ICollectionDataElement in ifcs:
-            traverse_fn = self._traverse_collection
-        elif ILinkedDataElement in ifcs:
-            kind = node.get_kind()
-            if kind == ResourceKinds.MEMBER:
-                traverse_fn = self._traverse_member
-            else: # kind == ResourceKinds.COLLECTION
-                traverse_fn = self._traverse_collection
-        else:
-            raise ValueError('Need MEMBER or COLLECTION data element; found '
-                             '"%s".' % node)
-        traverse_fn(attr_key, attr, node, parent_data, visitor)
-
+class MappingDataElementTreeTraverser(MappingResourceDataTreeTraverser):
+    """
+    Mapping traverser for data element trees.
+    """
     def _get_node_type(self, node):
         return node.mapping.mapped_class
 
     def _get_node_terminal(self, node, attr):
-        return node.get_terminal(attr)
+        return node.get_mapped_terminal(attr)
 
     def _get_node_nested(self, node, attr):
-        return node.get_nested(attr)
-
-    def _get_node_members(self, node):
-        return node.get_members()
-
-    def _is_link_node(self, node, attr):
-        return ILinkedDataElement in provided_by(node)
+        return node.get_mapped_nested(attr)
 
     def _get_ignore_option(self, attr):
         return attr.options.get(IGNORE_ON_READ_OPTION)
 
 
-class ResourceTreeTraverser(ResourceDataTreeTraverser):
+class NonMappingDataElementTreeTraverser(DataElementTreeTraverserMixin,
+                                     DataTreeTraverser):
+    """
+    Non-mapping traverser for data element trees.
+    """
+    def _traverse_member(self, attr_key, attr, member_node, parent_data,
+                         visitor, index=None):
+        is_link_node = self._is_link_node(member_node, attr)
+        if is_link_node:
+            member_data = OrderedDict()
+        else:
+            member_data = member_node.data
+            for attr_name, value in member_data.iteritems():
+                if not isinstance(value, DataElement):
+                    continue
+                else:
+                    self._dispatch(attr_key + (attr_name,), attr_name, value,
+                                   member_data, visitor)
+        visitor.visit_member(attr_key, attr, member_node, member_data,
+                             is_link_node, parent_data, index=index)
+
+
+class ResourceTreeTraverser(MappingResourceDataTreeTraverser):
+    """
+    Mapping traverser for resource trees.
+    """
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
         if IMemberResource in ifcs:

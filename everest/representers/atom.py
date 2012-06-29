@@ -46,14 +46,12 @@ class AtomResourceRepresenter(ResourceRepresenter):
     def make_mapping_registry(cls):
         return AtomMappingRegistry()
 
-    def _make_representation_parser(self, stream, resource_class):
+    def _make_representation_parser(self, stream, resource_class, mapping):
         # We do not support parsing ATOM representations.
         raise NotImplementedError('Not implemented.')
 
-    def _make_representation_generator(self, stream, resource_class, **config):
-        generator = XmlRepresentationGenerator(stream, resource_class)
-        generator.configure(**config)
-        return generator
+    def _make_representation_generator(self, stream, resource_class, mapping):
+        return XmlRepresentationGenerator(stream, resource_class, mapping)
 
 
 class AtomMapping(Mapping):

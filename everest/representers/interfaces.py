@@ -96,10 +96,8 @@ class IDataElement(Interface):
     """
     Base interface for data element classes.
     """
-    #: Mapped type - class-implements :class:`IMappedClass`
-    mapped_class = Attribute("Type mapped to this data element class.")
-    #: Mapper responsible for class -> attribute mapping
-    mapper = Attribute("Maps classes to attributes")
+    #: Mapping responsible for class -> attribute mapping
+    mapping = Attribute("Maps classes to attributes")
 
     def create():
         """
@@ -120,23 +118,23 @@ class IMemberDataElement(IResourceDataElement):
     Interface for member data elements.
     """
 
-    def get_terminal(attr):
+    def get_mapped_terminal(attr):
         """
         Returns the value for the given terminal mapped attribute.
         """
 
-    def set_terminal(attr, value):
+    def set_mapped_terminal(attr, value):
         """
         Sets the given mapped terminal attribute to the given value.
         """
 
-    def get_nested(attr):
+    def get_mapped_nested(attr):
         """
         Returns the nested data element specified by the given member or
         collection mapped attribute.
         """
 
-    def set_child(attr, data_element):
+    def set_mapped_child(attr, data_element):
         """
         Sets the given mmeber or collection mapped attribute to the given 
         data element.

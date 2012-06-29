@@ -408,11 +408,11 @@ class EntityCache(object):
         """
         if self.__needs_rebuild:
             self.__rebuild()
-        self.__entities.remove(entity)
         if not entity.id is None:
             del self.__id_map[entity.id]
         if not entity.slug is None:
             del self.__slug_map[entity.slug]
+        self.__entities.remove(entity)
 
     def __rebuild(self):
         self.__id_map.clear()
