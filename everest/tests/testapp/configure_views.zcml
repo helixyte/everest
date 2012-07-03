@@ -35,6 +35,7 @@
     <collection_view
         for="everest.tests.testapp.interfaces.IFoo"
         view="everest.views.getcollection.GetCollectionView"
+        name="csv"
         renderer="csv"
         request_method="GET" />
 

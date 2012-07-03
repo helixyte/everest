@@ -10,14 +10,12 @@ from everest.interfaces import IRepositoryManager
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from pyramid.threadlocal import get_current_registry
-from sqlalchemy.util import OrderedDict as _SqlAlchemyOrderedDict
 from weakref import ref
 import re
 import traceback
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
-           'OrderedDict',
            'check_email',
            'classproperty',
            'get_filter_specification_visitor',
@@ -107,11 +105,6 @@ def get_repository_manager():
     """
     reg = get_current_registry()
     return reg.getUtility(IRepositoryManager)
-
-
-# We just redefine this here - perhaps we want to have our own implementation
-# later.
-OrderedDict = _SqlAlchemyOrderedDict
 
 
 class BidirectionalLookup(object):

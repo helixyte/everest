@@ -4,6 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 2, 2012.
 """
+from collections import OrderedDict
 from everest.mime import AtomMime
 from everest.mime import CsvMime
 from everest.mime import XmlMime
@@ -13,6 +14,7 @@ from everest.representers.attributes import MappedAttribute
 from everest.representers.base import data_element_tree_to_string
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.csv import CsvData
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.urlloader import LazyAttributeLoaderProxy
@@ -41,6 +43,7 @@ from everest.tests.testapp_db.testing import create_collection
 from everest.url import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
+from everest.representers.config import REPR_NAME_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
@@ -167,6 +170,19 @@ class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
                                      LazyAttributeLoaderProxy))
 
 
+class TestCsvData(Pep8CompliantTestCase):
+    def test_methods(self):
+        csvd0 = CsvData()
+        csvd1 = CsvData(OrderedDict(foo='foo', bar=1))
+        csvd0.expand(csvd1)
+        self.assert_equal(csvd0.fields, ['foo', 'bar'])
+        self.assert_equal(csvd0.data, [['foo', 1]])
+        csvd2 = CsvData(OrderedDict(foo='foo1', bar=2))
+        csvd0.append(csvd2)
+        self.assert_equal(csvd0.fields, ['foo', 'bar'])
+        self.assert_equal(csvd0.data, [['foo', 1], ['foo1', 2]])
+
+
 class CsvRepresentationTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_no_orm.zcml'
@@ -269,7 +285,7 @@ class CsvRepresentationTestCase(ResourceTestCase):
         loaded_coll = rpr.resource_from_data(data)
         self.assert_true(iter(loaded_coll).next().parent is None)
 
-    def test_csv_with_two_collections_expanded_fails(self):
+    def test_csv_with_two_collections_expanded(self):
         coll = create_collection()
         rpr = as_representer(coll, CsvMime)
         attribute_options = \
@@ -287,6 +303,23 @@ class CsvRepresentationTestCase(ResourceTestCase):
         row_data = lines[1].split(',')
         # Sixth field should be "children.children.id".
         self.assert_equal(row_data[5], '0')
+
+    def test_csv_unicode_repr_name(self):
+        coll = create_collection()
+        rpr = as_representer(coll, CsvMime)
+        attribute_options = \
+            {('children',):{IGNORE_OPTION:True, },
+             ('parent',):{IGNORE_OPTION:True, },
+             ('nested_parent',):{IGNORE_OPTION:True, },
+             ('parent_text',):{IGNORE_OPTION:True, },
+             ('text',):{REPR_NAME_OPTION:u'custom_text'}
+             }
+        rpr.configure(attribute_options=attribute_options)
+        data = rpr.data_from_resource(coll)
+        rpr_str = rpr.representation_from_data(data)
+        lines = rpr_str.split(os.linesep)
+        self.assert_equal(lines[0],
+                          '"id","custom_text","text_rc","number","date_time"')
 
     def test_csv_data_from_representation(self):
         rc = object.__new__(get_collection_class(IMyEntity))
@@ -324,6 +357,7 @@ class XmlRepresentationTestCase(ResourceTestCase):
                  }
         rpr.configure(attribute_options=attribute_options)
         data = rpr.data_from_resource(coll)
+        self.assert_equal(len(data), 2)
         rpr_str = rpr.representation_from_data(data)
         reloaded_coll = rpr.from_string(rpr_str)
         self.assert_equal(len(reloaded_coll), 2)
@@ -344,6 +378,14 @@ class XmlRepresentationTestCase(ResourceTestCase):
         mb.text = None
         de1 = mp.map_to_data_element(mb)
         self.assert_true(de1.get_mapped_terminal(text_attr) is None)
+
+    def test_data(self):
+        coll = create_collection()
+        mb = iter(coll).next()
+        mp = self.__get_member_mapping_and_representer()[0]
+        de = mp.map_to_data_element(mb)
+        self.assert_equal(de.data.keys(),
+                          ['text', 'date_time', 'myentityparent', 'number'])
 
     def test_create(self):
         mp = self.__get_collection_mapping_and_representer()[0]
@@ -383,15 +425,17 @@ class XmlRepresentationTestCase(ResourceTestCase):
         parent_mp = mp.mapping_registry.find_mapping(MyEntityParentMember)
         parent_mp.configuration.set_option(XML_NAMESPACE_OPTION, ns)
         mp.configuration.set_attribute_option(('parent',),
-                                            WRITE_AS_LINK_OPTION, False)
+                                              WRITE_AS_LINK_OPTION, False)
         # This is a hack: the parent's text attribute would cause objectify
         # to complain that the "text" attribute is not writable (because the
         # test strips its usual namespace), so we ignore it alltogether.
         mp.configuration.set_attribute_option(('parent', 'text',),
-                                            IGNORE_OPTION, True)
+                                              IGNORE_OPTION, True)
         attr = mp.get_attribute_map()['parent']
         self.assert_equal(attr.namespace, ns)
         de = mp.map_to_data_element(mb)
+        self.assert_equal(de.data.keys(),
+                          ['text', 'date_time', 'myentityparent', 'number'])
         parent_de = de.get_mapped_nested(attr)
         self.assert_equal(parent_de.tag.find('{'), -1)
 

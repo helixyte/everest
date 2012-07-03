@@ -6,14 +6,17 @@ Created on Nov 17, 2011.
 """
 from everest.messaging import IUserMessageNotifier
 from everest.messaging import UserMessageNotifier
+from everest.mime import CSV_MIME
 from everest.mime import CsvMime
 from everest.renderers import RendererFactory
+from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
 from everest.testing import FunctionalTestCase
 from everest.tests.testapp.entities import FooEntity
+from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
 from everest.tests.testapp.views import DummyExceptionView
@@ -24,10 +27,14 @@ from everest.tests.testapp.views import UserMessagePutMemberView
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.testing import create_collection
+from everest.traversal import SuffixResourceTraverser
+from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
+from everest.views.static import public_view
+from everest.views.utils import accept_csv_only
 from pkg_resources import resource_filename # pylint: disable=E0611
 import transaction
 
@@ -64,6 +71,10 @@ class BasicViewTestCase(FunctionalTestCase):
                              view=PostCollectionView,
                              renderer='csv',
                              request_method='POST')
+        self.config.add_view(context=get_member_class(IMyEntity),
+                             view=DeleteMemberView,
+                             renderer='csv',
+                             request_method='DELETE')
 
     def test_get_collection_defaults(self):
         res = self.app.get(self.path, status=200)
@@ -135,6 +146,96 @@ class BasicViewTestCase(FunctionalTestCase):
         coll = get_root_collection(IMyEntity)
         mb = coll['0']
         self.assert_equal(mb.text, 'abc')
+
+    def test_delete_member(self):
+        coll = create_collection()
+        self.assert_equal(len(coll), 2)
+        res = self.app.delete("%s/0" % self.path,
+                              content_type=CsvMime.mime_string,
+                              status=200)
+        self.assert_is_not_none(res)
+        self.assert_equal(len(coll), 1)
+        # Second delete triggers 404.
+        self.app.delete("%s/0" % self.path,
+                        content_type=CsvMime.mime_string,
+                        status=404)
+        coll_cls = get_collection_class(IMyEntity)
+        old_remove = coll_cls.__dict__.get('remove')
+        def remove_with_exception(self): # pylint: disable=W0613
+            raise RuntimeError()
+        coll_cls.remove = remove_with_exception
+        try:
+            self.app.delete("%s/1" % self.path,
+                            content_type=CsvMime.mime_string,
+                            status=500)
+        finally:
+            if not old_remove is None:
+                coll_cls.remove = old_remove
+
+
+class PredicatedViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    app_name = 'testapp_db'
+    path = '/my-entities'
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
+        self.config.add_renderer('csv', RendererFactory)
+        self.config.add_view(context=get_collection_class(IMyEntity),
+                             view=GetCollectionView,
+                             renderer='csv',
+                             request_method='GET',
+                             custom_predicates=(accept_csv_only,))
+
+    def test_csv_only(self):
+        # Without accept header, we get a 404.
+        self.app.get(self.path, status=404)
+        self.app.get(self.path, headers=dict(accept=CSV_MIME), status=200)
+
+
+class SuffixResourceTraverserTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp'
+    ini_file_path = resource_filename('everest.tests.testapp',
+                                      'testapp_views.ini')
+    app_name = 'testapp'
+    path = '/foos.csv'
+
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
+
+    def test_get_by_suffix(self):
+        coll = get_root_collection(IFoo)
+        coll.create_member(FooEntity(id=0))
+        transaction.commit()
+        self.app.get(self.path, status=404)
+        # Use suffix traverser as default.
+        self.config.add_traverser(SuffixResourceTraverser)
+        res = self.app.get(self.path, status=200)
+        self.assert_true(res.body.startswith('"id"'))
+        # Fail for non-existing collection.
+        self.app.get('/bars.csv', status=404)
+
+
+class StaticViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.testapp_db'
+    ini_file_path = resource_filename('everest.tests.testapp_db',
+                                      'testapp.ini')
+    app_name = 'testapp_db'
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml('everest.tests.testapp_db:configure_no_orm.zcml')
+        self.config.add_view(context=IService,
+                             view=public_view,
+                             name='public',
+                             request_method='GET')
+        fn = resource_filename('everest.tests.testapp_db', 'data/original')
+        self.config.registry.settings['public_dir'] = fn
+
+    def test_access_public_dir(self):
+        self.app.get('/public/myentity-collection.csv', status=200)
 
 
 class ExceptionViewTestCase(FunctionalTestCase):

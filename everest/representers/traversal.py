@@ -9,7 +9,6 @@ from everest.entities.utils import get_entity_class
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
-from everest.representers.dataelements import DataElement
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
@@ -34,7 +33,6 @@ __all__ = ['AttributeKey',
            'ResourceBuilderDataElementTreeVisitor',
            'ResourceDataVisitor',
            'ResourceTreeTraverser',
-           'NonMappingDataElementTreeTraverser',
            ]
 
 
@@ -405,26 +403,26 @@ class MappingDataElementTreeTraverser(MappingResourceDataTreeTraverser):
         return attr.options.get(IGNORE_ON_READ_OPTION)
 
 
-class NonMappingDataElementTreeTraverser(DataElementTreeTraverserMixin,
-                                     DataTreeTraverser):
-    """
-    Non-mapping traverser for data element trees.
-    """
-    def _traverse_member(self, attr_key, attr, member_node, parent_data,
-                         visitor, index=None):
-        is_link_node = self._is_link_node(member_node, attr)
-        if is_link_node:
-            member_data = OrderedDict()
-        else:
-            member_data = member_node.data
-            for attr_name, value in member_data.iteritems():
-                if not isinstance(value, DataElement):
-                    continue
-                else:
-                    self._dispatch(attr_key + (attr_name,), attr_name, value,
-                                   member_data, visitor)
-        visitor.visit_member(attr_key, attr, member_node, member_data,
-                             is_link_node, parent_data, index=index)
+#class NonMappingDataElementTreeTraverser(DataElementTreeTraverserMixin,
+#                                     DataTreeTraverser):
+#    """
+#    Non-mapping traverser for data element trees.
+#    """
+#    def _traverse_member(self, attr_key, attr, member_node, parent_data,
+#                         visitor, index=None):
+#        is_link_node = self._is_link_node(member_node, attr)
+#        if is_link_node:
+#            member_data = OrderedDict()
+#        else:
+#            member_data = member_node.data
+#            for attr_name, value in member_data.iteritems():
+#                if not isinstance(value, DataElement):
+#                    continue
+#                else:
+#                    self._dispatch(attr_key + (attr_name,), attr_name, value,
+#                                   member_data, visitor)
+#        visitor.visit_member(attr_key, attr, member_node, member_data,
+#                             is_link_node, parent_data, index=index)
 
 
 class ResourceTreeTraverser(MappingResourceDataTreeTraverser):

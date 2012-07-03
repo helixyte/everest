@@ -4,9 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2010.
 """
-
 from pyramid.settings import get_settings
-from pyramid.view import static
+from pyramid.static import static_view
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['public_view',
@@ -30,8 +29,10 @@ class PublicViewFactory(object):
 
     def _create_static_view(self):
         settings = get_settings()
-        return static(settings.get(self.PUBLIC_DIR),
-                      int(settings.get(self.PUBLIC_CACHE_MAX_AGE,
-                                       self.DEFAULT_CACHE_MAX_AGE)))
+        cache_max_age = int(settings.get(self.PUBLIC_CACHE_MAX_AGE,
+                                         self.DEFAULT_CACHE_MAX_AGE))
+        return static_view(settings.get(self.PUBLIC_DIR),
+                           cache_max_age=cache_max_age,
+                           use_subpath=True)
 
 public_view = PublicViewFactory()

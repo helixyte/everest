@@ -160,17 +160,17 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
     def terminals(self):
         if self.__data is None:
             self.__data = OrderedDict()
-        return ((k, v)
-                for (k, v) in self.__data.iteritems()
-                if not isinstance(v, DataElement))
+        return OrderedDict((k, v)
+                           for (k, v) in self.__data.iteritems()
+                           if not isinstance(v, DataElement))
 
     @property
     def nesteds(self):
         if self.__data is None:
             self.__data = OrderedDict()
-        return ((k, v)
-                for (k, v) in self.__data.iteritems()
-                if isinstance(v, DataElement))
+        return OrderedDict((k, v)
+                           for (k, v) in self.__data.iteritems()
+                           if isinstance(v, DataElement))
 
     @property
     def data(self):
@@ -255,7 +255,7 @@ class SimpleCollectionDataElement(_SimpleDataElementMixin,
         return len(self.__members)
 
 
-class LinkedDataElement(object):
+class LinkedDataElement(DataElement):
     """
     Data element managing a linked resource during serialization and
     deserialization.

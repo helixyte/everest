@@ -6,7 +6,6 @@ Service class.
 
 Created on Jul 27, 2011.
 """
-
 from everest.repository import as_repository
 from everest.resources.base import Resource
 from everest.resources.interfaces import IService

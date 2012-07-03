@@ -13,7 +13,7 @@ from everest.representers.utils import as_representer
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
-from everest.utils import OrderedDict
+from collections import OrderedDict
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from urlparse import urlparse

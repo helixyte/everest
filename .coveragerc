@@ -1,5 +1,8 @@
 [run]
 omit = everest/ini.py
+       everest/flexfilter.py
+       everest/testing.py
+       everest/tests/*
 
 [report]
 exclude_lines =

@@ -8,8 +8,8 @@ Created on May 18, 2011.
 """
 from StringIO import StringIO
 from everest.representers.interfaces import ICollectionDataElement
-from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import ILinkedDataElement
+from everest.representers.interfaces import IResourceDataElement
 from everest.representers.utils import get_mapping_registry
 from everest.resources.base import Resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -297,9 +297,6 @@ class _RepresentationHandler(object):
         self._mapping = mapping
         self.__config = {}
 
-    def configure(self, **config):
-        self.__config.update(config)
-
     def get_option(self, option, default=None):
         return self.__config.get(option, default)
 
@@ -362,7 +359,7 @@ def data_element_tree_to_string(data_element):
                                      + ' ' * (offset + len(name) + 1))
                     if attr_value is None:
                         continue
-                    if not IDataElement in provided_by(attr_value):
+                    if not IResourceDataElement in provided_by(attr_value):
                         stream.write("%s=%s" % (attr_name, attr_value))
                     else:
                         __dump(attr_value, stream, offset)

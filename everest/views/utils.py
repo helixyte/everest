@@ -1,9 +1,9 @@
 """
-everest.views.utils
+This file is part of the everest project. 
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-FOG Feb 4, 2011.
+Created on Feb 4, 2011.
 """
-
 from everest.mime import CSV_MIME
 
 __docformat__ = 'reStructuredText en'

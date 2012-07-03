@@ -166,7 +166,8 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
         if is_link_node:
             new_field_name = self.__get_field_name(attribute_key[:-1],
                                                    attribute)
-            mb_data = CsvData({new_field_name:member_node.get_url()})
+            mb_data = CsvData({new_field_name:
+                               self.__encode(member_node.get_url())})
         else:
             rpr_mb_data = OrderedDict()
             for attr, value in member_data.iteritems():
@@ -208,7 +209,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
             field_name = attribute.repr_name
         else:
             field_name = '.'.join(attribute_key + (attribute.name,))
-        return field_name
+        return self.__encode(field_name)
 
     def __encode(self, item):
         if isinstance(item, unicode):

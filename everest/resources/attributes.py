@@ -6,14 +6,14 @@ Resource attribute handling classes.
 
 Created on Dec 2, 2011.
 """
+from collections import OrderedDict
+from everest.resources.descriptors import CARDINALITY
 from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_member_class
-from everest.utils import OrderedDict
-from everest.resources.descriptors import CARDINALITY
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceAttributeKinds',

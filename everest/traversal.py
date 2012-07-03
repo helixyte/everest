@@ -8,20 +8,20 @@ from pyramid.traversal import ModelGraphTraverser # pylint: disable-msg=E0611, F
 from everest.resources.interfaces import IResource
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CollectionTraverser',
+__all__ = ['SuffixResourceTraverser',
            ]
 
 
-class CollectionTraverser(ModelGraphTraverser): # pylint: disable-msg=W0232
+class SuffixResourceTraverser(ModelGraphTraverser):
     """
     A custom model traverser that allows us to specify the representation
     for resources with a suffix as in `http://everest/racks.csv`.
 
     Rather than to reproduce the functionality of the `__call__` method, we
     check if base part of the current view name (`racks` in the example) can
-    be retrieved as a child collection from the context. If yes, we set the
-    context to the collection and the view name to the extension part of the
-    current view name (`csv` in the example; if no, nothing is changed.
+    be retrieved as a child resource from the context. If yes, we set the
+    context to the resource and the view name to the extension part of the
+    current view name (`csv` in the example); if no, nothing is changed.
     """
     def __call__(self, request):
         system = ModelGraphTraverser.__call__(self, request)
