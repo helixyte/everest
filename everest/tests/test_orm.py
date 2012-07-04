@@ -6,6 +6,7 @@ Created on Jun 1, 2012.
 """
 from everest.entities.interfaces import IEntity
 from everest.orm import as_slug_expression
+from everest.orm import commit_veto
 from everest.orm import get_engine
 from everest.orm import get_metadata
 from everest.orm import is_engine_initialized
@@ -26,7 +27,6 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.sql.expression import Function
 from sqlalchemy.sql.expression import cast
 from zope.interface import implements # pylint: disable=E0611,F0401
-from everest.orm import commit_veto
 import os
 
 __docformat__ = 'reStructuredText en'

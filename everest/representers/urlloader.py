@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 25, 2012.
 """
-
 __docformat__ = 'reStructuredText en'
 __all__ = ['LazyAttributeLoaderProxy',
            'LazyUrlLoader',

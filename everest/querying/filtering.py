@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-
 from everest.entities.attributes import EntityAttributeKinds
 from everest.entities.utils import slug_from_identifier
 from everest.querying.base import CqlExpression

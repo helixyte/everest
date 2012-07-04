@@ -6,7 +6,6 @@ Entity base classes.
 
 Created on May 12, 2011.
 """
-
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from zope.interface import implements # pylint: disable=E0611,F0401

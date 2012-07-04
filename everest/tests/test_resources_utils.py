@@ -4,13 +4,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 14, 2012.
 """
+from everest.resources.utils import get_registered_collection_resources
 from everest.resources.utils import get_resource_url
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.testing import create_collection
-from everest.resources.utils import get_registered_collection_resources
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourcesUtilsTestCase',

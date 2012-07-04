@@ -6,7 +6,6 @@ Aggregate implementations.
 
 Created on Sep 25, 2011.
 """
-
 from everest.entities.base import Aggregate
 from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS

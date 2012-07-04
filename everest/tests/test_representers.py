@@ -13,6 +13,7 @@ from everest.querying.utils import get_order_specification_factory
 from everest.representers.attributes import MappedAttribute
 from everest.representers.base import data_element_tree_to_string
 from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import REPR_NAME_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.csv import CsvData
 from everest.representers.csv import CsvResourceRepresenter
@@ -43,7 +44,6 @@ from everest.tests.testapp_db.testing import create_collection
 from everest.url import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
-from everest.representers.config import REPR_NAME_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',

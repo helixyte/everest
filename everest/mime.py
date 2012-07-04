@@ -6,7 +6,6 @@ MIME (content) types.
 
 Created on Aug 17, 2011.
 """
-
 from everest.interfaces import IAtomEntryMime
 from everest.interfaces import IAtomFeedMime
 from everest.interfaces import IAtomMime
@@ -26,9 +25,9 @@ from everest.interfaces import IXmlMime
 from everest.interfaces import IXmlRequest
 from everest.interfaces import IZipMime
 from everest.interfaces import IZipRequest
+from everest.utils import BidirectionalLookup
 from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.utils import BidirectionalLookup
 
 __docformat__ = "reStructuredText en"
 __all__ = ['JSON_MIME',

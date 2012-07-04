@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-
 from iso8601.iso8601 import parse_date
 from pyparsing import CaselessKeyword
 from pyparsing import CharsNotIn

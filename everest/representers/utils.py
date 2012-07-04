@@ -9,7 +9,6 @@ Created on May 18, 2011.
 from everest.representers.interfaces import IRepresenterRegistry
 from pyramid.threadlocal import get_current_registry
 
-
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_representer',
            'get_data_element_registry',

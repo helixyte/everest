@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
-
 from datetime import datetime
 from everest.querying.filterparser import parse_filter
 from everest.testing import BaseTestCase

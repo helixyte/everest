@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 15, 2011.
 """
-
 import math
 
 __docformat__ = "reStructuredText en"

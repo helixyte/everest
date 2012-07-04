@@ -10,7 +10,6 @@ especially http://www.martinfowler.com/apsupp/spec.pdf
 
 Created on Jul 5, 2011.
 """
-
 from everest.querying.base import Specification
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationFactory

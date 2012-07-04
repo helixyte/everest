@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
 """
-
 from everest.entities.utils import identifier_from_slug
 from everest.querying.interfaces import ISpecification
 from everest.querying.interfaces import ISpecificationBuilder

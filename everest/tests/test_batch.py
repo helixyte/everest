@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 18, 2011.
 """
-
 from everest.batch import Batch
 from everest.testing import Pep8CompliantTestCase
 

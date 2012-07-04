@@ -6,7 +6,6 @@ Utilities for entity classes.
 
 Created on Nov 3, 2011.
 """
-
 from everest.entities.interfaces import IEntity
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository

@@ -4,13 +4,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
 """
-
 from everest.testing import Pep8CompliantTestCase
+from everest.utils import BidirectionalLookup
+from everest.utils import WeakList
 from everest.utils import classproperty
 from everest.utils import get_traceback
-from everest.utils import BidirectionalLookup
 from everest.utils import id_generator
-from everest.utils import WeakList
 import random
 
 __docformat__ = 'reStructuredText en'

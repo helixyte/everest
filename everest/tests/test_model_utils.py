@@ -4,9 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 14, 2011.
 """
-
-from everest.testing import Pep8CompliantTestCase
 from everest.entities.utils import slug_from_string
+from everest.testing import Pep8CompliantTestCase
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['SlugTestCase',

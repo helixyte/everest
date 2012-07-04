@@ -22,10 +22,9 @@ Solution:
 
 Created on Sep 27, 2011.
 """
-
 from lxml import etree
-from paste.response import header_value
-from paste.response import replace_header
+from paste.response import header_value # pylint: disable=F0401
+from paste.response import replace_header # pylint: disable=F0401
 from wsgifilter import Filter
 from xml.sax.saxutils import escape
 
@@ -55,11 +54,12 @@ class FlexFilter(Filter):
                 content_type = content_type.split(';', 1)[0]
             if self.format_output:
                 import httpencode
-                format = httpencode.registry.find_format_match(self.format_output, content_type)
+                out_fmt = httpencode.registry.find_format_match(
+                                            self.format_output, content_type)
             else:
-                format = self.format
-            if format:
-                data = format.parse_wsgi_response(status, headers, app_iter)
+                out_fmt = self.format
+            if out_fmt:
+                data = out_fmt.parse_wsgi_response(status, headers, app_iter)
             else:
                 data = ''.join(app_iter)
                 if self.decode_unicode:
@@ -74,8 +74,8 @@ class FlexFilter(Filter):
                     data = data.decode(encoding, 'replace')
             new_output = self.filter(
                 environ, headers, data, status)
-            if format:
-                app = format.responder(new_output, headers=headers)
+            if out_fmt:
+                app = out_fmt.responder(new_output, headers=headers)
                 app_iter = app(environ, start_response)
                 return app_iter
             else:
@@ -97,7 +97,7 @@ class FlexFilter(Filter):
             start_response(status, headers)
             return app_iter
 
-    def filter(self, environ, headers, data, status):
+    def filter(self, environ, headers, data, status): # pylint: disable=W0221
         if status.startswith('307'):
             response = '''
                         <error>
@@ -111,8 +111,8 @@ class FlexFilter(Filter):
             return response
         else:
             root = etree.HTML(data)
-            message = \
-              escape(etree.tostring(root.find('.//body'), method="text").strip())
+            message = escape(etree.tostring(root.find('.//body'),
+                                            method="text").strip())
             if not message:
                 message = root.find('.//title').text
             details = ""

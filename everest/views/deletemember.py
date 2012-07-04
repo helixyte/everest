@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 24, 2011.
 """
-
 from everest.utils import get_traceback
 from everest.views.base import ResourceView
 from webob.exc import HTTPOk

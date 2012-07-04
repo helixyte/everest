@@ -5,11 +5,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 7, 2012.
 """
 from everest.mime import CsvMime
+from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.interfaces import IRepresenterRegistry
+from everest.representers.traversal import AttributeKey
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.resources import MyEntityMember
-from everest.representers.traversal import AttributeKey
-from everest.representers.config import IGNORE_ON_READ_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingTestCase',

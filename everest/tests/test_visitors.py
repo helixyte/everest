@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jul 10, 2011.
 """
 from everest.orm import OrderClauseList
+from everest.orm import Session
 from everest.orm import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import SqlFilterSpecificationVisitor
@@ -16,7 +17,6 @@ from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
-from everest.orm import Session
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',

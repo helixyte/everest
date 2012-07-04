@@ -6,7 +6,6 @@ Descriptors for resource classes.
 
 Created on Apr 19, 2011.
 """
-
 from everest.entities.utils import slug_from_identifier
 from everest.relationship import Relationship
 from everest.resources.repository import ResourceRepository

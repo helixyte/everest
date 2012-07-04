@@ -8,13 +8,13 @@ from everest.entities.aggregates import MemoryAggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
 from everest.entities.utils import get_stage_aggregate
+from everest.entities.utils import identifier_from_slug
+from everest.entities.utils import slug_from_identifier
+from everest.entities.utils import slug_from_integer
 from everest.entities.utils import slug_from_string
 from everest.testing import EntityTestCase
 from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.interfaces import IFoo
-from everest.entities.utils import slug_from_identifier
-from everest.entities.utils import slug_from_integer
-from everest.entities.utils import identifier_from_slug
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntitiesUtilsTestCase',

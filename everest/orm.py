@@ -13,9 +13,9 @@ from sqlalchemy.orm import mapper as sa_mapper
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
+from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import cast
 from threading import Lock
-from sqlalchemy.sql.expression import ClauseList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_slug_expression',

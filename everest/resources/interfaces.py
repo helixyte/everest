@@ -6,7 +6,6 @@ Resource related interfaces.
 
 Created on Nov 3, 2011.
 """
-
 from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 

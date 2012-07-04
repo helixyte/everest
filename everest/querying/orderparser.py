@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-
 from pyparsing import Combine
 from pyparsing import Group
 from pyparsing import Literal

@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
-
 from StringIO import StringIO
 from everest.interfaces import IRepositoryManager
 from everest.querying.interfaces import IFilterSpecificationVisitor

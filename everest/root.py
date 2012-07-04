@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 21, 2011.
 """
-
 from everest.resources.utils import get_service
 
 __docformat__ = 'reStructuredText en'

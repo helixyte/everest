@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
-
 from everest.querying.orderparser import parse_order
 from everest.testing import BaseTestCase
 from pyparsing import ParseException

@@ -6,12 +6,9 @@ Package setup file.
 
 Created on Nov 3, 2011.
 """
-
 import os
-
 from distribute_setup import use_setuptools
 use_setuptools()
-
 from setuptools import setup
 from setuptools import find_packages
 

@@ -4,11 +4,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 5, 2012.
 """
-from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.testing import create_collection
+from everest.mime import CsvMime
 from everest.renderers import RendererFactory
 from everest.renderers import ResourceRenderer
-from everest.mime import CsvMime
+from everest.testing import ResourceTestCase
+from everest.tests.testapp_db.testing import create_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RendererTestCase',

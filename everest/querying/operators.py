@@ -5,7 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 5, 2011.
 """
-
 from everest.querying.base import BinaryOperator
 from everest.querying.base import UnaryOperator
 

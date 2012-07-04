@@ -9,10 +9,10 @@ from datetime import timedelta
 from everest.querying.base import Operator
 from everest.querying.specifications import FilterSpecification
 from everest.querying.specifications import FilterSpecificationFactory
+from everest.querying.specifications import NaturalOrderSpecification
+from everest.querying.specifications import OrderSpecificationFactory
 from everest.testing import BaseTestCase
 from nose.tools import raises
-from everest.querying.specifications import OrderSpecificationFactory
-from everest.querying.specifications import NaturalOrderSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjuctionFilterSpecification',
