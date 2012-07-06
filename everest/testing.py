@@ -103,6 +103,13 @@ class BaseTestCase(Pep8CompliantTestCase):
     def set_up(self):
         self.ini = EverestIni(self.ini_file_path)
 
+    def tear_down(self):
+        super(BaseTestCase, self).tear_down()
+        try:
+            del self.ini
+        except AttributeError:
+            pass
+
 
 class ConfiguredTestCase(BaseTestCase):
     """
@@ -119,6 +126,14 @@ class ConfiguredTestCase(BaseTestCase):
             self.config.setup_registry(settings=settings)
         else:
             self.config.setup_registry()
+
+    def tear_down(self):
+        super(ConfiguredTestCase, self).tear_down()
+        tear_down_registry(self.config.registry)
+        try:
+            del self.config
+        except AttributeError:
+            pass
 
 
 class EntityTestCase(ConfiguredTestCase):
@@ -139,6 +154,7 @@ class EntityTestCase(ConfiguredTestCase):
     def tear_down(self):
         transaction.abort()
         self.config.end()
+        super(EntityTestCase, self).tear_down()
 
     def _get_entity(self, icollection, key=None):
         agg = get_root_aggregate(icollection)
@@ -197,6 +213,11 @@ class ResourceTestCase(ConfiguredTestCase):
     def tear_down(self):
         transaction.abort()
         self.config.end()
+        super(ResourceTestCase, self).tear_down()
+        try:
+            del self._request
+        except AttributeError:
+            pass
 
     def _get_member(self, icollection, key=None):
         if key is None:
@@ -239,8 +260,14 @@ class FunctionalTestCase(BaseTestCase):
                            extra_environ=self._create_extra_environment())
 
     def tear_down(self):
+        super(FunctionalTestCase, self).tear_down()
         transaction.abort()
         self.config.end()
+        tear_down_registry(self.config.registry)
+        try:
+            del self.app
+        except AttributeError:
+            pass
 
     def _load_wsgiapp(self):
         wsgiapp = loadapp('config:' + self.ini.ini_file_path,
@@ -428,3 +455,15 @@ def persist(session, entity_class, attribute_map,
     fetched_entity = query.filter_by(id=entity_id).one()
     if do_attribute_check:
         check_attributes(fetched_entity, attribute_map)
+
+
+def tear_down_registry(registry):
+    for reg_adp in list(registry.registeredAdapters()):
+        registry.unregisterAdapter(factory=reg_adp.factory,
+                                   required=reg_adp.required,
+                                   provided=reg_adp.provided,
+                                   name=reg_adp.name)
+    for reg_ut in list(registry.registeredUtilities()):
+        registry.unregisterUtility(component=reg_ut.component,
+                                   provided=reg_ut.provided,
+                                   name=reg_ut.name)
