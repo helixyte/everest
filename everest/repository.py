@@ -74,6 +74,9 @@ class Repository(object):
         """
         key = self._make_key(rc)
         self.__obj_cache[key] = obj
+        # If the accessor object was obtained through this repository, it
+        # needs to be removed from the cache.
+        self.__get_repo_cache().pop(obj, None)
 
     def get(self, rc):
         """
