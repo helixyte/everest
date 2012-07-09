@@ -33,7 +33,7 @@ class Service(Resource):
         self.__name__ = None
         # Collects all interfaces managed by the service.
         self.__registered_interfaces = set()
-        # Maps collection names to collection instances.
+        # Maps collection names to resource interfaces.
         self.__collections = {}
         self.__started = False
 
