@@ -168,18 +168,14 @@ class OrmAggregate(Aggregate):
         return ent
 
     def iterator(self):
-        if not self._relationship is None:
-            # We need a flush here because we may have newly added entities
-            # in the aggregate which need to get an ID *before* we build the
-            # relation filter spec.
-            self._session.flush()
         if self.__defaults_empty:
             raise StopIteration()
         else:
-            # We need a flush here because we may have newly added entities
-            # in the aggregate which need to get an ID *before* we build the
-            # query expression.
-            self._session.flush()
+            if len(self._session.new) > 0:
+                # We need a flush here because we may have newly added 
+                # entities in the aggregate which need to get an ID *before* 
+                # we build the query expression.
+                self._session.flush()
             query = self._get_data_query()
             for obj in iter(query):
                 yield obj
