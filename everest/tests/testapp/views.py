@@ -64,3 +64,4 @@ class ExceptionPostCollectionView(_ProcessDataExceptionViewMixin,
 class DummyExceptionView(PostCollectionView):
     def _process_request_data(self, data):
         raise ValueError()
+

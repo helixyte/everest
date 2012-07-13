@@ -8,7 +8,6 @@ Created on Apr 19, 2011.
 """
 from everest.entities.utils import slug_from_identifier
 from everest.relationship import Relationship
-from everest.resources.repository import ResourceRepository
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
@@ -256,9 +255,9 @@ class collection_attribute(_relation_attribute):
     def __make_collection(self, resource, parent, children):
         # Create a new collection.
         if not resource.__parent__ is None:
-            # Find the resource repository used for this resource's parent
-            # and use it to create a new collection.
-            rc_repo = ResourceRepository.get_repository(resource.__parent__)
+            # Use the resource repository that created this resource's parent
+            # (collection) to create a new collection.
+            rc_repo = resource.__parent__.__repository__
             coll = rc_repo.get(self.attr_type)
         else:
             # This is a floating member, assume stage repository.

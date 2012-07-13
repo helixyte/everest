@@ -10,6 +10,7 @@ from collections import defaultdict
 from copy import deepcopy
 from everest.mime import CsvMime
 from everest.orm import Session as SaSessionFactory
+from everest.orm import empty_metadata
 from everest.orm import get_engine
 from everest.orm import get_metadata
 from everest.orm import is_engine_initialized
@@ -89,6 +90,13 @@ class EntityStore(object):
         return self.__name
 
     @property
+    def configuration(self):
+        """
+        Returns a copy of the configuration for this entity store.
+        """
+        return self._config.copy()
+
+    @property
     def is_initialized(self):
         return self.__is_initialized
 
@@ -130,7 +138,7 @@ class OrmEntityStore(EntityStore):
     def __init__(self, name, join_transaction=True):
         EntityStore.__init__(self, name, join_transaction=join_transaction)
         # Default to an in-memory sqlite DB.
-        self.configure(db_string='sqlite://', metadata_factory=None)
+        self.configure(db_string='sqlite://', metadata_factory=empty_metadata)
 
     def _initialize(self):
         # Manages an ORM engine and a metadata instance for this entity store.

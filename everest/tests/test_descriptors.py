@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-from everest.orm import reset_metadata
+from everest.orm import OrmTestCaseMixin
 from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.utils import OrmAttributeInspector
@@ -40,7 +40,6 @@ from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_collection
 from everest.tests.testapp_db.testing import create_entity
 from everest.url import resource_to_url
-from pkg_resources import resource_filename # pylint: disable=E0611
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -113,18 +112,11 @@ class AttributesTestCase(Pep8CompliantTestCase):
                            member_attribute, 'not-a-resource', 'foo')
 
 
-class DescriptorsTestCase(ResourceTestCase):
+class DescriptorsTestCase(OrmTestCaseMixin, ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    ini_section_name = 'app:testapp_db'
 
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
-
-    @classmethod
-    def teardown_class(cls):
-        reset_metadata()
 
     def test_attribute_checkers(self):
         self.assert_true(is_terminal_attribute(IMyEntity, 'text'))
@@ -408,23 +400,27 @@ class DescriptorsTestCase(ResourceTestCase):
         my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         mb = coll.create_member(my_entity)
-        self.assert_equal(resource_to_url(mb),
-                          'http://0.0.0.0:6543/my-entities/0/')
-        self.assert_equal(resource_to_url(mb.parent),
-                          'http://0.0.0.0:6543/my-entity-parents/0/')
-        self.assert_equal(resource_to_url(mb.nested_parent),
-                        'http://0.0.0.0:6543/my-entities/0/nested-parent/')
-        self.assert_equal(resource_to_url(mb.children),
-                          'http://0.0.0.0:6543/my-entities/0/children/')
+        exp_url = '/my-entities/0/'
+        url = resource_to_url(mb)
+        self.assert_true(url.endswith(exp_url))
+        exp_url = '/my-entity-parents/0/'
+        url = resource_to_url(mb.parent)
+        self.assert_true(url.endswith(exp_url))
+        exp_url = 'my-entities/0/nested-parent/'
+        url = resource_to_url(mb.nested_parent)
+        self.assert_true(url.endswith(exp_url))
+        exp_url = '/my-entities/0/children/'
+        url = resource_to_url(mb.children)
+        self.assert_true(url.endswith(exp_url))
         mb_child = mb.children['0']
         self.assert_equal(mb_child.id, 0)
-        self.assert_equal(resource_to_url(mb_child.children),
-                          'http://0.0.0.0:6543/my-entity-grandchildren/'
-                          '?q=parent:equal-to:'
-                          'http://0.0.0.0:6543/my-entities/0/children/0/')
-        self.assert_equal(resource_to_url(mb_child.no_backref_children),
-                          'http://0.0.0.0:6543/my-entity-grandchildren/'
-                          '?q=id:contained:0')
+        exp_url = '/my-entity-grandchildren/?q=parent:equal-to:' \
+                  'http://localhost:6543/my-entities/0/children/0/'
+        url = resource_to_url(mb_child.children)
+        self.assert_true(url.endswith(exp_url))
+        exp_url = 'my-entity-grandchildren/?q=id:contained:0'
+        url = resource_to_url(mb_child.no_backref_children)
+        self.assert_true(url.endswith(exp_url))
 
     def _make_mapping(self):
         reg = SimpleMappingRegistry()

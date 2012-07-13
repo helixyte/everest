@@ -8,7 +8,6 @@ Created on Jan 17, 2012.
 """
 from everest.interfaces import IRepository
 from pyramid.threadlocal import get_current_registry
-from weakref import WeakKeyDictionary
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
@@ -36,8 +35,6 @@ class Repository(object):
     implements(IRepository)
 
     is_initialized = None
-
-    __repo_cache = None
 
     def __init__(self):
         # The accessor cache (keys are registered resource classes, values
@@ -74,9 +71,6 @@ class Repository(object):
         """
         key = self._make_key(rc)
         self.__obj_cache[key] = obj
-        # If the accessor object was obtained through this repository, it
-        # needs to be removed from the cache.
-        self.__get_repo_cache().pop(obj, None)
 
     def get(self, rc):
         """
@@ -94,7 +88,7 @@ class Repository(object):
             obj = self.new(rc)
             self.__obj_cache[key] = obj
         obj_clone = obj.clone()
-        self.__get_repo_cache()[obj_clone] = self
+        obj_clone.__repository__ = self
         return obj_clone
 
     def clear(self, rc):
@@ -110,14 +104,6 @@ class Repository(object):
         """
         self.__obj_cache.clear()
 
-    @classmethod
-    def get_repository(cls, obj):
-        """
-        Returns the repository instance that was used to obtain the given
-        accessor object, or None if it was not created through a repository.
-        """
-        return cls.__get_repo_cache().get(obj)
-
     def _initialize(self):
         """
         Implements initialization of this repository.
@@ -129,12 +115,6 @@ class Repository(object):
         Implements creation of a new accessor for the given resource.
         """
         raise NotImplementedError('Abstract method.')
-
-    @classmethod
-    def __get_repo_cache(cls):
-        if cls.__repo_cache is None:
-            cls.__repo_cache = WeakKeyDictionary()
-        return cls.__repo_cache
 
     def _make_key(self, rc):
         raise NotImplementedError('Abstract method.')

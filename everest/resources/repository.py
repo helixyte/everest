@@ -9,6 +9,7 @@ Created on Jan 13, 2012.
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.aggregates import OrmAggregate
 from everest.entities.repository import EntityRepository
+from everest.orm import map_system_entities
 from everest.repository import REPOSITORIES
 from everest.repository import Repository
 from everest.resources.entitystores import CachingEntityStore
@@ -74,6 +75,10 @@ class ResourceRepository(Repository):
     def name(self):
         return self.__entity_repository.name
 
+    @property
+    def configuration(self):
+        return self.__entity_repository.configuration
+
     def _make_key(self, rc):
         return get_collection_class(rc)
 
@@ -84,6 +89,7 @@ class RepositoryManager(object):
     def __init__(self):
         self.__repositories = {}
         self.__default_repo = None
+        self.__messaging_repo = None
 
     def get(self, name):
         return self.__repositories.get(name)
@@ -132,6 +138,11 @@ class RepositoryManager(object):
         ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
         return ResourceRepository(ent_repo)
 
+    def enable_messaging(self, repository):
+        """
+        """
+        self.__messaging_repo = repository
+
     def initialize_all(self):
         """
         Convenience method to initialize all repositories that have not been
@@ -139,4 +150,20 @@ class RepositoryManager(object):
         """
         for repo in self.__repositories.itervalues():
             if not repo.is_initialized:
+                # If this repo is the one configured for messaging, initialize
+                # the message resource.
+                if repo.name == self.__messaging_repo:
+                    self.__initialize_messaging()
                 repo.initialize()
+
+    def __initialize_messaging(self):
+        if self.__messaging_repo == REPOSITORIES.ORM:
+            # Wrap the metadata callback to also call the mapping function
+            # for system entities.
+            repo = self.get(self.__messaging_repo)
+            md_fac = repo.configuration['metadata_factory']
+            def wrapper(engine):
+                metadata = md_fac(engine)
+                map_system_entities(metadata, engine)
+                return metadata
+            repo.configure(metadata_factory=wrapper)

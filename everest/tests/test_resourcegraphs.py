@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
+from everest.orm import OrmTestCaseMixin
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
 from everest.testing import ConfiguredTestCase
@@ -18,18 +19,14 @@ __all__ = ['ResourceGraphTestCase',
            ]
 
 
-class ResourceGraphTestCase(ConfiguredTestCase):
+class ResourceGraphTestCase(OrmTestCaseMixin, ConfiguredTestCase):
     package_name = 'everest.tests.testapp_db'
 
     def set_up(self):
         ConfiguredTestCase.set_up(self)
-        self.config.begin()
         self.config.load_zcml('configure.zcml')
         self._interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,
                             IMyEntityGrandchild]
-
-    def tear_down(self):
-        self.config.end()
 
     def test_dependency_graph(self):
         grph = build_resource_dependency_graph(self._interfaces)

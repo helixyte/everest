@@ -22,6 +22,7 @@ __all__ = ['create_metadata',
            ]
 
 
+
 def create_metadata(engine):
     metadata = MetaData()
     #
@@ -118,6 +119,6 @@ def create_metadata(engine):
                  ),
            )
     # Create the mappers.
-    metadata.bind = engine
-    metadata.create_all()
+#    metadata.bind = engine
+    metadata.create_all(engine)
     return metadata

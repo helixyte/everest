@@ -12,10 +12,16 @@ from pyramid.threadlocal import get_current_registry
 from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['UserMessageChecker',
+__all__ = ['MESSENGER_KINDS',
+           'UserMessageChecker',
            'UserMessageNotifier',
            'UserMessageHandlingContextManager',
            ]
+
+
+class MESSENGER_KINDS(object):
+    TRANSIENT = 'transient'
+    PERSISTENT = 'persistent'
 
 
 class UserMessageNotifier(object):

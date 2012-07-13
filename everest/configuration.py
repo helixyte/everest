@@ -12,6 +12,8 @@ from everest.interfaces import IMessage
 from everest.interfaces import IRepository
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
+from everest.interfaces import IUserMessageNotifier
+from everest.messaging import UserMessageNotifier
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import EvalFilterSpecificationVisitor
@@ -185,6 +187,15 @@ class Configurator(PyramidConfigurator):
         self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
                               aggregate_class, make_default, configuration)
 
+    def setup_messaging(self, repository):
+        repo_mgr = self.get_registered_utility(IRepositoryManager)
+        repo_mgr.enable_messaging(repository)
+        self.add_resource(IMessage, UserMessageMember, UserMessage,
+                          repository=repository,
+                          collection_root_name='_messages')
+        self.registry.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
+                                      IUserMessageNotifier)
+
     def add_resource(self, interface, member, entity,
                      collection=None,
                      collection_root_name=None, collection_title=None,
@@ -211,14 +222,14 @@ class Configurator(PyramidConfigurator):
         elif not issubclass(collection, Collection):
             raise ValueError('The collection class must be a subclass '
                              'of Collection.')
-        # Configure the repository adapter.
+        # Configure the specified repository.
         repo_mgr = self.get_registered_utility(IRepositoryManager)
         if repository is None:
             repo = repo_mgr.get_default()
         else:
             repo = repo_mgr.get(repository)
             if repo is None:
-                # Add a builtin repository with default configuration on
+                # Add a root repository with default configuration on
                 # the fly. 
                 repo_type = getattr(REPOSITORIES, repository, None)
                 if repo_type is None:
@@ -442,10 +453,6 @@ class Configurator(PyramidConfigurator):
             url_converter = ResourceUrlConverter
         self._register_adapter(url_converter, (IRequest,),
                                IResourceUrlConverter)
-        # Register system resources provided as a service to the application.
-        self.add_resource(IMessage, UserMessageMember, UserMessage,
-                          repository=REPOSITORIES.MEMORY,
-                          collection_root_name='_messages')
 
     def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
                          make_default, cnf):

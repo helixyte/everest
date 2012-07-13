@@ -16,7 +16,8 @@ from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.testing import create_entity
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['DirectivesTestCase',
+__all__ = ['MemoryAggregateTestCase',
+           'OrmAggregateTestCase',
            ]
 
 
@@ -101,11 +102,11 @@ class _AggregateTestCase(EntityTestCase):
         agg_children.order = spec2
         self.assert_equal(len(list(agg_children.iterator())), 1)
 
-    def _make_repo(self):
+    def _get_repo(self):
         raise NotImplementedError('Abstract method.')
 
     def _make_one(self):
-        rc_repo = self._make_repo()
+        rc_repo = self._get_repo()
         ent = create_entity()
         agg = rc_repo.get(IMyEntity).get_aggregate()
         agg.add(ent)
@@ -118,7 +119,7 @@ class _AggregateTestCase(EntityTestCase):
 class MemoryAggregateTestCase(_AggregateTestCase):
     config_file_name = 'configure_no_orm.zcml'
 
-    def _make_repo(self):
+    def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         return repo_mgr.get(REPOSITORIES.MEMORY)
 
@@ -151,15 +152,13 @@ class MemoryAggregateTestCase(_AggregateTestCase):
         self.assert_equal(len(ent.children), 3)
 
 
+# FIXME: This should inherit from OrmTestCaseMixin. However, for some reason
+#        doing so breaks subsequent ORM test cases with an OperationalError
+#        "ambiguous column" from SA.
 class OrmAggregateTestCase(_AggregateTestCase):
     config_file_name = 'configure.zcml'
 
-#    # FIXME: for some reason, enabling this makes subsequent ORM tests fail.
-#    @classmethod
-#    def teardown_class(cls):
-#        reset_metadata()
-
-    def _make_repo(self):
+    def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         return repo_mgr.get(REPOSITORIES.ORM)
 

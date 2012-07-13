@@ -1,0 +1,14 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Messaging. -->
+
+    <messaging 
+        repository="MEMORY"/>
+</configure>

@@ -1,0 +1,16 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Repositories. -->
+
+    <!-- Messaging. -->
+
+    <messaging 
+        repository="ORM"/>
+</configure>

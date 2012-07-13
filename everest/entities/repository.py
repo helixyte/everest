@@ -50,5 +50,9 @@ class EntityRepository(Repository):
     def name(self):
         return self.__entity_store.name
 
+    @property
+    def configuration(self):
+        return self.__entity_store.configuration
+
     def _make_key(self, rc):
         return get_entity_class(rc)

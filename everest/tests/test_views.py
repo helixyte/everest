@@ -4,10 +4,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
 """
-from everest.messaging import IUserMessageNotifier
-from everest.messaging import UserMessageNotifier
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
+from everest.orm import reset_metadata
 from everest.renderers import RendererFactory
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
@@ -28,6 +27,7 @@ from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.testing import create_collection
 from everest.traversal import SuffixResourceTraverser
+from everest.utils import get_repository_manager
 from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
@@ -272,19 +272,18 @@ class ExceptionViewTestCase(FunctionalTestCase):
                      status=500)
 
 
-class WarningViewTestCase(FunctionalTestCase):
+class _WarningViewBaseTestCase(FunctionalTestCase):
     package_name = 'everest.tests.testapp'
     ini_file_path = resource_filename('everest.tests.testapp',
                                       'testapp_views.ini')
     app_name = 'testapp'
     path = '/foos'
+    messaging_config_file = None
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
-        reg = self.config.registry
-        reg.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
-                            IUserMessageNotifier)
+        self.config.load_zcml(self.messaging_config_file)
         self.config.add_view(context=FooCollection,
                              view=UserMessagePostCollectionView,
                              renderer='csv',
@@ -359,6 +358,25 @@ class WarningViewTestCase(FunctionalTestCase):
         res2 = self.app.put(resubmit_location1, params='foo name',
                             status=200)
         self.assert_true(not res2 is None)
+
+
+class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
+    messaging_config_file = \
+                    'everest.tests.testapp:configure_messaging_memory.zcml'
+
+
+class WarningViewOrmTestCase(_WarningViewBaseTestCase):
+    messaging_config_file = \
+                    'everest.tests.testapp:configure_messaging_orm.zcml'
+
+    def set_up(self):
+        _WarningViewBaseTestCase.set_up(self)
+        repo_mgr = get_repository_manager()
+        repo_mgr.initialize_all()
+
+    def tear_down(self):
+        _WarningViewBaseTestCase.tear_down(self)
+        reset_metadata()
 
 
 class WarningWithExceptionViewTestCase(FunctionalTestCase):

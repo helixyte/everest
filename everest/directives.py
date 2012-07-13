@@ -136,8 +136,7 @@ class IOrmRepositoryDirective(IRepositoryDirective):
 
 def orm_repository(_context, name=None, make_default=False,
                    aggregate_class=None, entity_store_class=None,
-                   db_string=None,
-                   metadata_factory=None):
+                   db_string=None, metadata_factory=None):
     """
     Directive for registering an ORM based repository.
     """
@@ -149,6 +148,29 @@ def orm_repository(_context, name=None, make_default=False,
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
                 REPOSITORIES.ORM, 'add_orm_repository', cnf)
+
+
+class IMessagingDirective(Interface):
+    repository = \
+        TextLine(title=u"Repository to use for the messaging system.",
+                 required=True,
+                 )
+
+
+def messaging(_context, repository):
+    """
+    Directive for setting up the user message resource in the appropriate
+    repository.
+    
+    :param str repository: The repository to create the user messages resource
+      in.
+    """
+    discriminator = ('messaging', repository)
+    reg = get_current_registry()
+    config = Configurator(reg, package=_context.package)
+    _context.action(discriminator=discriminator, # pylint: disable=E1101
+                    callable=config.setup_messaging,
+                    args=(repository,))
 
 
 class IResourceDirective(Interface):
@@ -229,7 +251,6 @@ class ResourceDirective(GroupingContextDecorator):
         # Register resources eagerly so the various adapters and utilities are
         # available for other directives.
         discriminator = ('resource', self.interface)
-        self.action(discriminator=discriminator) # pylint: disable=E1101
         reg = get_current_registry()
         config = Configurator(reg, package=self.context.package)
         config.add_resource(self.interface, self.member, self.entity,

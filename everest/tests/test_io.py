@@ -6,6 +6,7 @@ Created on Feb 21, 2012.
 """
 from StringIO import StringIO
 from everest.mime import CsvMime
+from everest.orm import OrmTestCaseMixin
 from everest.orm import reset_metadata
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
@@ -199,7 +200,7 @@ class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
         self.assert_equal(len(colls[0]), 0)
 
 
-class ZipResourceIoTestCaseOrm(_ZipResourceIoTestCaseBase):
+class ZipResourceIoTestCaseOrm(OrmTestCaseMixin, _ZipResourceIoTestCaseBase):
     config_file_name = 'configure.zcml'
 
     @classmethod

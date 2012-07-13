@@ -43,4 +43,4 @@ class ResourcesUtilsTestCase(ResourceTestCase):
 
     def test_get_registered_collection_resources(self):
         colls = get_registered_collection_resources()
-        self.assert_equal(len(colls), 5)
+        self.assert_equal(len(colls), 4)

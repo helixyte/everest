@@ -4,8 +4,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
+from datetime import datetime
+from everest.entities.system import UserMessage
 from inspect import isdatadescriptor
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import MetaData
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import clear_mappers as sa_clear_mappers
@@ -22,6 +28,7 @@ __all__ = ['as_slug_expression',
            'commit_veto',
            'convert_slug_to_hybrid_property',
            'convert_to_hybrid_property',
+           'empty_metadata',
            'get_engine',
            'get_metadata',
            'is_engine_initialized',
@@ -101,8 +108,7 @@ class _MetaDataManager(_GlobalObjectManager):
     @classmethod
     def reset(cls):
         for md in cls._globs.values():
-            if not md.bind is None:
-                md.drop_all()
+            md.clear()
         clear_mappers()
         super(_MetaDataManager, cls).reset()
 
@@ -199,6 +205,8 @@ def clear_mappers():
     """
     Clears all mappers set up by SA and also clears all custom "id" and
     "slug" attributes inserted by the :func:`mapper` function in this module.
+    
+    This should only ever bee needed in a testing context.
     """
     # Remove our hybrid property constructs.
     for mpr, is_primary in _mapper_registry.items():
@@ -211,3 +219,40 @@ def clear_mappers():
                 except AttributeError:
                     pass
     sa_clear_mappers()
+
+
+def map_system_entities(metadata, engine):
+    # Map the user message system entity.
+    msg_tbl = Table('_user_messages', metadata,
+                    Column('guid', String, nullable=False, primary_key=True),
+                    Column('text', String, nullable=False),
+                    Column('time_stamp', DateTime(timezone=True),
+                           default=datetime.now),
+                    )
+    mapper(UserMessage, msg_tbl, id_attribute='guid')
+    metadata.create_all(bind=engine, tables=[msg_tbl])
+
+
+def empty_metadata(engine):
+    """
+    The default metadata factory.
+    """
+    metadata = MetaData()
+    metadata.create_all(bind=engine)
+    return metadata
+
+
+class OrmTestCaseMixin(object):
+    def tear_down(self):
+        super(OrmTestCaseMixin, self).tear_down()
+        Session.remove()
+
+    @classmethod
+    def teardown_class(cls):
+        base_cls = super(OrmTestCaseMixin, cls)
+        try:
+            base_cls.teardown_class()
+        except AttributeError:
+            pass
+        assert not Session.registry.has()
+        reset_metadata()
