@@ -227,7 +227,7 @@ def map_system_entities(engine, reset):
                     Column('guid', String, nullable=False, primary_key=True),
                     Column('text', String, nullable=False),
                     Column('time_stamp', DateTime(timezone=True),
-                           nullable=False, default=func.now),
+                           nullable=False, default=func.now()),
                     )
     mapper(UserMessage, msg_tbl, id_attribute='guid')
     if reset:
