@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
-from datetime import datetime
 from everest.entities.system import UserMessage
 from inspect import isdatadescriptor
 from sqlalchemy import Column
@@ -221,16 +220,19 @@ def clear_mappers():
     sa_clear_mappers()
 
 
-def map_system_entities(metadata, engine):
+def map_system_entities(engine, reset):
     # Map the user message system entity.
-    msg_tbl = Table('_user_messages', metadata,
+    md = MetaData()
+    msg_tbl = Table('_user_messages', md,
                     Column('guid', String, nullable=False, primary_key=True),
                     Column('text', String, nullable=False),
                     Column('time_stamp', DateTime(timezone=True),
-                           default=datetime.now),
+                           nullable=False, default=func.now),
                     )
     mapper(UserMessage, msg_tbl, id_attribute='guid')
-    metadata.create_all(bind=engine, tables=[msg_tbl])
+    if reset:
+        md.drop_all(bind=engine, tables=[msg_tbl])
+        md.create_all(bind=engine, tables=[msg_tbl])
 
 
 def empty_metadata(engine):

@@ -155,9 +155,13 @@ class IMessagingDirective(Interface):
         TextLine(title=u"Repository to use for the messaging system.",
                  required=True,
                  )
+    reset_on_start = \
+        Bool(title=u"Erase all stored user messages on startup. This only "
+                    "has an effect in persistent repositories.",
+             required=False)
 
 
-def messaging(_context, repository):
+def messaging(_context, repository, reset_on_start=True):
     """
     Directive for setting up the user message resource in the appropriate
     repository.
@@ -170,7 +174,8 @@ def messaging(_context, repository):
     config = Configurator(reg, package=_context.package)
     _context.action(discriminator=discriminator, # pylint: disable=E1101
                     callable=config.setup_messaging,
-                    args=(repository,))
+                    args=(repository,),
+                    kw=dict(reset_on_start=reset_on_start))
 
 
 class IResourceDirective(Interface):

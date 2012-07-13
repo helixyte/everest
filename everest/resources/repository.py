@@ -90,6 +90,7 @@ class RepositoryManager(object):
         self.__repositories = {}
         self.__default_repo = None
         self.__messaging_repo = None
+        self.__messaging_reset_on_start = None
 
     def get(self, name):
         return self.__repositories.get(name)
@@ -138,10 +139,17 @@ class RepositoryManager(object):
         ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
         return ResourceRepository(ent_repo)
 
-    def enable_messaging(self, repository):
+    def setup_messaging(self, repository, reset_on_start):
         """
+        Sets up messaging for the given repository.
+        
+        :param str repository: Name of the repository to use to store user
+          messages. 
+        :param bool reset_on_start: Flag to indicate whether stored user 
+          messsages should be discarded on startup.
         """
         self.__messaging_repo = repository
+        self.__messaging_reset_on_start = reset_on_start
 
     def initialize_all(self):
         """
@@ -162,8 +170,9 @@ class RepositoryManager(object):
             # for system entities.
             repo = self.get(self.__messaging_repo)
             md_fac = repo.configuration['metadata_factory']
-            def wrapper(engine):
+            def wrapper(engine,
+                        reset_on_start=self.__messaging_reset_on_start):
                 metadata = md_fac(engine)
-                map_system_entities(metadata, engine)
+                map_system_entities(engine, reset_on_start)
                 return metadata
             repo.configure(metadata_factory=wrapper)

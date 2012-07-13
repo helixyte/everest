@@ -187,9 +187,9 @@ class Configurator(PyramidConfigurator):
         self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
                               aggregate_class, make_default, configuration)
 
-    def setup_messaging(self, repository):
+    def setup_messaging(self, repository, reset_on_start=True):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
-        repo_mgr.enable_messaging(repository)
+        repo_mgr.setup_messaging(repository, reset_on_start)
         self.add_resource(IMessage, UserMessageMember, UserMessage,
                           repository=repository,
                           collection_root_name='_messages')
