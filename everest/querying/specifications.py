@@ -28,6 +28,7 @@ from everest.querying.operators import LESS_OR_EQUALS
 from everest.querying.operators import LESS_THAN
 from everest.querying.operators import NEGATION
 from everest.querying.operators import STARTS_WITH
+from everest.resources.interfaces import IResource
 from zope.interface import implements # pylint: disable=E0611,F0401
 import re
 
@@ -35,6 +36,8 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeFilterSpecification',
            'ConjunctionFilterSpecification',
            'ConjuctionOrderSpecification',
+           'CriterionFilterSpecification',
+           'DescendingOrderSpecification',
            'DisjuctionFilterSpecification',
            'FilterSpecification',
            'FilterSpecificationFactory',
@@ -44,10 +47,7 @@ __all__ = ['CompositeFilterSpecification',
            'ObjectOrderSpecification',
            'OrderSpecification',
            'OrderSpecificationFactory',
-           'ReverseOrderSpecification',
-           'SimpleOrderSpecification',
-           'CriterionFilterSpecification',
-           'ValueContainedFilterSpecification'
+           'ValueContainedFilterSpecification',
            'ValueContainsFilterSpecification',
            'ValueEndsWithFilterSpecification',
            'ValueEqualToFilterSpecification',
@@ -173,8 +173,12 @@ class CriterionFilterSpecification(LeafFilterSpecification):
         return self.__attr_value
 
     def is_satisfied_by(self, candidate):
-        value = self._get_candidate_value(candidate)
-        return self.operator.apply(value, self.attr_value)
+        cand_value = self._get_candidate_value(candidate)
+        if IResource.providedBy(self.__attr_value): # pylint: disable=E1101
+            attr_value = self.__attr_value.get_entity()
+        else:
+            attr_value = self.__attr_value
+        return self.operator.apply(cand_value, attr_value)
 
     def _get_candidate_value(self, candidate):
         return getattr(candidate, self.attr_name)

@@ -64,15 +64,14 @@ class FilterSpecificationDirector(SpecificationDirector):
 
     def __prepare_values(self, values):
         prepared = []
-        for v in values:
-            if self.__is_empty_string(v):
+        for val in values:
+            if self.__is_empty_string(val):
                 continue
-            elif self.__is_url(v):
-                # URLs - convert to resource and extract entity.
-                rc = url_to_resource(''.join(v))
-                v = rc.get_entity()
-            if not v in prepared:
-                prepared.append(v)
+            elif self.__is_url(val):
+                # URLs - convert to resource.
+                val = url_to_resource(''.join(val))
+            if not val in prepared:
+                prepared.append(val)
         return prepared
 
     def __is_url(self, v):
@@ -466,8 +465,11 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         for idx, info in enumerate(infos):
             kind, entity_attr = info
             if idx == count - 1:
-                # 
-                expr = getattr(entity_attr, sql_op)(*values)
+                #
+                args = \
+                    [val.get_entity() if IResource.providedBy(val) else val # pylint: disable=E1101
+                     for val in values]
+                expr = getattr(entity_attr, sql_op)(*args)
             elif kind == EntityAttributeKinds.ENTITY:
                 expr = entity_attr.has
                 exprs.insert(0, expr)
