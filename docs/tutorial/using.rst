@@ -57,19 +57,19 @@ the criteria are interpreted as a Boolean "AND" operation.
 The following table shows the available operators and data types in CQL:
 
 
-=========================  ======== ====== ======= ========== ========
-     Operator                             Data Type
-                           -------- ------ ------- --------- --------
-                            String  Number Boolean Date/Time Resource
-=========================  ======== ====== ======= ========= ========
-    ``starts-with``            x
-  ``not-starts-with``          x
-    ``ends-with``              x
-  ``not-ends-with``            x
-    ``contains``               x
-  ``not-contains``             x
-   ``contained``               x
- ``not-contained``             x
+============================  ======== ====== ======= ========== ========
+        Operator                              Data Type
+----------------------------  -------------------------------------------
+        Name                  String   Number Boolean Date/Time  Resource
+============================  ======== ====== ======= ========== ========
+    ``starts-with``              x
+  ``not-starts-with``            x
+    ``ends-with``                x
+  ``not-ends-with``              x
+    ``contains``                 x
+  ``not-contains``               x
+   ``contained``                 x
+ ``not-contained``               x
     ``equal-to``
   ``not-equal-to``
     ``less-than``
@@ -77,11 +77,11 @@ The following table shows the available operators and data types in CQL:
    ``greater-than``
 ``greater-than-or-equal-to``
      ``in-range``
-
+============================  ======== ====== ======= ========== ========
 
 
 All attributes that are used to compose a query expression need to be mapped
-column properties in the ORM. Aliases are supported, CompositeProperties are 
+column properties in the ORM. Aliases are supported, CompositeProperties are
 not. All queried entities must have an "id" attribute.
 
 It is by design that the power of CQL to express complex queries is far behind

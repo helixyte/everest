@@ -1,8 +1,8 @@
 """
+ATOM representers.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-ATOM representers.
 
 Created on May 19, 2011.
 """
@@ -20,7 +20,9 @@ from everest.resources.utils import provides_member_resource
 from everest.url import UrlPartsConverter
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AtomDataElementRegistry',
+__all__ = ['AtomMapping',
+           'AtomMappingRegistry',
+           'AtomRepresenterConfiguration',
            'AtomResourceRepresenter',
            ]
 

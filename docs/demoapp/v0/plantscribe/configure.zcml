@@ -6,13 +6,8 @@
 
     <!-- Repositories. -->
 
-    <filesystem_repository
-        directory="data"
-        content_type="everest.mime.CsvMime"
-        make_default="true" />
-
     <!-- Resource declarations. -->
     
-    <include file="../resources.zcml" />
+    <include file="resources.zcml" />
 
 </configure>

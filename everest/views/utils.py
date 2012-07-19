@@ -1,4 +1,6 @@
 """
+View related utilities.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -7,12 +9,6 @@ Created on Feb 4, 2011.
 from everest.mime import CSV_MIME
 
 __docformat__ = 'reStructuredText en'
-
-__author__ = 'F Oliver Gathmann'
-__date__ = '$Date: 2011-02-04 14:51:06 +0100 (Fri, 04 Feb 2011) $'
-__revision__ = '$Rev: 11783 $'
-__source__ = '$URL::                                                          $'
-
 __all__ = ['accept_csv_only',
            ]
 

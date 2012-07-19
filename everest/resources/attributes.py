@@ -16,12 +16,17 @@ from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_member_class
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ResourceAttributeKinds',
+__all__ = ['CollectionResourceAttribute',
+           'MemberResourceAttribute',
+           'MetaResourceAttributeCollector',
+           'ResourceAttributeControllerMixin',
+           'ResourceAttributeKinds',
+           'TerminalResourceAttribute',
            'get_resource_class_attribute_names',
            'get_resource_class_attributes',
-           'is_atomic_attribute',
            'is_collection_attribute',
            'is_member_attribute',
+           'is_terminal_attribute',
            ]
 
 

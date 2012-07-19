@@ -1,4 +1,6 @@
 """
+Filter CQL criteria expression parser.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -125,4 +127,8 @@ criterion = Group(identifier('name') + colon.suppress() +
                   )
 criteria = Group(delimitedList(criterion, tilde)).setResultsName('criteria')
 
-parse_filter = criteria.parseString
+def parse_filter(criteria_string):
+    """
+    Parses the given filter criteria string.
+    """
+    return  criteria.parseString(criteria_string)

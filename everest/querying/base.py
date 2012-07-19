@@ -1,4 +1,6 @@
 """
+Querying operators, expressions, visitors, builders, directors.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -17,12 +19,13 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BinaryOperator',
            'CqlExpression',
            'CqlExpressionList',
-           'NullaryOperator',
+           'EXPRESSION_KINDS',
            'Operator',
            'Specification',
-           'SpecificationBuilder,'
+           'SpecificationBuilder',
            'SpecificationDirector',
            'SpecificationVisitor',
+           'SpecificationVisitorBase',
            'UnaryOperator',
            ]
 

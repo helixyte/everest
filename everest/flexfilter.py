@@ -1,8 +1,8 @@
 """
+WSGI filter to process result messages for flex clients.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-WSGI filter to process result messages for flex clients.
 
 Background: the flash plugin is not able to properly handle response messages
  for which the status code is <> 200

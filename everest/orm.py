@@ -1,4 +1,6 @@
 """
+ORM related services.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -23,21 +25,23 @@ from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['as_slug_expression',
+__all__ = ['OrderClauseList',
+           'OrmTestCaseMixin',
+           'Session',
+           'as_slug_expression',
+           'clear_mappers',
            'commit_veto',
-           'convert_slug_to_hybrid_property',
-           'convert_to_hybrid_property',
            'empty_metadata',
            'get_engine',
            'get_metadata',
            'is_engine_initialized',
            'is_metadata_initialized',
+           'map_system_entities',
+           'mapper',
            'reset_engines',
            'reset_metadata',
            'set_engine',
            'set_metadata',
-           'teardown_db',
-           'Session',
            ]
 
 

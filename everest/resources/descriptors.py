@@ -1,8 +1,8 @@
 """
+Attribute descriptors for resource classes.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Descriptors for resource classes.
 
 Created on Apr 19, 2011.
 """

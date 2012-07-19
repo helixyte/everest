@@ -1,8 +1,8 @@
 """
+Entity related utilities.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Utilities for entity classes.
 
 Created on Nov 3, 2011.
 """
@@ -15,8 +15,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['get_aggregate_class',
-           'get_entity_class',
+__all__ = ['get_entity_class',
            'get_root_aggregate',
            'get_stage_aggregate',
            'identifier_from_slug',

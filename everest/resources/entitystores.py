@@ -1,8 +1,8 @@
 """
+Entity stores.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Entity stores and helper classes.
 
 Created on Jan 31, 2012.
 """

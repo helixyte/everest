@@ -1,4 +1,6 @@
 """
+Interfaces for specifications and related classes. 
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -111,13 +113,13 @@ class ISpecificationDirector(Interface):
     def has_errors():
         """
         Checks if the director encountered errors during the last call to 
-        :method:`construct`.
+        :meth:`construct`.
         """
 
     def get_errors():
         """
         Returns the errors that were encountered during the last call to
-        :method:`construct`
+        :meth:`construct`
         """
 
 

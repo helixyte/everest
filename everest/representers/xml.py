@@ -1,8 +1,8 @@
 """
+XML representers.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-XML representers.
 
 Created on May 19, 2011.
 """
@@ -34,9 +34,12 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 import datetime
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['XmlDataElement',
-           'XmlDataElementRegistry',
+__all__ = ['XmlCollectionDataElement',
+           'XmlConverterRegistry',
            'XmlLinkedDataElement',
+           'XmlMappingRegistry',
+           'XmlMemberDataElement',
+           'XmlParserFactory',
            'XmlRepresentationGenerator',
            'XmlRepresentationParser',
            'XmlRepresenterConfiguration',

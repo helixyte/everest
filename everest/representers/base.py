@@ -1,8 +1,8 @@
 """
+Representer base classes.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Representers for resources and entities.
 
 Created on May 18, 2011.
 """
@@ -58,6 +58,7 @@ class ResourceRepresenter(Representer):
 
     This conversion is performed using four customizable, independent helper
     objects:
+    
      1. The *representation parser* responsible for converting the
         representation into a data element tree;
      2. The *data element parser* responsible for converting a data element

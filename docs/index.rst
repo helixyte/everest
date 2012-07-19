@@ -1,29 +1,47 @@
-.. eveRest documentation master file, created by
-   sphinx-quickstart on Sun Jun 26 18:55:29 2011.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+==========================
+everest User Documentation
+==========================
 
-==============================================================
-The eveRest framework for creating REST applications in Python
-==============================================================
+:mod:`everest` is an extension of the popular :mod:`Pyramid` framework aimed at
+simplifying the development of REST applications.
 
-Contents:
+Installation
+============
+
+Installing :mod:`everest` is simple:
+
+.. code-block:: console
+
+   > pip install everest
+
+
+Documentation
+=============
+
+:doc:`tutorial/index`
+  Start here for a tutorial on building :mod:`everest` applications.
+
+:doc:`api`
+  The full API Documentation
+
+
+Development
+===========
+
+:mod:`everest` is hosted on `github <https://github.com/cenix/everest>`_. To
+contribute, please fork the project and submit a pull request.
+
 
 .. toctree::
-   :maxdepth: 2
+   :hidden:
 
-Narrative documentation
-=======================
-
-narr/introduction
-narr/install
-narr/simpleapp
+   tutorial/index 
+   api
 
 
-Indices and tables
-==================
+Indices
+=======
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

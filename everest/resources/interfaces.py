@@ -1,8 +1,8 @@
 """
+Interfaces for resources.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Resource related interfaces.
 
 Created on Nov 3, 2011.
 """

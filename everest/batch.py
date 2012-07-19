@@ -1,4 +1,6 @@
 """
+Batch.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -35,7 +37,7 @@ class Batch(object):
         Returns the next batch for the batched sequence or `None`, if
         this batch is already the last batch.
 
-        :rtype: :class:`Batch` instance or `None.
+        :rtype: :class:`Batch` instance or `None`.
         """
         if self.start + self.size > self.total_size:
             result = None
@@ -49,7 +51,7 @@ class Batch(object):
         Returns the previous batch for the batched sequence or `None`, if
         this batch is already the first batch.
 
-        :rtype: :class:`Batch` instance or `None.
+        :rtype: :class:`Batch` instance or `None`.
         """
         if self.start - self.size < 0:
             result = None

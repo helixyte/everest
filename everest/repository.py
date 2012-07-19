@@ -1,8 +1,8 @@
 """
+Repository base class.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-The repository base class.
 
 Created on Jan 17, 2012.
 """

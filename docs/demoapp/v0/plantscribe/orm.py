@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 27, 2012.
 """
-
 from everest.orm import as_slug_expression
 from everest.orm import mapper
 from plantscribe.entities.customer import Customer
@@ -82,8 +81,8 @@ def create_metadata(engine):
               Column('species_id', Integer, primary_key=True),
               Column('species_name', String, nullable=False),
               Column('genus_name', String, nullable=False),
-              Column('cultivar', String),
-              Column('author', String),
+              Column('cultivar', String, nullable=False, default=''),
+              Column('author', String, nullable=False),
               )
     incidence_tbl = \
         Table('incidence', metadata,

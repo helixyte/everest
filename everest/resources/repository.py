@@ -1,8 +1,8 @@
 """
+Resource repository.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-The resource repository class.
 
 Created on Jan 13, 2012.
 """

@@ -1,8 +1,8 @@
 """
+Data elements.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Data element classes.
 
 Created on Apr 25, 2012
 """
@@ -208,8 +208,8 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
         Sets the (raw) value of the specified attribute.
 
         :param str attr_name: name of the attribute to set.
-        @param data_element: a :class:DataElement or :class:LinkedDataElement
-          object containing nested resource data.
+        :param data_element: a :class:`DataElement` or 
+          :class:`LinkedDataElement` object containing nested resource data.
         """
         self.data[attr_name] = data_element
 
@@ -336,11 +336,11 @@ class DataElementAttributeProxy(object):
     
     Example: ::
     
-    prx = DataElementAttributeProxy(data_element)
-    de_id = prx.id                              # terminal access
-    de_parent = prx.parent                      # member access
-    de_child = prx.children[0]                  # collection access
-    de_grandchild = prx.children[0].children[0] # nested collection access
+       prx = DataElementAttributeProxy(data_element)
+       de_id = prx.id                              # terminal access
+       de_parent = prx.parent                      # member access
+       de_child = prx.children[0]                  # collection access
+       de_grandchild = prx.children[0].children[0] # nested collection access
     """
     def __init__(self, data_element):
         if ILinkedDataElement in provided_by(data_element):

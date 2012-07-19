@@ -1,8 +1,8 @@
 """
+Interfaces for entity and aggregate classes.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Marker interfaces for entities and aggregates.
 
 Created on Nov 3, 2011.
 """

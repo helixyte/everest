@@ -1,8 +1,8 @@
 """
+Entity repository.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-The entity repository class.
 
 Created on Jan 11, 2012.
 """

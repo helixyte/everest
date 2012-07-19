@@ -1,8 +1,8 @@
 """
+Configurator for everest.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Configurators for the various subsystems of :mod:`everest`.
 
 Created on Jun 22, 2011.
 """

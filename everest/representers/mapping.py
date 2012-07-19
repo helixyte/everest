@@ -1,4 +1,6 @@
 """
+Mapping and mapping registry.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -257,7 +259,7 @@ class MappingRegistry(object):
 
     def find_or_create_mapping(self, mapped_class):
         """
-        First calls :method:`find_mapping` to check if a mapping for the given
+        First calls :meth:`find_mapping` to check if a mapping for the given
         mapped class or any of its base classes has been created. If not, a 
         new one is created with a default configuration, registered 
         automatically and returned.

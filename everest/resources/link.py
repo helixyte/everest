@@ -1,8 +1,8 @@
 """
+Resource link.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Resource link classes.
 
 Created on Jun 29, 2011.
 """

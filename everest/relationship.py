@@ -1,8 +1,8 @@
 """
+Parent/child relationship between entities or resources.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Resource relation classes.
 
 Created on Sep 30, 2011.
 """

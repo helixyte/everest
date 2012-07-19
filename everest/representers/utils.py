@@ -1,8 +1,8 @@
 """
+Representer related utilities.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Representer utilities.
 
 Created on May 18, 2011.
 """
@@ -11,7 +11,7 @@ from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_representer',
-           'get_data_element_registry',
+           'get_mapping_registry',
            ]
 
 

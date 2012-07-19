@@ -1,11 +1,13 @@
 """
+Custom exceptions.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 13, 2010.
 """
 __docformat__ = 'reStructuredText en'
-__all__ = ['DuplicateError',
+__all__ = ['DuplicateException',
            'UnsupportedOperationException',
            ]
 

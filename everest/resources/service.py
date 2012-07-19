@@ -1,8 +1,8 @@
 """
+Service.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Service class.
 
 Created on Jul 27, 2011.
 """

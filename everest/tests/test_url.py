@@ -26,7 +26,7 @@ class UrlTestCase(ResourceTestCase):
     def set_up(self):
         ResourceTestCase.set_up(self)
         self.coll = create_collection()
-        self.app_url = 'http://localhost:6543'
+        self.app_url = 'http://0.0.0.0:6543'
         self.base_url = '%s/my-entities/' % self.app_url
 
     def test_resource_to_url_non_resource_object(self):
@@ -83,13 +83,13 @@ class UrlTestCase(ResourceTestCase):
 
     def test_url_to_resource_nonexisting_collection(self):
         with self.assert_raises(KeyError) as cm:
-            url_to_resource('http://localhost:6543/my-foos/')
+            url_to_resource('http://0.0.0.0:6543/my-foos/')
         exc_msg = 'has no subelement my-foos'
         self.assert_true(cm.exception.message.endswith(exc_msg))
 
     def test_url_to_resource_non_resource_object(self):
         with self.assert_raises(ValueError) as cm:
-            url_to_resource('http://localhost:6543/')
+            url_to_resource('http://0.0.0.0:6543/')
         exc_msg = 'Traversal found non-resource object'
         self.assert_true(cm.exception.message.startswith(exc_msg))
 

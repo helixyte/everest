@@ -1,4 +1,6 @@
 """
+Querying utilities.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -24,7 +26,7 @@ def get_filter_specification_factory():
     Returns the object registered as filter specification factory utility.
     
     :returns: object implementing 
-        :class:`everest.querying.interfaces.IFilterSpecificationFactory
+        :class:`everest.querying.interfaces.IFilterSpecificationFactory`
     """
     reg = get_current_registry()
     return reg.getUtility(IFilterSpecificationFactory)
@@ -35,7 +37,7 @@ def get_order_specification_factory():
     Returns the object registered as order specification factory utility.
     
     :returns: object implementing 
-        :class:`everest.querying.interfaces.IOrderSpecificationFactory
+        :class:`everest.querying.interfaces.IOrderSpecificationFactory`
     """
     reg = get_current_registry()
     return reg.getUtility(IOrderSpecificationFactory)

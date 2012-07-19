@@ -1,8 +1,8 @@
 """
+MIME (content) types.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-MIME (content) types.
 
 Created on Aug 17, 2011.
 """

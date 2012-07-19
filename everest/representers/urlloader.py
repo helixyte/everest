@@ -1,4 +1,6 @@
 """
+URL lazy loader.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -56,7 +58,7 @@ class LazyAttributeLoaderProxy(object):
         through resource URLs.
         
         This returns an instance of a new dynamically created subtype of 
-        :param:`entity_class` which also inherits from this class to add
+        the given entity class which also inherits from this class to add
         the referenced entity attribute loading functionality. Once all
         referenced entity attributes have been loaded successfully, the
         instance's class is reverted to the given entity class. 

@@ -415,7 +415,7 @@ class DescriptorsTestCase(OrmTestCaseMixin, ResourceTestCase):
         mb_child = mb.children['0']
         self.assert_equal(mb_child.id, 0)
         exp_url = '/my-entity-grandchildren/?q=parent:equal-to:' \
-                  'http://localhost:6543/my-entities/0/children/0/'
+                  'http://0.0.0.0:6543/my-entities/0/children/0/'
         url = resource_to_url(mb_child.children)
         self.assert_true(url.endswith(exp_url))
         exp_url = 'my-entity-grandchildren/?q=id:contained:0'

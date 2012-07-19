@@ -1,4 +1,6 @@
 """
+ZCML directives for everest.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -25,20 +27,18 @@ from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ICollectionViewDirective',
-           'IFileSystemRepositoryDirective',
-           'IMemberViewDirective',
-           'IMemoryRepositoryDirective',
-           'IOrmRepositoryDirective',
-           'IRepresenterDirective',
-           'IResourceDirective',
+__all__ = ['RESOURCE_KINDS',
+           'RepresenterDirective',
+           'ResourceDirective',
+           'ResourceRepresenterAttributeDirective',
+           'ResourceRepresenterDirective',
            'collection_view',
            'filesystem_repository',
            'member_view',
            'memory_repository',
+           'messaging',
+           'option',
            'orm_repository',
-           'representer',
-           'resource',
            ]
 
 
@@ -234,7 +234,7 @@ class IResourceDirective(Interface):
 class ResourceDirective(GroupingContextDecorator):
     """
     Directive for registering a resource. Calls
-    :method:`everest.configuration.Configurator.add_resource`.
+    :meth:`everest.configuration.Configurator.add_resource`.
     """
     implements(IConfigurationContext, IResourceDirective)
 

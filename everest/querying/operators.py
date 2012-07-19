@@ -1,4 +1,5 @@
 """
+Custom querying operators.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -15,6 +16,7 @@ __all__ = ['ASCENDING',
            'CONTAINS',
            'CQL_FILTER_OPERATORS',
            'CQL_ORDER_OPERATORS',
+           'DESCENDING',
            'DISJUNCTION',
            'ENDS_WITH',
            'EQUAL_TO',
@@ -24,12 +26,6 @@ __all__ = ['ASCENDING',
            'LESS_OR_EQUALS',
            'LESS_THAN',
            'NEGATION',
-           'NOT_CONTAINED',
-           'NOT_CONTAINS',
-           'NOT_ENDS_WITH',
-           'NOT_EQUAL_TO',
-           'NOT_IN_RANGE',
-           'NOT_STARTS_WITH',
            'STARTS_WITH',
            ]
 

@@ -1,4 +1,6 @@
 """
+Testing base classes and services.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -182,7 +184,7 @@ class ResourceTestCase(ConfiguredTestCase):
         if self.ini.has_setting(section, 'host'):
             host = self.ini.get_setting(section, 'host')
         else:
-            host = 'localhost'
+            host = '0.0.0.0'
         if self.ini.has_setting(section, 'port'):
             port = int(self.ini.get_setting(section, 'port'))
         else:

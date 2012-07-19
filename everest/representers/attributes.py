@@ -1,8 +1,8 @@
 """
+Mapped resource attributes.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Resource attribute handling classes.
 
 Created on June 8, 2011.
 """
@@ -12,10 +12,7 @@ from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CollectionAttributeMapper',
-           'LinkAttributeMapper',
-           'MappedAttribute',
-           'MemberAttributeMapper',
+__all__ = ['MappedAttribute',
            ]
 
 
@@ -28,8 +25,7 @@ class MappedAttribute(object):
     """
     def __init__(self, attr, options=None):
         """
-        :param attr: The attribute name.
-        :type attr: :class:`
+        :param attr: Resource attribute.
         """
         # Check given options.
         if options is None:

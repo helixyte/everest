@@ -1,7 +1,10 @@
 """
 Interfaces for representers.
 
-FOG May 18, 2011
+This file is part of the everest project.
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
+
+Created on May 18, 2011
 """
 from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401

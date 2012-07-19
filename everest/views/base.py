@@ -1,4 +1,6 @@
 """
+View base classes.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -21,9 +23,11 @@ import logging
 import re
 
 __docformat__ = "reStructuredText en"
-__all__ = ['ResourceView',
-           'CollectionView',
-           'MemberView',
+__all__ = ['GetResourceView',
+           'HttpWarningResubmit',
+           'PutOrPostResourceView',
+           'ResourceView',
+           'ViewUserMessageChecker',
            ]
 
 
@@ -150,10 +154,10 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
         
         Implementations of this method need to check for a conflict caused
         by the request data (e.g., if the slug for a new member in a POST
-        request is already used) and call the :method:`_handle_conflict`
+        request is already used) and call the :meth:`_handle_conflict`
         method in case a conflict was detected.
         
-        :param data: data returned by the :method:`_extract_request_data` 
+        :param data: data returned by the :meth:`_extract_request_data` 
           method.
         :returns: response object or dictionary
         """

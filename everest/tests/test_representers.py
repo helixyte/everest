@@ -146,7 +146,7 @@ class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
         self.assert_false(isinstance(my_entity, LazyAttributeLoaderProxy))
 
     def test_lazy_loading(self):
-        loader = LazyUrlLoader('http://localhost/my-entity-parents/0',
+        loader = LazyUrlLoader('http://0.0.0.0/my-entity-parents/0',
                                url_to_resource)
         my_entity = LazyAttributeLoaderProxy.create(
                                     MyEntity,

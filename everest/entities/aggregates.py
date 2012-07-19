@@ -1,8 +1,8 @@
 """
+Aggregate implementations.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Aggregate implementations.
 
 Created on Sep 25, 2011.
 """
@@ -26,7 +26,7 @@ class MemoryAggregate(Aggregate):
 
     :note: When "blank" entities without an ID and a slug are added to a
         memory aggregate, they can not be retrieved using the
-        :method:`get_by_id` or :method:`get_by_slug` methods since there 
+        :meth:`get_by_id` or :meth:`get_by_slug` methods since there 
         is no mechanism to autogenerate IDs or slugs.
     """
 

@@ -4,15 +4,19 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 9, 2012.
 """
-
 from StringIO import StringIO
+from everest.mime import CsvMime
+from everest.repository import REPOSITORIES
 from everest.resources.io import dump_resource
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
 from everest.utils import get_repository_manager
 from pkg_resources import resource_filename # pylint: disable=E0611
 from plantscribe.interfaces import ICustomer
+from plantscribe.interfaces import IIncidence
 from plantscribe.interfaces import IProject
+from plantscribe.interfaces import ISite
 from plantscribe.interfaces import ISpecies
 from plantscribe.resources.customer import CustomerMember
 from plantscribe.resources.incidence import IncidenceMember
@@ -20,11 +24,6 @@ from plantscribe.resources.project import ProjectMember
 from plantscribe.resources.site import SiteMember
 from plantscribe.resources.species import SpeciesMember
 import os
-from everest.repository import REPOSITORIES
-from everest.mime import CsvMime
-from everest.resources.utils import get_collection_class
-from plantscribe.interfaces import IIncidence
-from plantscribe.interfaces import ISite
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PlantScribeResourcesFsTestCase',

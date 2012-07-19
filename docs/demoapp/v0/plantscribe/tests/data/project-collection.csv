@@ -1,3 +1,3 @@
 "customer","name"
-"http://localhost:6543/customers/smith-peter","Pond"
-"http://localhost:6543/customers/smith-peter","Main Garden"
+"http://0.0.0.0:6543/customers/smith-peter","Pond"
+"http://0.0.0.0:6543/customers/smith-peter","Main Garden"

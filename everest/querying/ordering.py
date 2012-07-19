@@ -1,11 +1,12 @@
 """
+Order specification builder, visitor, director classes.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-Object-oriented implementation of design patterns for sorting presented at 
-http://cnx.org/content/m17309/latest/
-
 See also:
+
+http://cnx.org/content/m17309/latest/
 
 D. Nguyen and S. Wong, "Design Patterns for Sorting," SIGCSE Bulletin 33:1,
     March 2001, 263-267.

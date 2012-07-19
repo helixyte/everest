@@ -1,19 +1,19 @@
 """
+Input/Output operations on resources.
+
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Input/Output operations on resources.
 
 Created on Jan 27, 2012.
 """
 from StringIO import StringIO
+from collections import OrderedDict
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
 from everest.representers.utils import as_representer
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
-from collections import OrderedDict
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from urlparse import urlparse
@@ -22,15 +22,22 @@ from zipfile import ZipFile
 import os
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['build_resource_dependency_graph',
+__all__ = ['ConnectedResourcesSerializer',
+           'ResourceGraph',
+           'build_resource_dependency_graph',
            'build_resource_graph',
            'dump_resource',
-           'dump_resource_graph',
            'dump_resource_to_files',
            'dump_resource_to_zipfile',
            'find_connected_resources',
+           'get_collection_filename',
+           'get_collection_name',
+           'get_read_collection_path',
+           'get_write_collection_path',
            'load_collection_from_file',
+           'load_collection_from_stream',
            'load_collection_from_url',
+           'load_collections_from_zipfile',
            ]
 
 
@@ -349,7 +356,7 @@ def dump_resource_to_files(resource, content_type=None, directory=None):
     details.
     
     If no directory is given, the current working directory is used. 
-    The :param:`content_type` defaults to CSV.
+    The given context type defaults to CSV.
     """
     if directory is None:
         directory = os.getcwd() # pragma: no cover
@@ -365,7 +372,7 @@ def dump_resource_to_zipfile(resource, zipfile, content_type=None):
     :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_zipfile` for 
     details.
     
-    The :param:`content_type` defaults to CSV.
+    The given context type defaults to CSV.
     """
     if content_type is None:
         content_type = CsvMime
