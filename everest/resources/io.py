@@ -191,7 +191,7 @@ def build_resource_graph(resource, dependency_graph=None):
     corresponding resource classes; otherwise, a default graph is built
     which ignores all direct cyclic resource references. 
 
-    :resource: a :class:`thelma.resources.MemberResource` instance.
+    :resource: a :class:`everest.resources.MemberResource` instance.
     :returns: a :class:`ResourceGraph` instance representing the graph of 
         resources reachable from the given resource.
     """
@@ -352,7 +352,7 @@ class ConnectedResourcesSerializer(object):
 def dump_resource_to_files(resource, content_type=None, directory=None):
     """
     Convenience function. See 
-    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_files` for 
+    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_files` for 
     details.
     
     If no directory is given, the current working directory is used. 
@@ -369,7 +369,7 @@ def dump_resource_to_files(resource, content_type=None, directory=None):
 def dump_resource_to_zipfile(resource, zipfile, content_type=None):
     """
     Convenience function. See 
-    :meth:`thelma.resources.io.ConnectedResourcesSerializer.to_zipfile` for 
+    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_zipfile` for 
     details.
     
     The given context type defaults to CSV.

@@ -2,8 +2,7 @@
 everest User Documentation
 ==========================
 
-:mod:`everest` is an extension of the popular :mod:`Pyramid` framework aimed at
-simplifying the development of REST applications.
+.. include:: ../README.txt
 
 Installation
 ============
@@ -22,7 +21,7 @@ Documentation
   Start here for a tutorial on building :mod:`everest` applications.
 
 :doc:`api`
-  The full API Documentation
+  The full API Documentation.
 
 
 Development

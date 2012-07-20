@@ -101,7 +101,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -235,20 +235,8 @@ autodoc_default_flags = ['members',
 autosummary_generate = True
 
 
-def skip_member(app, what, name, obj, skip, options): # pylint: disable=W0613
-    if skip:
-        return skip
-    if not hasattr(obj, '__module__') or obj.__module__ is None:
-        return skip
-    mod = __import__(obj.__module__,
-                     fromlist=[obj.__module__.split('.')[-1]])
-    if not hasattr(mod, '__all__'):
-        return skip
-    return not name in mod.__all__
-
-
 def setup(app):
     from sphinx.ext.autodoc import cut_lines
+    # This cuts off the standard disclaimer from all module doc strings.
     app.connect('autodoc-process-docstring',
                 cut_lines(0, post=4, what=['module']))
-#    app.connect('autodoc-skip-member', skip_member)

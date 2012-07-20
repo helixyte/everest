@@ -194,7 +194,7 @@ class Aggregate(object):
         Sets a relationship for this aggregate.
         
         :param relationship: 
-            instance of :class:`thelma.relationsip.Relationship`.
+            instance of :class:`everest.relationship.Relationship`.
         """
         self._relationship = relationship
 
