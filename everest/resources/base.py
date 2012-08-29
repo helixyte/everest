@@ -512,12 +512,15 @@ class Collection(Resource):
         return self._order_spec
 
     def _set_order(self, order_spec):
-        # Translate to entity order expression before passing on to the
-        # aggregate.
-        visitor = ResourceToEntityOrderSpecificationVisitor(
-                                                    get_member_class(self))
-        order_spec.accept(visitor)
-        self.__aggregate.order = visitor.expression
+        if not order_spec is None:
+            # Translate to entity order expression before passing on to the
+            # aggregate.
+            visitor = ResourceToEntityOrderSpecificationVisitor(
+                                                        get_member_class(self))
+            order_spec.accept(visitor)
+            self.__aggregate.order = visitor.expression
+        else:
+            self.__aggregate.order = None
         self._order_spec = order_spec
 
     order = property(_get_order, _set_order)

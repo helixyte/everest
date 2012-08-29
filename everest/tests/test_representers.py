@@ -205,7 +205,8 @@ class CsvRepresentationTestCase(ResourceTestCase):
     def test_csv_with_defaults(self):
         coll = create_collection()
         rpr = as_representer(coll, CsvMime)
-        rpr_str = rpr.to_string(coll)
+        data = rpr.data_from_resource(coll)
+        rpr_str = rpr.representation_from_data(data)
         self.assert_true(len(rpr_str) > 0)
         lines = rpr_str.split(os.linesep)
         self.assert_true(len(lines), 3)
@@ -219,6 +220,14 @@ class CsvRepresentationTestCase(ResourceTestCase):
         self.assert_not_equal(row_data[1].find('my-entity-parents/0/'), -1)
         # By default, collections are not processed.
         self.assert_equal(row_data[-1], '"TEXT"')
+        # Reload with URLs resolved.
+        reloaded_coll = rpr.resource_from_data(data)
+        self.assert_equal(iter(reloaded_coll).next().parent.id,
+                          iter(coll).next().parent.id)
+        # Reload with URL proxies.
+        reloaded_coll_prx = rpr.resource_from_data(data, resolve_urls=False)
+        self.assert_equal(iter(reloaded_coll_prx).next().parent.id,
+                          iter(coll).next().parent.id)
 
     def test_csv_with_collection_link(self):
         coll = create_collection()

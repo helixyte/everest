@@ -14,5 +14,5 @@
     <!-- Resource declarations. -->
     
     <include file="../resources.zcml" />
-
+    
 </configure>

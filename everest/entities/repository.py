@@ -17,11 +17,6 @@ __all__ = ['EntityRepository',
 class EntityRepository(Repository):
     """
     The entity repository manages entity accessors (aggregates).
-    
-    In addition to creating and caching aggregates, the entity repository
-    also provides facilities to interact with the aggregate implementation
-    registry. This makes it possible to switch the implementation used for 
-    freshly created aggregates at runtime.
     """
     def __init__(self, entity_store, aggregate_class):
         Repository.__init__(self)

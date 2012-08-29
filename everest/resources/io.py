@@ -37,11 +37,12 @@ __all__ = ['ConnectedResourcesSerializer',
            'load_collection_from_file',
            'load_collection_from_stream',
            'load_collection_from_url',
-           'load_collections_from_zipfile',
+           'load_into_collection_from_url',
+           'load_into_collections_from_zipfile',
            ]
 
 
-def load_collection_from_url(collection, url,
+def load_collection_from_url(collection_class, url,
                              content_type=None, resolve_urls=True):
     """
     Loads a collection resource of the given registered resource type from a 
@@ -52,14 +53,28 @@ def load_collection_from_url(collection, url,
     parsed = urlparse(url)
     if parsed.scheme == 'file': # pylint: disable=E1101
         # Assume a local path.
-        load_collection_from_file(collection, parsed.path, # pylint: disable=E1101
-                                  content_type=content_type,
-                                  resolve_urls=resolve_urls)
+        coll = load_collection_from_file(collection_class,
+                                         parsed.path, # pylint: disable=E1101
+                                         content_type=content_type,
+                                         resolve_urls=resolve_urls)
     else:
         raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
+    return coll
 
 
-def load_collection_from_file(collection, filename,
+def load_into_collection_from_url(collection, url, content_type=None,
+                                  resolve_urls=True):
+    """
+    Convenience function that adds all members loaded from the given
+    collection URL to the given collection.
+    """
+    for mb in load_collection_from_url(type(collection), url,
+                                       content_type=content_type,
+                                       resolve_urls=resolve_urls):
+        collection.add(mb)
+
+
+def load_collection_from_file(collection_class, filename,
                               content_type=None, resolve_urls=True):
     """
     Loads resources from the specified file into the given collection
@@ -75,33 +90,34 @@ def load_collection_from_file(collection, filename,
         except KeyError:
             raise ValueError('Could not infer MIME type for file extension '
                              '"%s".' % ext)
-    load_collection_from_stream(collection, open(filename, 'rU'),
-                                content_type, resolve_urls=resolve_urls)
+    return load_collection_from_stream(collection_class, open(filename, 'rU'),
+                                       content_type,
+                                       resolve_urls=resolve_urls)
 
 
-def load_collection_from_stream(collection, stream, content_type,
+def load_collection_from_stream(collection_class, stream, content_type,
                                 resolve_urls=True):
     """
     Loads resources from the given stream into the given collection resource.
     """
-    rpr = as_representer(collection, content_type)
+    coll = object.__new__(collection_class)
+    rpr = as_representer(coll, content_type)
     with stream:
         data_el = rpr.data_from_stream(stream)
-    mem_coll = rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
-    for mb in mem_coll:
-        collection.add(mb)
+    return rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
 
 
-def load_collections_from_zipfile(collections, zipfile, resolve_urls=True):
+def load_into_collections_from_zipfile(collections, zipfile,
+                                       resolve_urls=True):
     """
-    Loads resources contained in the given ZIP archive into each of the
-    given collections. 
+    Loads resources contained in the given ZIP archive for each of the
+    given collection classes. 
     
     The ZIP file is expected to contain a list of file names obtained with
     the :func:`get_collection_filename` function, each pointing to a file
     of zipped collection resource data.
     
-    :param collections: sequence of collection resources
+    :param collection_classes: sequence of collection resource classes
     :param str zipfile: ZIP file name
     :param bool resolve_urls: Flag indicating if URLs should be resolved 
       during loading.
@@ -110,21 +126,25 @@ def load_collections_from_zipfile(collections, zipfile, resolve_urls=True):
         names = zipf.namelist()
         name_map = dict([(os.path.splitext(name)[0], index)
                          for (index, name) in enumerate(names)])
-        for collection in collections:
-            coll_name = get_collection_name(collection)
+        for coll in collections:
+            coll_name = get_collection_name(coll)
             index = name_map.get(coll_name)
             if index is None:
                 continue
             coll_fn = names[index]
             ext = os.path.splitext(coll_fn)[1]
             try:
-                content_type = MimeTypeRegistry.get_type_for_extension(ext)
+                content_type = \
+                    MimeTypeRegistry.get_type_for_extension(ext)
             except KeyError:
                 raise ValueError('Could not infer MIME type for file '
                                  'extension "%s".' % ext)
-            load_collection_from_stream(collection, zipf.open(coll_fn, 'r'),
-                                        content_type,
-                                        resolve_urls=resolve_urls)
+            for mb in load_collection_from_stream(type(coll),
+                                                  zipf.open(coll_fn, 'r'),
+                                                  content_type,
+                                                  resolve_urls=resolve_urls):
+                coll.add(mb)
+    return collections
 
 
 def dump_resource(resource, stream, content_type=None):

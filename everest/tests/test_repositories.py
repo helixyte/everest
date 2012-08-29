@@ -8,6 +8,8 @@ from everest.entities.aggregates import MemoryAggregate
 from everest.entities.repository import EntityRepository
 from everest.repository import REPOSITORIES
 from everest.resources.entitystores import CachingEntityStore
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_root_collection
 from everest.testing import EntityTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.testapp.interfaces import IBar
@@ -15,6 +17,7 @@ from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.utils import get_repository_manager
+from pkg_resources import resource_filename # pylint: disable=E0611
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityRepositoryTestCase',
@@ -24,11 +27,14 @@ __all__ = ['EntityRepositoryTestCase',
 
 class _RepositoryBaseTestCaseMixin(object):
     def _test_repo(self, repo, ifc1, ifc2):
+        # Access configuration
+        repo.configure(messaging_enable=False)
+        self.assert_false(repo.configuration['messaging_enable'])
+        #  Create a clone and check if slice is the same, but ID is different.
         acc1 = repo.new(ifc1)
         acc1.slice = slice(0, 1)
         repo.set(ifc1, acc1)
         acc1_clone = repo.get(ifc1)
-        # Clone has same slice, but different ID.
         self.assert_equal(acc1.slice, acc1_clone.slice)
         self.assert_not_equal(id(acc1), id(acc1_clone))
         acc2 = repo.new(ifc2)
@@ -74,3 +80,21 @@ class ResourceRepositoryTestCase(ResourceTestCase,
             repo_mgr.new('foo', 'bar')
         exc_msg = 'Unknown repository type.'
         self.assert_equal(cm.exception.message, exc_msg)
+
+    def test_load_representation(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get(REPOSITORIES.MEMORY)
+        data_path = resource_filename(
+                            'everest.tests.testapp_db',
+                            'data/original/myentity-parent-collection.csv')
+        coll = get_root_collection(IMyEntityParent)
+        self.assert_equal(len(coll), 0)
+        repo.load_representation(IMyEntityParent, 'file://%s' % data_path)
+        self.assert_equal(len(coll), 1)
+
+    def test_managed_collections(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get(REPOSITORIES.MEMORY)
+        self.assert_true(get_collection_class(IMyEntityParent) in
+                         repo.managed_collections)
+

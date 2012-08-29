@@ -19,6 +19,7 @@ class RootFactory(object):
 
     def __call__(self, request):
         if self.__root is None:
+            # Start the service.
             self.__root = get_service()
             self.__root.start()
         return self.__root

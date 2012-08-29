@@ -6,9 +6,13 @@
 
     <include
         package="everest.includes" />
-
+        
     <!-- Messaging. -->
 
     <messaging 
         repository="MEMORY"/>
+
+    <include
+        file="configure_views.zcml" />
+
 </configure>

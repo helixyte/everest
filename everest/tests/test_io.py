@@ -19,11 +19,10 @@ from everest.resources.io import get_collection_filename
 from everest.resources.io import get_collection_name
 from everest.resources.io import load_collection_from_file
 from everest.resources.io import load_collection_from_url
-from everest.resources.io import load_collections_from_zipfile
+from everest.resources.io import load_into_collections_from_zipfile
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import get_stage_collection
 from everest.resources.utils import new_stage_collection
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
@@ -41,6 +40,7 @@ import os
 import shutil
 import tempfile
 import zipfile
+from everest.resources.io import load_into_collection_from_url
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConnectedResourcesTestCase',
@@ -168,7 +168,8 @@ class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
                  get_root_collection(IMyEntityChild),
                  get_root_collection(IMyEntityGrandchild),
                  ]
-        load_collections_from_zipfile(colls, strm, resolve_urls=True)
+        colls = load_into_collections_from_zipfile(colls, strm,
+                                                   resolve_urls=True)
         self.assert_equal(len(colls[0]), 1)
         self.assert_equal(len(colls[1]), 1)
         self.assert_equal(len(colls[2]), 1)
@@ -186,7 +187,7 @@ class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
         zipf.close()
         colls = [get_root_collection(IMyEntity)]
         with self.assert_raises(ValueError) as cm:
-            load_collections_from_zipfile(colls, strm)
+            dummy = load_into_collections_from_zipfile(colls, strm)
         exc_msg = 'Could not infer MIME type'
         self.assert_true(cm.exception.message.startswith(exc_msg))
 
@@ -195,8 +196,8 @@ class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
         zipf = zipfile.ZipFile(strm, 'w')
         zipf.writestr('foo.foo', '')
         zipf.close()
-        colls = [get_stage_collection(IMyEntity)]
-        load_collections_from_zipfile(colls, strm)
+        colls = [get_root_collection(IMyEntity)]
+        colls = load_into_collections_from_zipfile(colls, strm)
         self.assert_equal(len(colls[0]), 0)
 
 
@@ -219,7 +220,7 @@ class StreamResourceIoTestCase(_ResourceIoTestCaseBase):
 
 class FileResourceIoTestCase(_ResourceIoTestCaseBase):
     config_file_name = 'configure_no_orm.zcml'
-    def _test_load(self, load_func, fn_func):
+    def _test_load(self, load_func, fn_func, is_into):
         member = _make_test_entity_member()
         tmp_dir = tempfile.mkdtemp()
         try:
@@ -230,28 +231,42 @@ class FileResourceIoTestCase(_ResourceIoTestCaseBase):
                         IMyEntity,
                         IMyEntityChild,
                         IMyEntityGrandchild]:
-                coll = get_root_collection(ifc)
-                file_name = get_collection_filename(type(coll))
-                load_func(coll, fn_func(os.path.join(tmp_dir, file_name)))
-                self.assert_equal(len(coll), 1)
+                coll_cls = get_collection_class(ifc)
+                root_coll = get_root_collection(ifc)
+                file_name = get_collection_filename(coll_cls)
+                file_path = fn_func(os.path.join(tmp_dir, file_name))
+                if not is_into:
+                    coll = load_func(coll_cls, file_path)
+                    self.assert_equal(len(coll), 1)
+                    for mb in coll:
+                        root_coll.add(mb)
+                else:
+                    load_func(root_coll, file_path)
+                    self.assert_equal(len(root_coll), 1)
         finally:
             shutil.rmtree(tmp_dir)
 
     def test_load_from_invalid_file(self):
-        coll = get_root_collection(IMyEntity)
+        coll_cls = get_collection_class(IMyEntity)
         with self.assert_raises(ValueError) as cm:
-            load_collection_from_file(coll, 'my-entity-collection.foo')
+            dummy = \
+              load_collection_from_file(coll_cls, 'my-entity-collection.foo')
         exc_msg = 'Could not infer MIME type'
         self.assert_true(cm.exception.message.startswith(exc_msg))
 
     def test_load_from_file(self):
-        self._test_load(load_collection_from_file, lambda fn: fn)
+        self._test_load(load_collection_from_file, lambda fn: fn, False)
 
     def test_load_from_file_url(self):
-        self._test_load(load_collection_from_url, lambda fn: "file://%s" % fn)
+        self._test_load(load_collection_from_url,
+                        lambda fn: "file://%s" % fn, False)
+
+    def tetst_load_from_file_url_into(self):
+        self._test_load(load_into_collection_from_url,
+                        lambda fn: "file://%s" % fn, True)
 
     def test_load_from_invalid_file_url(self):
         self.assert_raises(ValueError,
                            self._test_load,
                            load_collection_from_url,
-                           lambda fn: "http://%s" % fn)
+                           lambda fn: "http://%s" % fn, False)

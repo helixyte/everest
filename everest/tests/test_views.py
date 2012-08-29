@@ -114,6 +114,12 @@ class BasicViewTestCase(FunctionalTestCase):
                            status=200)
         self.assert_is_not_none(res)
 
+    def xtest_get_collection_with_order_and_size(self):
+        create_collection()
+        res = self.app.get(self.path, params=dict(sort='id:asc', size=1),
+                           status=200)
+        self.assert_is_not_none(res)
+
     def test_get_member_default_content_type(self):
         coll = get_root_collection(IMyEntity)
         ent = MyEntity(id=0)
@@ -278,12 +284,11 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
                                       'testapp_views.ini')
     app_name = 'testapp'
     path = '/foos'
-    messaging_config_file = None
+    config_file_name = None
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
-        self.config.load_zcml(self.messaging_config_file)
+        self.config.load_zcml(self.config_file_name)
         self.config.add_view(context=FooCollection,
                              view=UserMessagePostCollectionView,
                              renderer='csv',
@@ -361,21 +366,19 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
 
 
 class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
-    messaging_config_file = \
-                    'everest.tests.testapp:configure_messaging_memory.zcml'
+    config_file_name = 'everest.tests.testapp:configure_messaging_memory.zcml'
 
 
 class WarningViewOrmTestCase(_WarningViewBaseTestCase):
-    messaging_config_file = \
-                    'everest.tests.testapp:configure_messaging_orm.zcml'
+    config_file_name = 'everest.tests.testapp:configure_messaging_orm.zcml'
 
     def set_up(self):
         _WarningViewBaseTestCase.set_up(self)
         repo_mgr = get_repository_manager()
         repo_mgr.initialize_all()
 
-    def tear_down(self):
-        _WarningViewBaseTestCase.tear_down(self)
+    @classmethod
+    def tear_down_class(cls):
         reset_metadata()
 
 

@@ -33,27 +33,33 @@ class GetCollectionView(GetResourceView):
             result = self._handle_unknown_exception(err.message,
                                                     get_traceback())
         else:
+            needs_default_order = self.context.order is None
+            if needs_default_order:
+                # Make sure we have defined an ordering on the collection 
+                # to guarantee an order on the result set. This should not 
+                # be reflected in the links' URLs.
+                self.context.order = deepcopy(self.context.default_order)
             # Build batch links.
             batch = self._create_batch()
             self_link = Link(self.context, 'self', self.context.title)
             self.context.add_link(self_link)
             if batch.index > 0:
-                first_link = self._create_nav_link(batch.first, 'first')
+                first_link = self._create_nav_link(batch.first, 'first',
+                                                   not needs_default_order)
                 self.context.add_link(first_link)
             if not batch.previous is None:
-                prev_link = self._create_nav_link(batch.previous, 'previous')
+                prev_link = self._create_nav_link(batch.previous, 'previous',
+                                                  not needs_default_order)
                 self.context.add_link(prev_link)
             if not batch.next is None:
-                next_link = self._create_nav_link(batch.next, 'next')
+                next_link = self._create_nav_link(batch.next, 'next',
+                                                  not needs_default_order)
                 self.context.add_link(next_link)
             if not batch.index == batch.number - 1:
-                last_link = self._create_nav_link(batch.last, 'last')
+                last_link = self._create_nav_link(batch.last, 'last',
+                                                  not needs_default_order)
                 self.context.add_link(last_link)
             result = dict(batch=batch)
-        # Make sure we have defined an ordering on the collection to guarantee
-        # an order on the result set. This should not be reflected in the 
-        # links' URLs, so we do it after the links have been set up.
-        self.__ensure_default_order()
         return result
 
     def _create_batch(self):
@@ -62,8 +68,10 @@ class GetCollectionView(GetResourceView):
         total_size = len(self.context)
         return Batch(start, size, total_size)
 
-    def _create_nav_link(self, batch, rel):
+    def _create_nav_link(self, batch, rel, reset_order):
         coll_clone = self.context.clone()
+        if reset_order:
+            coll_clone.order = None
         coll_clone.slice = slice(batch.start,
                                  batch.start + batch.size)
         return Link(coll_clone, rel, self.context.title)
@@ -95,7 +103,3 @@ class GetCollectionView(GetResourceView):
             slice_key = slice(slice_key.start,
                               slice_key.start + self.context.max_limit)
         self.context.slice = slice_key
-
-    def __ensure_default_order(self):
-        if self.context.order is None:
-            self.context.order = deepcopy(self.context.default_order)

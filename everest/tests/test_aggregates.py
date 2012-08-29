@@ -101,6 +101,8 @@ class _AggregateTestCase(EntityTestCase):
         spec2 = spec_fac.create_ascending('children.text')
         agg_children.order = spec2
         self.assert_equal(len(list(agg_children.iterator())), 1)
+        agg_children.order = None
+        self.assert_equal(len(list(agg_children.iterator())), 1)
 
     def _get_repo(self):
         raise NotImplementedError('Abstract method.')

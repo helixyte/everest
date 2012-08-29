@@ -3,7 +3,6 @@
     xmlns="http://www.w3.org/2001/XMLSchema"
     targetNamespace="http://schemata.everest.org/resource"
     elementFormDefault="qualified"
-    xmlns:sh="http://schemata.everest.org/resource"
 >
     <complexType
         name="ResourceType"

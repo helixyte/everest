@@ -302,10 +302,6 @@ class DescriptorsTestCase(OrmTestCaseMixin, ResourceTestCase):
 
     def test_orm_attribute_inspector(self):
         with self.assert_raises(ValueError) as cm:
-            OrmAttributeInspector.inspect(MyEntity, 'children')
-        self.assert_true(cm.exception.message.endswith(
-                                    'references an aggregate attribute.'))
-        with self.assert_raises(ValueError) as cm:
             OrmAttributeInspector.inspect(MyEntity, 'text.something')
         self.assert_true(cm.exception.message.endswith(
                                     'references a terminal attribute.'))

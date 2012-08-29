@@ -117,6 +117,9 @@ class ConfiguredTestCase(BaseTestCase):
     """
     Base class for test cases access a configured test registry.
     """
+    #: The name of a ZCML configuration file to use.
+    config_file_name = 'configure.zcml'
+
     def set_up(self):
         super(ConfiguredTestCase, self).set_up()
         # Create and configure a new testing registry.
@@ -137,18 +140,25 @@ class ConfiguredTestCase(BaseTestCase):
         except AttributeError:
             pass
 
+    def _get_config_file_name(self):
+        if self.ini.has_setting(self.ini_section_name, 'configure_zcml'):
+            cfg_zcml = self.ini.get_setting(self.ini_section_name,
+                                            'configure_zcml')
+        else:
+            cfg_zcml = self.config_file_name
+        return cfg_zcml
+
 
 class EntityTestCase(ConfiguredTestCase):
     """
     Test class for entity classes.
     """
-    config_file_name = 'configure.zcml'
 
     def set_up(self):
         super(EntityTestCase, self).set_up()
         # Load config file.
         self.config.begin()
-        self.config.load_zcml(self.config_file_name)
+        self.config.load_zcml(self._get_config_file_name())
         # Set up repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
@@ -197,12 +207,7 @@ class ResourceTestCase(ConfiguredTestCase):
                                      registry=self.config.registry)
         # Load config file.
         self.config.begin(request=self._request)
-        if self.ini.has_setting(self.ini_section_name, 'configure_zcml'):
-            cfg_zcml = self.ini.get_setting(self.ini_section_name,
-                                            'configure_zcml')
-        else:
-            cfg_zcml = self.config_file_name
-        self.config.load_zcml(cfg_zcml)
+        self.config.load_zcml(self._get_config_file_name())
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
         self._request.root = srvc

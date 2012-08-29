@@ -76,13 +76,14 @@ class OrmAttributeInspector(object):
             entity_attr = getattr(entity_type, ent_attr_token)
             kind, attr_type = OrmAttributeInspector.__classify(entity_attr)
             if idx == count - 1:
+                pass
                 # We are at the last name token - this must be a TERMINAL
                 # or an ENTITY.
-                if kind == EntityAttributeKinds.AGGREGATE:
-                    raise ValueError('Invalid attribute name "%s": the '
-                                     'last element (%s) references an '
-                                     'aggregate attribute.'
-                                     % (attribute_name, ent_attr_token))
+#                if kind == EntityAttributeKinds.AGGREGATE:
+#                    raise ValueError('Invalid attribute name "%s": the '
+#                                     'last element (%s) references an '
+#                                     'aggregate attribute.'
+#                                     % (attribute_name, ent_attr_token))
             else:
                 if kind == EntityAttributeKinds.TERMINAL:
                     # We should not get here - the last attribute was a

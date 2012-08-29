@@ -13,4 +13,8 @@
 
     <messaging 
         repository="ORM"/>
+
+    <include
+        file="configure_views.zcml" />
+
 </configure>

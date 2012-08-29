@@ -9,13 +9,12 @@ Created on Jan 13, 2012.
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.aggregates import OrmAggregate
 from everest.entities.repository import EntityRepository
-from everest.orm import map_system_entities
 from everest.repository import REPOSITORIES
 from everest.repository import Repository
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.entitystores import FileSystemEntityStore
 from everest.resources.entitystores import OrmEntityStore
-from everest.resources.io import load_collection_from_url
+from everest.resources.io import load_into_collection_from_url
 from everest.resources.utils import get_collection_class
 from everest.utils import id_generator
 
@@ -45,9 +44,9 @@ class ResourceRepository(Repository):
     def load_representation(self, rc, url,
                             content_type=None, resolve_urls=True):
         coll = self.get(rc)
-        load_collection_from_url(coll, url,
-                                 content_type=content_type,
-                                 resolve_urls=resolve_urls)
+        load_into_collection_from_url(coll, url,
+                                      content_type=content_type,
+                                      resolve_urls=resolve_urls)
 
     def manage(self, collection_class):
         self.__managed_collections.add(collection_class)
@@ -84,6 +83,10 @@ class ResourceRepository(Repository):
 
 
 class RepositoryManager(object):
+    """
+    The repository manager creates, initializes and holds resource 
+    repositories by name.
+    """
     __repo_id_gen = id_generator()
 
     def __init__(self):
@@ -137,7 +140,12 @@ class RepositoryManager(object):
         ent_store = entity_store_class(name,
                                        join_transaction=is_root_repository)
         ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
-        return ResourceRepository(ent_repo)
+        rc_repo = ResourceRepository(ent_repo)
+        if name == self.__messaging_repo:
+            rc_repo.configure(
+                    messaging_enable=True,
+                    messaging_reset_on_start=self.__messaging_reset_on_start)
+        return rc_repo
 
     def setup_messaging(self, repository, reset_on_start):
         """
@@ -158,21 +166,4 @@ class RepositoryManager(object):
         """
         for repo in self.__repositories.itervalues():
             if not repo.is_initialized:
-                # If this repo is the one configured for messaging, initialize
-                # the message resource.
-                if repo.name == self.__messaging_repo:
-                    self.__initialize_messaging()
                 repo.initialize()
-
-    def __initialize_messaging(self):
-        if self.__messaging_repo == REPOSITORIES.ORM:
-            # Wrap the metadata callback to also call the mapping function
-            # for system entities.
-            repo = self.get(self.__messaging_repo)
-            md_fac = repo.configuration['metadata_factory']
-            def wrapper(engine,
-                        reset_on_start=self.__messaging_reset_on_start):
-                metadata = md_fac(engine)
-                map_system_entities(engine, reset_on_start)
-                return metadata
-            repo.configure(metadata_factory=wrapper)

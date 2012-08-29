@@ -156,6 +156,9 @@ class CsvData(object):
             for row in other.data:
                 self.data.append(row)
 
+    def __len__(self):
+        return len(self.data)
+
 
 class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def __init__(self, encoding):
@@ -230,11 +233,13 @@ class CsvRepresentationGenerator(RepresentationGenerator):
         trv = MappingDataElementTreeTraverser(data_element, self._mapping)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)
-        csv_writer = writer(self._stream, dialect=self.get_option('dialect'))
         csv_data = vst.csv_data
-        csv_writer.writerow(csv_data.fields)
-        for row_data in csv_data.data:
-            csv_writer.writerow(row_data)
+        if len(csv_data) > 0:
+            csv_writer = writer(self._stream,
+                                dialect=self.get_option('dialect'))
+            csv_writer.writerow(csv_data.fields)
+            for row_data in csv_data.data:
+                csv_writer.writerow(row_data)
 
 
 class CsvResourceRepresenter(ResourceRepresenter):

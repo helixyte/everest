@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema
+    xmlns="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://schemata.everest.org/application"
+    elementFormDefault="qualified"
+    xmlns:rc="http://schemata.everest.org/resource"
+    xmlns:app="http://schemata.everest.org/application"
+>
+    <import
+        schemaLocation="../everest/representers/Resource.xsd"
+        namespace="http://schemata.everest.org/resource"
+    >
+    </import>
+
+    <!-- FOO resource -->
+
+    <complexType name="FooType">
+        <complexContent>
+            <extension base="rc:ResourceType">
+                <choice>
+                    <element
+                        name="link"
+                        type="app:FooLinkType"
+                    >
+                    </element>
+                    <sequence>
+                        <!-- Put your element content here. -->
+                    </sequence>
+                </choice>
+            </extension>
+        </complexContent>
+    </complexType>
+
+    <complexType name="FooCollectionType">
+        <choice>
+            <element
+                ref="app:foo"
+                maxOccurs="unbounded"
+                minOccurs="0"
+            >
+            </element>
+            <element
+                name="link"
+                type="app:FooCollectionLinkType"
+                maxOccurs="1"
+                minOccurs="0"
+            >
+            </element>
+        </choice>
+    </complexType>
+
+    <complexType name="FooLinkType">
+        <complexContent>
+            <restriction base="rc:ResourceLinkType">
+                <!-- The relation URI for members of your resource. -->
+                <attribute
+                    name="rel"
+                    type="string"
+                    fixed="http://test.org/foo"
+                >
+                </attribute>
+            </restriction>
+        </complexContent>
+    </complexType>
+
+    <complexType name="FooCollectionLinkType">
+        <complexContent>
+            <!-- The relation URI for a collection of your resource. -->
+            <restriction base="rc:ResourceLinkType">
+                <attribute
+                    name="rel"
+                    type="string"
+                    fixed="http://test.org/foo-collection"
+                >
+                </attribute>
+            </restriction>
+        </complexContent>
+    </complexType>
+
+    <element
+        name="foo"
+        type="app:FooType"
+    >
+    </element>
+
+    <element
+        name="foos"
+        type="app:FooCollectionType"
+    >
+    </element>
+
+</schema>

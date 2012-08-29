@@ -204,6 +204,17 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         for coll in colls:
             self.assert_equal(len(coll), 1)
 
+    def test_empty_initialization(self):
+        self.__remove_data_files()
+        colls = [
+                 get_root_collection(IMyEntityParent),
+                 get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntityChild),
+                 get_root_collection(IMyEntityGrandchild),
+                 ]
+        for coll in colls:
+            self.assert_equal(len(coll), 0)
+
     def test_get_read_collection_path(self):
         path = get_read_collection_path(get_collection_class(IMyEntity),
                                         CsvMime, directory=self.__data_dir)

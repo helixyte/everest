@@ -155,6 +155,15 @@ class Configurator(PyramidConfigurator):
                      eval_order_specification_visitor,
                      url_converter)
 
+    def make_wsgi_app(self):
+        """
+        Extended such that the repository manager initializes all repositories
+        before the wsgi app is created.
+        """
+        repo_mgr = self.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize_all()
+        return PyramidConfigurator.make_wsgi_app(self)
+
     def add_orm_repository(self, name=None, entity_store_class=None,
                            aggregate_class=None,
                            make_default=False, configuration=None, _info=u''):
