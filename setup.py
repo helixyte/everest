@@ -40,6 +40,7 @@ tests_requirements = install_requirements + [
     'coverage',
     'nose',
     'nosexcover',
+    'pytz',
     'webtest',
     ]
 
