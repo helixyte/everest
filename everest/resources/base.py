@@ -191,14 +191,14 @@ class Member(ResourceAttributeControllerMixin, Resource):
         mp = data_element.mapping
         for attr in mp.attribute_iterator():
             if attr.kind == ResourceAttributeKinds.TERMINAL:
-                other_value = data_element.get_mapped_terminal(attr)
+                other_value = data_element.get_terminal(attr)
                 if other_value is None:
                     # Optional attribute - continue.
                     continue
                 else:
                     setattr(self, attr.name, other_value)
             else: # attr.kind MEMBER or COLLECTION
-                rc_data_el = data_element.get_mapped_nested(attr)
+                rc_data_el = data_element.get_nested(attr)
                 if rc_data_el is None:
                     # Optional attribute - continue.
                     continue
@@ -452,7 +452,7 @@ class Collection(Resource):
 #                # Found a link - do not do anything.
 #                mb_id = member_el.get_id()
 #            else:
-            mb_id = member_el.get_mapped_terminal(id_attr)
+            mb_id = member_el.get_terminal(id_attr)
             if mb_id is None:
                 # New data element without an ID - queue for adding.
                 new_mb_els.append(member_el)

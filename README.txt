@@ -1,15 +1,17 @@
-:mod:`everest` is an extension of the popular :mod:`Pyramid` framework aimed at
+everest is an extension of the popular Pyramid framework aimed at
 simplifying the development of REST applications.
 
-:mod:`everest` features
+everest features
 
  * a resource declaration framework that allows you to expose any part of your
-   entity domain model to your REST application;
+   entity domain model through a REST application;
  * extensible views that perform standard CRUD operations on your resources in
    response to REST requests;
- * representers that create representations from resources and vice versa for
+ * representers that convert resources to representations and vice versa for
    a number of MIME types (XML, ATOM, CSV, and soon JSON);
- * querying facilities that allow you to perform filtering, ordering, and
-   batching operations on the resource object tree through URLs and to
-   generate URLs from arbitrary resource collections;
+ * a repository layer permitting per-resource configuration of the storage
+   backend to use (file system or ORM);
+ * querying facilities that provide complex filtering, ordering, and
+   batching operations on the resource object tree through URLs and that
+   generate URLs for arbitrary query results;
  * 100 % test coverage.

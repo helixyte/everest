@@ -9,7 +9,6 @@ Created on May 19, 2011.
 from __future__ import absolute_import # Makes the import below absolute
 from collections import OrderedDict
 from csv import Dialect
-from csv import QUOTE_ALL
 from csv import QUOTE_NONNUMERIC
 from csv import reader
 from csv import register_dialect
@@ -19,17 +18,25 @@ from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
 from everest.representers.base import ResourceRepresenter
 from everest.representers.config import RepresenterConfiguration
+from everest.representers.converters import BooleanConverter
+from everest.representers.converters import ConverterRegistry
+from everest.representers.converters import DateTimeConverter
+from everest.representers.converters import NoOpConverter
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.mapping import SimpleMappingRegistry
-from everest.representers.traversal import MappingDataElementTreeTraverser
+from everest.representers.traversal import DataElementTreeTraverser
+from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
 from everest.representers.utils import get_mapping_registry
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
 from itertools import product
+import datetime
+from everest.representers.interfaces import IRepresentationConverter
+from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvCollectionDataElement',
@@ -45,7 +52,7 @@ __all__ = ['CsvCollectionDataElement',
            ]
 
 
-class _DefaultExportDialect(Dialect): # ignore no __init__ pylint: disable=W0232
+class _DefaultCsvDialect(Dialect): # ignore no __init__ pylint: disable=W0232
     """
     Default dialect to use when exporting resources to CSV.
     """
@@ -55,23 +62,44 @@ class _DefaultExportDialect(Dialect): # ignore no __init__ pylint: disable=W0232
     skipinitialspace = False
     lineterminator = '\n'
     quoting = QUOTE_NONNUMERIC
-register_dialect('export', _DefaultExportDialect)
+register_dialect('export', _DefaultCsvDialect)
+register_dialect('import', _DefaultCsvDialect)
 
 
-class _DefaultImportDialect(Dialect): # ignore no __init__ pylint: disable=W0232
+class CsvConverterRegistry(ConverterRegistry):
+    pass
+
+
+class CsvIntConverter(object):
     """
-    Default dialect to use when importing resources from CSV.
+    Specialized converter coping with the CSV reader's unfortunate habit
+    to convert integers to floats upon reading.
     """
-    delimiter = ','
-    quotechar = '"'
-    doublequote = True
-    skipinitialspace = False
-    lineterminator = '\n'
-    quoting = QUOTE_ALL
-register_dialect('import', _DefaultImportDialect)
+    class_provides(IRepresentationConverter)
+
+    @classmethod
+    def from_representation(cls, value):
+        if isinstance(value, float):
+            value = int(value)
+        return value
+
+    @classmethod
+    def to_representation(cls, value):
+        return value
+
+CsvConverterRegistry.register(datetime.datetime, DateTimeConverter)
+CsvConverterRegistry.register(bool, BooleanConverter)
+CsvConverterRegistry.register(int, CsvIntConverter)
+CsvConverterRegistry.register(float, NoOpConverter)
 
 
 class CsvRepresentationParser(RepresentationParser):
+    """
+    Parser converting CSV representations of resources into a data element.
+    
+    :note: Nested resources have to be provided as links (i.e., there is no 
+           support for recursive data element tree building).
+    """
 
     def run(self):
         mp_reg = get_mapping_registry(CsvMime)
@@ -109,11 +137,9 @@ class CsvRepresentationParser(RepresentationParser):
                 attr = attrs[csv_attr]
                 if is_resource_url(value):
                     link = CsvLinkedDataElement.create(value, attr.kind)
-                    mb_data_el.set_nested(attr.repr_name, link)
+                    mb_data_el.set_nested(attr, link)
                 else:
-                    # Treat everything else as a terminal. We do not need
-                    # to convert to a representation, so use set_terminal.
-                    mb_data_el.set_terminal(attr.repr_name, value)
+                    mb_data_el.set_terminal_converted(attr, value)
             if is_member_rpr:
                 result_data_el = mb_data_el
             else:
@@ -224,13 +250,20 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
 
 class CsvRepresentationGenerator(RepresentationGenerator):
     """
-    A CSV writer for resource data.
+    A generator converting data elements into CSV representations.
 
-    Handles linked resources and nested member and collection resources.
+    :note: Nested member and collection resources are handled by adding 
+           more columns (member attributes) and rows (collection members)
+           dynamically. By default, column names for nested member attributes
+           are built as dot-concatenation of the corresponding attribute key.
     """
 
     def run(self, data_element):
-        trv = MappingDataElementTreeTraverser(data_element, self._mapping)
+        # We do not want the traverser to emit converted terminals since the
+        # CSV writer will take care of that.
+        trv = DataElementTreeTraverser(data_element, self._mapping,
+                                       PROCESSING_DIRECTIONS.WRITE)
+#                                       convert_terminals=False)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)
         csv_data = vst.csv_data
@@ -270,7 +303,8 @@ class CsvResourceRepresenter(ResourceRepresenter):
 
 
 class CsvMemberDataElement(SimpleMemberDataElement):
-    pass
+    converter_registry = CsvConverterRegistry
+
 
 class CsvCollectionDataElement(SimpleCollectionDataElement):
     pass

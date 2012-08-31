@@ -176,8 +176,9 @@ class _XmlDataElementMixin(object):
 
 class XmlMemberDataElement(objectify.ObjectifiedElement,
                            _XmlDataElementMixin, MemberDataElement):
+    converter_registry = XmlConverterRegistry
 
-    def get_mapped_nested(self, attr):
+    def get_nested(self, attr):
         # We only allow *one* child with the given name.
         q_tag = self.__get_q_tag(attr)
         child_it = self.iterchildren(q_tag)
@@ -205,11 +206,11 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                     child = grand_child
         return child
 
-    def set_mapped_nested(self, attr, data_element):
+    def set_nested(self, attr, data_element):
         data_element.tag = self.__get_q_tag(attr)
         self.append(data_element)
 
-    def get_mapped_terminal(self, attr):
+    def get_terminal(self, attr):
         if attr.repr_name == 'id':
             # The "special" id attribute.
             xml_val = self.get('id')
@@ -228,7 +229,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 val = None
         return val
 
-    def set_mapped_terminal(self, attr, value):
+    def set_terminal(self, attr, value):
         if attr.repr_name == 'id':
             # The "special" id attribute.
             self.set('id', str(value))

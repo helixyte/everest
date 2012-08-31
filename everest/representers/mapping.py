@@ -14,7 +14,7 @@ from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.traversal import AttributeKey
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
-from everest.representers.traversal import MappingDataElementTreeTraverser
+from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import ResourceAttributeKinds
@@ -24,6 +24,7 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.representers.traversal import PROCESSING_DIRECTIONS
 
 
 __docformat__ = 'reStructuredText en'
@@ -107,8 +108,19 @@ class Mapping(object):
             if attr.kind != ResourceAttributeKinds.TERMINAL:
                 yield attr
 
-    def create_data_element(self):
-        return self.__de_cls.create()
+    def create_data_element(self, mapped_class=None):
+        if not mapped_class is None and mapped_class != self.__mapped_cls:
+            mp = self.__mp_reg.find_or_create_mapping(mapped_class)
+            data_el = mp.create_data_element()
+        else:
+            data_el = self.__de_cls.create()
+        return data_el
+
+    def create_linked_data_element(self, url, kind,
+                                   relation=None, title=None):
+        mp = self.__mp_reg.find_or_create_mapping(Link)
+        return mp.data_element_class.create(url, kind,
+                                            relation=relation, title=title)
 
     def create_data_element_from_resource(self, resource):
         mp = self.__mp_reg.find_or_create_mapping(type(resource))
@@ -119,7 +131,8 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resolve_urls=True):
-        trv = MappingDataElementTreeTraverser(data_element, mapping=self)
+        trv = DataElementTreeTraverser(data_element, self,
+                                       PROCESSING_DIRECTIONS.READ)
         visitor = ResourceBuilderDataElementTreeVisitor(resolve_urls)
         trv.run(visitor)
         return visitor.resource

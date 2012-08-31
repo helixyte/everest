@@ -40,6 +40,7 @@ from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
+from everest.representers.json import JsonResourceRepresenter
 from everest.representers.xml import XmlResourceRepresenter
 from everest.resources.base import Collection
 from everest.resources.base import Resource
@@ -403,6 +404,7 @@ class Configurator(PyramidConfigurator):
         # Create representer registry and register builtin representer classes.
         rpr_reg = RepresenterRegistry()
         rpr_reg.register_representer_class(CsvResourceRepresenter)
+        rpr_reg.register_representer_class(JsonResourceRepresenter)
         rpr_reg.register_representer_class(XmlResourceRepresenter)
         rpr_reg.register_representer_class(AtomResourceRepresenter)
         self._register_utility(rpr_reg, IRepresenterRegistry)

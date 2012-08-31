@@ -99,6 +99,9 @@ class DateTimeConverter(object):
         return rfc3339(value)
 
 
+SimpleConverterRegistry.register(datetime.datetime, DateTimeConverter)
+
+
 class BooleanConverter(object):
     class_provides(IRepresentationConverter)
 
@@ -115,7 +118,15 @@ class BooleanConverter(object):
         return str(value).lower()
 
 
-SimpleConverterRegistry.register(datetime.datetime, DateTimeConverter)
 SimpleConverterRegistry.register(bool, BooleanConverter)
 
 
+class NoOpConverter(object):
+    class_provides(IRepresentationConverter)
+    @classmethod
+    def from_representation(cls, value):
+        return value
+
+    @classmethod
+    def to_representation(cls, value):
+        return value

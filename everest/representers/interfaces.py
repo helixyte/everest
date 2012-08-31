@@ -120,6 +120,9 @@ class IMemberDataElement(IResourceDataElement):
     Interface for member data elements.
     """
 
+    converter_registry = Attribute("Registry of representation<->value "
+                                   "converters.")
+
     def get_mapped_terminal(attr):
         """
         Returns the value for the given terminal mapped attribute.
