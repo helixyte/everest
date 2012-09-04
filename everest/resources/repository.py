@@ -140,12 +140,7 @@ class RepositoryManager(object):
         ent_store = entity_store_class(name,
                                        join_transaction=is_root_repository)
         ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
-        rc_repo = ResourceRepository(ent_repo)
-        if name == self.__messaging_repo:
-            rc_repo.configure(
-                    messaging_enable=True,
-                    messaging_reset_on_start=self.__messaging_reset_on_start)
-        return rc_repo
+        return ResourceRepository(ent_repo)
 
     def setup_messaging(self, repository, reset_on_start):
         """
@@ -166,4 +161,9 @@ class RepositoryManager(object):
         """
         for repo in self.__repositories.itervalues():
             if not repo.is_initialized:
+                if repo.name == self.__messaging_repo:
+                    repo.configure(
+                            messaging_enable=True,
+                            messaging_reset_on_start=
+                                            self.__messaging_reset_on_start)
                 repo.initialize()
