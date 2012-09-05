@@ -18,6 +18,7 @@ from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.testing import create_entity
+from everest.tests.test_entities import MyEntity
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingTestCase',
@@ -145,3 +146,33 @@ class MappingTestCase(ResourceTestCase):
         ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
         cls_map = new_lookup.get_namespace(ns)
         self.assert_equal(cls_map[new_tag], mp.data_element_class)
+
+    def test_mapping_polymorhpic(self):
+        # pylint: disable=W0232
+        class IMyDerivedEntity(IMyEntity):
+            pass
+        class MyDerivedEntity(MyEntity):
+            pass
+        class MyDerivedEntityMember(MyEntityMember):
+            pass
+        class MyDerivedEntityCollection(get_collection_class(IMyEntity)):
+            pass
+        # pylint: enable=W0232
+        self.config.add_resource(IMyDerivedEntity, MyDerivedEntityMember,
+                                 MyDerivedEntity, MyDerivedEntityCollection,
+                                 expose=False)
+        self.config.add_resource_representer(
+                                    IMyDerivedEntity,
+                                    XmlMime,
+                                    attribute_options=
+                                            {('parent',):dict(ignore=True)})
+        mp_reg = get_mapping_registry(XmlMime)
+        mp = mp_reg.find_or_create_mapping(get_collection_class(IMyEntity))
+        for rc in (MyDerivedEntityMember, MyDerivedEntityCollection):
+            attr = None
+            for attr in mp.attribute_iterator(rc):
+                if attr.name == 'parent':
+                    break
+            self.assert_is_not_none(attr)
+            self.assert_equal(attr.ignore_on_write, True)
+            self.assert_equal(attr.ignore_on_read, True)

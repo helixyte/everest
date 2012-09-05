@@ -380,7 +380,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
             if not attr is None:
                 node_type = get_member_class(attr.value_type)
             else:
-                node_type = None # Use default mapped class.
+                node_type = self._get_node_type(member_node)
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
                 ignore_opt = self._get_ignore_option(mb_attr)
@@ -412,6 +412,9 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                                    member_data, visitor)
         visitor.visit_member(attr_key, attr, member_node, member_data,
                              is_link_node, parent_data, index=index)
+
+    def _get_node_type(self, node):
+        raise NotImplementedError('Abstract method.')
 
     def _get_node_terminal(self, node, attr):
         raise NotImplementedError('Abstract method.')
@@ -479,6 +482,9 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     def _get_node_members(self, node):
         return node.get_members()
 
+    def _get_node_type(self, node):
+        return node.mapping.mapped_class
+
     def _get_node_terminal(self, node, attr):
         if self.__direction == PROCESSING_DIRECTIONS.READ:
             value = node.get_terminal(attr)
@@ -510,6 +516,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
                                       visitor)
         else:
             raise ValueError('Data must be a resource.')
+
+    def _get_node_type(self, node):
+        return type(node)
 
     def _get_node_terminal(self, node, attr):
         return getattr(node, attr.name)

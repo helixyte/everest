@@ -33,6 +33,7 @@ from everest.resources.utils import is_resource_url
 from json import dumps
 from json import loads
 import datetime
+from everest.resources.utils import get_resource_class_for_relation
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['JsonCollectionDataElement',
@@ -74,6 +75,18 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
             elif attr.kind == ResourceAttributeKinds.COLLECTION:
                 traverse_fn = self._traverse_collection
         traverse_fn(attr_key, attr, node, parent_data, visitor)
+
+    def _get_node_type(self, node):
+        relation = node.get('__jsonclass__')
+        if not relation is None:
+            tpe = get_resource_class_for_relation(relation)
+        else:
+            # In the absence of class hinting, the best we can do is to 
+            # look up the member class for the mapped class. For polymorphic
+            # types, this will only work if a representer was initialized
+            # for every derived class separately.
+            tpe = get_member_class(self._mapping.mapped_class)
+        return tpe
 
     def _get_node_terminal(self, node, attr):
         return node.get(attr.repr_name)

@@ -196,10 +196,20 @@ class IResourceLink(Interface):
     title = Attribute('Title for the linked resource.')
 
 
-class IService(ICollectionResource):
+class IService(IResource):
     """
-    Marker interface for the service collection.
+    Marker interface for the service object.
     """
+
+    def register(irc):
+        """
+        Registers the given resource interface with this service.
+        """
+
+    def start(self):
+        """
+        Starts the service.
+        """
 
 
 class IEntityStore(Interface):
@@ -224,5 +234,11 @@ class IEntityStore(Interface):
 
     is_initialized = Attribute('Flag indicating if this entity store has been '
                                'initialized.')
+
+
+class IRelation(Interface):
+    """
+    Marker interface for relations.
+    """
 
 # pylint: enable=W0232,E0213

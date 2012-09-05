@@ -20,11 +20,13 @@ from urlparse import urlparse
 from urlparse import urlunparse
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from everest.resources.interfaces import IRelation
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
            'get_collection_class',
            'get_member_class',
+           'get_resource_class_for_relation',
            'get_resource_url',
            'get_root_collection',
            'get_stage_collection',
@@ -108,6 +110,17 @@ def get_collection_class(rc):
         coll_class = reg.getAdapter(rc, ICollectionResource,
                                     name='collection-class')
     return coll_class
+
+
+def get_resource_class_for_relation(relation):
+    """
+    Returns the resource class that was registered for the given
+    relation.
+    
+    :param str relation: relation string.
+    """
+    reg = get_current_registry()
+    return reg.getUtility(IRelation, name=relation)
 
 
 def as_member(entity, parent=None):

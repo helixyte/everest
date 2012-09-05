@@ -15,6 +15,7 @@ from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.traversal import AttributeKey
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
 from everest.representers.traversal import DataElementTreeTraverser
+from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import ResourceAttributeKinds
@@ -23,9 +24,10 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import provides_collection_resource
+from everest.resources.utils import provides_member_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.representers.traversal import PROCESSING_DIRECTIONS
-
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -50,6 +52,8 @@ class Mapping(object):
         """
         self.__mp_reg = mapping_registry
         self.__mapped_cls = mapped_class
+        self.__is_collection_mapping = \
+                                provides_collection_resource(mapped_class)
         self.__de_cls = data_element_class
         self.__configuration = configuration
         #
@@ -157,10 +161,11 @@ class Mapping(object):
 
     def __collect_mapped_attributes(self, mapped_class, key):
         collected_mp_attrs = OrderedDict()
-        if len(key) == 0:
-            # Top level access - fetch resource attributes and create new
+        is_mapped_cls = mapped_class is self.__mapped_cls
+        if len(key) == 0 and is_mapped_cls:
+            # Bootstrapping: fetch resource attributes and create new
             # mapped attributes.
-            rc_attrs = get_resource_class_attributes(mapped_class)
+            rc_attrs = get_resource_class_attributes(self.__mapped_cls)
             for rc_attr in rc_attrs.itervalues():
                 attr_key = key + (rc_attr.name,)
                 attr_mp_opts = \
@@ -168,10 +173,18 @@ class Mapping(object):
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
                 collected_mp_attrs[rc_attr.name] = new_mp_attr
         else:
-            # Nested access - fetch mapped attributes from mapping and
-            # clone.
-            if mapped_class is self.__mapped_cls:
+            # Indirect access - fetch mapped attributes from some other
+            # class' mapping and clone.
+            if is_mapped_cls:
                 mp = self
+            elif len(key) == 0 and self.__is_collection_mapping:
+                if provides_member_resource(mapped_class):
+                    # Mapping a polymorphic member class.
+                    mapped_coll_cls = get_collection_class(mapped_class)
+                else:
+                    # Mapping a derived collection class.
+                    mapped_coll_cls = mapped_class
+                mp = self.__mp_reg.find_or_create_mapping(mapped_coll_cls)
             else:
                 mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             mp_attrs = mp.get_attribute_map()
@@ -181,7 +194,7 @@ class Mapping(object):
                     dict(((k, v)
                           for (k, v) in
                             self.__configuration \
-                                    .get_attribute_options(attr_key).iteritems()
+                                .get_attribute_options(attr_key).iteritems()
                           if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.name] = clnd_mp_attr

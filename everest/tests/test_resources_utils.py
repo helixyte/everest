@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 14, 2012.
 """
 from everest.resources.utils import get_registered_collection_resources
+from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import get_resource_url
 from everest.resources.utils import get_stage_collection
 from everest.resources.utils import new_stage_collection
@@ -49,6 +50,11 @@ class ResourcesUtilsTestCase(ResourceTestCase):
     def test_get_registered_collection_resources(self):
         colls = get_registered_collection_resources()
         self.assert_equal(len(colls), 4)
+
+    def test_get_resource_from_relation(self):
+        rel = MyEntityMember.relation
+        self.assert_equal(get_resource_class_for_relation(rel),
+                          MyEntityMember)
 
     def test_stage_collection(self):
         ent = create_entity(entity_id=2, entity_text='too2')

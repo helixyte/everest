@@ -46,6 +46,7 @@ from everest.resources.base import Collection
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
@@ -258,6 +259,8 @@ class Configurator(PyramidConfigurator):
             collection.root_name = collection_root_name
         if not collection_title is None:
             collection.title = collection_title
+        if collection.relation is None:
+            collection.relation = '%s-collection' % member.relation
         if expose and collection.root_name is None:
             # Check that we have a root collection name *before* we register
             # all the adapters and utilities.
@@ -307,6 +310,12 @@ class Configurator(PyramidConfigurator):
         also_provides(member, interface)
         also_provides(collection, interface)
         also_provides(entity, interface)
+        # Register utility member relation -> member class
+        self._register_utility(member, IRelation,
+                               name=member.relation)
+        # Register utility collection relation -> collection class
+        self._register_utility(collection, IRelation,
+                               name=collection.relation)
         # Register collection with the repository.
         repo.manage(collection)
         # Register adapter implementing interface -> repository.

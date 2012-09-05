@@ -25,7 +25,6 @@ from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.url import resource_to_url
 from everest.url import url_to_resource
-from everest.utils import classproperty
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
@@ -259,15 +258,6 @@ class Collection(Resource):
     #: The name for the root collection (used as URL path to the root
     #: collection inside the service).
     root_name = None
-
-    __relation = None
-
-    @classproperty
-    def relation(cls): # no self pylint: disable=E0213
-        if not hasattr(cls, '__relation'):
-            member_cls = get_member_class(cls)
-            cls.__relation = "%s-collection" % member_cls.relation
-        return cls.__relation
 
     #: A description of the collection.
     description = ''
