@@ -29,14 +29,15 @@ import transaction
 import unittest
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BaseTestCase',
-           'DummyContext',
+__all__ = ['DummyContext',
            'DummyModule',
            'EntityTestCase',
            'FunctionalTestCase',
            'OrmContextManager',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
+           'TestCaseWithConfiguration',
+           'TestCaseWithIni',
            'check_attributes',
            'elapsed',
            'no_autoflush',
@@ -47,7 +48,7 @@ __all__ = ['BaseTestCase',
 
 class Pep8CompliantTestCase(unittest.TestCase):
     """
-    Base class for tests with PEP8 compliant method names.
+    Use this for simple unit tests with PEP8 compliant method names.
     """
 
     assert_true = unittest.TestCase.assertTrue
@@ -83,11 +84,11 @@ class Pep8CompliantTestCase(unittest.TestCase):
         self.tear_down()
 
 
-class BaseTestCase(Pep8CompliantTestCase):
+class TestCaseWithIni(Pep8CompliantTestCase):
     """
-    Base class for all everest unit test case classes.
+    Use this for unit tests that need access to settings specified in an
+    .ini file.
     
-    :ivar config: The registry configurator. This is set in the set_up method.
     :ivar ini: The ini file parser. This will only be set up if the 
         `ini_file_path` and `ini_section_name` class variables were set up 
         sensibly.  
@@ -106,22 +107,25 @@ class BaseTestCase(Pep8CompliantTestCase):
         self.ini = EverestIni(self.ini_file_path)
 
     def tear_down(self):
-        super(BaseTestCase, self).tear_down()
+        super(TestCaseWithIni, self).tear_down()
         try:
             del self.ini
         except AttributeError:
             pass
 
 
-class ConfiguredTestCase(BaseTestCase):
+class BaseTestCaseWithConfiguration(TestCaseWithIni):
     """
-    Base class for test cases access a configured test registry.
+    Base class for test cases that access an initialized (but not configured)
+    registry.
+
+    :ivar config: The registry configurator. This is set in the set_up method.
     """
     #: The name of a ZCML configuration file to use.
     config_file_name = 'configure.zcml'
 
     def set_up(self):
-        super(ConfiguredTestCase, self).set_up()
+        super(BaseTestCaseWithConfiguration, self).set_up()
         # Create and configure a new testing registry.
         reg = Registry('testing')
         self.config = Configurator(registry=reg,
@@ -133,7 +137,7 @@ class ConfiguredTestCase(BaseTestCase):
             self.config.setup_registry()
 
     def tear_down(self):
-        super(ConfiguredTestCase, self).tear_down()
+        super(BaseTestCaseWithConfiguration, self).tear_down()
         tear_down_registry(self.config.registry)
         try:
             del self.config
@@ -149,11 +153,25 @@ class ConfiguredTestCase(BaseTestCase):
         return cfg_zcml
 
 
-class EntityTestCase(ConfiguredTestCase):
+class TestCaseWithConfiguration(BaseTestCaseWithConfiguration):
     """
-    Test class for entity classes.
+    Use this for test cases that need access to an initialized (but not
+    configured) registry. 
     """
+    def set_up(self):
+        BaseTestCaseWithConfiguration.set_up(self)
+        self.config.begin()
 
+    def tear_down(self):
+        self.config.end()
+        BaseTestCaseWithConfiguration.tear_down(self)
+
+
+
+class EntityTestCase(BaseTestCaseWithConfiguration):
+    """
+    Use this for test cases that need access to a configured registry.
+    """
     def set_up(self):
         super(EntityTestCase, self).set_up()
         # Load config file.
@@ -181,9 +199,10 @@ class EntityTestCase(ConfiguredTestCase):
         return entity_cls.create_from_data(data)
 
 
-class ResourceTestCase(ConfiguredTestCase):
+class ResourceTestCase(BaseTestCaseWithConfiguration):
     """
-    Test class for resource classes.
+    Use this for test cases that need access to a configured registry, a
+    request object and a service object.
     """
     config_file_name = 'configure.zcml'
 
@@ -247,9 +266,9 @@ class ResourceTestCase(ConfiguredTestCase):
         return coll.create_member(entity)
 
 
-class FunctionalTestCase(BaseTestCase):
+class FunctionalTestCase(TestCaseWithIni):
     """
-    A basic test class for client side actions.
+    Use this for test cases that need access to a WSGI application.
     
     :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test. 
     """

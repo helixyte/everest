@@ -8,7 +8,7 @@ Created on Feb 21, 2012.
 from everest.orm import OrmTestCaseMixin
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
-from everest.testing import ConfiguredTestCase
+from everest.testing import TestCaseWithConfiguration
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
@@ -19,11 +19,11 @@ __all__ = ['ResourceGraphTestCase',
            ]
 
 
-class ResourceGraphTestCase(OrmTestCaseMixin, ConfiguredTestCase):
+class ResourceGraphTestCase(OrmTestCaseMixin, TestCaseWithConfiguration):
     package_name = 'everest.tests.testapp_db'
 
     def set_up(self):
-        ConfiguredTestCase.set_up(self)
+        TestCaseWithConfiguration.set_up(self)
         self.config.load_zcml('configure.zcml')
         self._interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,
                             IMyEntityGrandchild]

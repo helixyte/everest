@@ -6,7 +6,7 @@ Created on Feb 4, 2011.
 """
 from datetime import datetime
 from everest.querying.filterparser import parse_filter
-from everest.testing import BaseTestCase
+from everest.testing import Pep8CompliantTestCase
 from pyparsing import ParseException
 
 __docformat__ = 'reStructuredText en'
@@ -14,7 +14,7 @@ __all__ = ['QueryParserTestCase',
            ]
 
 
-class QueryParserTestCase(BaseTestCase):
+class QueryParserTestCase(Pep8CompliantTestCase):
     parser = None
 
     def set_up(self):

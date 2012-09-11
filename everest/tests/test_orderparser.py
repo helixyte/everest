@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 from everest.querying.orderparser import parse_order
-from everest.testing import BaseTestCase
+from everest.testing import Pep8CompliantTestCase
 from pyparsing import ParseException
 
 __docformat__ = 'reStructuredText en'
@@ -13,7 +13,7 @@ __all__ = ['OrderSpecificationParserTestCase',
            ]
 
 
-class OrderSpecificationParserTestCase(BaseTestCase):
+class OrderSpecificationParserTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         self.parser = parse_order

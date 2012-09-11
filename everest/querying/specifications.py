@@ -31,6 +31,7 @@ from everest.querying.operators import LESS_THAN
 from everest.querying.operators import NEGATION
 from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import IResource
+from pyramid.threadlocal import get_current_registry
 from zope.interface import implements # pylint: disable=E0611,F0401
 import re
 
@@ -603,3 +604,155 @@ class OrderSpecificationFactory(object):
 
     def create_conjunction(self, left_spec, right_spec):
         return ConjuctionOrderSpecification(left_spec, right_spec)
+
+
+class specification_attribute(object):
+    """
+    Helper descriptor for the :class:`SpecificationGenerator`.
+    """
+    def __init__(self, ifactory, attribute_name):
+        self.attribute_name = attribute_name
+        self.__ifactory = ifactory
+        self.__factory = None
+
+    def __get__(self, generator, generator_class):
+        if generator is None:
+            generator = SpecificationGenerator(self.factory,
+                                               self.attribute_name)
+        else:
+            generator.attribute_name = self.attribute_name
+        return generator
+
+    @property
+    def factory(self):
+        if self.__factory is None:
+            reg = get_current_registry()
+            self.__factory = reg.queryUtility(self.__ifactory)
+        return self.__factory
+
+
+class SpecificationGenerator(object):
+    """
+    Helper class to simplify the generation of filter and order 
+    specifications.
+    """
+    eq = specification_attribute(IFilterSpecificationFactory,
+                                 'create_equal_to')
+    starts = specification_attribute(IFilterSpecificationFactory,
+                                     'create_starts_with')
+    ends = specification_attribute(IFilterSpecificationFactory,
+                                   'create_ends_with')
+    lt = specification_attribute(IFilterSpecificationFactory,
+                                 'create_less_than')
+    le = specification_attribute(IFilterSpecificationFactory,
+                                 'create_less_than_or_equal_to')
+    gt = specification_attribute(IFilterSpecificationFactory,
+                                 'create_greater_than')
+    ge = specification_attribute(IFilterSpecificationFactory,
+                                 'create_greater_than_or_equal_to')
+    cnts = specification_attribute(IFilterSpecificationFactory,
+                                   'create_contains')
+    cntd = specification_attribute(IFilterSpecificationFactory,
+                                   'create_contained')
+    rng = specification_attribute(IFilterSpecificationFactory,
+                                  'create_in_range')
+    asc = specification_attribute(IOrderSpecificationFactory,
+                                  'create_ascending')
+    desc = specification_attribute(IOrderSpecificationFactory,
+                                   'create_descending')
+
+    def __init__(self, factory, attribute_name):
+        self.factory = factory
+        self.attribute_name = attribute_name
+        self.spec = None
+
+    def and_(self, other):
+        self.spec = self.spec.and_(other.spec)
+        return self
+
+    def or_(self, other):
+        self.spec = self.spec.or_(other.spec)
+        return self
+
+    def not_(self):
+        self.spec = self.spec.not_()
+        return self
+
+    def __call__(self, *args, **kw):
+        if self.spec is None:
+            fn = getattr(self.factory, self.attribute_name)
+        else:
+            # By default, sequences of generatives are chained as
+            # conjunctions.
+            fn = getattr(self.factory, self.attribute_name)
+        if args:
+            value, = args
+            spec = fn(value)
+        else:
+            (attr, value), = kw.items()
+            spec = fn(attr, value)
+        if self.spec is None:
+            self.spec = spec
+        else:
+            self.spec = self.spec.and_(spec)
+        return self
+
+
+def eq(**kw):
+    "Convenience function to create an equal_to specification."
+    return SpecificationGenerator.eq(**kw)
+
+
+def starts(**kw):
+    "Convenience function to create a starts_with specification."
+    return SpecificationGenerator.starts(**kw)
+
+
+def ends(**kw):
+    "Convenience function to create an ends_with specification."
+    return SpecificationGenerator.ends(**kw)
+
+
+def lt(**kw):
+    "Convenience function to create a less_than specification."
+    return SpecificationGenerator.lt(**kw)
+
+
+def le(**kw):
+    "Convenience function to create less_than_or_equal_to specification."
+    return SpecificationGenerator.le(**kw)
+
+
+def gt(**kw):
+    "Convenience function to create a greater_than specification."
+    return SpecificationGenerator.gt(**kw)
+
+
+def ge(**kw):
+    "Convenience function to create a greater_than_or_equal specification."
+    return SpecificationGenerator.ge(**kw)
+
+
+def cnts(**kw):
+    "Convenience function to create a contains specification."
+    return SpecificationGenerator.cnts(**kw)
+
+
+def cntd(**kw):
+    "Convenience function to create a contained specification."
+    return SpecificationGenerator.cntd(**kw)
+
+
+def rng(**kw):
+    "Convenience function to create an in_range specification."
+    return SpecificationGenerator.rng(**kw)
+
+
+def asc(arg):
+    "Convenience function to create an ascending specification."
+    return SpecificationGenerator.asc(arg)
+
+
+def desc(arg):
+    "Convenience function to create a descending specification."
+    return SpecificationGenerator.desc(arg)
