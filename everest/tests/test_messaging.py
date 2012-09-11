@@ -8,16 +8,16 @@ from everest.interfaces import IUserMessageNotifier
 from everest.messaging import UserMessageChecker
 from everest.messaging import UserMessageNotifier
 from everest.messaging import UserMessageHandlingContextManager
-from everest.testing import ConfiguredTestCase
+from everest.testing import TestCaseWithConfiguration
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MessagingTestCase',
            ]
 
 
-class MessagingTestCase(ConfiguredTestCase):
+class MessagingTestCase(TestCaseWithConfiguration):
     def set_up(self):
-        ConfiguredTestCase.set_up(self)
+        TestCaseWithConfiguration.set_up(self)
         reg = self.config.registry
         reg.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
                             IUserMessageNotifier)

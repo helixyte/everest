@@ -6,13 +6,26 @@ Created on Feb 4, 2011.
 """
 from datetime import datetime
 from datetime import timedelta
-from everest.querying.base import Operator
+from everest.querying.base import UnaryOperator
 from everest.querying.specifications import FilterSpecification
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import NaturalOrderSpecification
 from everest.querying.specifications import OrderSpecificationFactory
-from everest.testing import BaseTestCase
+from everest.querying.specifications import ends
+from everest.querying.specifications import eq
+from everest.querying.specifications import ge
+from everest.querying.specifications import gt
+from everest.querying.specifications import le
+from everest.querying.specifications import lt
+from everest.querying.specifications import starts
+from everest.testing import TestCaseWithConfiguration
+from everest.testing import TestCaseWithIni
 from nose.tools import raises
+from everest.querying.specifications import cnts
+from everest.querying.specifications import cntd
+from everest.querying.specifications import rng
+from everest.querying.specifications import asc
+from everest.querying.specifications import desc
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjuctionFilterSpecification',
@@ -43,7 +56,7 @@ class Candidate(object):
         return 'Candidate -> %s' % ', '.join(attrs)
 
 
-class AlwaysTrueOperator(Operator):
+class AlwaysTrueOperator(UnaryOperator):
     name = 'true'
     literal = 'T'
 
@@ -52,7 +65,7 @@ class AlwaysTrueOperator(Operator):
         return True
 
 
-class AlwaysFalseOperator(Operator):
+class AlwaysFalseOperator(UnaryOperator):
     name = 'false'
     literal = 'F'
 
@@ -84,7 +97,7 @@ class AlwaysFalseFilterSpecification(FilterSpecification):
         pass
 
 
-class _CriterionFilterSpecificationTestCase(BaseTestCase):
+class _CriterionFilterSpecificationTestCase(TestCaseWithIni):
 
     TEXT_VALUE = 'Beta-2'
     GREATER_THAN_TEXT_VALUE = 'Gamma-3'
@@ -475,7 +488,7 @@ class ValueContainedFilterSpecificationTestCase(
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class CompositeFilterSpecificationTestCase(BaseTestCase):
+class CompositeFilterSpecificationTestCase(TestCaseWithIni):
 
     def set_up(self):
         self.factory = FilterSpecificationFactory()
@@ -540,7 +553,7 @@ class DisjuctionFilterSpecificationTestCase(
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class NegationFilterSpecificationTestCase(BaseTestCase):
+class NegationFilterSpecificationTestCase(TestCaseWithIni):
 
     def set_up(self):
         self.factory = FilterSpecificationFactory()
@@ -568,7 +581,7 @@ class NegationFilterSpecificationTestCase(BaseTestCase):
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class OrderSpecificationTestCase(BaseTestCase):
+class OrderSpecificationTestCase(TestCaseWithIni):
     def set_up(self):
         self.factory = OrderSpecificationFactory()
 
@@ -636,3 +649,71 @@ class OrderSpecificationTestCase(BaseTestCase):
         self.assert_false(conj_spec.eq(first_candidate, second_candidate))
         self.assert_equal(conj_spec.cmp(first_candidate, second_candidate),
                           - 1)
+
+
+class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
+    def set_up(self):
+        TestCaseWithConfiguration.set_up(self)
+        self.candidate = Candidate(number_attr=0, text_attr='attr')
+
+    def test_eq_generator(self):
+        gen = eq(number_attr=0).and_(eq(text_attr='attr'))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_starts_generator(self):
+        gen = starts(text_attr='a')
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_ends_generator(self):
+        gen = ends(text_attr='r')
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_lt_generator(self):
+        gen = lt(number_attr=1)
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_le_generator(self):
+        gen = le(number_attr=0)
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_gt_generator(self):
+        gen = gt(number_attr= -1)
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_ge_generator(self):
+        gen = ge(number_attr=0)
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_cnts_generator(self):
+        gen = cnts(text_attr='tt')
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_cntd_generator(self):
+        gen = cntd(text_attr=['attr'])
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_rng_generator(self):
+        gen = rng(number_attr=(-1, 1))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_asc_generator(self):
+        second_candidate = Candidate(number_attr=0, text_attr='b')
+        gen = asc('number_attr').and_(asc('text_attr'))
+        self.assert_true(gen.spec.lt(self.candidate, second_candidate))
+
+    def test_desc_generator(self):
+        second_candidate = Candidate(number_attr=0, text_attr='b')
+        gen = desc('number_attr').and_(desc('text_attr'))
+        self.assert_true(gen.spec.lt(second_candidate, self.candidate))
+
+    def test_chaining_generator(self):
+        gen = lt(number_attr=1).gt(number_attr= -1)
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_generator_or(self):
+        gen = lt(number_attr=1).or_(gt(number_attr=1))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_generator_not(self):
+        gen = lt(number_attr= -1).not_()
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))

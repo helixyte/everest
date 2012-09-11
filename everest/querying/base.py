@@ -40,13 +40,31 @@ class Operator(object):
     """
     Base class for querying operators.
     """
+    #: The name of the operator. To be specified in derived classes.
     name = None
+    #: The arity (number of arguments required) of the operator. To be 
+    #: specified in derived classes.
+    arity = None
+
+
+class NullaryOperator(Operator):
+    """
+    Nullary querying operator.
+    """
+    arity = 0
+
+    @staticmethod
+    def apply():
+        raise NotImplementedError('Abstract method.')
+
 
 
 class UnaryOperator(Operator):
     """
     Unary querying operator.
     """
+    arity = 1
+
     @staticmethod
     def apply(value):
         raise NotImplementedError('Abstract method.')
@@ -56,6 +74,7 @@ class BinaryOperator(Operator):
     """
     Binary querying operator.
     """
+    arity = 2
 
     @staticmethod
     def apply(value, ref_value):

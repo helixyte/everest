@@ -20,7 +20,7 @@ from everest.querying.specifications import \
         ValueGreaterThanOrEqualToFilterSpecification
 from everest.querying.specifications import \
         ValueLessThanOrEqualToFilterSpecification
-from everest.testing import BaseTestCase
+from everest.testing import TestCaseWithConfiguration
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp.entities import FooEntity
 
@@ -31,7 +31,7 @@ __all__ = ['CompositeFilterSpecificationBuilderTestCase',
            ]
 
 
-class CriterionFilterSpecificationBuilderTestCase(BaseTestCase):
+class CriterionFilterSpecificationBuilderTestCase(TestCaseWithConfiguration):
 
     def set_up(self):
         self.builder = FilterSpecificationBuilder(FilterSpecificationFactory())
@@ -142,7 +142,7 @@ class CriterionFilterSpecificationBuilderTestCase(BaseTestCase):
         self.assert_equal(expected_spec, self.builder.specification)
 
 
-class CompositeFilterSpecificationBuilderTestCase(BaseTestCase):
+class CompositeFilterSpecificationBuilderTestCase(TestCaseWithConfiguration):
 
     def set_up(self):
         self.builder = FilterSpecificationBuilder(FilterSpecificationFactory())

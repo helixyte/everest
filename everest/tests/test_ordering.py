@@ -10,7 +10,6 @@ from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
 from everest.querying.specifications import OrderSpecificationFactory
-from everest.testing import BaseTestCase
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp.entities import FooEntity
 import random
@@ -35,16 +34,13 @@ class Person(object):
         return str_format % params
 
 
-class OrderSpecificationTestCase(BaseTestCase):
+class OrderSpecificationTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         self.person_a1 = Person('John', 33)
         self.person_a2 = Person('John', 44)
         self.person_b1 = Person('Mike', 55)
         self.person_b2 = Person('Mike', 66)
-
-    def tear_down(self):
-        pass
 
     def create_asc_order(self, attr_name):
         return AscendingOrderSpecification(attr_name)
@@ -108,7 +104,7 @@ class OrderSpecificationBuilderTestCase(OrderSpecificationTestCase):
         self.assert_equal(builder.specification.right.attr_name, 'age')
 
 
-class SorterTestCase(BaseTestCase):
+class SorterTestCase(Pep8CompliantTestCase):
     andrew11 = None
     bill22 = None
     john33 = None
