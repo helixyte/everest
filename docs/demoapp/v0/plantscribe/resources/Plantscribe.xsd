@@ -7,7 +7,7 @@
     xmlns:app="http://schemata.everest.org/plantscribe"
 >
     <import
-        schemaLocation="../../../../../everest/representers/Resource.xsd"
+        schemaLocation="Resource.xsd"
         namespace="http://schemata.everest.org/resource"
     >
     </import>
@@ -34,7 +34,10 @@
                             type="string"
                         >
                         </element>
-                        <element ref="app:projects">
+                        <element ref="app:projects"
+                            minOccurs="0"
+                            maxOccurs="1"
+                        >
                         </element>
                     </sequence>
                 </choice>
@@ -380,11 +383,15 @@
                     <sequence>
                         <element ref="app:species">
                         </element>
-                        <element ref="app:site">
+                        <element
+                            ref="app:site"
+                            maxOccurs="1"
+                            minOccurs="0"
+                        >
                         </element>
                         <element
                             name="quantity"
-                            type="float"
+                            type="double"
                         >
                         </element>
                     </sequence>

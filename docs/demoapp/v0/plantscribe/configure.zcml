@@ -12,11 +12,11 @@
         make_default="true" />
 
     <!-- Use this to try out the SQL alchemy backend (you will need to
-         comment out the filesystem_repository directive above) 
-    <orm_repository metadata_factory='plantscribe.orm.create_metadata' 
-        make_default="true" /> 
+         comment out the filesystem_repository directive above)
+    <orm_repository metadata_factory='plantscribe.orm.create_metadata'
+        make_default="true" />
         -->
-        
+
     <!-- Renderers. -->
 
     <renderer
@@ -56,8 +56,22 @@
         renderer="atom"
         request_method="GET" />
 
+    <collection_view
+        for="plantscribe.interfaces.ICustomer
+             plantscribe.interfaces.IProject
+             plantscribe.interfaces.ISpecies
+            "
+        view="everest.views.postcollection.PostCollectionView"
+        renderer="atom"
+        request_method="POST"
+        permission="create" />
+
+
     <member_view
         for="plantscribe.interfaces.ISite
+             plantscribe.interfaces.ICustomer
+             plantscribe.interfaces.IProject
+             plantscribe.interfaces.ISpecies
              "
         view="everest.views.getmember.GetMemberView"
         renderer="atom"
@@ -74,4 +88,16 @@
         renderer="csv"
         request_method="GET" />
 
+    <!-- public folder for static content -->
+    <view
+        context="everest.resources.interfaces.IService"
+        view="everest.views.static.public_view"
+        name="public"
+        request_method="GET" />
+
+    <!-- this gives a static reference to the resources directory to be able
+         to load the xsd file from the outside world -->
+    <static
+        name="schemata/"
+        path="plantscribe:resources" />
 </configure>

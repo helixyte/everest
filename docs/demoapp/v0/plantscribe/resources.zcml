@@ -13,6 +13,26 @@
             <option
                 name="xml_tag"
                 value="customer" />
+            <attribute name="projects">
+                <option
+                    name="ignore"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+                <option
+                    name="write_as_link"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="projects.sites">
+                <option
+                    name="ignore"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+                <option
+                    name="write_as_link"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
         </representer>
         <representer
             kind="collection"
