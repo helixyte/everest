@@ -1,7 +1,7 @@
-:mod:`everest` is an extension of the popular :mod:`Pyramid` framework aimed at
+`everest` is an extension of the popular `Pyramid` framework aimed at
 simplifying the development of REST applications.
 
-:mod:`everest` features in a nutshell:
+`everest` features in a nutshell:
 
  * A resource declaration framework that allows you to expose an entity domain
    model through a REST application;
@@ -17,6 +17,6 @@ simplifying the development of REST applications.
  * A Flex client (distributed separately; see
    https://github.com/cenix/everest-flex).
 
-:mod:`everest` comes complete with a tutorial and a demo application. Code
+`everest` comes complete with a tutorial and a demo application. Code
 quality is strictly controlled using continuous integration, pylint and 100%
 test coverage.
