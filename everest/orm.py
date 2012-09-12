@@ -254,7 +254,7 @@ def map_system_entities(engine, reset):
     mapper(UserMessage, msg_tbl, id_attribute='guid')
     if reset:
         md.drop_all(bind=engine, tables=[msg_tbl])
-        md.create_all(bind=engine, tables=[msg_tbl])
+    md.create_all(bind=engine, tables=[msg_tbl])
 
 
 def empty_metadata(engine):
