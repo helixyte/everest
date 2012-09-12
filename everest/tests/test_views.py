@@ -114,7 +114,7 @@ class BasicViewTestCase(FunctionalTestCase):
                            status=200)
         self.assert_is_not_none(res)
 
-    def xtest_get_collection_with_order_and_size(self):
+    def test_get_collection_with_order_and_size(self):
         create_collection()
         res = self.app.get(self.path, params=dict(sort='id:asc', size=1),
                            status=200)

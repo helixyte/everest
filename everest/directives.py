@@ -161,7 +161,7 @@ class IMessagingDirective(Interface):
              required=False)
 
 
-def messaging(_context, repository, reset_on_start=True):
+def messaging(_context, repository, reset_on_start=False):
     """
     Directive for setting up the user message resource in the appropriate
     repository.

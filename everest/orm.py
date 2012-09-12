@@ -164,6 +164,21 @@ def as_slug_expression(attr):
     return slug_expr
 
 
+class hybrid_descriptor(hybrid_property):
+    """
+    Helper class wrapping a data descriptor into a hybrid property.
+    """
+    def __init__(self, descriptor, expr=None):
+        self.__descriptor = descriptor
+        hybrid_property.__init__(self, descriptor.fget,
+                                 fset=descriptor.fset, fdel=descriptor.fdel,
+                                 expr=expr)
+
+    @property
+    def descriptor(self):
+        return self.__descriptor
+
+
 def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
            *args, **kwargs):
     """
@@ -200,7 +215,7 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
     else:
         cls_expr = slug_expression
-    class_.slug = hybrid_property(class_.slug.fget, expr=cls_expr)
+    class_.slug = hybrid_descriptor(class_.slug, expr=cls_expr)
     return mpr
 
 
@@ -209,7 +224,7 @@ def clear_mappers():
     Clears all mappers set up by SA and also clears all custom "id" and
     "slug" attributes inserted by the :func:`mapper` function in this module.
     
-    This should only ever bee needed in a testing context.
+    This should only ever be needed in a testing context.
     """
     # Remove our hybrid property constructs.
     for mpr, is_primary in _mapper_registry.items():
@@ -218,7 +233,10 @@ def clear_mappers():
                 try:
                     attr = object.__getattribute__(mpr.class_, attr_name)
                     if isinstance(attr, hybrid_property):
-                        delattr(mpr.class_, attr_name)
+                        if attr_name == 'id':
+                            delattr(mpr.class_, attr_name)
+                        else:
+                            setattr(mpr.class_, attr_name, attr.descriptor)
                 except AttributeError:
                     pass
     sa_clear_mappers()
