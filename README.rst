@@ -1,3 +1,8 @@
+======================================
+everest - REST applications for python
+======================================
+
+
 `everest` is an extension of the popular `Pyramid` framework aimed at
 simplifying the development of REST applications.
 
@@ -15,8 +20,35 @@ simplifying the development of REST applications.
  * A query language for expressing complex hierarchical queries on the
    resource object tree through URLs;
  * A Flex client (distributed separately; see
-   https://github.com/cenix/everest-flex).
+   `https://github.com/cenix/everest-flex`).
 
-`everest` comes complete with a tutorial and a demo application. Code
-quality is strictly controlled using continuous integration, pylint and 100%
-test coverage.
+
+Installation
+============
+
+Installing :mod:`everest` is simple:
+
+.. code-block:: console
+
+   > pip install everest
+
+
+Documentation
+=============
+
+`everest` comes complete with
+ * `API documentation <http://cenix.github.com/everest>`_ and
+ * a `demo application <http://cenix.github.com/everest-demo>`_.
+
+
+Development
+===========
+
+:mod:`everest` is hosted on `github <https://github.com/cenix/everest>`_. To
+contribute, please fork the project and submit a pull request. Please adhere
+to PEP8 in your code and ensure 100% test coverage. We recommend configuring
+pylint with the configuration file supplied in the `support` directory.
+
+
+.. toctree::
+   :hidden:
