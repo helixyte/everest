@@ -19,14 +19,14 @@ simplifying the development of REST applications.
    relational database for large data volumes);
  * A query language for expressing complex hierarchical queries on the
    resource object tree through URLs;
- * A Flex client (distributed separately; see
-   `https://github.com/cenix/everest-flex`).
+ * A Flex client
+   (`distributed separately <https://github.com/cenix/everest-flex>`_).
 
 
 Installation
 ============
 
-Installing :mod:`everest` is simple:
+Installing `everest` is simple:
 
 .. code-block:: console
 
