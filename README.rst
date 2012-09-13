@@ -37,7 +37,7 @@ Documentation
 =============
 
 `everest` comes complete with
- * :doc:`API documentation <api>` and
+ * `API documentation <http://cenix.github.com/everest/api.html>`_ and
  * a `demo application <http://cenix.github.com/everest-demo>`_.
 
 
