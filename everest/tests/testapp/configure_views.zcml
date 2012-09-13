@@ -22,13 +22,32 @@
         collection=".resources.FooCollection"
         member=".resources.FooMember"
         entity=".entities.FooEntity"
-        collection_root_name="foos" />
+        collection_root_name="foos">
+        
+        <representer
+            kind="member"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foo" />
+        </representer>
+        <representer
+            kind="collection"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foos" />
+        </representer>
+    </resource>
         
     <!-- Views. -->
     
     <member_view
         for="everest.tests.testapp.interfaces.IFoo"
         view="everest.views.getmember.GetMemberView"
+        name="csv"
         renderer="csv"
         request_method="GET" />
 
@@ -38,5 +57,34 @@
         name="csv"
         renderer="csv"
         request_method="GET" />
+
+    <member_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <collection_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <member_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
+    <collection_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
 
 </configure>

@@ -8,6 +8,8 @@ Created Oct 7, 2011.
 """
 from everest.mime import AtomMime
 from everest.mime import CsvMime
+from everest.mime import JsonMime
+from everest.mime import XmlMime
 from everest.representers.utils import as_representer
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
@@ -18,6 +20,8 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = "reStructuredText en"
 __all__ = ['AtomRenderer',
            'CsvRenderer',
+           'JsonRenderer',
+           'XmlRenderer',
            'RendererFactory',
            'ResourceRenderer',
            ]
@@ -30,6 +34,10 @@ class RendererFactory(object):
     def __call__(self, value, system):
         if self.__name == 'csv':
             rnd = CsvRenderer()
+        elif self.__name == 'json':
+            rnd = JsonRenderer()
+        elif self.__name == 'xml':
+            rnd = XmlRenderer()
         elif self.__name == 'atom':
             rnd = AtomRenderer()
         else:
@@ -45,8 +53,6 @@ class ResourceRenderer(object):
 
     def __call__(self, value, system):
         context = value.get('context', system.get('context'))
-        if not IResource in provided_by(context):
-            raise ValueError('Context is not a resource.')
         if not self._validate(context):
             raise ValueError('Invalid representation.')
         self._prepare_response(system)
@@ -59,38 +65,38 @@ class ResourceRenderer(object):
         return self._content_type.mime_string
 
     def _validate(self, value):
-        raise NotImplementedError('Abstract method.')
-
-    def _prepare_response(self, system):
-        raise NotImplementedError('Abstract method.')
-
-
-class AtomRenderer(ResourceRenderer):
-
-    def __init__(self):
-        ResourceRenderer.__init__(self, AtomMime)
-
-    def _validate(self, value):
         return IResource in  provided_by(value)
-
-    def _prepare_response(self, system):
-        request = system['request']
-        request.response.content_type = self._format
-
-
-class CsvRenderer(ResourceRenderer):
-
-    def __init__(self):
-        ResourceRenderer.__init__(self, CsvMime)
-
-    def _validate(self, resource):
-        return IResource in provided_by(resource)
 
     def _prepare_response(self, system):
         # Set up response type.
         request = system['request']
         request.response.content_type = self._format
+
+
+class CsvRenderer(ResourceRenderer):
+    def __init__(self):
+        ResourceRenderer.__init__(self, CsvMime)
+
+    def _prepare_response(self, system):
+        ResourceRenderer._prepare_response(self, system)
         context = system['context']
         if ICollectionResource in provided_by(context):
             # Disable batching for CSV rendering.
             context.slice = None
+
+
+class JsonRenderer(ResourceRenderer):
+    def __init__(self):
+        ResourceRenderer.__init__(self, JsonMime)
+
+
+class XmlRenderer(ResourceRenderer):
+    def __init__(self):
+        ResourceRenderer.__init__(self, XmlMime)
+
+
+class AtomRenderer(ResourceRenderer):
+    def __init__(self):
+        ResourceRenderer.__init__(self, AtomMime)
+
+

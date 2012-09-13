@@ -54,7 +54,6 @@ class BasicViewTestCase(FunctionalTestCase):
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
-        self.config.add_renderer('csv', RendererFactory)
         self.config.add_view(context=get_member_class(IMyEntity),
                              view=GetMemberView,
                              renderer='csv',
@@ -206,7 +205,7 @@ class SuffixResourceTraverserTestCase(FunctionalTestCase):
     ini_file_path = resource_filename('everest.tests.testapp',
                                       'testapp_views.ini')
     app_name = 'testapp'
-    path = '/foos.csv'
+    path = '/foos'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
@@ -219,8 +218,12 @@ class SuffixResourceTraverserTestCase(FunctionalTestCase):
         self.app.get(self.path, status=404)
         # Use suffix traverser as default.
         self.config.add_traverser(SuffixResourceTraverser)
-        res = self.app.get(self.path, status=200)
-        self.assert_true(res.body.startswith('"id"'))
+        for sfx, fn in (('csv', lambda body: body.startswith('"id"')),
+                        ('json', lambda body: body.startswith('[{"id": 0')),
+                        ('xml', lambda body: body.strip().endswith('</foos>'))
+                        ):
+            res = self.app.get("%s.%s" % (self.path, sfx), status=200)
+            self.assert_true(fn(res.body))
         # Fail for non-existing collection.
         self.app.get('/bars.csv', status=404)
 

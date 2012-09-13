@@ -59,6 +59,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from everest.renderers import RendererFactory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -473,6 +474,11 @@ class Configurator(PyramidConfigurator):
             url_converter = ResourceUrlConverter
         self._register_adapter(url_converter, (IRequest,),
                                IResourceUrlConverter)
+        # Add builtin renderers.
+        self.add_renderer('csv', RendererFactory)
+        self.add_renderer('json', RendererFactory)
+        self.add_renderer('xml', RendererFactory)
+        self.add_renderer('atom', RendererFactory)
 
     def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
                          make_default, cnf):

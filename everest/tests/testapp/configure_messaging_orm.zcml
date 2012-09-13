@@ -12,7 +12,8 @@
     <!-- Messaging. -->
 
     <messaging 
-        repository="ORM"/>
+        repository="ORM"
+        reset_on_start="true"/>
 
     <include
         file="configure_views.zcml" />
