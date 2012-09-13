@@ -37,18 +37,14 @@ Documentation
 =============
 
 `everest` comes complete with
- * `API documentation <http://cenix.github.com/everest>`_ and
+ * :doc:`API documentation <api>` and
  * a `demo application <http://cenix.github.com/everest-demo>`_.
 
 
 Development
 ===========
 
-:mod:`everest` is hosted on `github <https://github.com/cenix/everest>`_. To
+`everest` is hosted on `github <https://github.com/cenix/everest>`_. To
 contribute, please fork the project and submit a pull request. Please adhere
 to PEP8 in your code and ensure 100% test coverage. We recommend configuring
 pylint with the configuration file supplied in the `support` directory.
-
-
-.. toctree::
-   :hidden:
