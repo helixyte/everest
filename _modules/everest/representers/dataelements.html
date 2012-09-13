@@ -1,0 +1,460 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.dataelements &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.representers.dataelements</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Data elements.</span>
+
+<span class="sd">This file is part of the everest project.</span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Apr 25, 2012</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">everest.representers.base</span> <span class="kn">import</span> <span class="n">data_element_tree_to_string</span>
+<span class="kn">from</span> <span class="nn">everest.representers.converters</span> <span class="kn">import</span> <span class="n">SimpleConverterRegistry</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">ILinkedDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">IMemberDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">IResourceDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.resources.attributes</span> <span class="kn">import</span> <span class="n">ResourceAttributeKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.kinds</span> <span class="kn">import</span> <span class="n">ResourceKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_collection_resource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_member_resource</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">resource_to_url</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">url_to_resource</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;CollectionDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataElementAttributeProxy&#39;</span><span class="p">,</span>
+           <span class="s">&#39;LinkedDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;MemberDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SimpleCollectionDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SimpleLinkedDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SimpleMemberDataElement&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="DataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.DataElement">[docs]</a><span class="k">class</span> <span class="nc">DataElement</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for data element classes.</span>
+
+<span class="sd">    Data elements manage value state during serialization and deserialization.</span>
+<span class="sd">    Implementations may need to be adapted to the format of the external</span>
+<span class="sd">    representation they manage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IResourceDataElement</span><span class="p">)</span>
+
+    <span class="c">#: Static attribute mapping.</span>
+    <span class="n">mapping</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="DataElement.create"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.DataElement.create">[docs]</a>    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Basic factory method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">inst</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="DataElement.create_from_resource"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.DataElement.create_from_resource">[docs]</a>    <span class="k">def</span> <span class="nf">create_from_resource</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        (Abstract) factory method taking a resource as input.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">data_element_tree_to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="MemberDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.MemberDataElement">[docs]</a><span class="k">class</span> <span class="nc">MemberDataElement</span><span class="p">(</span><span class="n">DataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for member data element classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IMemberDataElement</span><span class="p">)</span>
+
+    <span class="c">#: Registry of representation string &lt;-&gt; value converters. To be set</span>
+    <span class="c">#: in derived classes.</span>
+    <span class="n">converter_registry</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="MemberDataElement.get_terminal"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.MemberDataElement.get_terminal">[docs]</a>    <span class="k">def</span> <span class="nf">get_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the value for the given mapped terminal resource attribute.</span>
+
+<span class="sd">        :param attr: attribute to retrieve.</span>
+<span class="sd">        :type attr: :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :returns: attribute value or `None` if no value is found for the given</span>
+<span class="sd">            attribute name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MemberDataElement.set_terminal"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.MemberDataElement.set_terminal">[docs]</a>    <span class="k">def</span> <span class="nf">set_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the value for the given mapped terminal resource attribute.</span>
+
+<span class="sd">        :type attr: :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :param value: value of the attribute to set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MemberDataElement.get_nested"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.MemberDataElement.get_nested">[docs]</a>    <span class="k">def</span> <span class="nf">get_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the mapped nested resource attribute (either a member or a</span>
+<span class="sd">        collection resource attribute).</span>
+
+<span class="sd">        :type attr: :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :returns: object implementing `:class:IDataelement` or</span>
+<span class="sd">          `None` if no nested resource is found for the given attribute name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MemberDataElement.set_nested"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.MemberDataElement.set_nested">[docs]</a>    <span class="k">def</span> <span class="nf">set_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the value for the given mapped nested resource attribute (either</span>
+<span class="sd">        a member or a collection resource attribute).</span>
+
+<span class="sd">        :type attr: :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :param data_element: a :class:DataElement or :class:LinkedDataElement</span>
+<span class="sd">          object containing nested resource data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="CollectionDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.CollectionDataElement">[docs]</a><span class="k">class</span> <span class="nc">CollectionDataElement</span><span class="p">(</span><span class="n">DataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for collection data elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ICollectionDataElement</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CollectionDataElement.add_member"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.CollectionDataElement.add_member">[docs]</a>    <span class="k">def</span> <span class="nf">add_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds the given member data element to this collection data element.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CollectionDataElement.get_members"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.CollectionDataElement.get_members">[docs]</a>    <span class="k">def</span> <span class="nf">get_members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns all member data elements added to this collection data element.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="CollectionDataElement.__len__"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.CollectionDataElement.__len__">[docs]</a>    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the number of member data elements in this collection data</span>
+<span class="sd">        element.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div></div>
+<span class="k">class</span> <span class="nc">_SimpleDataElementMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_from_resource</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span> <span class="c"># ignore resource pylint:disable=W0613,W0221</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="SimpleMemberDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.SimpleMemberDataElement">[docs]</a><span class="k">class</span> <span class="nc">SimpleMemberDataElement</span><span class="p">(</span><span class="n">_SimpleDataElementMixin</span><span class="p">,</span> <span class="n">MemberDataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic implementation of a member data element.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">converter_registry</span> <span class="o">=</span> <span class="n">SimpleConverterRegistry</span>
+
+    <span class="n">__data</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">terminals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">DataElement</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nesteds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">DataElement</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">get_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_element</span>
+
+    <span class="k">def</span> <span class="nf">get_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="SimpleMemberDataElement.get_terminal_converted"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.SimpleMemberDataElement.get_terminal_converted">[docs]</a>    <span class="k">def</span> <span class="nf">get_terminal_converted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the value of the specified attribute converted to a </span>
+<span class="sd">        representation value.</span>
+<span class="sd">        </span>
+<span class="sd">        :param attr: attribute to retrieve.</span>
+<span class="sd">        :type attr: :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :returns: representation string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter_registry</span><span class="o">.</span><span class="n">convert_to_representation</span><span class="p">(</span>
+                                                            <span class="n">value</span><span class="p">,</span>
+                                                            <span class="n">attr</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SimpleMemberDataElement.set_terminal_converted"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.SimpleMemberDataElement.set_terminal_converted">[docs]</a>    <span class="k">def</span> <span class="nf">set_terminal_converted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">repr_value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts the given representation value and sets the specified </span>
+<span class="sd">        attribute value to the converted value. </span>
+
+<span class="sd">        :param attr: attribute to set.</span>
+<span class="sd">        :param str repr_value: string value of the attribute to set.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter_registry</span><span class="o">.</span><span class="n">convert_from_representation</span><span class="p">(</span>
+                                                            <span class="n">repr_value</span><span class="p">,</span>
+                                                            <span class="n">attr</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+</div></div>
+<div class="viewcode-block" id="SimpleCollectionDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.SimpleCollectionDataElement">[docs]</a><span class="k">class</span> <span class="nc">SimpleCollectionDataElement</span><span class="p">(</span><span class="n">_SimpleDataElementMixin</span><span class="p">,</span>
+                                  <span class="n">CollectionDataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic implementation of a collection data element.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__members</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">add_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">members</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data_element</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">members</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">members</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__members</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__members</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__members</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__members</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="LinkedDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.LinkedDataElement">[docs]</a><span class="k">class</span> <span class="nc">LinkedDataElement</span><span class="p">(</span><span class="n">DataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Data element managing a linked resource during serialization and</span>
+<span class="sd">    deserialization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ILinkedDataElement</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">relation</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_from_resource</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_kind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_relation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_title</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SimpleLinkedDataElement"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.SimpleLinkedDataElement">[docs]</a><span class="k">class</span> <span class="nc">SimpleLinkedDataElement</span><span class="p">(</span><span class="n">LinkedDataElement</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Basic implementation of a linked data element.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__url</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">__kind</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">__relation</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">__title</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">relation</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+        <span class="n">inst</span><span class="o">.</span><span class="n">__url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="n">inst</span><span class="o">.</span><span class="n">__kind</span> <span class="o">=</span> <span class="n">kind</span>
+        <span class="n">inst</span><span class="o">.</span><span class="n">__relation</span> <span class="o">=</span> <span class="n">relation</span>
+        <span class="n">inst</span><span class="o">.</span><span class="n">__title</span> <span class="o">=</span> <span class="n">title</span>
+        <span class="k">return</span> <span class="n">inst</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">create_from_resource</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">provides_member_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">MEMBER</span>
+        <span class="k">elif</span> <span class="n">provides_collection_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">COLLECTION</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;&quot;</span><span class="si">%s</span><span class="s">&quot; is not a resource.&#39;</span> <span class="o">%</span> <span class="n">resource</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">resource_to_url</span><span class="p">(</span><span class="n">resource</span><span class="p">),</span> <span class="n">kind</span><span class="p">,</span>
+                          <span class="n">relation</span><span class="o">=</span><span class="n">resource</span><span class="o">.</span><span class="n">relation</span><span class="p">,</span>
+                          <span class="n">title</span><span class="o">=</span><span class="n">resource</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__url</span>
+
+    <span class="k">def</span> <span class="nf">get_kind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__kind</span>
+
+    <span class="k">def</span> <span class="nf">get_relation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__relation</span>
+
+    <span class="k">def</span> <span class="nf">get_title</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__title</span>
+
+</div>
+<div class="viewcode-block" id="DataElementAttributeProxy"><a class="viewcode-back" href="../../../api/everest.representers.dataelements.html#everest.representers.dataelements.DataElementAttributeProxy">[docs]</a><span class="k">class</span> <span class="nc">DataElementAttributeProxy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience proxy for accessing data from data elements.</span>
+<span class="sd">    </span>
+<span class="sd">    The proxy allows you to transparently access terminal, member, and</span>
+<span class="sd">    collection attributes. Nested access is also supported.</span>
+<span class="sd">    </span>
+<span class="sd">    Example: ::</span>
+<span class="sd">    </span>
+<span class="sd">       prx = DataElementAttributeProxy(data_element)</span>
+<span class="sd">       de_id = prx.id                              # terminal access</span>
+<span class="sd">       de_parent = prx.parent                      # member access</span>
+<span class="sd">       de_child = prx.children[0]                  # collection access</span>
+<span class="sd">       de_grandchild = prx.children[0].children[0] # nested collection access</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ILinkedDataElement</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">data_element</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Do not use data element proxies with linked &#39;</span>
+                             <span class="s">&#39;data elements.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__data_element</span> <span class="o">=</span> <span class="n">data_element</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">data_element</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">attribute_iterator</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">attr</span><span class="o">.</span><span class="n">repr_name</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attr_map</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data_element</span><span class="o">.</span><span class="n">get_terminal</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">nested_data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data_element</span><span class="o">.</span><span class="n">get_nested</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">nested_data_el</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">elif</span> <span class="n">ILinkedDataElement</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">nested_data_el</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">url_to_resource</span><span class="p">(</span><span class="n">nested_data_el</span><span class="o">.</span><span class="n">get_url</span><span class="p">())</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="c"># traversal did not find anything.</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="k">elif</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">DataElementAttributeProxy</span><span class="p">(</span><span class="n">nested_data_el</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="p">[</span><span class="n">DataElementAttributeProxy</span><span class="p">(</span><span class="n">mb_el</span><span class="p">)</span>
+                             <span class="k">for</span> <span class="n">mb_el</span> <span class="ow">in</span> <span class="n">nested_data_el</span><span class="o">.</span><span class="n">get_members</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">value</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

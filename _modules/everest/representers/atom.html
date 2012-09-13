@@ -1,0 +1,288 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.atom &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.representers.atom</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">ATOM representers.</span>
+
+<span class="sd">This file is part of the everest project.</span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on May 19, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.mime</span> <span class="kn">import</span> <span class="n">AtomMime</span>
+<span class="kn">from</span> <span class="nn">everest.mime</span> <span class="kn">import</span> <span class="n">XmlMime</span>
+<span class="kn">from</span> <span class="nn">everest.representers.base</span> <span class="kn">import</span> <span class="n">ResourceRepresenter</span>
+<span class="kn">from</span> <span class="nn">everest.representers.mapping</span> <span class="kn">import</span> <span class="n">Mapping</span>
+<span class="kn">from</span> <span class="nn">everest.representers.utils</span> <span class="kn">import</span> <span class="n">get_mapping_registry</span>
+<span class="kn">from</span> <span class="nn">everest.representers.xml</span> <span class="kn">import</span> <span class="n">XmlMappingRegistry</span>
+<span class="kn">from</span> <span class="nn">everest.representers.xml</span> <span class="kn">import</span> <span class="n">XmlRepresentationGenerator</span>
+<span class="kn">from</span> <span class="nn">everest.representers.xml</span> <span class="kn">import</span> <span class="n">XmlRepresenterConfiguration</span>
+<span class="kn">from</span> <span class="nn">everest.resources.base</span> <span class="kn">import</span> <span class="n">Collection</span>
+<span class="kn">from</span> <span class="nn">everest.resources.base</span> <span class="kn">import</span> <span class="n">Member</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_member_resource</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">UrlPartsConverter</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;AtomMapping&#39;</span><span class="p">,</span>
+           <span class="s">&#39;AtomMappingRegistry&#39;</span><span class="p">,</span>
+           <span class="s">&#39;AtomRepresenterConfiguration&#39;</span><span class="p">,</span>
+           <span class="s">&#39;AtomResourceRepresenter&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+<span class="n">XML_NS_OPEN_SEARCH</span> <span class="o">=</span> <span class="s">&#39;http://a9.com/-/spec/opensearch/1.1/&#39;</span>
+<span class="n">XML_NS_ATOM</span> <span class="o">=</span> <span class="s">&#39;http://www.w3.org/2005/Atom&#39;</span>
+<span class="n">XML_PREFIX_OPEN_SEARCH</span> <span class="o">=</span> <span class="s">&#39;opensearch&#39;</span>
+<span class="n">XML_PREFIX_ATOM</span> <span class="o">=</span> <span class="s">&#39;atom&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">AtomResourceRepresenter</span><span class="p">(</span><span class="n">ResourceRepresenter</span><span class="p">):</span>
+
+    <span class="n">content_type</span> <span class="o">=</span> <span class="n">AtomMime</span>
+
+    <span class="k">def</span> <span class="nf">from_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">):</span>
+        <span class="c"># We do not support parsing ATOM representations.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Not implemented.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+        <span class="c"># We do not support parsing ATOM representations.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Not implemented.&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_mapping_registry</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">AtomMappingRegistry</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_make_representation_parser</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="c"># We do not support parsing ATOM representations.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Not implemented.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_make_representation_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">XmlRepresentationGenerator</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">AtomMapping</span><span class="p">(</span><span class="n">Mapping</span><span class="p">):</span>
+
+    <span class="c"># FIXME: Make the hypermedia type configurable. pylint: disable=W0511</span>
+    <span class="n">VND_MIME</span> <span class="o">=</span> <span class="s">&#39;application/vnd.everest+xml&#39;</span>
+
+    <span class="k">def</span> <span class="nf">map_to_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="c"># We use the XML mapping for the content serialization.</span>
+        <span class="n">xml_mp_reg</span> <span class="o">=</span> <span class="n">get_mapping_registry</span><span class="p">(</span><span class="n">XmlMime</span><span class="p">)</span>
+        <span class="n">xml_mp</span> <span class="o">=</span> <span class="n">xml_mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">resource</span><span class="p">))</span>
+        <span class="n">ns_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mapping_registry</span><span class="o">.</span><span class="n">namespace_map</span>
+        <span class="n">atom_mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mapping_registry</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">resource</span><span class="p">))</span>
+        <span class="n">data_el</span> <span class="o">=</span> \
+            <span class="n">atom_mp</span><span class="o">.</span><span class="n">data_element_class</span><span class="o">.</span><span class="n">create_from_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span>
+                                                            <span class="n">ns_map</span><span class="o">=</span><span class="n">ns_map</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">provides_member_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__map_member_to_data_element</span><span class="p">(</span><span class="n">data_el</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">xml_mp</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__map_collection_to_data_element</span><span class="p">(</span><span class="n">data_el</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">xml_mp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data_el</span>
+
+    <span class="k">def</span> <span class="nf">__map_member_to_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_el</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">xml_mp</span><span class="p">):</span>
+        <span class="c"># Fill in ATOM tags.</span>
+        <span class="c"># FIXME: Should not use etree API here pylint: disable=W0511</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">member</span><span class="o">.</span><span class="n">title</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">member</span><span class="o">.</span><span class="n">urn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__append_links</span><span class="p">(</span><span class="n">data_el</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">links</span><span class="p">)</span>
+        <span class="c"># FIXME: Make the media type configurable. pylint: disable=W0511</span>
+        <span class="n">type_string</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">;type=</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">VND_MIME</span><span class="p">,</span> <span class="n">member</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="n">cnt_wrapper_el</span> <span class="o">=</span> <span class="n">data_el</span><span class="o">.</span><span class="n">makeelement</span><span class="p">(</span><span class="s">&#39;content&#39;</span><span class="p">,</span>
+                                             <span class="nb">type</span><span class="o">=</span><span class="n">type_string</span><span class="p">)</span>
+        <span class="c"># Create content.</span>
+        <span class="n">content_data_el</span> <span class="o">=</span> <span class="n">xml_mp</span><span class="o">.</span><span class="n">map_to_data_element</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+        <span class="n">cnt_wrapper_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content_data_el</span><span class="p">)</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cnt_wrapper_el</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__map_collection_to_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_el</span><span class="p">,</span> <span class="n">collection</span><span class="p">,</span> <span class="n">xml_mp</span><span class="p">):</span>
+        <span class="c"># Fill in ATOM tags.</span>
+        <span class="c"># FIXME: Should not use etree API here pylint: disable=W0511</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">title</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">subtitle</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">description</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">title</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">generator</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s">&#39;uri&#39;</span><span class="p">,</span> <span class="n">collection</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">urn</span>
+        <span class="c"># FIXME: Make the media type configurable. pylint: disable=W0511</span>
+        <span class="n">type_string</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%s</span><span class="s">;type=</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">VND_MIME</span><span class="p">,</span>
+                                      <span class="n">collection</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="n">cnt_type_el</span> <span class="o">=</span> <span class="n">data_el</span><span class="o">.</span><span class="n">makeelement</span><span class="p">(</span><span class="s">&#39;content_type&#39;</span><span class="p">,</span>
+                                          <span class="n">name</span><span class="o">=</span><span class="n">type_string</span><span class="p">)</span>
+        <span class="n">data_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cnt_type_el</span><span class="p">)</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__append_opensearch_elements</span><span class="p">(</span><span class="n">data_el</span><span class="p">,</span> <span class="n">collection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__append_links</span><span class="p">(</span><span class="n">data_el</span><span class="p">,</span> <span class="n">collection</span><span class="o">.</span><span class="n">links</span><span class="p">)</span>
+        <span class="c"># Iterate over members and serialize as ATOM entries.</span>
+        <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="n">collection</span><span class="p">:</span>
+            <span class="n">member_data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_data_element_from_resource</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__map_member_to_data_element</span><span class="p">(</span><span class="n">member_data_el</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">xml_mp</span><span class="p">)</span>
+            <span class="n">data_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">member_data_el</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__append_links</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_data_el</span><span class="p">,</span> <span class="n">links</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+            <span class="n">attr_map</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;rel&#39;</span><span class="p">,</span> <span class="s">&#39;href&#39;</span><span class="p">,</span> <span class="s">&#39;title&#39;</span><span class="p">,</span> <span class="s">&#39;type&#39;</span><span class="p">,</span> <span class="s">&#39;length&#39;</span><span class="p">]:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">attr_map</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">link_el</span> <span class="o">=</span> <span class="n">resource_data_el</span><span class="o">.</span><span class="n">makeelement</span><span class="p">(</span><span class="s">&#39;link&#39;</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="n">attr_map</span><span class="p">)</span>
+            <span class="n">resource_data_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link_el</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__append_opensearch_elements</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coll_data_el</span><span class="p">,</span> <span class="n">collection</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">collection</span><span class="o">.</span><span class="n">filter</span><span class="p">:</span>
+            <span class="n">search_terms</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_filter_string</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">search_terms</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">collection</span><span class="o">.</span><span class="n">order</span><span class="p">:</span>
+            <span class="n">sort_terms</span> <span class="o">=</span> <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_order_string</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">order</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sort_terms</span> <span class="o">=</span> <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_order_string</span><span class="p">(</span>
+                                                    <span class="n">collection</span><span class="o">.</span><span class="n">default_order</span><span class="p">)</span>
+        <span class="c"># Query.</span>
+        <span class="n">q_tag</span> <span class="o">=</span> <span class="s">&#39;{</span><span class="si">%s</span><span class="s">}</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">XML_NS_OPEN_SEARCH</span><span class="p">,</span> <span class="s">&#39;Query&#39;</span><span class="p">)</span>
+        <span class="n">q_el</span> <span class="o">=</span> <span class="n">coll_data_el</span><span class="o">.</span><span class="n">makeelement</span><span class="p">(</span>
+                                <span class="n">q_tag</span><span class="p">,</span>
+                                <span class="n">attrib</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="s">&#39;request&#39;</span><span class="p">,</span>
+                                            <span class="n">searchTerms</span><span class="o">=</span><span class="n">search_terms</span><span class="p">,</span>
+                                            <span class="n">sortTerms</span><span class="o">=</span><span class="n">sort_terms</span><span class="p">),</span>
+                                <span class="n">nsmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mapping_registry</span><span class="o">.</span><span class="n">namespace_map</span><span class="p">)</span>
+        <span class="n">coll_data_el</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">q_el</span><span class="p">)</span>
+        <span class="c"># Total results.</span>
+        <span class="n">tr_tag</span> <span class="o">=</span> <span class="s">&#39;{</span><span class="si">%s</span><span class="s">}</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">XML_NS_OPEN_SEARCH</span><span class="p">,</span> <span class="s">&#39;totalResults&#39;</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">coll_data_el</span><span class="p">,</span> <span class="n">tr_tag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">collection</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">collection</span><span class="o">.</span><span class="n">slice</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Start index.</span>
+            <span class="n">si_tag</span> <span class="o">=</span> <span class="s">&#39;{</span><span class="si">%s</span><span class="s">}</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">XML_NS_OPEN_SEARCH</span><span class="p">,</span> <span class="s">&#39;startIndex&#39;</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">coll_data_el</span><span class="p">,</span> <span class="n">si_tag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">start</span><span class="p">))</span>
+            <span class="c"># Page size.</span>
+            <span class="n">ps_tag</span> <span class="o">=</span> <span class="s">&#39;{</span><span class="si">%s</span><span class="s">}</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">XML_NS_OPEN_SEARCH</span><span class="p">,</span> <span class="s">&#39;itemsPerPage&#39;</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">coll_data_el</span><span class="p">,</span> <span class="n">ps_tag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span>
+                                              <span class="n">collection</span><span class="o">.</span><span class="n">slice</span><span class="o">.</span><span class="n">start</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">AtomMappingRegistry</span><span class="p">(</span><span class="n">XmlMappingRegistry</span><span class="p">):</span>
+
+    <span class="n">NS_MAP</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">opensearch</span><span class="o">=</span><span class="n">XML_NS_OPEN_SEARCH</span><span class="p">)</span>
+    <span class="n">mapping_class</span> <span class="o">=</span> <span class="n">AtomMapping</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Create mappings for Member and Collection resource bases classes.</span>
+        <span class="n">atom_opts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">xml_schema</span><span class="o">=</span><span class="s">&#39;everest:representers/atom.xsd&#39;</span><span class="p">,</span>
+                         <span class="n">xml_ns</span><span class="o">=</span><span class="n">XML_NS_ATOM</span><span class="p">,</span>
+                         <span class="n">xml_prefix</span><span class="o">=</span><span class="n">XML_PREFIX_ATOM</span><span class="p">)</span>
+        <span class="n">mb_config</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">configuration_class</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">atom_opts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="o">+</span>
+                                                  <span class="p">[(</span><span class="s">&#39;xml_tag&#39;</span><span class="p">,</span> <span class="s">&#39;entry&#39;</span><span class="p">)]))</span>
+        <span class="n">mb_mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_mapping</span><span class="p">(</span><span class="n">Member</span><span class="p">,</span> <span class="n">mb_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_mapping</span><span class="p">(</span><span class="n">mb_mp</span><span class="p">)</span>
+        <span class="n">coll_config</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">configuration_class</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">atom_opts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="o">+</span>
+                                                  <span class="p">[(</span><span class="s">&#39;xml_tag&#39;</span><span class="p">,</span> <span class="s">&#39;feed&#39;</span><span class="p">)]))</span>
+        <span class="n">coll_mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_mapping</span><span class="p">(</span><span class="n">Collection</span><span class="p">,</span> <span class="n">coll_config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_mapping</span><span class="p">(</span><span class="n">coll_mp</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">namespace_map</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">atom_ns_map</span> <span class="o">=</span> \
+            <span class="nb">getattr</span><span class="p">(</span><span class="n">XmlMappingRegistry</span><span class="p">,</span> <span class="s">&#39;namespace_map&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">xml_mp_reg</span> <span class="o">=</span> <span class="n">get_mapping_registry</span><span class="p">(</span><span class="n">XmlMime</span><span class="p">)</span>
+        <span class="n">xml_ns_map</span> <span class="o">=</span> <span class="n">xml_mp_reg</span><span class="o">.</span><span class="n">namespace_map</span>
+        <span class="n">atom_ns_map</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">xml_ns_map</span><span class="p">)</span>
+        <span class="c"># Make ATOM namespace the default.</span>
+        <span class="k">del</span> <span class="n">atom_ns_map</span><span class="p">[</span><span class="n">XML_PREFIX_ATOM</span><span class="p">]</span>
+        <span class="n">atom_ns_map</span><span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">XML_NS_ATOM</span>
+        <span class="k">return</span> <span class="n">atom_ns_map</span>
+
+
+<span class="n">AtomRepresenterConfiguration</span> <span class="o">=</span> <span class="n">XmlRepresenterConfiguration</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

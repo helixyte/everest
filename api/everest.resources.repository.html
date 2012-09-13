@@ -1,0 +1,146 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.repository &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.resources.repository">
+<span id="everest-resources-repository"></span><h1>everest.resources.repository<a class="headerlink" href="#module-everest.resources.repository" title="Permalink to this headline">¶</a></h1>
+<p>Resource repository.</p>
+<dl class="class">
+<dt id="everest.resources.repository.RepositoryManager">
+<em class="property">class </em><tt class="descclassname">everest.resources.repository.</tt><tt class="descname">RepositoryManager</tt><a class="reference internal" href="../_modules/everest/resources/repository.html#RepositoryManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.repository.RepositoryManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>The repository manager creates, initializes and holds resource 
+repositories by name.</p>
+<dl class="attribute">
+<dt id="everest.resources.repository.RepositoryManager.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.resources.repository.RepositoryManager.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.resources.repository.RepositoryManager.initialize_all">
+<tt class="descname">initialize_all</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/resources/repository.html#RepositoryManager.initialize_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.repository.RepositoryManager.initialize_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to initialize all repositories that have not been
+initialized yet.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.resources.repository.RepositoryManager.setup_messaging">
+<tt class="descname">setup_messaging</tt><big>(</big><em>repository</em>, <em>reset_on_start</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/repository.html#RepositoryManager.setup_messaging"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.repository.RepositoryManager.setup_messaging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up messaging for the given repository.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>repository</strong> (<em>str</em>) &#8211; Name of the repository to use to store user
+messages.</li>
+<li><strong>reset_on_start</strong> (<em>bool</em>) &#8211; Flag to indicate whether stored user 
+messsages should be discarded on startup.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.repository.ResourceRepository">
+<em class="property">class </em><tt class="descclassname">everest.resources.repository.</tt><tt class="descname">ResourceRepository</tt><big>(</big><em>entity_repository</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/repository.html#ResourceRepository"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.repository.ResourceRepository" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.repository.html#everest.repository.Repository" title="everest.repository.Repository"><tt class="xref py py-class docutils literal"><span class="pre">everest.repository.Repository</span></tt></a></p>
+<p>The resource repository manages resource accessors (collections).</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.resources.repository.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

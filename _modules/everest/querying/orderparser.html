@@ -1,0 +1,132 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.orderparser &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.querying.orderparser</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Order CQL expression parser.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jul 5, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">Combine</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">Group</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">Word</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">ZeroOrMore</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">alphas</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">delimitedList</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">oneOf</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;parse_order&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="n">colon</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">(</span><span class="s">&#39;:&#39;</span><span class="p">)</span>
+<span class="n">tilde</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">(</span><span class="s">&#39;~&#39;</span><span class="p">)</span>
+<span class="n">attribute</span> <span class="o">=</span> <span class="n">Word</span><span class="p">(</span><span class="n">alphas</span><span class="p">,</span> <span class="n">alphas</span> <span class="o">+</span> <span class="s">&#39;-&#39;</span><span class="p">)</span>
+<span class="n">identifier</span> <span class="o">=</span> <span class="n">Combine</span><span class="p">(</span><span class="n">attribute</span> <span class="o">+</span> <span class="n">ZeroOrMore</span><span class="p">(</span><span class="s">&#39;.&#39;</span> <span class="o">+</span> <span class="n">attribute</span><span class="p">)</span>
+                     <span class="p">)</span><span class="o">.</span><span class="n">setName</span><span class="p">(</span><span class="s">&#39;identifier&#39;</span><span class="p">)</span>
+<span class="n">direction</span> <span class="o">=</span> <span class="n">oneOf</span><span class="p">(</span><span class="s">&quot;asc desc&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setName</span><span class="p">(</span><span class="s">&#39;direction&#39;</span><span class="p">)</span>
+<span class="n">order_criterion</span> <span class="o">=</span> <span class="n">Group</span><span class="p">(</span><span class="n">identifier</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">colon</span><span class="o">.</span><span class="n">suppress</span><span class="p">()</span> <span class="o">+</span> \
+                   <span class="n">direction</span><span class="p">(</span><span class="s">&#39;operator&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">setResultsName</span><span class="p">(</span><span class="s">&#39;order&#39;</span><span class="p">)</span>
+<span class="n">order_criteria</span> <span class="o">=</span> \
+    <span class="n">Group</span><span class="p">(</span><span class="n">delimitedList</span><span class="p">(</span><span class="n">order_criterion</span><span class="p">,</span> <span class="n">tilde</span><span class="p">))</span><span class="o">.</span><span class="n">setResultsName</span><span class="p">(</span><span class="s">&#39;criteria&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="parse_order"><a class="viewcode-back" href="../../../api/everest.querying.orderparser.html#everest.querying.orderparser.parse_order">[docs]</a><span class="k">def</span> <span class="nf">parse_order</span><span class="p">(</span><span class="n">criteria_string</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parses the given order criteria string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">order_criteria</span><span class="o">.</span><span class="n">parseString</span><span class="p">(</span><span class="n">criteria_string</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

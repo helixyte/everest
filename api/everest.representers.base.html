@@ -1,0 +1,283 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.base &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.representers.base">
+<span id="everest-representers-base"></span><h1>everest.representers.base<a class="headerlink" href="#module-everest.representers.base" title="Permalink to this headline">¶</a></h1>
+<p>Representer base classes.</p>
+<dl class="class">
+<dt id="everest.representers.base.Representer">
+<em class="property">class </em><tt class="descclassname">everest.representers.base.</tt><tt class="descname">Representer</tt><a class="reference internal" href="../_modules/everest/representers/base.html#Representer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.Representer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class for all representers.</p>
+<p>A representer knows how to convert an object into a representation of a
+particular MIME type (content type) and vice versa.</p>
+<dl class="attribute">
+<dt id="everest.representers.base.Representer.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.base.Representer.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.base.RepresenterRegistry">
+<em class="property">class </em><tt class="descclassname">everest.representers.base.</tt><tt class="descname">RepresenterRegistry</tt><a class="reference internal" href="../_modules/everest/representers/base.html#RepresenterRegistry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.RepresenterRegistry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Registry for representer classes and representer factories.</p>
+<dl class="attribute">
+<dt id="everest.representers.base.RepresenterRegistry.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.base.RepresenterRegistry.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.RepresenterRegistry.create">
+<tt class="descname">create</tt><big>(</big><em>resource</em>, <em>content_type</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#RepresenterRegistry.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.RepresenterRegistry.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a representer for the given combination of resource and 
+content type. This will also find representer factories that were
+registered for a base class of the given resource.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.RepresenterRegistry.register">
+<tt class="descname">register</tt><big>(</big><em>resource_class</em>, <em>content_type</em>, <em>configuration=None</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#RepresenterRegistry.register"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.RepresenterRegistry.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a representer factory for the given combination of resource
+class and content type.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>configuration</strong> (<tt class="xref py py-class docutils literal"><span class="pre">everest.representers.config.RepresenterConfiguration</span></tt>) &#8211; representer configuration. A default instance
+will be created if this is not given.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.base.ResourceRepresenter">
+<em class="property">class </em><tt class="descclassname">everest.representers.base.</tt><tt class="descname">ResourceRepresenter</tt><big>(</big><em>resource_class</em>, <em>mapping</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.base.Representer" title="everest.representers.base.Representer"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.base.Representer</span></tt></a></p>
+<p>Base class for resource representers which know how to convert resource
+representations into resources and back.</p>
+<p>This conversion is performed using four customizable, independent helper
+objects:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The <em>representation parser</em> responsible for converting the
+representation into a data element tree;</li>
+<li>The <em>data element parser</em> responsible for converting a data element
+tree into a resource;</li>
+<li>The <em>data element generator</em> responsible for converting a resource
+into a data element tree; and</li>
+<li>the <em>representation generator</em> responsible for converting the data
+element tree into a representation.</li>
+</ol>
+</div></blockquote>
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.configure">
+<tt class="descname">configure</tt><big>(</big><em>options=None</em>, <em>attribute_options=None</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.configure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.configure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configures the attribute mapping for this representer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>options</strong> (<em>dict</em>) &#8211; configuration options for the mapping associated
+with this representer.</li>
+<li><strong>attribute_options</strong> (<em>dict</em>) &#8211; attribute options for the mapping
+associated with this representer.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.data_from_representation">
+<tt class="descname">data_from_representation</tt><big>(</big><em>representation</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.data_from_representation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.data_from_representation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a data element from the given representation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">object implementing 
+<tt class="xref py py-class docutils literal"><span class="pre">everest.representers.interfaces.IExplicitDataElement</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.data_from_resource">
+<tt class="descname">data_from_resource</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.data_from_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.data_from_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts managed attributes from a resource and constructs a data
+element for serialization from it.</p>
+<dl class="docutils">
+<dt>Default representer behavior:</dt>
+<dd><ul class="first last simple">
+<li>Top-level member and collections resource attributes are
+represented as links.</li>
+<li>Nested member resource attributes are represented as links,
+nested collection resource attributes are ignored (building a link
+may require iterating over the collection).</li>
+</ul>
+</dd>
+</dl>
+<p>The default behavior can be configured with the &#8220;representer&#8221;
+directive (<tt class="xref py py-func docutils literal"><span class="pre">everest.configuration.representer()</span></tt>) by means of the
+&#8220;write_as_link&#8221; and &#8220;ignore&#8221; options of representer configuration
+objects (<tt class="xref py py-class docutils literal"><span class="pre">everest.representers.config.RepresenterConfiguration</span></tt>).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.data_from_stream">
+<tt class="descname">data_from_stream</tt><big>(</big><em>stream</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.data_from_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.data_from_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a data element reading a representation from the given stream.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">object implementing 
+<tt class="xref py py-class docutils literal"><span class="pre">everest.representers.interfaces.IExplicitDataElement</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.representation_from_data">
+<tt class="descname">representation_from_data</tt><big>(</big><em>data_element</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.representation_from_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.representation_from_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a representation from the given data element.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_element</strong> &#8211; </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.base.ResourceRepresenter.resource_from_data">
+<tt class="descname">resource_from_data</tt><big>(</big><em>data_element</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#ResourceRepresenter.resource_from_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.ResourceRepresenter.resource_from_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts serialized data from the given data element and constructs
+a resource from it.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resolve_urls</strong> &#8211; If this is set to <cite>False</cite>, resolving URLs in the
+data element tree will be delayed until after loading has completed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IResource</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.representers.base.data_element_tree_to_string">
+<tt class="descclassname">everest.representers.base.</tt><tt class="descname">data_element_tree_to_string</tt><big>(</big><em>data_element</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/base.html#data_element_tree_to_string"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.base.data_element_tree_to_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a string representation of the given data element tree.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.representers.base.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

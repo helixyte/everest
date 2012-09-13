@@ -1,0 +1,237 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.utils &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.resources.utils">
+<span id="everest-resources-utils"></span><h1>everest.resources.utils<a class="headerlink" href="#module-everest.resources.utils" title="Permalink to this headline">¶</a></h1>
+<p>Resource related utilities.</p>
+<dl class="function">
+<dt id="everest.resources.utils.as_member">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">as_member</tt><big>(</big><em>entity</em>, <em>parent=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#as_member"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.as_member" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapts an object to a location aware member resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>entity</strong> (an object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; a domain object for which a resource adapter has been
+registered</li>
+<li><strong>parent</strong> (an object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.ICollectionResource</span></tt>) &#8211; optional parent collection resource to make the new member
+a child of</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">an object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IMemberResource</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_collection_class">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_collection_class</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_collection_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_collection_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the registered collection resource class for the given marker
+interface or member resource class or instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+a registered resource interface.</em>) &#8211; registered resource</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_member_class">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_member_class</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_member_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_member_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the registered member class for the given resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+a registered resource interface.</em>) &#8211; registered resource</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_resource_class_for_relation">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_resource_class_for_relation</tt><big>(</big><em>relation</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_resource_class_for_relation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_resource_class_for_relation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the resource class that was registered for the given
+relation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>relation</strong> (<em>str</em>) &#8211; relation string.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_resource_url">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_resource_url</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_resource_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_resource_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the URL for the given resource.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_root_collection">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_root_collection</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_root_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_root_collection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a clone of the collection from the repository registered for the
+given registered resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+a registered resource interface.</em>) &#8211; registered resource</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.get_stage_collection">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_stage_collection</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_stage_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_stage_collection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a clone of the collection in the stage repository matching the 
+given registered resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+a registered resource interface.</em>) &#8211; registered resource</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.is_resource_url">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">is_resource_url</tt><big>(</big><em>url_string</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#is_resource_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.is_resource_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given URL string is a resource URL.</p>
+<p>Currently, this check only looks if the URL scheme is either &#8220;http&#8221; or
+&#8220;https&#8221;.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.provides_collection_resource">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">provides_collection_resource</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#provides_collection_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.provides_collection_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given type or instance provides the
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.ICollectionResource</span></tt> interface.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.provides_member_resource">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">provides_member_resource</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#provides_member_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.provides_member_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given type or instance provides the
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IMemberResource</span></tt> interface.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.provides_resource">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">provides_resource</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#provides_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.provides_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given type or instance provides the
+<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IResource</span></tt> interface.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.resources.utils.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,137 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.urlloader &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.representers.urlloader">
+<span id="everest-representers-urlloader"></span><h1>everest.representers.urlloader<a class="headerlink" href="#module-everest.representers.urlloader" title="Permalink to this headline">¶</a></h1>
+<p>URL lazy loader.</p>
+<dl class="class">
+<dt id="everest.representers.urlloader.LazyAttributeLoaderProxy">
+<em class="property">class </em><tt class="descclassname">everest.representers.urlloader.</tt><tt class="descname">LazyAttributeLoaderProxy</tt><big>(</big><em>_loader_map=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/urlloader.html#LazyAttributeLoaderProxy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.urlloader.LazyAttributeLoaderProxy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Proxy for lazy loading of attributes referencing entities that are loaded
+through a URL-linked resource.</p>
+<dl class="attribute">
+<dt id="everest.representers.urlloader.LazyAttributeLoaderProxy.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.urlloader.LazyAttributeLoaderProxy.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="everest.representers.urlloader.LazyAttributeLoaderProxy.create">
+<em class="property">classmethod </em><tt class="descname">create</tt><big>(</big><em>entity_cls</em>, <em>data</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/urlloader.html#LazyAttributeLoaderProxy.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.urlloader.LazyAttributeLoaderProxy.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Factory class method to create a lazy loader for entities linked 
+through resource URLs.</p>
+<p>This returns an instance of a new dynamically created subtype of 
+the given entity class which also inherits from this class to add
+the referenced entity attribute loading functionality. Once all
+referenced entity attributes have been loaded successfully, the
+instance&#8217;s class is reverted to the given entity class.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.urlloader.LazyUrlLoader">
+<em class="property">class </em><tt class="descclassname">everest.representers.urlloader.</tt><tt class="descname">LazyUrlLoader</tt><big>(</big><em>url</em>, <em>resolver</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/urlloader.html#LazyUrlLoader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.urlloader.LazyUrlLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Helper class for lazy loading of URLs.</p>
+<dl class="attribute">
+<dt id="everest.representers.urlloader.LazyUrlLoader.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.urlloader.LazyUrlLoader.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.representers.urlloader.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

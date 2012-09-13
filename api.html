@@ -1,0 +1,386 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API Reference &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="entities">
+<h2>Entities<a class="headerlink" href="#entities" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.entities.aggregates.html#module-everest.entities.aggregates" title="everest.entities.aggregates"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.aggregates</span></tt></a></td>
+<td>Aggregate implementations.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.entities.attributes.html#module-everest.entities.attributes" title="everest.entities.attributes"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.attributes</span></tt></a></td>
+<td>Entity attributes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.entities.base.html#module-everest.entities.base" title="everest.entities.base"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.base</span></tt></a></td>
+<td>Entity and aggregate base classes.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.entities.interfaces.html#module-everest.entities.interfaces" title="everest.entities.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.interfaces</span></tt></a></td>
+<td>Interfaces for entity and aggregate classes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.entities.repository.html#module-everest.entities.repository" title="everest.entities.repository"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.repository</span></tt></a></td>
+<td>Entity repository.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.entities.system.html#module-everest.entities.system" title="everest.entities.system"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.system</span></tt></a></td>
+<td>System entities.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.entities.utils.html#module-everest.entities.utils" title="everest.entities.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.entities.utils</span></tt></a></td>
+<td>Entity related utilities.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="querying">
+<h2>Querying<a class="headerlink" href="#querying" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.querying.base.html#module-everest.querying.base" title="everest.querying.base"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.base</span></tt></a></td>
+<td>Querying operators, expressions, visitors, builders, directors.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.querying.filtering.html#module-everest.querying.filtering" title="everest.querying.filtering"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.filtering</span></tt></a></td>
+<td>Filter specification builder, visitor, director classes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.querying.filterparser.html#module-everest.querying.filterparser" title="everest.querying.filterparser"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.filterparser</span></tt></a></td>
+<td>Filter CQL criteria expression parser.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.querying.interfaces.html#module-everest.querying.interfaces" title="everest.querying.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.interfaces</span></tt></a></td>
+<td>Interfaces for specifications and related classes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.querying.operators.html#module-everest.querying.operators" title="everest.querying.operators"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.operators</span></tt></a></td>
+<td>Custom querying operators.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.querying.orderparser.html#module-everest.querying.orderparser" title="everest.querying.orderparser"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.orderparser</span></tt></a></td>
+<td>Order CQL expression parser.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.querying.specifications.html#module-everest.querying.specifications" title="everest.querying.specifications"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.specifications</span></tt></a></td>
+<td>Specifications.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.querying.utils.html#module-everest.querying.utils" title="everest.querying.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.querying.utils</span></tt></a></td>
+<td>Querying utilities.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="representers">
+<h2>Representers<a class="headerlink" href="#representers" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.atom.html#module-everest.representers.atom" title="everest.representers.atom"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.atom</span></tt></a></td>
+<td>ATOM representers.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.attributes.html#module-everest.representers.attributes" title="everest.representers.attributes"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.attributes</span></tt></a></td>
+<td>Mapped resource attributes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.base.html#module-everest.representers.base" title="everest.representers.base"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.base</span></tt></a></td>
+<td>Representer base classes.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.config.html#module-everest.representers.config" title="everest.representers.config"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.config</span></tt></a></td>
+<td>Representer configuration.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.converters.html#module-everest.representers.converters" title="everest.representers.converters"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.converters</span></tt></a></td>
+<td>Converters resource attribute value &lt;-&gt; representation string.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.csv.html#module-everest.representers.csv" title="everest.representers.csv"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.csv</span></tt></a></td>
+<td>CSV representers.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.dataelements.html#module-everest.representers.dataelements" title="everest.representers.dataelements"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.dataelements</span></tt></a></td>
+<td>Data elements.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.interfaces.html#module-everest.representers.interfaces" title="everest.representers.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.interfaces</span></tt></a></td>
+<td>Interfaces for representers.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.mapping.html#module-everest.representers.mapping" title="everest.representers.mapping"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.mapping</span></tt></a></td>
+<td>Mapping and mapping registry.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.traversal.html#module-everest.representers.traversal" title="everest.representers.traversal"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.traversal</span></tt></a></td>
+<td>Resource data tree traversal.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.urlloader.html#module-everest.representers.urlloader" title="everest.representers.urlloader"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.urlloader</span></tt></a></td>
+<td>URL lazy loader.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.representers.utils.html#module-everest.representers.utils" title="everest.representers.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.utils</span></tt></a></td>
+<td>Representer related utilities.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.representers.xml.html#module-everest.representers.xml" title="everest.representers.xml"><tt class="xref py py-obj docutils literal"><span class="pre">everest.representers.xml</span></tt></a></td>
+<td>XML representers.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="resources">
+<h2>Resources<a class="headerlink" href="#resources" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.attributes.html#module-everest.resources.attributes" title="everest.resources.attributes"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.attributes</span></tt></a></td>
+<td>This file is part of the everest project.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.base.html#module-everest.resources.base" title="everest.resources.base"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.base</span></tt></a></td>
+<td>Resources.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.descriptors.html#module-everest.resources.descriptors" title="everest.resources.descriptors"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.descriptors</span></tt></a></td>
+<td>Attribute descriptors for resource classes.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.entitystores.html#module-everest.resources.entitystores" title="everest.resources.entitystores"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.entitystores</span></tt></a></td>
+<td>Entity stores.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.interfaces.html#module-everest.resources.interfaces" title="everest.resources.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.interfaces</span></tt></a></td>
+<td>Interfaces for resources.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.io.html#module-everest.resources.io" title="everest.resources.io"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.io</span></tt></a></td>
+<td>Input/Output operations on resources.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.kinds.html#module-everest.resources.kinds" title="everest.resources.kinds"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.kinds</span></tt></a></td>
+<td>Resource kinds.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.link.html#module-everest.resources.link" title="everest.resources.link"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.link</span></tt></a></td>
+<td>Resource link.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.repository.html#module-everest.resources.repository" title="everest.resources.repository"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.repository</span></tt></a></td>
+<td>Resource repository.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.service.html#module-everest.resources.service" title="everest.resources.service"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.service</span></tt></a></td>
+<td>Service.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.resources.system.html#module-everest.resources.system" title="everest.resources.system"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.system</span></tt></a></td>
+<td>System resources.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.resources.utils.html#module-everest.resources.utils" title="everest.resources.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.resources.utils</span></tt></a></td>
+<td>Resource related utilities.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="views">
+<h2>Views<a class="headerlink" href="#views" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.views.base.html#module-everest.views.base" title="everest.views.base"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.base</span></tt></a></td>
+<td>View base classes.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.views.deletemember.html#module-everest.views.deletemember" title="everest.views.deletemember"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.deletemember</span></tt></a></td>
+<td>Delete member view.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.views.getcollection.html#module-everest.views.getcollection" title="everest.views.getcollection"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.getcollection</span></tt></a></td>
+<td>Get collection view.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.views.getmember.html#module-everest.views.getmember" title="everest.views.getmember"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.getmember</span></tt></a></td>
+<td>Get member view.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.views.interfaces.html#module-everest.views.interfaces" title="everest.views.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.interfaces</span></tt></a></td>
+<td>Interfaces for views.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.views.postcollection.html#module-everest.views.postcollection" title="everest.views.postcollection"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.postcollection</span></tt></a></td>
+<td>Post collection view.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.views.putmember.html#module-everest.views.putmember" title="everest.views.putmember"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.putmember</span></tt></a></td>
+<td>Put member view.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.views.static.html#module-everest.views.static" title="everest.views.static"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.static</span></tt></a></td>
+<td>Static view.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.views.utils.html#module-everest.views.utils" title="everest.views.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.views.utils</span></tt></a></td>
+<td>View related utilities.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="core-modules">
+<h2>Core Modules<a class="headerlink" href="#core-modules" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.batch.html#module-everest.batch" title="everest.batch"><tt class="xref py py-obj docutils literal"><span class="pre">everest.batch</span></tt></a></td>
+<td>Batch.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.configuration.html#module-everest.configuration" title="everest.configuration"><tt class="xref py py-obj docutils literal"><span class="pre">everest.configuration</span></tt></a></td>
+<td>Configurator for everest.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.directives.html#module-everest.directives" title="everest.directives"><tt class="xref py py-obj docutils literal"><span class="pre">everest.directives</span></tt></a></td>
+<td>ZCML directives for everest.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.exceptions.html#module-everest.exceptions" title="everest.exceptions"><tt class="xref py py-obj docutils literal"><span class="pre">everest.exceptions</span></tt></a></td>
+<td>Custom exceptions.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.ini.html#module-everest.ini" title="everest.ini"><tt class="xref py py-obj docutils literal"><span class="pre">everest.ini</span></tt></a></td>
+<td>Settings file handling and nose plugin for testing.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.interfaces.html#module-everest.interfaces" title="everest.interfaces"><tt class="xref py py-obj docutils literal"><span class="pre">everest.interfaces</span></tt></a></td>
+<td>Interfaces for everest.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.messaging.html#module-everest.messaging" title="everest.messaging"><tt class="xref py py-obj docutils literal"><span class="pre">everest.messaging</span></tt></a></td>
+<td>Message notification and handling.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.mime.html#module-everest.mime" title="everest.mime"><tt class="xref py py-obj docutils literal"><span class="pre">everest.mime</span></tt></a></td>
+<td>MIME (content) types.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.orm.html#module-everest.orm" title="everest.orm"><tt class="xref py py-obj docutils literal"><span class="pre">everest.orm</span></tt></a></td>
+<td>ORM related services.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.relationship.html#module-everest.relationship" title="everest.relationship"><tt class="xref py py-obj docutils literal"><span class="pre">everest.relationship</span></tt></a></td>
+<td>Parent/child relationship between entities or resources.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.renderers.html#module-everest.renderers" title="everest.renderers"><tt class="xref py py-obj docutils literal"><span class="pre">everest.renderers</span></tt></a></td>
+<td>Renderers.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.repository.html#module-everest.repository" title="everest.repository"><tt class="xref py py-obj docutils literal"><span class="pre">everest.repository</span></tt></a></td>
+<td>Repository base class.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.root.html#module-everest.root" title="everest.root"><tt class="xref py py-obj docutils literal"><span class="pre">everest.root</span></tt></a></td>
+<td>Root factory.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.testing.html#module-everest.testing" title="everest.testing"><tt class="xref py py-obj docutils literal"><span class="pre">everest.testing</span></tt></a></td>
+<td>Testing base classes and services.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.traversal.html#module-everest.traversal" title="everest.traversal"><tt class="xref py py-obj docutils literal"><span class="pre">everest.traversal</span></tt></a></td>
+<td>Custom resource object tree traverser.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="api/everest.url.html#module-everest.url" title="everest.url"><tt class="xref py py-obj docutils literal"><span class="pre">everest.url</span></tt></a></td>
+<td>URL &lt;-&gt; resource conversion.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="api/everest.utils.html#module-everest.utils" title="everest.utils"><tt class="xref py py-obj docutils literal"><span class="pre">everest.utils</span></tt></a></td>
+<td>General purpose utilities.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#entities">Entities</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#querying">Querying</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#representers">Representers</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#resources">Resources</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#views">Views</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#core-modules">Core Modules</a><ul>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/api.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

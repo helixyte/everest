@@ -1,0 +1,345 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.views.base &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.views.base</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">View base classes.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Oct 7, 2011.j</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.messaging</span> <span class="kn">import</span> <span class="n">UserMessageChecker</span>
+<span class="kn">from</span> <span class="nn">everest.messaging</span> <span class="kn">import</span> <span class="n">UserMessageHandlingContextManager</span>
+<span class="kn">from</span> <span class="nn">everest.mime</span> <span class="kn">import</span> <span class="n">get_registered_mime_type_for_string</span>
+<span class="kn">from</span> <span class="nn">everest.representers.utils</span> <span class="kn">import</span> <span class="n">as_representer</span>
+<span class="kn">from</span> <span class="nn">everest.resources.system</span> <span class="kn">import</span> <span class="n">UserMessageMember</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_traceback</span>
+<span class="kn">from</span> <span class="nn">everest.views.interfaces</span> <span class="kn">import</span> <span class="n">IResourceView</span>
+<span class="kn">from</span> <span class="nn">paste.httpexceptions</span> <span class="kn">import</span> <span class="n">HTTPInternalServerError</span> <span class="c"># pylint: disable=F0401</span>
+<span class="kn">from</span> <span class="nn">paste.httpexceptions</span> <span class="kn">import</span> <span class="n">HTTPTemporaryRedirect</span> <span class="c"># pylint: disable=F0401</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_request</span>
+<span class="kn">from</span> <span class="nn">webob.exc</span> <span class="kn">import</span> <span class="n">HTTPBadRequest</span>
+<span class="kn">from</span> <span class="nn">webob.exc</span> <span class="kn">import</span> <span class="n">HTTPConflict</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&quot;reStructuredText en&quot;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;GetResourceView&#39;</span><span class="p">,</span>
+           <span class="s">&#39;HttpWarningResubmit&#39;</span><span class="p">,</span>
+           <span class="s">&#39;PutOrPostResourceView&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceView&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ViewUserMessageChecker&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="HttpWarningResubmit"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.HttpWarningResubmit">[docs]</a><span class="k">class</span> <span class="nc">HttpWarningResubmit</span><span class="p">(</span><span class="n">HTTPTemporaryRedirect</span><span class="p">):</span> <span class="c"># no __init__ pylint: disable=W0232</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Special 307 HTTP Temporary Redirect exception which transports </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">explanation</span> <span class="o">=</span> <span class="s">&#39;Your request triggered warnings. You may resubmit &#39;</span> \
+                  <span class="s">&#39;the request under the given location to ignore &#39;</span> \
+                  <span class="s">&#39;the warnings.&#39;</span>
+    <span class="n">template</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%(explanation)s</span><span class="se">\r\n</span><span class="s">&#39;</span> \
+               <span class="s">&#39;Location: &lt;a href=&quot;</span><span class="si">%(location)s</span><span class="s">&quot;&gt;</span><span class="si">%(location)s</span><span class="s">&lt;/a&gt;</span><span class="se">\r\n</span><span class="s">&#39;</span> \
+               <span class="s">&#39;Warning UserMessage: </span><span class="si">%(detail)s</span><span class="se">\r\n</span><span class="s">&#39;</span> \
+               <span class="s">&#39;&lt;!-- </span><span class="si">%(comment)s</span><span class="s"> --&gt;&#39;</span>
+
+</div>
+<div class="viewcode-block" id="ResourceView"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.ResourceView">[docs]</a><span class="k">class</span> <span class="nc">ResourceView</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all resource views.</span>
+<span class="sd">    </span>
+<span class="sd">    Resource views know how to handle a number of things that can go wrong</span>
+<span class="sd">    in a REST request.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IResourceView</span><span class="p">)</span>
+
+    <span class="n">__context</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">__request</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">ResourceView</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract class&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__request</span> <span class="o">=</span> <span class="n">request</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__representer</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">context</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__context</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__request</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">representer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__representer</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mime_type</span> <span class="o">=</span> \
+              <span class="n">get_registered_mime_type_for_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__request</span><span class="o">.</span><span class="n">content_type</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__representer</span> <span class="o">=</span> <span class="n">as_representer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__context</span><span class="p">,</span> <span class="n">mime_type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__representer</span>
+
+    <span class="k">def</span> <span class="nf">_handle_unknown_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles requests that triggered an unknown exception.</span>
+<span class="sd">        </span>
+<span class="sd">        Respond with a 500 &quot;Internal Server Error&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&#39;Request errors</span><span class="se">\n</span><span class="s">&#39;</span>
+                           <span class="s">&#39;Error message: </span><span class="si">%s</span><span class="se">\n</span><span class="s">Traceback:</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span>
+                           <span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">traceback</span><span class="p">))</span>
+        <span class="n">http_exc</span> <span class="o">=</span> <span class="n">HTTPInternalServerError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">http_exc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="GetResourceView"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.GetResourceView">[docs]</a><span class="k">class</span> <span class="nc">GetResourceView</span><span class="p">(</span><span class="n">ResourceView</span><span class="p">):</span> <span class="c"># still abstract pylint: disable=W0223</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all collection views</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">GetResourceView</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract class&#39;</span><span class="p">)</span>
+        <span class="n">ResourceView</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="PutOrPostResourceView"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.PutOrPostResourceView">[docs]</a><span class="k">class</span> <span class="nc">PutOrPostResourceView</span><span class="p">(</span><span class="n">ResourceView</span><span class="p">):</span> <span class="c"># still abstract pylint: disable=W0223</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all member views</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">PutOrPostResourceView</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract class&#39;</span><span class="p">)</span>
+        <span class="n">ResourceView</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Request received on </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Request body:</span><span class="se">\n</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c"># Empty body - return 400 Bad Request.</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_empty_body</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">checker</span> <span class="o">=</span> <span class="n">ViewUserMessageChecker</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">UserMessageHandlingContextManager</span><span class="p">(</span><span class="n">checker</span><span class="p">):</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_request_data</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">checker</span><span class="o">.</span><span class="n">vote</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+                    <span class="n">response</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">create_307_response</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="n">UserMessageHandlingContextManager</span><span class="p">(</span><span class="n">checker</span><span class="p">):</span>
+                        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_request_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">checker</span><span class="o">.</span><span class="n">vote</span> <span class="ow">is</span> <span class="bp">True</span><span class="p">:</span>
+                        <span class="n">response</span> <span class="o">=</span> <span class="n">checker</span><span class="o">.</span><span class="n">create_307_response</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span> <span class="c"># catch Exception pylint: disable=W0703</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_unknown_exception</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">message</span><span class="p">,</span>
+                                                          <span class="n">get_traceback</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+    <span class="k">def</span> <span class="nf">_extract_request_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts the data from the representation submitted in the request</span>
+<span class="sd">        body and returns it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_process_request_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Processes the data extracted from the representation.</span>
+<span class="sd">        </span>
+<span class="sd">        Implementations of this method need to check for a conflict caused</span>
+<span class="sd">        by the request data (e.g., if the slug for a new member in a POST</span>
+<span class="sd">        request is already used) and call the :meth:`_handle_conflict`</span>
+<span class="sd">        method in case a conflict was detected.</span>
+<span class="sd">        </span>
+<span class="sd">        :param data: data returned by the :meth:`_extract_request_data` </span>
+<span class="sd">          method.</span>
+<span class="sd">        :returns: response object or dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_empty_body</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles requests with an empty body.</span>
+<span class="sd">        </span>
+<span class="sd">        Respond with a 400 &quot;Bad Request&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">http_exc</span> <span class="o">=</span> <span class="n">HTTPBadRequest</span><span class="p">(</span><span class="s">&quot;Request&#39;s body is empty!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">http_exc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_conflict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles requests that triggered a conflict.</span>
+<span class="sd">        </span>
+<span class="sd">        Respond with a 409 &quot;Conflict&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">HTTPConflict</span><span class="p">(</span><span class="s">&#39;Member &quot;</span><span class="si">%s</span><span class="s">&quot; already exists!&#39;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">exception</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wsgi_http_exc_class</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience method to obtain a status string from the given HTTP</span>
+<span class="sd">        exception class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s">&#39;</span><span class="si">%(code)s</span><span class="s"> </span><span class="si">%(title)s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">wsgi_http_exc_class</span><span class="o">.</span><span class="n">__dict__</span>
+
+</div>
+<div class="viewcode-block" id="ViewUserMessageChecker"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.ViewUserMessageChecker">[docs]</a><span class="k">class</span> <span class="nc">ViewUserMessageChecker</span><span class="p">(</span><span class="n">UserMessageChecker</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom user message checker for views.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__guid_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&quot;.*ignore-message=([a-z0-9\-]{36})&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ViewUserMessageChecker.check"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.ViewUserMessageChecker.check">[docs]</a>    <span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implements user message checking for views.</span>
+<span class="sd">        </span>
+<span class="sd">        Checks if the current request has an explicit &quot;ignore-message&quot; </span>
+<span class="sd">        parameter (a GUID) pointing to a message with identical text from a </span>
+<span class="sd">        previous request, in which case further processing is allowed.        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">get_current_request</span><span class="p">()</span>
+        <span class="n">ignore_guid</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;ignore-message&#39;</span><span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">root</span><span class="p">[</span><span class="s">&#39;_messages&#39;</span><span class="p">]</span>
+        <span class="n">vote</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">ignore_guid</span><span class="p">:</span>
+            <span class="n">ignore_mb</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ignore_guid</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_mb</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">ignore_mb</span><span class="o">.</span><span class="n">text</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">:</span>
+                <span class="n">vote</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="n">vote</span>
+</div>
+<div class="viewcode-block" id="ViewUserMessageChecker.create_307_response"><a class="viewcode-back" href="../../../api/everest.views.base.html#everest.views.base.ViewUserMessageChecker.create_307_response">[docs]</a>    <span class="k">def</span> <span class="nf">create_307_response</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a 307 &quot;Temporary Redirect&quot; response including a HTTP Warning </span>
+<span class="sd">        header with code 299 that contains the user message received during</span>
+<span class="sd">        processing the request.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">get_current_request</span><span class="p">()</span>
+        <span class="n">msg_mb</span> <span class="o">=</span> <span class="n">UserMessageMember</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">root</span><span class="p">[</span><span class="s">&#39;_messages&#39;</span><span class="p">]</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">msg_mb</span><span class="p">)</span>
+        <span class="c"># Figure out the new location URL.</span>
+        <span class="n">qs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_new_query_string</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">query_string</span><span class="p">,</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">slug</span><span class="p">)</span>
+        <span class="n">resubmit_url</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">?</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">path_url</span><span class="p">,</span> <span class="n">qs</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;Location&#39;</span><span class="p">,</span> <span class="n">resubmit_url</span><span class="p">),</span>
+                   <span class="p">(</span><span class="s">&#39;Warning&#39;</span><span class="p">,</span> <span class="s">&#39;299 </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">),</span>
+<span class="c">#                       (&#39;Content-Type&#39;, cnt_type),</span>
+                   <span class="p">]</span>
+        <span class="n">http_exc</span> <span class="o">=</span> <span class="n">HttpWarningResubmit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">get_response</span><span class="p">(</span><span class="n">http_exc</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__get_new_query_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_query_string</span><span class="p">,</span> <span class="n">new_guid</span><span class="p">):</span>
+        <span class="c"># In absence of a function to manipulate the URL query string in place</span>
+        <span class="c"># (the request URL params are read-only), resorting to explicit</span>
+        <span class="c"># string manipulation seems the safest thing to do.</span>
+        <span class="k">if</span> <span class="n">old_query_string</span><span class="p">:</span>
+            <span class="c"># Make sure to *replace* any given ignore message.</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__guid_pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">old_query_string</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">cur_guid</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">qs</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">cur_guid</span><span class="p">,</span> <span class="n">new_guid</span><span class="p">,</span> <span class="n">old_query_string</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">qs</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">&amp;ignore-message=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">old_query_string</span><span class="p">,</span>
+                                               <span class="n">new_guid</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">qs</span> <span class="o">=</span> <span class="s">&quot;ignore-message=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">new_guid</span>
+        <span class="k">return</span> <span class="n">qs</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,588 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.testing &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.testing</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Testing base classes and services.</span>
+
+<span class="sd">This file is part of the everest project.</span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Nov 2, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest</span> <span class="kn">import</span> <span class="n">orm</span>
+<span class="kn">from</span> <span class="nn">everest.configuration</span> <span class="kn">import</span> <span class="n">Configurator</span>
+<span class="kn">from</span> <span class="nn">everest.entities.utils</span> <span class="kn">import</span> <span class="n">get_root_aggregate</span>
+<span class="kn">from</span> <span class="nn">everest.ini</span> <span class="kn">import</span> <span class="n">EverestIni</span>
+<span class="kn">from</span> <span class="nn">everest.interfaces</span> <span class="kn">import</span> <span class="n">IRepositoryManager</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">Session</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">get_engine</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">REPOSITORIES</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IService</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_root_collection</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_stage_collection</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">update_wrapper</span>
+<span class="kn">from</span> <span class="nn">nose.tools</span> <span class="kn">import</span> <span class="n">make_decorator</span>
+<span class="kn">from</span> <span class="nn">paste.deploy</span> <span class="kn">import</span> <span class="n">loadapp</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">pyramid.registry</span> <span class="kn">import</span> <span class="n">Registry</span>
+<span class="kn">from</span> <span class="nn">pyramid.testing</span> <span class="kn">import</span> <span class="n">DummyRequest</span>
+<span class="kn">from</span> <span class="nn">webtest</span> <span class="kn">import</span> <span class="n">TestApp</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">transaction</span>
+<span class="kn">import</span> <span class="nn">unittest</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;DummyContext&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DummyModule&#39;</span><span class="p">,</span>
+           <span class="s">&#39;EntityTestCase&#39;</span><span class="p">,</span>
+           <span class="s">&#39;FunctionalTestCase&#39;</span><span class="p">,</span>
+           <span class="s">&#39;OrmContextManager&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Pep8CompliantTestCase&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceTestCase&#39;</span><span class="p">,</span>
+           <span class="s">&#39;TestCaseWithConfiguration&#39;</span><span class="p">,</span>
+           <span class="s">&#39;TestCaseWithIni&#39;</span><span class="p">,</span>
+           <span class="s">&#39;check_attributes&#39;</span><span class="p">,</span>
+           <span class="s">&#39;elapsed&#39;</span><span class="p">,</span>
+           <span class="s">&#39;no_autoflush&#39;</span><span class="p">,</span>
+           <span class="s">&#39;persist&#39;</span><span class="p">,</span>
+           <span class="s">&#39;with_orm&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="Pep8CompliantTestCase"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.Pep8CompliantTestCase">[docs]</a><span class="k">class</span> <span class="nc">Pep8CompliantTestCase</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for simple unit tests with PEP8 compliant method names.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">assert_true</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertTrue</span>
+
+    <span class="n">assert_false</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertFalse</span>
+
+    <span class="n">assert_equal</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertEqual</span>
+
+    <span class="n">assert_equals</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertEquals</span>
+
+    <span class="n">assert_not_equal</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertNotEqual</span>
+
+    <span class="n">assert_almost_equal</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertAlmostEqual</span>
+
+    <span class="n">assert_not_almost_equal</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertNotAlmostEqual</span>
+
+    <span class="n">assert_is_none</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertIsNone</span>
+
+    <span class="n">assert_is_not_none</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertIsNotNone</span>
+
+    <span class="n">assert_raises</span> <span class="o">=</span> <span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="o">.</span><span class="n">assertRaises</span>
+
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_up</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="TestCaseWithIni"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.TestCaseWithIni">[docs]</a><span class="k">class</span> <span class="nc">TestCaseWithIni</span><span class="p">(</span><span class="n">Pep8CompliantTestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for unit tests that need access to settings specified in an</span>
+<span class="sd">    .ini file.</span>
+<span class="sd">    </span>
+<span class="sd">    :ivar ini: The ini file parser. This will only be set up if the </span>
+<span class="sd">        `ini_file_path` and `ini_section_name` class variables were set up </span>
+<span class="sd">        sensibly.  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: The name of the package where the tests reside. May be overridden in</span>
+    <span class="c">#: derived classes.</span>
+    <span class="n">package_name</span> <span class="o">=</span> <span class="s">&#39;everest&#39;</span>
+    <span class="c">#: The path to the application initialization (ini) file name. Override</span>
+    <span class="c">#: as needed in derived classes.</span>
+    <span class="n">ini_file_path</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="c">#: The section name in the ini file to look for settings. Override as </span>
+    <span class="c">#: needed in derived classes.</span>
+    <span class="n">ini_section_name</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ini</span> <span class="o">=</span> <span class="n">EverestIni</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ini_file_path</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TestCaseWithIni</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+</div>
+<span class="k">class</span> <span class="nc">BaseTestCaseWithConfiguration</span><span class="p">(</span><span class="n">TestCaseWithIni</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for test cases that access an initialized (but not configured)</span>
+<span class="sd">    registry.</span>
+
+<span class="sd">    :ivar config: The registry configurator. This is set in the set_up method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: The name of a ZCML configuration file to use.</span>
+    <span class="n">config_file_name</span> <span class="o">=</span> <span class="s">&#39;configure.zcml&#39;</span>
+
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BaseTestCaseWithConfiguration</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_up</span><span class="p">()</span>
+        <span class="c"># Create and configure a new testing registry.</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">Registry</span><span class="p">(</span><span class="s">&#39;testing&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">registry</span><span class="o">=</span><span class="n">reg</span><span class="p">,</span>
+                                   <span class="n">package</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">package_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini_section_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">get_settings</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ini_section_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setup_registry</span><span class="p">(</span><span class="n">settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setup_registry</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BaseTestCaseWithConfiguration</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+        <span class="n">tear_down_registry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">registry</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_get_config_file_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">has_setting</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ini_section_name</span><span class="p">,</span> <span class="s">&#39;configure_zcml&#39;</span><span class="p">):</span>
+            <span class="n">cfg_zcml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ini_section_name</span><span class="p">,</span>
+                                            <span class="s">&#39;configure_zcml&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cfg_zcml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_file_name</span>
+        <span class="k">return</span> <span class="n">cfg_zcml</span>
+
+
+<div class="viewcode-block" id="TestCaseWithConfiguration"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.TestCaseWithConfiguration">[docs]</a><span class="k">class</span> <span class="nc">TestCaseWithConfiguration</span><span class="p">(</span><span class="n">BaseTestCaseWithConfiguration</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for test cases that need access to an initialized (but not</span>
+<span class="sd">    configured) registry. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">BaseTestCaseWithConfiguration</span><span class="o">.</span><span class="n">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+        <span class="n">BaseTestCaseWithConfiguration</span><span class="o">.</span><span class="n">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+</div>
+<div class="viewcode-block" id="EntityTestCase"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.EntityTestCase">[docs]</a><span class="k">class</span> <span class="nc">EntityTestCase</span><span class="p">(</span><span class="n">BaseTestCaseWithConfiguration</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for test cases that need access to a configured registry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EntityTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_up</span><span class="p">()</span>
+        <span class="c"># Load config file.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">load_zcml</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_config_file_name</span><span class="p">())</span>
+        <span class="c"># Set up repositories.</span>
+        <span class="n">repo_mgr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_registered_utility</span><span class="p">(</span><span class="n">IRepositoryManager</span><span class="p">)</span>
+        <span class="n">repo_mgr</span><span class="o">.</span><span class="n">initialize_all</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EntityTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">icollection</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">get_root_aggregate</span><span class="p">(</span><span class="n">icollection</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">agg</span><span class="o">.</span><span class="n">slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">entity</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">agg</span><span class="o">.</span><span class="n">iterator</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">entity</span> <span class="o">=</span> <span class="n">agg</span><span class="o">.</span><span class="n">get_by_slug</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entity</span>
+
+    <span class="k">def</span> <span class="nf">_create_entity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">entity_cls</span><span class="o">.</span><span class="n">create_from_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ResourceTestCase"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.ResourceTestCase">[docs]</a><span class="k">class</span> <span class="nc">ResourceTestCase</span><span class="p">(</span><span class="n">BaseTestCaseWithConfiguration</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for test cases that need access to a configured registry, a</span>
+<span class="sd">    request object and a service object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config_file_name</span> <span class="o">=</span> <span class="s">&#39;configure.zcml&#39;</span>
+
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ResourceTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_up</span><span class="p">()</span>
+        <span class="c"># Build a dummy request.</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="s">&#39;server:main&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">has_setting</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s">&#39;host&#39;</span><span class="p">):</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s">&#39;host&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="s">&#39;0.0.0.0&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">has_setting</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s">&#39;port&#39;</span><span class="p">):</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="n">section</span><span class="p">,</span> <span class="s">&#39;port&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="mi">6543</span>
+        <span class="n">base_url</span> <span class="o">=</span> <span class="n">app_url</span> <span class="o">=</span> <span class="s">&#39;http://</span><span class="si">%s</span><span class="s">:</span><span class="si">%d</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_request</span> <span class="o">=</span> <span class="n">DummyRequest</span><span class="p">(</span><span class="n">application_url</span><span class="o">=</span><span class="n">app_url</span><span class="p">,</span>
+                                     <span class="n">host_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span>
+                                     <span class="n">path_url</span><span class="o">=</span><span class="n">app_url</span><span class="p">,</span>
+                                     <span class="n">url</span><span class="o">=</span><span class="n">app_url</span><span class="p">,</span>
+                                     <span class="n">registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">registry</span><span class="p">)</span>
+        <span class="c"># Load config file.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">begin</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_request</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">load_zcml</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_config_file_name</span><span class="p">())</span>
+        <span class="c"># Put the service at the request root (needed for URL resolving).</span>
+        <span class="n">srvc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_registered_utility</span><span class="p">(</span><span class="n">IService</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_request</span><span class="o">.</span><span class="n">root</span> <span class="o">=</span> <span class="n">srvc</span>
+        <span class="c"># Initialize all root repositories.</span>
+        <span class="n">repo_mgr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_registered_utility</span><span class="p">(</span><span class="n">IRepositoryManager</span><span class="p">)</span>
+        <span class="n">repo_mgr</span><span class="o">.</span><span class="n">initialize_all</span><span class="p">()</span>
+        <span class="c"># Start the service.</span>
+        <span class="n">srvc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ResourceTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_get_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">icollection</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_collection</span><span class="p">(</span><span class="n">icollection</span><span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">member</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">coll</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="n">get_root_collection</span><span class="p">(</span><span class="n">icollection</span><span class="p">)</span>
+            <span class="n">member</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">member</span>
+
+    <span class="k">def</span> <span class="nf">_get_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">icollection</span><span class="p">,</span> <span class="n">slice_key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">slice_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">slice_key</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">get_root_collection</span><span class="p">(</span><span class="n">icollection</span><span class="p">)</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">slice</span> <span class="o">=</span> <span class="n">slice_key</span>
+        <span class="k">return</span> <span class="n">coll</span>
+
+    <span class="k">def</span> <span class="nf">_create_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">member_cls</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">get_stage_collection</span><span class="p">(</span><span class="n">member_cls</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">coll</span><span class="o">.</span><span class="n">create_member</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="FunctionalTestCase"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.FunctionalTestCase">[docs]</a><span class="k">class</span> <span class="nc">FunctionalTestCase</span><span class="p">(</span><span class="n">TestCaseWithIni</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use this for test cases that need access to a WSGI application.</span>
+<span class="sd">    </span>
+<span class="sd">    :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: The name of the application to test.</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FunctionalTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">set_up</span><span class="p">()</span>
+        <span class="c"># Create the WSGI application and set up a configurator.</span>
+        <span class="n">wsgiapp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_wsgiapp</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">registry</span><span class="o">=</span><span class="n">wsgiapp</span><span class="o">.</span><span class="n">registry</span><span class="p">,</span>
+                                   <span class="n">package</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">package_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">TestApp</span><span class="p">(</span><span class="n">wsgiapp</span><span class="p">,</span>
+                           <span class="n">extra_environ</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_create_extra_environment</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">FunctionalTestCase</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+        <span class="n">transaction</span><span class="o">.</span><span class="n">abort</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+        <span class="n">tear_down_registry</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">registry</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_load_wsgiapp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">wsgiapp</span> <span class="o">=</span> <span class="n">loadapp</span><span class="p">(</span><span class="s">&#39;config:&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ini</span><span class="o">.</span><span class="n">ini_file_path</span><span class="p">,</span>
+                          <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">app_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wsgiapp</span>
+
+    <span class="k">def</span> <span class="nf">_create_extra_environment</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+</div>
+<div class="viewcode-block" id="DummyModule"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.DummyModule">[docs]</a><span class="k">class</span> <span class="nc">DummyModule</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dummy module for testing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__path__</span> <span class="o">=</span> <span class="s">&quot;foo&quot;</span>
+    <span class="n">__name__</span> <span class="o">=</span> <span class="s">&quot;dummy&quot;</span>
+    <span class="n">__file__</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+</div>
+<div class="viewcode-block" id="DummyContext"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.DummyContext">[docs]</a><span class="k">class</span> <span class="nc">DummyContext</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Dummy context for testing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolved</span><span class="o">=</span><span class="n">DummyModule</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resolved</span> <span class="o">=</span> <span class="n">resolved</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">package</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">discriminator</span><span class="p">,</span> <span class="nb">callable</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="c"># pylint: disable=W0622</span>
+               <span class="n">args</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">kw</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="k">if</span> <span class="n">args</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="k">if</span> <span class="n">kw</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">kw</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span><span class="s">&#39;discriminator&#39;</span><span class="p">:</span><span class="n">discriminator</span><span class="p">,</span>
+             <span class="s">&#39;callable&#39;</span><span class="p">:</span><span class="nb">callable</span><span class="p">,</span>
+             <span class="s">&#39;args&#39;</span><span class="p">:</span><span class="n">args</span><span class="p">,</span>
+             <span class="s">&#39;kw&#39;</span><span class="p">:</span><span class="n">kw</span><span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">path</span>
+
+    <span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dottedname</span><span class="p">):</span> <span class="c"># dottedname not used pylint: disable=W0613</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolved</span>
+
+</div>
+<div class="viewcode-block" id="elapsed"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.elapsed">[docs]</a><span class="k">def</span> <span class="nf">elapsed</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Useful decorator to print out the elapsed time for a unit test.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">call_elapsed</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">__stdout__</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&#39;Time elapsed: </span><span class="si">%s</span><span class="s">&#39;</span>
+                             <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">,))</span>
+    <span class="k">return</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">func</span><span class="p">)(</span><span class="n">call_elapsed</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="no_autoflush"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.no_autoflush">[docs]</a><span class="k">def</span> <span class="nf">no_autoflush</span><span class="p">(</span><span class="n">scoped_session</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator to disable autoflush on the session for the duration of a</span>
+<span class="sd">    test call. Uses the scoped session from the :mod:`everest.db` module</span>
+<span class="sd">    as default.</span>
+
+<span class="sd">    Adapted from</span>
+<span class="sd">    http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">scoped_session</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">scoped_session</span> <span class="o">=</span> <span class="n">Session</span>
+    <span class="k">def</span> <span class="nf">decorate</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+            <span class="n">session</span> <span class="o">=</span> <span class="n">scoped_session</span><span class="p">()</span>
+            <span class="n">autoflush</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">autoflush</span>
+            <span class="n">session</span><span class="o">.</span><span class="n">autoflush</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">session</span><span class="o">.</span><span class="n">autoflush</span> <span class="o">=</span> <span class="n">autoflush</span>
+        <span class="k">return</span> <span class="n">update_wrapper</span><span class="p">(</span><span class="n">wrap</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">decorate</span>
+
+</div>
+<div class="viewcode-block" id="OrmContextManager"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.OrmContextManager">[docs]</a><span class="k">class</span> <span class="nc">OrmContextManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Context manager for ORM tests.</span>
+<span class="sd">    </span>
+<span class="sd">    Configures the entity repository to use the ORM implementation as</span>
+<span class="sd">    a default, sets up an outer transaction before the test is run and rolls</span>
+<span class="sd">    this transaction back after the test has finished.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">autoflush</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">engine_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__autoflush</span> <span class="o">=</span> <span class="n">autoflush</span>
+        <span class="k">if</span> <span class="n">engine_name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Use the name of the default ORM repository for engine lookup.</span>
+            <span class="n">engine_name</span> <span class="o">=</span> <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">ORM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__engine_name</span> <span class="o">=</span> <span class="n">engine_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__connection</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__session</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__old_autoflush_flag</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># We set up an outer transaction that allows us to roll back all</span>
+        <span class="c"># changes (including commits) the unittest may want to make.</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">get_engine</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__engine_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__connection</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__connection</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+        <span class="c"># Configure the autoflush behavior of the session.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__old_autoflush_flag</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">autoflush</span> <span class="c">#pylint:disable=E1101</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">autoflush</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__autoflush</span><span class="p">)</span>
+        <span class="c"># Make sure we start with a clean session.</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+        <span class="c"># Throw out the Zope transaction manager for testing.</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">extension</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="c"># Create a new session for the tests.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__session</span> <span class="o">=</span> <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__connection</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__session</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ext_type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+        <span class="c"># Roll back the outer transaction and close the connection.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="c"># Remove the session we created.</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+        <span class="c"># Restore autoflush flag.</span>
+        <span class="n">orm</span><span class="o">.</span><span class="n">Session</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">autoflush</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__old_autoflush_flag</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="with_orm"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.with_orm">[docs]</a><span class="k">def</span> <span class="nf">with_orm</span><span class="p">(</span><span class="n">autoflush</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">init_callback</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator for ORM tests which uses a :class:`OrmContextManager` for the</span>
+<span class="sd">    call to the decorated test function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">decorate</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">OrmContextManager</span><span class="p">(</span><span class="n">autoflush</span><span class="o">=</span><span class="n">autoflush</span><span class="p">,</span>
+                                   <span class="n">init_callback</span><span class="o">=</span><span class="n">init_callback</span><span class="p">):</span>
+                <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">update_wrapper</span><span class="p">(</span><span class="n">wrap</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">decorate</span>
+
+</div>
+<div class="viewcode-block" id="check_attributes"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.check_attributes">[docs]</a><span class="k">def</span> <span class="nf">check_attributes</span><span class="p">(</span><span class="n">test_object</span><span class="p">,</span> <span class="n">attribute_map</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Utility function to test whether the test object attributes match the</span>
+<span class="sd">    expected ones (given the dictionary).</span>
+
+<span class="sd">    :param test_object: a test object</span>
+<span class="sd">    :param attribute_map: a dictionary with key = attribute name</span>
+<span class="sd">            and value = expected value for this attribute</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">exp_val</span> <span class="ow">in</span> <span class="n">attribute_map</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">assert</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">test_object</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span> <span class="o">==</span> <span class="n">exp_val</span>
+
+</div>
+<div class="viewcode-block" id="persist"><a class="viewcode-back" href="../../api/everest.testing.html#everest.testing.persist">[docs]</a><span class="k">def</span> <span class="nf">persist</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">,</span> <span class="n">attribute_map</span><span class="p">,</span>
+            <span class="n">do_attribute_check</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Utility function which creates an object of the given class with the</span>
+<span class="sd">    given attribute map, commits it to the backend, reloads it from the</span>
+<span class="sd">    backend and then tests if the attributes compare equal.</span>
+
+<span class="sd">    :param entity_class: class inheriting from</span>
+<span class="sd">      :class:`everest.entities.base.Entity`</span>
+<span class="sd">    :param attribute_map: a dictionary containint attribute names as keys</span>
+<span class="sd">      and expected attribute values as values. The attribute map must</span>
+<span class="sd">      contain all mandatory attributes required for instantiation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Instantiate.</span>
+    <span class="n">entity</span> <span class="o">=</span> <span class="n">entity_class</span><span class="p">(</span><span class="o">**</span><span class="n">attribute_map</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+    <span class="n">entity_id</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span>
+    <span class="c"># Assure a new object is loaded to test if storing worked.</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">expunge</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+    <span class="k">del</span> <span class="n">entity</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+    <span class="n">fetched_entity</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">entity_id</span><span class="p">)</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">do_attribute_check</span><span class="p">:</span>
+        <span class="n">check_attributes</span><span class="p">(</span><span class="n">fetched_entity</span><span class="p">,</span> <span class="n">attribute_map</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">tear_down_registry</span><span class="p">(</span><span class="n">registry</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">reg_adp</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">registry</span><span class="o">.</span><span class="n">registeredAdapters</span><span class="p">()):</span>
+        <span class="n">registry</span><span class="o">.</span><span class="n">unregisterAdapter</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="n">reg_adp</span><span class="o">.</span><span class="n">factory</span><span class="p">,</span>
+                                   <span class="n">required</span><span class="o">=</span><span class="n">reg_adp</span><span class="o">.</span><span class="n">required</span><span class="p">,</span>
+                                   <span class="n">provided</span><span class="o">=</span><span class="n">reg_adp</span><span class="o">.</span><span class="n">provided</span><span class="p">,</span>
+                                   <span class="n">name</span><span class="o">=</span><span class="n">reg_adp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">reg_ut</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">registry</span><span class="o">.</span><span class="n">registeredUtilities</span><span class="p">()):</span>
+        <span class="n">registry</span><span class="o">.</span><span class="n">unregisterUtility</span><span class="p">(</span><span class="n">component</span><span class="o">=</span><span class="n">reg_ut</span><span class="o">.</span><span class="n">component</span><span class="p">,</span>
+                                   <span class="n">provided</span><span class="o">=</span><span class="n">reg_ut</span><span class="o">.</span><span class="n">provided</span><span class="p">,</span>
+                                   <span class="n">name</span><span class="o">=</span><span class="n">reg_ut</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

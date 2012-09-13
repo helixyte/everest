@@ -1,0 +1,143 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.directives &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.directives">
+<span id="everest-directives"></span><h1>everest.directives<a class="headerlink" href="#module-everest.directives" title="Permalink to this headline">¶</a></h1>
+<p>ZCML directives for everest.</p>
+<dl class="class">
+<dt id="everest.directives.ResourceDirective">
+<em class="property">class </em><tt class="descclassname">everest.directives.</tt><tt class="descname">ResourceDirective</tt><big>(</big><em>context</em>, <em>interface</em>, <em>member</em>, <em>entity</em>, <em>collection=None</em>, <em>collection_root_name=None</em>, <em>collection_title=None</em>, <em>repository=None</em>, <em>expose=True</em><big>)</big><a class="reference internal" href="../_modules/everest/directives.html#ResourceDirective"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.directives.ResourceDirective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">zope.configuration.config.GroupingContextDecorator</span></tt></p>
+<p>Directive for registering a resource. Calls
+<tt class="xref py py-meth docutils literal"><span class="pre">everest.configuration.Configurator.add_resource()</span></tt>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.directives.ResourceRepresenterDirective">
+<em class="property">class </em><tt class="descclassname">everest.directives.</tt><tt class="descname">ResourceRepresenterDirective</tt><big>(</big><em>context</em>, <em>content_type</em>, <em>kind=None</em><big>)</big><a class="reference internal" href="../_modules/everest/directives.html#ResourceRepresenterDirective"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.directives.ResourceRepresenterDirective" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">zope.configuration.config.GroupingContextDecorator</span></tt></p>
+<p>Grouping directive for registering a representer for a given resource(s) 
+and content type combination. Delegates the work to a
+<a class="reference internal" href="everest.configuration.html#everest.configuration.Configurator" title="everest.configuration.Configurator"><tt class="xref py py-class docutils literal"><span class="pre">everest.configuration.Configurator</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.directives.filesystem_repository">
+<tt class="descclassname">everest.directives.</tt><tt class="descname">filesystem_repository</tt><big>(</big><em>_context</em>, <em>name=None</em>, <em>make_default=False</em>, <em>aggregate_class=None</em>, <em>entity_store_class=None</em>, <em>directory=None</em>, <em>content_type=None</em><big>)</big><a class="reference internal" href="../_modules/everest/directives.html#filesystem_repository"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.directives.filesystem_repository" title="Permalink to this definition">¶</a></dt>
+<dd><p>Directive for registering a file-system based repository.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.directives.messaging">
+<tt class="descclassname">everest.directives.</tt><tt class="descname">messaging</tt><big>(</big><em>_context</em>, <em>repository</em>, <em>reset_on_start=False</em><big>)</big><a class="reference internal" href="../_modules/everest/directives.html#messaging"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.directives.messaging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Directive for setting up the user message resource in the appropriate
+repository.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>repository</strong> (<em>str</em>) &#8211; The repository to create the user messages resource
+in.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.directives.orm_repository">
+<tt class="descclassname">everest.directives.</tt><tt class="descname">orm_repository</tt><big>(</big><em>_context</em>, <em>name=None</em>, <em>make_default=False</em>, <em>aggregate_class=None</em>, <em>entity_store_class=None</em>, <em>db_string=None</em>, <em>metadata_factory=None</em><big>)</big><a class="reference internal" href="../_modules/everest/directives.html#orm_repository"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.directives.orm_repository" title="Permalink to this definition">¶</a></dt>
+<dd><p>Directive for registering an ORM based repository.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.directives.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

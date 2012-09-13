@@ -1,0 +1,368 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.base &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.querying.base</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Querying operators, expressions, visitors, builders, directors.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Dec 2, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.utils</span> <span class="kn">import</span> <span class="n">identifier_from_slug</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">ISpecification</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">ISpecificationBuilder</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">ISpecificationDirector</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">ISpecificationVisitor</span>
+<span class="kn">from</span> <span class="nn">pyparsing</span> <span class="kn">import</span> <span class="n">ParseException</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;BinaryOperator&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CqlExpression&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CqlExpressionList&#39;</span><span class="p">,</span>
+           <span class="s">&#39;EXPRESSION_KINDS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Operator&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Specification&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SpecificationBuilder&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SpecificationDirector&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SpecificationVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SpecificationVisitorBase&#39;</span><span class="p">,</span>
+           <span class="s">&#39;UnaryOperator&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">EXPRESSION_KINDS</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">CQL</span> <span class="o">=</span> <span class="s">&#39;CQL&#39;</span>
+    <span class="n">SQL</span> <span class="o">=</span> <span class="s">&#39;SQL&#39;</span>
+    <span class="n">EVAL</span> <span class="o">=</span> <span class="s">&#39;EVAL&#39;</span>
+
+
+<div class="viewcode-block" id="Operator"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.Operator">[docs]</a><span class="k">class</span> <span class="nc">Operator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for querying operators.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: The name of the operator. To be specified in derived classes.</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="c">#: The arity (number of arguments required) of the operator. To be </span>
+    <span class="c">#: specified in derived classes.</span>
+    <span class="n">arity</span> <span class="o">=</span> <span class="bp">None</span>
+
+</div>
+<span class="k">class</span> <span class="nc">NullaryOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Nullary querying operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arity</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="UnaryOperator"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.UnaryOperator">[docs]</a><span class="k">class</span> <span class="nc">UnaryOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Unary querying operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arity</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="BinaryOperator"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.BinaryOperator">[docs]</a><span class="k">class</span> <span class="nc">BinaryOperator</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Binary querying operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CqlExpression"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.CqlExpression">[docs]</a><span class="k">class</span> <span class="nc">CqlExpression</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Single CQL expression.</span>
+<span class="sd">    </span>
+<span class="sd">    CQL expressions can be converted to a string and support the conjunction</span>
+<span class="sd">    (AND) operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_as_string</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CqlExpression</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">CqlExpressionList</span><span class="p">([</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CqlExpressionList</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">CqlExpressionList</span><span class="p">([</span><span class="bp">self</span><span class="p">]</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">expressions</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;unsupported operand type(s) for &amp;: &quot;</span>
+                            <span class="s">&quot;&#39;CqlExpression&#39; and &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">_as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CqlExpressionList"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.CqlExpressionList">[docs]</a><span class="k">class</span> <span class="nc">CqlExpressionList</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    List of CQL expressions.</span>
+<span class="sd">    </span>
+<span class="sd">    Like a single CQL expression, CQL expression lists can be converted to a</span>
+<span class="sd">    string and joined with the conjunction (AND) operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__cql_and</span> <span class="o">=</span> <span class="s">&#39;~&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expressions</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expressions</span> <span class="o">=</span> <span class="n">expressions</span>
+
+    <span class="k">def</span> <span class="nf">__and__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CqlExpression</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">CqlExpressionList</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expressions</span> <span class="o">+</span> <span class="p">[</span><span class="n">other</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">CqlExpressionList</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">CqlExpressionList</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expressions</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">expressions</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;unsupported operand type(s) for &amp;: &quot;</span>
+                            <span class="s">&quot;&#39;CqlExpression&#39; and &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cql_and</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span> <span class="k">for</span> <span class="n">expr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expressions</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="Specification"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.Specification">[docs]</a><span class="k">class</span> <span class="nc">Specification</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base classs for all specifications.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ISpecification</span><span class="p">)</span>
+
+    <span class="n">operator</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">Specification</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract class&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SpecificationDirector"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.SpecificationDirector">[docs]</a><span class="k">class</span> <span class="nc">SpecificationDirector</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for specification directors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ISpecificationDirector</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">builder</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__parser</span> <span class="o">=</span> <span class="n">parser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__builder</span> <span class="o">=</span> <span class="n">builder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">construct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Expression received: </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">expression</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__parser</span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ParseException</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+            <span class="c"># FIXME: show better error messages.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Expression parameters have errors. </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">err</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process_parse_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">has_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__errors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">get_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__errors</span><span class="p">[:]</span>
+
+    <span class="k">def</span> <span class="nf">_format_identifier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">identifier_from_slug</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_build_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_name</span><span class="p">):</span>
+        <span class="c"># Builder function dispatch using the operator name.</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__builder</span><span class="p">,</span> <span class="s">&#39;build_</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">op_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_process_parse_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parse_result</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="SpecificationBuilder"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.SpecificationBuilder">[docs]</a><span class="k">class</span> <span class="nc">SpecificationBuilder</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for specification builders.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ISpecificationBuilder</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec_factory</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span> <span class="o">=</span> <span class="n">spec_factory</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__specification</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">_record_specification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_specification</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Records a built specification. If another spec has been recorded </span>
+<span class="sd">        already by the builder, form the conjunction between the previously </span>
+<span class="sd">        recorded and the given spec.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__specification</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__specification</span> <span class="o">=</span> <span class="n">new_specification</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__specification</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_conjunction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__specification</span><span class="p">,</span>
+                                                      <span class="n">new_specification</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SpecificationBuilder.specification"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.SpecificationBuilder.specification">[docs]</a>    <span class="k">def</span> <span class="nf">specification</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the built specification.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__specification</span>
+
+</div></div>
+<div class="viewcode-block" id="SpecificationVisitorBase"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.SpecificationVisitorBase">[docs]</a><span class="k">class</span> <span class="nc">SpecificationVisitorBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for specification visitors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__expression_stack</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">_push</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expr</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__expression_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_pop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expression_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">expression</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># If we have more than one expression on the stack, traversal of the </span>
+        <span class="c"># input specification tree has not finished yet.</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__expression_stack</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__expression_stack</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="SpecificationVisitor"><a class="viewcode-back" href="../../../api/everest.querying.base.html#everest.querying.base.SpecificationVisitor">[docs]</a><span class="k">class</span> <span class="nc">SpecificationVisitor</span><span class="p">(</span><span class="n">SpecificationVisitorBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all specification visitors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">ISpecificationVisitor</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">visit_nullary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_op_func</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_push</span><span class="p">(</span><span class="n">op</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">visit_unary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_op_func</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_push</span><span class="p">(</span><span class="n">op</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">expr</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">visit_binary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_op_func</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">right_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pop</span><span class="p">()</span>
+        <span class="n">left_expr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_push</span><span class="p">(</span><span class="n">op</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">left_expr</span><span class="p">,</span> <span class="n">right_expr</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_conjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get_op_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op_name</span><span class="p">):</span>
+        <span class="c"># Visitor function dispatch using the operator name.</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;_</span><span class="si">%s</span><span class="s">_op&#39;</span> <span class="o">%</span> <span class="n">identifier_from_slug</span><span class="p">(</span><span class="n">op_name</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

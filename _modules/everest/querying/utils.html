@@ -1,0 +1,218 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.utils &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.querying.utils</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Querying utilities.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Dec 19, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.attributes</span> <span class="kn">import</span> <span class="n">EntityAttributeKinds</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationFactory</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IOrderSpecificationFactory</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_registry</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.interfaces</span> <span class="kn">import</span> <span class="n">MANYTOMANY</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.interfaces</span> <span class="kn">import</span> <span class="n">MANYTOONE</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.interfaces</span> <span class="kn">import</span> <span class="n">ONETOMANY</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OrmAttributeInspector&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_filter_specification_factory&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_order_specification_factory&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="get_filter_specification_factory"><a class="viewcode-back" href="../../../api/everest.querying.utils.html#everest.querying.utils.get_filter_specification_factory">[docs]</a><span class="k">def</span> <span class="nf">get_filter_specification_factory</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the object registered as filter specification factory utility.</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: object implementing </span>
+<span class="sd">        :class:`everest.querying.interfaces.IFilterSpecificationFactory`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IFilterSpecificationFactory</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_order_specification_factory"><a class="viewcode-back" href="../../../api/everest.querying.utils.html#everest.querying.utils.get_order_specification_factory">[docs]</a><span class="k">def</span> <span class="nf">get_order_specification_factory</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the object registered as order specification factory utility.</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: object implementing </span>
+<span class="sd">        :class:`everest.querying.interfaces.IOrderSpecificationFactory`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IOrderSpecificationFactory</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="OrmAttributeInspector"><a class="viewcode-back" href="../../../api/everest.querying.utils.html#everest.querying.utils.OrmAttributeInspector">[docs]</a><span class="k">class</span> <span class="nc">OrmAttributeInspector</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper class inspecting class attributes mapped by the ORM.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="OrmAttributeInspector.inspect"><a class="viewcode-back" href="../../../api/everest.querying.utils.html#everest.querying.utils.OrmAttributeInspector.inspect">[docs]</a>    <span class="k">def</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">orm_class</span><span class="p">,</span> <span class="n">attribute_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param attribute_name: name of the mapped attribute to inspect.</span>
+<span class="sd">        :returns: list of 2-tuples containing information about the inspected</span>
+<span class="sd">          attribute (first element: mapped entity attribute kind; second </span>
+<span class="sd">          attribute: mapped entity attribute) </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">orm_class</span><span class="p">,</span> <span class="n">attribute_name</span><span class="p">)</span>
+        <span class="n">elems</span> <span class="o">=</span> <span class="n">OrmAttributeInspector</span><span class="o">.</span><span class="n">__cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">elems</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">elems</span> <span class="o">=</span> <span class="n">OrmAttributeInspector</span><span class="o">.</span><span class="n">__inspect</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="n">OrmAttributeInspector</span><span class="o">.</span><span class="n">__cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">elems</span>
+        <span class="k">return</span> <span class="n">elems</span>
+</div>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__inspect</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+        <span class="n">orm_class</span><span class="p">,</span> <span class="n">attribute_name</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="n">elems</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">entity_type</span> <span class="o">=</span> <span class="n">orm_class</span>
+        <span class="n">ent_attr_tokens</span> <span class="o">=</span> <span class="n">attribute_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ent_attr_tokens</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">ent_attr_token</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ent_attr_tokens</span><span class="p">):</span>
+            <span class="n">entity_attr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entity_type</span><span class="p">,</span> <span class="n">ent_attr_token</span><span class="p">)</span>
+            <span class="n">kind</span><span class="p">,</span> <span class="n">attr_type</span> <span class="o">=</span> <span class="n">OrmAttributeInspector</span><span class="o">.</span><span class="n">__classify</span><span class="p">(</span><span class="n">entity_attr</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">pass</span>
+                <span class="c"># We are at the last name token - this must be a TERMINAL</span>
+                <span class="c"># or an ENTITY.</span>
+<span class="c">#                if kind == EntityAttributeKinds.AGGREGATE:</span>
+<span class="c">#                    raise ValueError(&#39;Invalid attribute name &quot;%s&quot;: the &#39;</span>
+<span class="c">#                                     &#39;last element (%s) references an &#39;</span>
+<span class="c">#                                     &#39;aggregate attribute.&#39;</span>
+<span class="c">#                                     % (attribute_name, ent_attr_token))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                    <span class="c"># We should not get here - the last attribute was a</span>
+                    <span class="c"># terminal.</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid attribute name &quot;</span><span class="si">%s</span><span class="s">&quot;: the &#39;</span>
+                                     <span class="s">&#39;element &quot;</span><span class="si">%s</span><span class="s">&quot; references a terminal &#39;</span>
+                                     <span class="s">&#39;attribute.&#39;</span>
+                                     <span class="o">%</span> <span class="p">(</span><span class="n">attribute_name</span><span class="p">,</span> <span class="n">ent_attr_token</span><span class="p">))</span>
+                <span class="n">entity_type</span> <span class="o">=</span> <span class="n">attr_type</span>
+            <span class="n">elems</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">kind</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">elems</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__classify</span><span class="p">(</span><span class="n">attr</span><span class="p">):</span>
+        <span class="c"># Looks up the entity attribute kind and target type for the given</span>
+        <span class="c"># entity attribute.</span>
+        <span class="c"># We look for an attribute &quot;property&quot; to identify mapped attributes</span>
+        <span class="c"># (instrumented attributes and attribute proxies).</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s">&#39;property&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Attribute &quot;</span><span class="si">%s</span><span class="s">&quot; is not mapped.&#39;</span> <span class="o">%</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="c"># We detect terminals by the absence of an &quot;argument&quot; attribute of</span>
+        <span class="c"># the attribute&#39;s property.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="p">,</span> <span class="s">&#39;argument&#39;</span><span class="p">):</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span>
+            <span class="n">target_type</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c"># We have a relationship.</span>
+            <span class="n">target_type</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="o">.</span><span class="n">argument</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="o">.</span><span class="n">direction</span> <span class="ow">in</span> <span class="p">(</span><span class="n">ONETOMANY</span><span class="p">,</span> <span class="n">MANYTOMANY</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="o">.</span><span class="n">uselist</span><span class="p">:</span>
+                    <span class="c"># 1:1</span>
+                    <span class="n">kind</span> <span class="o">=</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">ENTITY</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">kind</span> <span class="o">=</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">AGGREGATE</span>
+            <span class="k">elif</span> <span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="o">.</span><span class="n">direction</span> <span class="o">==</span> <span class="n">MANYTOONE</span><span class="p">:</span>
+                <span class="n">kind</span> <span class="o">=</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">ENTITY</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unsupported relationship direction &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="c"># pragma: no cover</span>
+                                 <span class="o">%</span> <span class="n">attr</span><span class="o">.</span><span class="n">property</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">kind</span><span class="p">,</span> <span class="n">target_type</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

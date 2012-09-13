@@ -1,0 +1,352 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.attributes &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.attributes</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Resource attribute handling classes.</span>
+
+<span class="sd">Created on Dec 2, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">CARDINALITY</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">attribute_base</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">collection_attribute</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">member_attribute</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">terminal_attribute</span>
+<span class="kn">from</span> <span class="nn">everest.resources.kinds</span> <span class="kn">import</span> <span class="n">ResourceKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;CollectionResourceAttribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;MemberResourceAttribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;MetaResourceAttributeCollector&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceAttributeControllerMixin&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceAttributeKinds&#39;</span><span class="p">,</span>
+           <span class="s">&#39;TerminalResourceAttribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_resource_class_attribute_names&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_resource_class_attributes&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_collection_attribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_member_attribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_terminal_attribute&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="ResourceAttributeKinds"><a class="viewcode-back" href="../../../api/everest.resources.attributes.html#everest.resources.attributes.ResourceAttributeKinds">[docs]</a><span class="k">class</span> <span class="nc">ResourceAttributeKinds</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static container for resource attribute kind constants.</span>
+
+<span class="sd">    We have three kinds of resource attribute:</span>
+<span class="sd">        MEMBER :</span>
+<span class="sd">            a member resource attribute</span>
+<span class="sd">        COLLECTION :</span>
+<span class="sd">            a collection resource attribute</span>
+<span class="sd">        TERMINAL :</span>
+<span class="sd">            an attribute that is not a resource</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">MEMBER</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">MEMBER</span>
+    <span class="n">COLLECTION</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">COLLECTION</span>
+    <span class="n">TERMINAL</span> <span class="o">=</span> <span class="s">&#39;TERMINAL&#39;</span>
+
+</div>
+<span class="k">class</span> <span class="nc">_ResourceAttribute</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Value object holding information about a resource attribute.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: The kind of the attribute. Set to one of the constants defined in the</span>
+    <span class="c">#: :class: `ResourceAttributeKinds` class in derived classes.</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">,</span> <span class="n">entity_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c">#: The name of the attribute in the resource.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c">#: The type or interface of the attribute in the underlying entity.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span> <span class="o">=</span> <span class="n">value_type</span>
+        <span class="c">#: For non-terminal attributes, indicates the cardinality of the </span>
+        <span class="c">#: relationship.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">=</span> <span class="n">cardinality</span>
+        <span class="c">#: The name of the attribute in the underlying entity.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_name</span> <span class="o">=</span> <span class="n">entity_name</span>
+
+
+<div class="viewcode-block" id="TerminalResourceAttribute"><a class="viewcode-back" href="../../../api/everest.resources.attributes.html#everest.resources.attributes.TerminalResourceAttribute">[docs]</a><span class="k">class</span> <span class="nc">TerminalResourceAttribute</span><span class="p">(</span><span class="n">_ResourceAttribute</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resource attribute class for terminal attribute declarations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">entity_name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">_ResourceAttribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span>
+                                    <span class="n">entity_name</span><span class="o">=</span><span class="n">entity_name</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">_ResourceResourceAttribute</span><span class="p">(</span><span class="n">_ResourceAttribute</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">,</span>
+                 <span class="n">entity_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">is_nested</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">_ResourceAttribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">,</span>
+                                    <span class="n">entity_name</span><span class="o">=</span><span class="n">entity_name</span><span class="p">)</span>
+        <span class="c">#: If this is set, URLs for this resource attribute will be relative</span>
+        <span class="c">#: to the parent resource. </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_nested</span> <span class="o">=</span> <span class="n">is_nested</span>
+
+
+<div class="viewcode-block" id="MemberResourceAttribute"><a class="viewcode-back" href="../../../api/everest.resources.attributes.html#everest.resources.attributes.MemberResourceAttribute">[docs]</a><span class="k">class</span> <span class="nc">MemberResourceAttribute</span><span class="p">(</span><span class="n">_ResourceResourceAttribute</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resource attribute class for member attribute declarations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">cardinality</span><span class="o">=</span><span class="n">CARDINALITY</span><span class="o">.</span><span class="n">MANYTOONE</span><span class="p">,</span>
+                 <span class="n">entity_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">is_nested</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">_ResourceResourceAttribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span>
+                                            <span class="n">cardinality</span><span class="p">,</span>
+                                            <span class="n">entity_name</span><span class="o">=</span><span class="n">entity_name</span><span class="p">,</span>
+                                            <span class="n">is_nested</span><span class="o">=</span><span class="n">is_nested</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="CollectionResourceAttribute"><a class="viewcode-back" href="../../../api/everest.resources.attributes.html#everest.resources.attributes.CollectionResourceAttribute">[docs]</a><span class="k">class</span> <span class="nc">CollectionResourceAttribute</span><span class="p">(</span><span class="n">_ResourceResourceAttribute</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resource attribute class for collection attribute declarations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">COLLECTION</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">cardinality</span><span class="o">=</span><span class="n">CARDINALITY</span><span class="o">.</span><span class="n">ONETOMANY</span><span class="p">,</span>
+                 <span class="n">entity_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">is_nested</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">_ResourceResourceAttribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span>
+                                            <span class="n">cardinality</span><span class="p">,</span>
+                                            <span class="n">entity_name</span><span class="o">=</span><span class="n">entity_name</span><span class="p">,</span>
+                                            <span class="n">is_nested</span><span class="o">=</span><span class="n">is_nested</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="MetaResourceAttributeCollector"><a class="viewcode-back" href="../../../api/everest.resources.attributes.html#everest.resources.attributes.MetaResourceAttributeCollector">[docs]</a><span class="k">class</span> <span class="nc">MetaResourceAttributeCollector</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Meta class for member resource classes managing declared attributes.</span>
+
+<span class="sd">    Extracts relevant information from the resource class descriptors for</span>
+<span class="sd">    use e.g. in the representers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">class_dict</span><span class="p">):</span>
+        <span class="c"># Skip classes that are direct subclasses of the base mixin class.</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s">&#39;ResourceAttributeControllerMixin&#39;</span> \
+           <span class="ow">and</span> <span class="ow">not</span> <span class="n">ResourceAttributeControllerMixin</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span>
+            <span class="n">dicts</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">cls</span> <span class="ow">in</span> <span class="n">mcs</span><span class="o">.</span><span class="n">__mro__</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">cls</span> <span class="ow">in</span> <span class="n">ResourceAttributeControllerMixin</span><span class="o">.</span><span class="n">__mro__</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+            <span class="n">attr_map</span> <span class="o">=</span> <span class="n">mcs</span><span class="o">.</span><span class="n">__collect_attributes</span><span class="p">(</span><span class="n">dicts</span><span class="p">)</span>
+            <span class="c"># Store in class namespace.</span>
+            <span class="n">mcs</span><span class="o">.</span><span class="n">_attributes</span> <span class="o">=</span> <span class="n">attr_map</span>
+        <span class="nb">type</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">class_dict</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__collect_attributes</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">dicts</span><span class="p">):</span>
+        <span class="c"># Loop over the namespace of the given resource class and its base </span>
+        <span class="c"># classes looking for descriptors inheriting from</span>
+        <span class="c"># :class:`everest.resources.descriptors.attribute_base`.</span>
+        <span class="n">descr_map</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">base_cls_namespace</span> <span class="ow">in</span> <span class="n">dicts</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">descr_name</span><span class="p">,</span> <span class="n">descr</span> <span class="ow">in</span> <span class="n">base_cls_namespace</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descr</span><span class="p">,</span> <span class="n">attribute_base</span><span class="p">):</span>
+                    <span class="n">descr_map</span><span class="p">[</span><span class="n">descr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">descr</span>
+        <span class="c"># Order by descriptor ID (=sequence in which they were declared).</span>
+        <span class="n">ordered_descr_map</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">cmp_fnc</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">item1</span><span class="p">,</span> <span class="n">item2</span><span class="p">:</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">item1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">item2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">descr_map</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="nb">cmp</span><span class="o">=</span><span class="n">cmp_fnc</span><span class="p">):</span>
+            <span class="n">ordered_descr_map</span><span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c"># Builds :class:`everest.resources.attributes.ResourceAttribute`</span>
+        <span class="c"># instances from resource descriptor information. Also, sets the</span>
+        <span class="c"># `resource_name` attribute in the collected descriptors.</span>
+        <span class="n">attr_map</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">descr</span> <span class="ow">in</span> <span class="n">ordered_descr_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c"># It would be awkward to repeat the resource attribute name </span>
+            <span class="c"># in the parameters to the descriptor, so we set it manually</span>
+            <span class="c"># here.</span>
+            <span class="n">descr</span><span class="o">.</span><span class="n">resource_attr</span> <span class="o">=</span> <span class="n">attr_name</span>
+            <span class="n">options</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">entity_name</span><span class="o">=</span><span class="n">descr</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">descr</span><span class="p">)</span> <span class="ow">is</span> <span class="n">terminal_attribute</span><span class="p">:</span>
+                <span class="n">rc_attr_cls</span> <span class="o">=</span> <span class="n">TerminalResourceAttribute</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">options</span><span class="p">[</span><span class="s">&#39;cardinality&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">descr</span><span class="o">.</span><span class="n">cardinality</span>
+                <span class="n">options</span><span class="p">[</span><span class="s">&#39;is_nested&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">descr</span><span class="o">.</span><span class="n">is_nested</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">descr</span><span class="p">)</span> <span class="ow">is</span> <span class="n">member_attribute</span><span class="p">:</span>
+                    <span class="n">rc_attr_cls</span> <span class="o">=</span> <span class="n">MemberResourceAttribute</span>
+                <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">descr</span><span class="p">)</span> <span class="ow">is</span> <span class="n">collection_attribute</span><span class="p">:</span>
+                    <span class="n">rc_attr_cls</span> <span class="o">=</span> <span class="n">CollectionResourceAttribute</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unknown resource attribute type.&#39;</span><span class="p">)</span>
+            <span class="n">attr</span> <span class="o">=</span> <span class="n">rc_attr_cls</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">descr</span><span class="o">.</span><span class="n">attr_type</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="n">attr_map</span><span class="p">[</span><span class="n">attr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr</span>
+        <span class="k">return</span> <span class="n">attr_map</span>
+
+</div>
+<span class="k">class</span> <span class="nc">ResourceAttributeControllerMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">MetaResourceAttributeCollector</span>
+
+    <span class="c"># Populated by the meta class.</span>
+    <span class="n">_attributes</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_terminal</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the given resource class attribute is a terminal resource </span>
+<span class="sd">        attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_member</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the given resource class attribute is a member resource </span>
+<span class="sd">        attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_collection</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the given resource class attribute is a collection resource </span>
+<span class="sd">        attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">COLLECTION</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_resource</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if the given resource class attribute is a member or collection</span>
+<span class="sd">        resource attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span><span class="o">.</span><span class="n">kind</span> \
+                <span class="ow">in</span> <span class="p">[</span><span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span><span class="p">,</span>
+                    <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">COLLECTION</span><span class="p">]</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_attribute_names</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns all attribute names of the given resource class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_attributes</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a dictionary mapping the attribute names of the given</span>
+<span class="sd">        resource class to :class:`ResourceAttribute` instances.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_attributes</span>
+
+
+<span class="k">def</span> <span class="nf">is_terminal_attribute</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+    <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mb_cls</span><span class="o">.</span><span class="n">is_terminal</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">is_member_attribute</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+    <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mb_cls</span><span class="o">.</span><span class="n">is_member</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">is_collection_attribute</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+    <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mb_cls</span><span class="o">.</span><span class="n">is_collection</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_resource_class_attribute_names</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mb_cls</span><span class="o">.</span><span class="n">get_attribute_names</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">get_resource_class_attributes</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mb_cls</span><span class="o">.</span><span class="n">get_attributes</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

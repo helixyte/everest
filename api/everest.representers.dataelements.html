@@ -1,0 +1,323 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.dataelements &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.representers.dataelements">
+<span id="everest-representers-dataelements"></span><h1>everest.representers.dataelements<a class="headerlink" href="#module-everest.representers.dataelements" title="Permalink to this headline">¶</a></h1>
+<p>Data elements.</p>
+<dl class="class">
+<dt id="everest.representers.dataelements.CollectionDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">CollectionDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#CollectionDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.CollectionDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.dataelements.DataElement" title="everest.representers.dataelements.DataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.DataElement</span></tt></a></p>
+<p>Abstract base class for collection data elements.</p>
+<dl class="method">
+<dt id="everest.representers.dataelements.CollectionDataElement.__len__">
+<tt class="descname">__len__</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#CollectionDataElement.__len__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.CollectionDataElement.__len__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of member data elements in this collection data
+element.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.CollectionDataElement.add_member">
+<tt class="descname">add_member</tt><big>(</big><em>data_element</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#CollectionDataElement.add_member"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.CollectionDataElement.add_member" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds the given member data element to this collection data element.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.CollectionDataElement.get_members">
+<tt class="descname">get_members</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#CollectionDataElement.get_members"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.CollectionDataElement.get_members" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns all member data elements added to this collection data element.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.DataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">DataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#DataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.DataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract base class for data element classes.</p>
+<p>Data elements manage value state during serialization and deserialization.
+Implementations may need to be adapted to the format of the external
+representation they manage.</p>
+<dl class="attribute">
+<dt id="everest.representers.dataelements.DataElement.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.dataelements.DataElement.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="everest.representers.dataelements.DataElement.create">
+<em class="property">classmethod </em><tt class="descname">create</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#DataElement.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.DataElement.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Basic factory method.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="everest.representers.dataelements.DataElement.create_from_resource">
+<em class="property">classmethod </em><tt class="descname">create_from_resource</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#DataElement.create_from_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.DataElement.create_from_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>(Abstract) factory method taking a resource as input.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.representers.dataelements.DataElement.mapping">
+<tt class="descname">mapping</tt><em class="property"> = None</em><a class="headerlink" href="#everest.representers.dataelements.DataElement.mapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Static attribute mapping.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.DataElementAttributeProxy">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">DataElementAttributeProxy</tt><big>(</big><em>data_element</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#DataElementAttributeProxy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.DataElementAttributeProxy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Convenience proxy for accessing data from data elements.</p>
+<p>The proxy allows you to transparently access terminal, member, and
+collection attributes. Nested access is also supported.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">prx</span> <span class="o">=</span> <span class="n">DataElementAttributeProxy</span><span class="p">(</span><span class="n">data_element</span><span class="p">)</span>
+<span class="n">de_id</span> <span class="o">=</span> <span class="n">prx</span><span class="o">.</span><span class="n">id</span>                              <span class="c"># terminal access</span>
+<span class="n">de_parent</span> <span class="o">=</span> <span class="n">prx</span><span class="o">.</span><span class="n">parent</span>                      <span class="c"># member access</span>
+<span class="n">de_child</span> <span class="o">=</span> <span class="n">prx</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                  <span class="c"># collection access</span>
+<span class="n">de_grandchild</span> <span class="o">=</span> <span class="n">prx</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c"># nested collection access</span>
+</pre></div>
+</div>
+<dl class="attribute">
+<dt id="everest.representers.dataelements.DataElementAttributeProxy.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.dataelements.DataElementAttributeProxy.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.LinkedDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">LinkedDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#LinkedDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.LinkedDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.dataelements.DataElement" title="everest.representers.dataelements.DataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.DataElement</span></tt></a></p>
+<p>Data element managing a linked resource during serialization and
+deserialization.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.MemberDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">MemberDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#MemberDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.dataelements.DataElement" title="everest.representers.dataelements.DataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.DataElement</span></tt></a></p>
+<p>Abstract base class for member data element classes.</p>
+<dl class="attribute">
+<dt id="everest.representers.dataelements.MemberDataElement.converter_registry">
+<tt class="descname">converter_registry</tt><em class="property"> = None</em><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement.converter_registry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registry of representation string &lt;-&gt; value converters. To be set
+in derived classes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.MemberDataElement.get_nested">
+<tt class="descname">get_nested</tt><big>(</big><em>attr</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#MemberDataElement.get_nested"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement.get_nested" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the mapped nested resource attribute (either a member or a
+collection resource attribute).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">object implementing <cite>:class:IDataelement</cite> or
+<cite>None</cite> if no nested resource is found for the given attribute name.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.MemberDataElement.get_terminal">
+<tt class="descname">get_terminal</tt><big>(</big><em>attr</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#MemberDataElement.get_terminal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement.get_terminal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the value for the given mapped terminal resource attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>attr</strong> (<a class="reference internal" href="everest.representers.attributes.html#everest.representers.attributes.MappedAttribute" title="everest.representers.attributes.MappedAttribute"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.attributes.MappedAttribute</span></tt></a>) &#8211; attribute to retrieve.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">attribute value or <cite>None</cite> if no value is found for the given
+attribute name.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.MemberDataElement.set_nested">
+<tt class="descname">set_nested</tt><big>(</big><em>attr</em>, <em>data_element</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#MemberDataElement.set_nested"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement.set_nested" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the value for the given mapped nested resource attribute (either
+a member or a collection resource attribute).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_element</strong> &#8211; a :class:DataElement or :class:LinkedDataElement
+object containing nested resource data.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.MemberDataElement.set_terminal">
+<tt class="descname">set_terminal</tt><big>(</big><em>attr</em>, <em>value</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#MemberDataElement.set_terminal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.MemberDataElement.set_terminal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the value for the given mapped terminal resource attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>value</strong> &#8211; value of the attribute to set.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.SimpleCollectionDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">SimpleCollectionDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#SimpleCollectionDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.SimpleCollectionDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements._SimpleDataElementMixin</span></tt>, <a class="reference internal" href="#everest.representers.dataelements.CollectionDataElement" title="everest.representers.dataelements.CollectionDataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.CollectionDataElement</span></tt></a></p>
+<p>Basic implementation of a collection data element.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.SimpleLinkedDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">SimpleLinkedDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#SimpleLinkedDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.SimpleLinkedDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.dataelements.LinkedDataElement" title="everest.representers.dataelements.LinkedDataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.LinkedDataElement</span></tt></a></p>
+<p>Basic implementation of a linked data element.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.dataelements.SimpleMemberDataElement">
+<em class="property">class </em><tt class="descclassname">everest.representers.dataelements.</tt><tt class="descname">SimpleMemberDataElement</tt><a class="reference internal" href="../_modules/everest/representers/dataelements.html#SimpleMemberDataElement"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.SimpleMemberDataElement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements._SimpleDataElementMixin</span></tt>, <a class="reference internal" href="#everest.representers.dataelements.MemberDataElement" title="everest.representers.dataelements.MemberDataElement"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.dataelements.MemberDataElement</span></tt></a></p>
+<p>Basic implementation of a member data element.</p>
+<dl class="method">
+<dt id="everest.representers.dataelements.SimpleMemberDataElement.get_terminal_converted">
+<tt class="descname">get_terminal_converted</tt><big>(</big><em>attr</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#SimpleMemberDataElement.get_terminal_converted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.SimpleMemberDataElement.get_terminal_converted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the value of the specified attribute converted to a 
+representation value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>attr</strong> (<a class="reference internal" href="everest.representers.attributes.html#everest.representers.attributes.MappedAttribute" title="everest.representers.attributes.MappedAttribute"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.attributes.MappedAttribute</span></tt></a>) &#8211; attribute to retrieve.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">representation string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.dataelements.SimpleMemberDataElement.set_terminal_converted">
+<tt class="descname">set_terminal_converted</tt><big>(</big><em>attr</em>, <em>repr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/dataelements.html#SimpleMemberDataElement.set_terminal_converted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.dataelements.SimpleMemberDataElement.set_terminal_converted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the given representation value and sets the specified 
+attribute value to the converted value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>attr</strong> &#8211; attribute to set.</li>
+<li><strong>repr_value</strong> (<em>str</em>) &#8211; string value of the attribute to set.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.representers.dataelements.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

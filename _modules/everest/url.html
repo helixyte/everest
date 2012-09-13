@@ -1,0 +1,308 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.url &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.url</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">URL &lt;-&gt; resource conversion.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jun 28, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">cgi</span> <span class="kn">import</span> <span class="n">parse_qsl</span>
+<span class="kn">from</span> <span class="nn">everest.interfaces</span> <span class="kn">import</span> <span class="n">IResourceUrlConverter</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">EXPRESSION_KINDS</span>
+<span class="kn">from</span> <span class="nn">everest.querying.filterparser</span> <span class="kn">import</span> <span class="n">parse_filter</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationBuilder</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationDirector</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IOrderSpecificationBuilder</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IOrderSpecificationDirector</span>
+<span class="kn">from</span> <span class="nn">everest.querying.orderparser</span> <span class="kn">import</span> <span class="n">parse_order</span>
+<span class="kn">from</span> <span class="nn">everest.querying.utils</span> <span class="kn">import</span> <span class="n">get_filter_specification_factory</span>
+<span class="kn">from</span> <span class="nn">everest.querying.utils</span> <span class="kn">import</span> <span class="n">get_order_specification_factory</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IMemberResource</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_filter_specification_visitor</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_order_specification_visitor</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_registry</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_request</span>
+<span class="kn">from</span> <span class="nn">pyramid.traversal</span> <span class="kn">import</span> <span class="n">find_resource</span>
+<span class="kn">from</span> <span class="nn">pyramid.traversal</span> <span class="kn">import</span> <span class="n">traversal_path</span>
+<span class="kn">from</span> <span class="nn">pyramid.url</span> <span class="kn">import</span> <span class="n">model_url</span>
+<span class="kn">from</span> <span class="nn">urllib</span> <span class="kn">import</span> <span class="n">unquote</span>
+<span class="kn">from</span> <span class="nn">urlparse</span> <span class="kn">import</span> <span class="n">urlparse</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;ResourceUrlConverter&#39;</span><span class="p">,</span>
+           <span class="s">&#39;UrlPartsConverter&#39;</span><span class="p">,</span>
+           <span class="s">&#39;resource_to_url&#39;</span><span class="p">,</span>
+           <span class="s">&#39;url_to_resource&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="ResourceUrlConverter"><a class="viewcode-back" href="../../api/everest.url.html#everest.url.ResourceUrlConverter">[docs]</a><span class="k">class</span> <span class="nc">ResourceUrlConverter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs URL &lt;-&gt; resource instance conversion.</span>
+
+<span class="sd">    See http://en.wikipedia.org/wiki/Query_string for information on characters</span>
+<span class="sd">    supported in query strings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IResourceUrlConverter</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="c"># The request is needed for access to app URL, registry, traversal.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__request</span> <span class="o">=</span> <span class="n">request</span>
+
+<div class="viewcode-block" id="ResourceUrlConverter.url_to_resource"><a class="viewcode-back" href="../../api/everest.url.html#everest.url.ResourceUrlConverter.url_to_resource">[docs]</a>    <span class="k">def</span> <span class="nf">url_to_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts the given url into a resource.</span>
+
+<span class="sd">        :param str url: URL to convert</span>
+<span class="sd">        :return: member or collection resource</span>
+
+<span class="sd">        ::note : If the query string in the URL has multiple values for a</span>
+<span class="sd">          query parameter, the last definition in the query string wins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">parsed_path</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">path</span> <span class="c"># namedtupble problem pylint: disable=E1101</span>
+        <span class="n">rc</span> <span class="o">=</span> <span class="n">find_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__request</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">traversal_path</span><span class="p">(</span><span class="n">parsed_path</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">ICollectionResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+            <span class="c"># In case we found a collection, we have to filter, order, slice.</span>
+            <span class="n">parsed_query</span> <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">query</span> <span class="c"># namedtupble problem pylint: disable=E1101</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">parse_qsl</span><span class="p">(</span><span class="n">parsed_query</span><span class="p">))</span>
+            <span class="n">filter_string</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;q&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">filter_string</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">rc</span><span class="o">.</span><span class="n">filter</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_filter_specification</span><span class="p">(</span><span class="n">filter_string</span><span class="p">)</span>
+            <span class="n">order_string</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;sort&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">order_string</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">rc</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_order_specification</span><span class="p">(</span><span class="n">order_string</span><span class="p">)</span>
+            <span class="n">start_string</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">)</span>
+            <span class="n">size_string</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;size&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">start_string</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">size_string</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">):</span>
+                <span class="n">rc</span><span class="o">.</span><span class="n">slice</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_slice_key</span><span class="p">(</span><span class="n">start_string</span><span class="p">,</span> <span class="n">size_string</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">IMemberResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Traversal found non-resource object &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">rc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rc</span>
+</div>
+    <span class="k">def</span> <span class="nf">resource_to_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">ICollectionResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">query</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kw</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">filter</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">query</span><span class="p">[</span><span class="s">&#39;q&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_filter_string</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">filter</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">order</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">query</span><span class="p">[</span><span class="s">&#39;sort&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_order_string</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">order</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">slice</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">query</span><span class="p">[</span><span class="s">&#39;start&#39;</span><span class="p">],</span> <span class="n">query</span><span class="p">[</span><span class="s">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">UrlPartsConverter</span><span class="o">.</span><span class="n">make_slice_strings</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">slice</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">query</span> <span class="o">!=</span> <span class="p">{}:</span>
+                <span class="n">url</span> <span class="o">=</span> <span class="n">model_url</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__request</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">url</span> <span class="o">=</span> <span class="n">model_url</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__request</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">IMemberResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can not convert non-resource object &quot;</span><span class="si">%s</span><span class="s"> to &#39;</span>
+                             <span class="s">&#39;URL&quot;.&#39;</span> <span class="o">%</span> <span class="n">resource</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">__parent__</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can not generate URL for floating member &#39;</span>
+                                 <span class="s">&#39;&quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">resource</span><span class="p">)</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">model_url</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__request</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">unquote</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">resource_to_url</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">get_current_request</span><span class="p">()</span>
+<span class="c">#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">cnv</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getAdapter</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">IResourceUrlConverter</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cnv</span><span class="o">.</span><span class="n">resource_to_url</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">url_to_resource</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">get_current_request</span><span class="p">()</span>
+<span class="c">#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">cnv</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getAdapter</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">IResourceUrlConverter</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cnv</span><span class="o">.</span><span class="n">url_to_resource</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">UrlPartsConverter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_filter_specification</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">filter_string</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts the &quot;query&quot; parameter from the given request and converts</span>
+<span class="sd">        the given query string into a filter specification.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+        <span class="n">spec_factory</span> <span class="o">=</span> <span class="n">get_filter_specification_factory</span><span class="p">()</span>
+        <span class="n">builder_cls</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IFilterSpecificationBuilder</span><span class="p">)</span>
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">builder_cls</span><span class="p">(</span><span class="n">spec_factory</span><span class="p">)</span>
+        <span class="n">director_cls</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IFilterSpecificationDirector</span><span class="p">)</span>
+        <span class="n">director</span> <span class="o">=</span> <span class="n">director_cls</span><span class="p">(</span><span class="n">parse_filter</span><span class="p">,</span> <span class="n">builder</span><span class="p">)</span>
+        <span class="n">director</span><span class="o">.</span><span class="n">construct</span><span class="p">(</span><span class="n">unquote</span><span class="p">(</span><span class="n">filter_string</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">director</span><span class="o">.</span><span class="n">has_errors</span><span class="p">():</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">director</span><span class="o">.</span><span class="n">get_errors</span><span class="p">())</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">specification</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_filter_string</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">filter_specification</span><span class="p">):</span>
+        <span class="n">visitor_cls</span> <span class="o">=</span> <span class="n">get_filter_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">CQL</span><span class="p">)</span>
+        <span class="n">visitor</span> <span class="o">=</span> <span class="n">visitor_cls</span><span class="p">()</span>
+        <span class="n">filter_specification</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_order_specification</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">order_string</span><span class="p">):</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+        <span class="n">order_factory</span> <span class="o">=</span> <span class="n">get_order_specification_factory</span><span class="p">()</span>
+        <span class="n">builder_cls</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IOrderSpecificationBuilder</span><span class="p">)</span>
+        <span class="n">builder</span> <span class="o">=</span> <span class="n">builder_cls</span><span class="p">(</span><span class="n">order_factory</span><span class="p">)</span>
+        <span class="n">director_cls</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IOrderSpecificationDirector</span><span class="p">)</span>
+        <span class="n">director</span> <span class="o">=</span> <span class="n">director_cls</span><span class="p">(</span><span class="n">parse_order</span><span class="p">,</span> <span class="n">builder</span><span class="p">)</span>
+        <span class="n">director</span><span class="o">.</span><span class="n">construct</span><span class="p">(</span><span class="n">unquote</span><span class="p">(</span><span class="n">order_string</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">director</span><span class="o">.</span><span class="n">has_errors</span><span class="p">():</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">director</span><span class="o">.</span><span class="n">get_errors</span><span class="p">())</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="n">specification</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_order_string</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">order_specification</span><span class="p">):</span>
+        <span class="n">visitor_cls</span> <span class="o">=</span> <span class="n">get_order_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">CQL</span><span class="p">)</span>
+        <span class="n">visitor</span> <span class="o">=</span> <span class="n">visitor_cls</span><span class="p">()</span>
+        <span class="n">order_specification</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_slice_key</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">start_string</span><span class="p">,</span> <span class="n">size_string</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extracts the &quot;start&quot; and &quot;size&quot; parameters from the given</span>
+<span class="sd">        start and size parameter strings and constructs a slice from it.</span>
+
+<span class="sd">        :return: slice key</span>
+<span class="sd">        :rtype: slice</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">start_string</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">err</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="s">&#39;Query parameter &quot;start&quot; must be a number.&#39;</span>
+            <span class="k">raise</span> <span class="n">err</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Query parameter &quot;start&quot; must be zero or &#39;</span>
+                             <span class="s">&#39;a positive number.&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">size_string</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">err</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="s">&#39;Query parameter &quot;size&quot; must be a number.&#39;</span>
+            <span class="k">raise</span> <span class="n">err</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Query parameter &quot;size&quot; must be a positive &#39;</span>
+                             <span class="s">&#39;number.&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">size</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_slice_strings</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">slice_key</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">slice_key</span><span class="o">.</span><span class="n">start</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">slice_key</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">start</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">start</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

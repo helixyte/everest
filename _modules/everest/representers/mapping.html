@@ -1,0 +1,416 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.mapping &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.representers.mapping</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Mapping and mapping registry.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on May 4, 2012.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">everest.representers.attributes</span> <span class="kn">import</span> <span class="n">MappedAttribute</span>
+<span class="kn">from</span> <span class="nn">everest.representers.config</span> <span class="kn">import</span> <span class="n">RepresenterConfiguration</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleCollectionDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleLinkedDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleMemberDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">AttributeKey</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">DataElementBuilderResourceTreeVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">DataElementTreeTraverser</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">PROCESSING_DIRECTIONS</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">ResourceBuilderDataElementTreeVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">ResourceTreeTraverser</span>
+<span class="kn">from</span> <span class="nn">everest.resources.attributes</span> <span class="kn">import</span> <span class="n">ResourceAttributeKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.attributes</span> <span class="kn">import</span> <span class="n">get_resource_class_attributes</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IMemberResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IResourceLink</span>
+<span class="kn">from</span> <span class="nn">everest.resources.link</span> <span class="kn">import</span> <span class="n">Link</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_collection_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_collection_resource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_member_resource</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Mapping&#39;</span><span class="p">,</span>
+           <span class="s">&#39;MappingRegistry&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SimpleMappingRegistry&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="Mapping"><a class="viewcode-back" href="../../../api/everest.representers.mapping.html#everest.representers.mapping.Mapping">[docs]</a><span class="k">class</span> <span class="nc">Mapping</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs configurable resource &lt;-&gt; data element tree &lt;-&gt; representation</span>
+<span class="sd">    mappings.</span>
+<span class="sd">    </span>
+<span class="sd">    :property mapped_class: The resource class mapped by this mapping.</span>
+<span class="sd">    :property data_element_class: The data element class for this mapping</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Mapping.__init__"><a class="viewcode-back" href="../../../api/everest.representers.mapping.html#everest.representers.mapping.Mapping.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping_registry</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">,</span> <span class="n">data_element_class</span><span class="p">,</span>
+                 <span class="n">configuration</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param configuration: mapping configuration object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span> <span class="o">=</span> <span class="n">mapping_registry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span> <span class="o">=</span> <span class="n">mapped_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_collection_mapping</span> <span class="o">=</span> \
+                                <span class="n">provides_collection_resource</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__de_cls</span> <span class="o">=</span> <span class="n">data_element_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span> <span class="o">=</span> <span class="n">configuration</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_attr_cache</span> <span class="o">=</span> <span class="p">{}</span>
+</div>
+    <span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">attribute_options</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">copied_cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">upd_cfg</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">copied_cfg</span><span class="p">)(</span><span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">,</span>
+                                   <span class="n">attribute_options</span><span class="o">=</span><span class="n">attribute_options</span><span class="p">)</span>
+        <span class="n">copied_cfg</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">upd_cfg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">__de_cls</span><span class="p">,</span> <span class="n">copied_cfg</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Mapping.configuration"><a class="viewcode-back" href="../../../api/everest.representers.mapping.html#everest.representers.mapping.Mapping.configuration">[docs]</a>    <span class="k">def</span> <span class="nf">configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns this mapping&#39;s configuration object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># We clear the cache every time the configuration is accessed since</span>
+        <span class="c"># we can not guarantee that it stays unchanged.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_attr_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span>
+</div>
+<div class="viewcode-block" id="Mapping.get_attribute_map"><a class="viewcode-back" href="../../../api/everest.representers.mapping.html#everest.representers.mapping.Mapping.get_attribute_map">[docs]</a>    <span class="k">def</span> <span class="nf">get_attribute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a map of all attributes of the given mapped class.</span>
+<span class="sd">        </span>
+<span class="sd">        :param key: tuple of attribute names specifying a path to a nested</span>
+<span class="sd">          attribute in a resource tree. If this is not given, all attributes</span>
+<span class="sd">          in this mapping will be returned.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">mapped_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mapped_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">AttributeKey</span><span class="p">(())</span> <span class="c"># Top level access.</span>
+        <span class="c"># FIXME: Investigate caching of mapped attributes.</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="bp">None</span> <span class="c"># self.__mapped_attr_cache.get((mapped_class, key))</span>
+        <span class="k">if</span> <span class="n">attrs</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__collect_mapped_attributes</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+<span class="c">#            self.__mapped_attr_cache[(mapped_class, key)] = attrs</span>
+        <span class="k">return</span> <span class="n">attrs</span>
+</div>
+    <span class="k">def</span> <span class="nf">attribute_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">attr_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_attribute_map</span><span class="p">(</span><span class="n">mapped_class</span><span class="o">=</span><span class="n">mapped_class</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attr_map</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">attr</span>
+
+    <span class="k">def</span> <span class="nf">terminal_attribute_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_iterator</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">attr</span>
+
+    <span class="k">def</span> <span class="nf">nonterminal_attribute_iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_iterator</span><span class="p">(</span><span class="n">mapped_class</span><span class="o">=</span><span class="n">mapped_class</span><span class="p">,</span>
+                                            <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">attr</span>
+
+    <span class="k">def</span> <span class="nf">create_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mapped_class</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">mapped_class</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span><span class="p">:</span>
+            <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+            <span class="n">data_el</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">create_data_element</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__de_cls</span><span class="o">.</span><span class="n">create</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">data_el</span>
+
+    <span class="k">def</span> <span class="nf">create_linked_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span>
+                                   <span class="n">relation</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">Link</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mp</span><span class="o">.</span><span class="n">data_element_class</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span>
+                                            <span class="n">relation</span><span class="o">=</span><span class="n">relation</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create_data_element_from_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">resource</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">mp</span><span class="o">.</span><span class="n">data_element_class</span><span class="o">.</span><span class="n">create_from_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create_linked_data_element_from_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">Link</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mp</span><span class="o">.</span><span class="n">data_element_class</span><span class="o">.</span><span class="n">create_from_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">map_to_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">,</span> <span class="n">resolve_urls</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">trv</span> <span class="o">=</span> <span class="n">DataElementTreeTraverser</span><span class="p">(</span><span class="n">data_element</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span>
+                                       <span class="n">PROCESSING_DIRECTIONS</span><span class="o">.</span><span class="n">READ</span><span class="p">)</span>
+        <span class="n">visitor</span> <span class="o">=</span> <span class="n">ResourceBuilderDataElementTreeVisitor</span><span class="p">(</span><span class="n">resolve_urls</span><span class="p">)</span>
+        <span class="n">trv</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">visitor</span><span class="o">.</span><span class="n">resource</span>
+
+    <span class="k">def</span> <span class="nf">map_to_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
+        <span class="n">trv</span> <span class="o">=</span> <span class="n">ResourceTreeTraverser</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">visitor</span> <span class="o">=</span> <span class="n">DataElementBuilderResourceTreeVisitor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">trv</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">visitor</span><span class="o">.</span><span class="n">data_element</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mapped_class</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data_element_class</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__de_cls</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">mapping_registry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span>
+
+    <span class="k">def</span> <span class="nf">__collect_mapped_attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">collected_mp_attrs</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">is_mapped_cls</span> <span class="o">=</span> <span class="n">mapped_class</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">is_mapped_cls</span><span class="p">:</span>
+            <span class="c"># Bootstrapping: fetch resource attributes and create new</span>
+            <span class="c"># mapped attributes.</span>
+            <span class="n">rc_attrs</span> <span class="o">=</span> <span class="n">get_resource_class_attributes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__mapped_cls</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">rc_attr</span> <span class="ow">in</span> <span class="n">rc_attrs</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+                <span class="n">attr_key</span> <span class="o">=</span> <span class="n">key</span> <span class="o">+</span> <span class="p">(</span><span class="n">rc_attr</span><span class="o">.</span><span class="n">name</span><span class="p">,)</span>
+                <span class="n">attr_mp_opts</span> <span class="o">=</span> \
+                        <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span><span class="o">.</span><span class="n">get_attribute_options</span><span class="p">(</span><span class="n">attr_key</span><span class="p">)</span>
+                <span class="n">new_mp_attr</span> <span class="o">=</span> <span class="n">MappedAttribute</span><span class="p">(</span><span class="n">rc_attr</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">attr_mp_opts</span><span class="p">)</span>
+                <span class="n">collected_mp_attrs</span><span class="p">[</span><span class="n">rc_attr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_mp_attr</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Indirect access - fetch mapped attributes from some other</span>
+            <span class="c"># class&#39; mapping and clone.</span>
+            <span class="k">if</span> <span class="n">is_mapped_cls</span><span class="p">:</span>
+                <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_collection_mapping</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">provides_member_resource</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">):</span>
+                    <span class="c"># Mapping a polymorphic member class.</span>
+                    <span class="n">mapped_coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c"># Mapping a derived collection class.</span>
+                    <span class="n">mapped_coll_cls</span> <span class="o">=</span> <span class="n">mapped_class</span>
+                <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">mapped_coll_cls</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+            <span class="n">mp_attrs</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_attribute_map</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">mp_attr</span> <span class="ow">in</span> <span class="n">mp_attrs</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+                <span class="n">attr_key</span> <span class="o">=</span> <span class="n">key</span> <span class="o">+</span> <span class="p">(</span><span class="n">mp_attr</span><span class="o">.</span><span class="n">name</span><span class="p">,)</span>
+                <span class="n">attr_mp_opts</span> <span class="o">=</span> \
+                    <span class="nb">dict</span><span class="p">(((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span> \
+                                <span class="o">.</span><span class="n">get_attribute_options</span><span class="p">(</span><span class="n">attr_key</span><span class="p">)</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span>
+                          <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">))</span>
+                <span class="n">clnd_mp_attr</span> <span class="o">=</span> <span class="n">mp_attr</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">attr_mp_opts</span><span class="p">)</span>
+                <span class="n">collected_mp_attrs</span><span class="p">[</span><span class="n">mp_attr</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">clnd_mp_attr</span>
+        <span class="k">return</span> <span class="n">collected_mp_attrs</span>
+
+</div>
+<span class="k">class</span> <span class="nc">MappingRegistry</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">member_data_element_base_class</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">collection_data_element_base_class</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">linked_data_element_base_class</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">configuration_class</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">mapping_class</span> <span class="o">=</span> <span class="n">Mapping</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">configuration_class</span><span class="p">()</span> <span class="c"># pylint: disable=E1102</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mappings</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Implement this for static initializations.</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_default_config_option</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">,</span> <span class="n">configuration</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a new mapping for the given mapped class and representer </span>
+<span class="sd">        configuration.</span>
+
+<span class="sd">        :param configuration: configuration for the new data element class.</span>
+<span class="sd">        :type configuration: :class:`RepresenterConfiguration`</span>
+<span class="sd">        :returns: newly created instance of :class:`Mapping`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__configuration</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">configuration</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">cfg</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">configuration</span><span class="p">)</span>
+        <span class="n">provided_ifcs</span> <span class="o">=</span> <span class="n">provided_by</span><span class="p">(</span><span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">IMemberResource</span> <span class="ow">in</span> <span class="n">provided_ifcs</span><span class="p">:</span>
+            <span class="n">base_data_element_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">member_data_element_base_class</span>
+        <span class="k">elif</span> <span class="n">ICollectionResource</span> <span class="ow">in</span> <span class="n">provided_ifcs</span><span class="p">:</span>
+            <span class="n">base_data_element_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_data_element_base_class</span>
+        <span class="k">elif</span> <span class="n">IResourceLink</span> <span class="ow">in</span> <span class="n">provided_ifcs</span><span class="p">:</span>
+            <span class="n">base_data_element_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linked_data_element_base_class</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Mapped class for data element class does not &#39;</span>
+                             <span class="s">&#39;implement one of the required interfaces.&#39;</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mapped_class</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                         <span class="n">base_data_element_class</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="n">de_cls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">base_data_element_class</span><span class="p">,),</span> <span class="p">{})</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mapping_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">,</span> <span class="n">de_cls</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+        <span class="c"># Set the data element class&#39; mapping.</span>
+        <span class="c"># FIXME: This looks like a hack.</span>
+        <span class="n">de_cls</span><span class="o">.</span><span class="n">mapping</span> <span class="o">=</span> <span class="n">mp</span>
+        <span class="k">return</span> <span class="n">mp</span>
+
+    <span class="k">def</span> <span class="nf">set_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Registers the given mapping, using the mapped class as key.</span>
+
+<span class="sd">        :param mapping: mapping</span>
+<span class="sd">        :type mapping: :class:`Mapping`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mappings</span><span class="p">[</span><span class="n">mapping</span><span class="o">.</span><span class="n">mapped_class</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapping</span>
+
+    <span class="k">def</span> <span class="nf">find_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the mapping registered for the given mapped class or any of</span>
+<span class="sd">        its base classes. Returns `None` if no mapping can be found. </span>
+
+<span class="sd">        :param mapped_class: mapped type</span>
+<span class="sd">        :type mapped_class: type</span>
+<span class="sd">        :returns: instance of :class:`Mapping` or `None`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">base_cls</span> <span class="ow">in</span> <span class="n">mapped_class</span><span class="o">.</span><span class="n">__mro__</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mappings</span><span class="p">[</span><span class="n">base_cls</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="n">mapping</span>
+
+    <span class="k">def</span> <span class="nf">find_or_create_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapped_class</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        First calls :meth:`find_mapping` to check if a mapping for the given</span>
+<span class="sd">        mapped class or any of its base classes has been created. If not, a </span>
+<span class="sd">        new one is created with a default configuration, registered </span>
+<span class="sd">        automatically and returned.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_mapping</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mapping</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_mapping</span><span class="p">(</span><span class="n">mapped_class</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_mapping</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mapping</span>
+
+    <span class="k">def</span> <span class="nf">get_mappings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns an iterator over all registered mappings.</span>
+
+<span class="sd">        :returns: iterator yielding tuples containing a mapped class as the </span>
+<span class="sd">          first and a :class:`Mapping` instance as the second item.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mappings</span><span class="o">.</span><span class="n">itervalues</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="SimpleMappingRegistry"><a class="viewcode-back" href="../../../api/everest.representers.mapping.html#everest.representers.mapping.SimpleMappingRegistry">[docs]</a><span class="k">class</span> <span class="nc">SimpleMappingRegistry</span><span class="p">(</span><span class="n">MappingRegistry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Default implementation for a mapping registry using default data element</span>
+<span class="sd">    and configuration classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">member_data_element_base_class</span> <span class="o">=</span> <span class="n">SimpleMemberDataElement</span>
+    <span class="n">collection_data_element_base_class</span> <span class="o">=</span> <span class="n">SimpleCollectionDataElement</span>
+    <span class="n">linked_data_element_base_class</span> <span class="o">=</span> <span class="n">SimpleLinkedDataElement</span>
+    <span class="n">configuration_class</span> <span class="o">=</span> <span class="n">RepresenterConfiguration</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Create and register the linked data element class.</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">configuration_class</span><span class="p">()</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_mapping</span><span class="p">(</span><span class="n">Link</span><span class="p">,</span> <span class="n">configuration</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_mapping</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

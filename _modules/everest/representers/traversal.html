@@ -1,0 +1,630 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.traversal &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.representers.traversal</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Resource data tree traversal.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Apr 25, 2012.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">everest.entities.utils</span> <span class="kn">import</span> <span class="n">get_entity_class</span>
+<span class="kn">from</span> <span class="nn">everest.representers.config</span> <span class="kn">import</span> <span class="n">IGNORE_ON_READ_OPTION</span>
+<span class="kn">from</span> <span class="nn">everest.representers.config</span> <span class="kn">import</span> <span class="n">IGNORE_ON_WRITE_OPTION</span>
+<span class="kn">from</span> <span class="nn">everest.representers.config</span> <span class="kn">import</span> <span class="n">WRITE_AS_LINK_OPTION</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">ILinkedDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">IMemberDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.urlloader</span> <span class="kn">import</span> <span class="n">LazyAttributeLoaderProxy</span>
+<span class="kn">from</span> <span class="nn">everest.representers.urlloader</span> <span class="kn">import</span> <span class="n">LazyUrlLoader</span>
+<span class="kn">from</span> <span class="nn">everest.resources.attributes</span> <span class="kn">import</span> <span class="n">ResourceAttributeKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.descriptors</span> <span class="kn">import</span> <span class="n">CARDINALITY</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IMemberResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.kinds</span> <span class="kn">import</span> <span class="n">ResourceKinds</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_collection_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">new_stage_collection</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">url_to_resource</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;AttributeKey&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataElementBuilderResourceTreeVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataElementTreeTraverserMixin&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataTreeTraverser&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataElementTreeTraverser&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceDataTreeTraverser&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceBuilderDataElementTreeVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceDataVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceTreeTraverser&#39;</span><span class="p">,</span>
+           <span class="s">&#39;PROCESSING_DIRECTIONS&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="PROCESSING_DIRECTIONS"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.PROCESSING_DIRECTIONS">[docs]</a><span class="k">class</span> <span class="nc">PROCESSING_DIRECTIONS</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Constants specifying the direction resource data are processed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: Resource data are being read (i.e., a representation is converted </span>
+    <span class="c">#: to a resource.</span>
+    <span class="n">READ</span> <span class="o">=</span> <span class="s">&#39;READ&#39;</span>
+    <span class="c">#: Resource data are being written (i.e., a resource is converted </span>
+    <span class="c">#: to a representation.</span>
+    <span class="n">WRITE</span> <span class="o">=</span> <span class="s">&#39;WRITE&#39;</span>
+
+</div>
+<div class="viewcode-block" id="AttributeKey"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.AttributeKey">[docs]</a><span class="k">class</span> <span class="nc">AttributeKey</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Value object used as a key during resource data tree traversal.</span>
+<span class="sd">    </span>
+<span class="sd">    Each key consists of a tuple of attribute strings that uniquely </span>
+<span class="sd">    determine a node&#39;s position in the resource data tree.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">==</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">AttributeKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__data</span> <span class="o">+</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;AttributeKey(</span><span class="si">%s</span><span class="s">, </span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">ResourceDataVisitor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">visit_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">member_data</span><span class="p">,</span>
+                     <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visits a member node in a resource data tree.</span>
+<span class="sd">        </span>
+<span class="sd">        :param tuple attribute_key: tuple containing the attribute tokens</span>
+<span class="sd">          identifying the member node&#39;s position in the resource data tree.</span>
+<span class="sd">        :param attribute: mapped attribute holding information about the</span>
+<span class="sd">          member node&#39;s name (in the parent) and type etc.</span>
+<span class="sd">        :type attribute:</span>
+<span class="sd">          :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :param member_node: the node holding resource data. This is either a</span>
+<span class="sd">          resource instance (when using a :class:`ResourceTreeTraverser` on</span>
+<span class="sd">          a tree of resources) or a data element instance (when using a</span>
+<span class="sd">          :class:`DataElementTreeTraverser` on a data element tree.</span>
+<span class="sd">        :param dict member_data: dictionary holding all member data</span>
+<span class="sd">          extracted during traversal (with mapped attributes as keys).</span>
+<span class="sd">        :param bool is_link_node: indicates if the given member node is a link.</span>
+<span class="sd">        :param dict parent_data: dictionary holding all parent data extracted</span>
+<span class="sd">          during traversal (with mapped attributes as keys).</span>
+<span class="sd">        :param int index: this indicates a member node&#39;s index in a collection</span>
+<span class="sd">          parent node. If the parent node is a member node, it will be `None`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">visit_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                         <span class="n">collection_data</span><span class="p">,</span> <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Visits a collection node in a resource data tree.</span>
+<span class="sd">        </span>
+<span class="sd">        :param tuple attribute_key: tuple containing the attribute tokens</span>
+<span class="sd">          identifying the collection node&#39;s position in the resource data </span>
+<span class="sd">          tree.</span>
+<span class="sd">        :param attribute: mapped attribute holding information about the</span>
+<span class="sd">          collection node&#39;s name (in the parent) and type etc.</span>
+<span class="sd">        :type attribute:</span>
+<span class="sd">          :class:`everest.representers.attributes.MappedAttribute`</span>
+<span class="sd">        :param collection_node: the node holding resource data. This is either</span>
+<span class="sd">          a resource instance (when using a :class:`ResourceTreeTraverser` on</span>
+<span class="sd">          a tree of resources) or a data element instance (when using a</span>
+<span class="sd">          :class:`DataElementTreeTraverser` on a data element tree.</span>
+<span class="sd">        :param dict collection_data: dictionary mapping member index to member</span>
+<span class="sd">          data for each member in the visited collection.</span>
+<span class="sd">        :param bool is_link_node: indicates if the given member node is a link.</span>
+<span class="sd">        :param dict parent_data: dictionary holding all parent data extracted</span>
+<span class="sd">          during traversal (with mapped attributes as keys).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">DataElementBuilderResourceDataVisitorBase</span><span class="p">(</span><span class="n">ResourceDataVisitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for visitors creating a data element from resource</span>
+<span class="sd">    data. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="n">ResourceDataVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span> <span class="o">=</span> <span class="n">mapping</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__data_el</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">visit_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">member_data</span><span class="p">,</span>
+                     <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">mb_data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_link_data_element</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span>
+                                                        <span class="n">member_node</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mb_data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_member_data_element</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span>
+                                                          <span class="n">member_node</span><span class="p">)</span>
+            <span class="c"># Process attributes.</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">member_data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_set_terminal_attribute</span><span class="p">(</span><span class="n">mb_data_el</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mb_data_el</span><span class="o">.</span><span class="n">set_nested</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">index</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Collection member. Store in parent data with index as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">mb_data_el</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c"># Top level - store root data element.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__data_el</span> <span class="o">=</span> <span class="n">mb_data_el</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Nested member. Store in parent data with attribute as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">mb_data_el</span>
+
+    <span class="k">def</span> <span class="nf">visit_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                         <span class="n">collection_data</span><span class="p">,</span> <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">coll_data_el</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_link_data_element</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span>
+                                                          <span class="n">collection_node</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">coll_data_el</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_create_collection_data_element</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span>
+                                                     <span class="n">collection_node</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">collection_data</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="n">coll_data_el</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># Top level.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__data_el</span> <span class="o">=</span> <span class="n">coll_data_el</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">coll_data_el</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__data_el</span>
+
+    <span class="k">def</span> <span class="nf">_create_member_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_collection_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_link_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_terminal_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">DataElementBuilderRepresentationDataVisitor</span><span class="p">(</span>
+                                    <span class="n">DataElementBuilderResourceDataVisitorBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_create_member_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">attribute</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">mapped_class</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_data_element</span><span class="p">(</span><span class="n">mapped_class</span><span class="o">=</span><span class="n">mb_cls</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_collection_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">attribute</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">mapped_class</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_data_element</span><span class="p">(</span><span class="n">mapped_class</span><span class="o">=</span><span class="n">coll_cls</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_link_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">attribute</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span><span class="p">:</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">MEMBER</span>
+            <span class="n">rc_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">COLLECTION</span>
+            <span class="n">rc_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_linked_data_element</span><span class="p">(</span>
+                                                <span class="n">member_node</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span>
+                                                <span class="n">relation</span><span class="o">=</span><span class="n">rc_cls</span><span class="o">.</span><span class="n">relation</span><span class="p">,</span>
+                                                <span class="n">title</span><span class="o">=</span><span class="n">rc_cls</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_terminal_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">data_element</span><span class="o">.</span><span class="n">set_terminal_converted</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">DataElementBuilderResourceTreeVisitor</span><span class="p">(</span>
+                                    <span class="n">DataElementBuilderResourceDataVisitorBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_create_member_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_data_element_from_resource</span><span class="p">(</span><span class="n">member_node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_collection_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">):</span>
+        <span class="k">return</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_data_element_from_resource</span><span class="p">(</span><span class="n">collection_node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_create_link_data_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">):</span>
+        <span class="k">return</span> \
+          <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">create_linked_data_element_from_resource</span><span class="p">(</span><span class="n">member_node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_terminal_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">data_element</span><span class="o">.</span><span class="n">set_terminal</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ResourceBuilderDataElementTreeVisitor</span><span class="p">(</span><span class="n">ResourceDataVisitor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolve_urls</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">ResourceDataVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_urls</span> <span class="o">=</span> <span class="n">resolve_urls</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__resource</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">visit_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">member_data</span><span class="p">,</span>
+                     <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">member_node</span><span class="o">.</span><span class="n">get_url</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_urls</span><span class="p">:</span>
+                <span class="n">rc</span> <span class="o">=</span> <span class="n">url_to_resource</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="n">rc</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="n">LazyUrlLoader</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">url_to_resource</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">entity_cls</span> <span class="o">=</span> <span class="n">get_entity_class</span><span class="p">(</span><span class="n">member_node</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">mapped_class</span><span class="p">)</span>
+            <span class="n">entity_data</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">nested_entity_data</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">member_data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="k">if</span> <span class="s">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">attr</span><span class="o">.</span><span class="n">entity_name</span><span class="p">:</span>
+                    <span class="n">nested_entity_data</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">entity_data</span><span class="p">[</span><span class="n">attr</span><span class="o">.</span><span class="n">entity_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_urls</span><span class="p">:</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="n">entity_cls</span><span class="o">.</span><span class="n">create_from_data</span><span class="p">(</span><span class="n">entity_data</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">entity</span> <span class="o">=</span> <span class="n">LazyAttributeLoaderProxy</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">,</span>
+                                                         <span class="n">entity_data</span><span class="p">)</span>
+            <span class="c"># Set nested attribute values.</span>
+            <span class="c"># FIXME: lazy loading of nested attributes is not supported.</span>
+            <span class="k">for</span> <span class="n">nested_attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">nested_entity_data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">tokens</span> <span class="o">=</span> <span class="n">nested_attr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+                <span class="n">parent</span> <span class="o">=</span> <span class="nb">reduce</span><span class="p">(</span><span class="nb">getattr</span><span class="p">,</span> <span class="n">tokens</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">entity</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">tokens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">index</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Collection member. Store in parent data with index as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c"># Top level. Store root entity and create resource.</span>
+            <span class="n">mapped_cls</span> <span class="o">=</span> <span class="n">member_node</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">mapped_class</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__resource</span> <span class="o">=</span> <span class="n">mapped_cls</span><span class="o">.</span><span class="n">create_from_entity</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Nested member. Store in parent data with attribute as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+
+    <span class="k">def</span> <span class="nf">visit_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                         <span class="n">collection_data</span><span class="p">,</span> <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">collection_node</span><span class="o">.</span><span class="n">get_url</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_urls</span><span class="p">:</span>
+                <span class="n">coll</span> <span class="o">=</span> <span class="n">url_to_resource</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+                <span class="n">entities</span> <span class="o">=</span> <span class="p">[</span><span class="n">mb</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span> <span class="k">for</span> <span class="n">mb</span> <span class="ow">in</span> <span class="n">coll</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Lazy-loading of collection links is &#39;</span>
+                                          <span class="s">&#39;not supported.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">entities</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">collection_data</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="n">entities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># Top level.</span>
+            <span class="n">mapped_cls</span> <span class="o">=</span> <span class="n">collection_node</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">mapped_class</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__resource</span> <span class="o">=</span> <span class="n">new_stage_collection</span><span class="p">(</span><span class="n">mapped_cls</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">entities</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__resource</span><span class="o">.</span><span class="n">create_member</span><span class="p">(</span><span class="n">ent</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">entities</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resource</span>
+
+
+<div class="viewcode-block" id="DataTreeTraverser"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.DataTreeTraverser">[docs]</a><span class="k">class</span> <span class="nc">DataTreeTraverser</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for data tree traversers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__root</span> <span class="o">=</span> <span class="n">root</span>
+
+<div class="viewcode-block" id="DataTreeTraverser.run"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.DataTreeTraverser.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs this traverser.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch</span><span class="p">(</span><span class="n">AttributeKey</span><span class="p">(()),</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__root</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">visitor</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_traverse_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                             <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="n">is_link_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_link_node</span><span class="p">(</span><span class="n">collection_node</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="n">collection_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">all_mb_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_node_members</span><span class="p">(</span><span class="n">collection_node</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">mb_node</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">all_mb_nodes</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_member</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">mb_node</span><span class="p">,</span> <span class="n">collection_data</span><span class="p">,</span>
+                                      <span class="n">visitor</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span>
+        <span class="n">visitor</span><span class="o">.</span><span class="n">visit_collection</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                                 <span class="n">collection_data</span><span class="p">,</span> <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_traverse_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span>
+                         <span class="n">visitor</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_is_link_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ResourceDataTreeTraverser"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.ResourceDataTreeTraverser">[docs]</a><span class="k">class</span> <span class="nc">ResourceDataTreeTraverser</span><span class="p">(</span><span class="n">DataTreeTraverser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for resource data tree traversers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="n">DataTreeTraverser</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span> <span class="o">=</span> <span class="n">mapping</span>
+
+    <span class="k">def</span> <span class="nf">_traverse_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span>
+                         <span class="n">visitor</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">member_data</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">is_link_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_link_node</span><span class="p">(</span><span class="n">member_node</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="c"># Ignore links for traversal.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">attr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">node_type</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">attr</span><span class="o">.</span><span class="n">value_type</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">node_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_node_type</span><span class="p">(</span><span class="n">member_node</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">mb_attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="o">.</span><span class="n">attribute_iterator</span><span class="p">(</span><span class="n">node_type</span><span class="p">,</span>
+                                                            <span class="n">attr_key</span><span class="p">):</span>
+                <span class="n">ignore_opt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_ignore_option</span><span class="p">(</span><span class="n">mb_attr</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__ignore_attribute</span><span class="p">(</span><span class="n">ignore_opt</span><span class="p">,</span> <span class="n">mb_attr</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">mb_attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">TERMINAL</span><span class="p">:</span>
+                    <span class="c"># Terminal attribute - extract.</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_node_terminal</span><span class="p">(</span><span class="n">member_node</span><span class="p">,</span> <span class="n">mb_attr</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="c"># None values are ignored.</span>
+                        <span class="k">continue</span>
+                    <span class="n">member_data</span><span class="p">[</span><span class="n">mb_attr</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c"># Nested attribute - traverse.</span>
+                    <span class="n">nested_node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_node_nested</span><span class="p">(</span><span class="n">member_node</span><span class="p">,</span>
+                                                        <span class="n">mb_attr</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">nested_node</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                        <span class="c"># Stop condition - the given data element does not</span>
+                        <span class="c"># contain a nested attribute of the given mapped </span>
+                        <span class="c"># name.</span>
+                        <span class="k">continue</span>
+                    <span class="n">nested_attr_key</span> <span class="o">=</span> <span class="n">attr_key</span> <span class="o">+</span> <span class="p">(</span><span class="n">mb_attr</span><span class="o">.</span><span class="n">name</span><span class="p">,)</span>
+                    <span class="k">if</span> <span class="n">ignore_opt</span> <span class="ow">is</span> <span class="bp">False</span><span class="p">:</span>
+                        <span class="c"># The offset in the attribute key ensures that </span>
+                        <span class="c"># the defaults for ignoring attributes of the </span>
+                        <span class="c"># nested attribute can be retrieved correctly.</span>
+                        <span class="n">nested_attr_key</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nested_attr_key</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch</span><span class="p">(</span><span class="n">nested_attr_key</span><span class="p">,</span> <span class="n">mb_attr</span><span class="p">,</span> <span class="n">nested_node</span><span class="p">,</span>
+                                   <span class="n">member_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">)</span>
+        <span class="n">visitor</span><span class="o">.</span><span class="n">visit_member</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">member_data</span><span class="p">,</span>
+                             <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_ignore_option</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ignore_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ignore_opt</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">):</span>
+        <span class="c"># Rules for ignoring attributes:</span>
+        <span class="c">#  * always ignore when IGNORE_ON_XXX_OPTION is set to True</span>
+        <span class="c">#  * always include when IGNORE_ON_XXX_OPTION is set to False</span>
+        <span class="c">#  * also ignore member attributes when the length of the attribute</span>
+        <span class="c">#    key is &gt; 0 or the cardinality is not MANYTOONE</span>
+        <span class="c">#  * also ignore collection attributes when the cardinality is </span>
+        <span class="c">#    not MANYTOMANY</span>
+        <span class="n">do_ignore</span> <span class="o">=</span> <span class="n">ignore_opt</span>
+        <span class="k">if</span> <span class="n">ignore_opt</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">MEMBER</span><span class="p">:</span>
+                <span class="n">depth</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">attr_key</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">attr_key</span><span class="o">.</span><span class="n">offset</span>
+                <span class="n">do_ignore</span> <span class="o">=</span> <span class="n">depth</span> <span class="o">&gt;</span> <span class="mi">1</span> \
+                            <span class="ow">or</span> <span class="n">attr</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">!=</span> <span class="n">CARDINALITY</span><span class="o">.</span><span class="n">MANYTOONE</span>
+            <span class="k">elif</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceAttributeKinds</span><span class="o">.</span><span class="n">COLLECTION</span><span class="p">:</span>
+                <span class="n">do_ignore</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">!=</span> <span class="n">CARDINALITY</span><span class="o">.</span><span class="n">MANYTOMANY</span>
+        <span class="k">return</span> <span class="n">do_ignore</span>
+
+</div>
+<div class="viewcode-block" id="DataElementTreeTraverser"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.DataElementTreeTraverser">[docs]</a><span class="k">class</span> <span class="nc">DataElementTreeTraverser</span><span class="p">(</span><span class="n">ResourceDataTreeTraverser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Traverser for data element trees.</span>
+<span class="sd">    </span>
+<span class="sd">    This traverser can be used both inbound during reading (data element </span>
+<span class="sd">    -&gt; resource) and outbound during writing (resource -&gt; data element).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="DataElementTreeTraverser.__init__"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.DataElementTreeTraverser.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">direction</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param direction: processing direction (read or write). One of the</span>
+<span class="sd">            :class:`PROCESSING_DIRECTIONS` constant attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ResourceDataTreeTraverser</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">mapping</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__direction</span> <span class="o">=</span> <span class="n">direction</span>
+</div>
+    <span class="k">def</span> <span class="nf">_dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="n">ifcs</span> <span class="o">=</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">IMemberDataElement</span> <span class="ow">in</span> <span class="n">ifcs</span><span class="p">:</span>
+            <span class="n">traverse_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_member</span>
+        <span class="k">elif</span> <span class="n">ICollectionDataElement</span> <span class="ow">in</span> <span class="n">ifcs</span><span class="p">:</span>
+            <span class="n">traverse_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_collection</span>
+        <span class="k">elif</span> <span class="n">ILinkedDataElement</span> <span class="ow">in</span> <span class="n">ifcs</span><span class="p">:</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_kind</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">ResourceKinds</span><span class="o">.</span><span class="n">MEMBER</span><span class="p">:</span>
+                <span class="n">traverse_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_member</span>
+            <span class="k">else</span><span class="p">:</span> <span class="c"># kind == ResourceKinds.COLLECTION</span>
+                <span class="n">traverse_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_collection</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Need MEMBER or COLLECTION data element; found &#39;</span>
+                             <span class="s">&#39;&quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">node</span><span class="p">)</span>
+        <span class="n">traverse_fn</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_is_link_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="k">return</span> <span class="n">ILinkedDataElement</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">node</span><span class="o">.</span><span class="n">get_members</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">node</span><span class="o">.</span><span class="n">mapping</span><span class="o">.</span><span class="n">mapped_class</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__direction</span> <span class="o">==</span> <span class="n">PROCESSING_DIRECTIONS</span><span class="o">.</span><span class="n">READ</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_terminal</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_terminal_converted</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">node</span><span class="o">.</span><span class="n">get_nested</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_ignore_option</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__direction</span> <span class="o">==</span> <span class="n">PROCESSING_DIRECTIONS</span><span class="o">.</span><span class="n">READ</span><span class="p">:</span>
+            <span class="n">opt</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">IGNORE_ON_READ_OPTION</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">opt</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">IGNORE_ON_WRITE_OPTION</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">opt</span>
+
+</div>
+<div class="viewcode-block" id="ResourceTreeTraverser"><a class="viewcode-back" href="../../../api/everest.representers.traversal.html#everest.representers.traversal.ResourceTreeTraverser">[docs]</a><span class="k">class</span> <span class="nc">ResourceTreeTraverser</span><span class="p">(</span><span class="n">ResourceDataTreeTraverser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Mapping traverser for resource trees.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">):</span>
+        <span class="n">ifcs</span> <span class="o">=</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">IMemberResource</span> <span class="ow">in</span> <span class="n">ifcs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_member</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">visitor</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ICollectionResource</span> <span class="ow">in</span> <span class="n">ifcs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_collection</span><span class="p">(</span><span class="n">attr_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span>
+                                      <span class="n">visitor</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Data must be a resource.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_node_members</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_is_link_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">attr</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> \
+               <span class="ow">not</span> <span class="n">attr</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">WRITE_AS_LINK_OPTION</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">_get_ignore_option</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">attr</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">IGNORE_ON_WRITE_OPTION</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

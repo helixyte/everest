@@ -1,0 +1,375 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.orm &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.orm</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">ORM related services.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Oct 7, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.system</span> <span class="kn">import</span> <span class="n">UserMessage</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">isdatadescriptor</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">Column</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">DateTime</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">MetaData</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">String</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">func</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.hybrid</span> <span class="kn">import</span> <span class="n">hybrid_property</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">clear_mappers</span> <span class="k">as</span> <span class="n">sa_clear_mappers</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">mapper</span> <span class="k">as</span> <span class="n">sa_mapper</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">scoped_session</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">sessionmaker</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.mapper</span> <span class="kn">import</span> <span class="n">_mapper_registry</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.sql.expression</span> <span class="kn">import</span> <span class="n">ClauseList</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.sql.expression</span> <span class="kn">import</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Lock</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OrderClauseList&#39;</span><span class="p">,</span>
+           <span class="s">&#39;OrmTestCaseMixin&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Session&#39;</span><span class="p">,</span>
+           <span class="s">&#39;as_slug_expression&#39;</span><span class="p">,</span>
+           <span class="s">&#39;clear_mappers&#39;</span><span class="p">,</span>
+           <span class="s">&#39;commit_veto&#39;</span><span class="p">,</span>
+           <span class="s">&#39;empty_metadata&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_engine&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_metadata&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_engine_initialized&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_metadata_initialized&#39;</span><span class="p">,</span>
+           <span class="s">&#39;map_system_entities&#39;</span><span class="p">,</span>
+           <span class="s">&#39;mapper&#39;</span><span class="p">,</span>
+           <span class="s">&#39;reset_engines&#39;</span><span class="p">,</span>
+           <span class="s">&#39;reset_metadata&#39;</span><span class="p">,</span>
+           <span class="s">&#39;set_engine&#39;</span><span class="p">,</span>
+           <span class="s">&#39;set_metadata&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">_GlobalObjectManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">_globs</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">_lock</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the given object as global object for the given key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Duplicate key &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the global object for the given key.</span>
+<span class="sd">        </span>
+<span class="sd">        :raises KeyError: if no global object was initialized for the given </span>
+<span class="sd">          key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">is_initialized</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks if a global object with the given key has been initialized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="ow">not</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Discards all global objects held by this manager.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">cls</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">_DbEngineManager</span><span class="p">(</span><span class="n">_GlobalObjectManager</span><span class="p">):</span>
+    <span class="n">_globs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">engine</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">_DbEngineManager</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+<span class="n">get_engine</span> <span class="o">=</span> <span class="n">_DbEngineManager</span><span class="o">.</span><span class="n">get</span>
+<span class="n">set_engine</span> <span class="o">=</span> <span class="n">_DbEngineManager</span><span class="o">.</span><span class="n">set</span>
+<span class="n">is_engine_initialized</span> <span class="o">=</span> <span class="n">_DbEngineManager</span><span class="o">.</span><span class="n">is_initialized</span>
+<span class="n">reset_engines</span> <span class="o">=</span> <span class="n">_DbEngineManager</span><span class="o">.</span><span class="n">reset</span>
+
+
+<span class="k">class</span> <span class="nc">_MetaDataManager</span><span class="p">(</span><span class="n">_GlobalObjectManager</span><span class="p">):</span>
+    <span class="n">_globs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">md</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_globs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">md</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">clear_mappers</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">_MetaDataManager</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+<span class="n">get_metadata</span> <span class="o">=</span> <span class="n">_MetaDataManager</span><span class="o">.</span><span class="n">get</span>
+<span class="n">set_metadata</span> <span class="o">=</span> <span class="n">_MetaDataManager</span><span class="o">.</span><span class="n">set</span>
+<span class="n">is_metadata_initialized</span> <span class="o">=</span> <span class="n">_MetaDataManager</span><span class="o">.</span><span class="n">is_initialized</span>
+<span class="n">reset_metadata</span> <span class="o">=</span> <span class="n">_MetaDataManager</span><span class="o">.</span><span class="n">reset</span>
+
+
+<span class="c">#: The scoped session maker. Instantiate this to obtain a thread local</span>
+<span class="c">#: session instance.</span>
+<span class="n">Session</span> <span class="o">=</span> <span class="n">scoped_session</span><span class="p">(</span><span class="n">sessionmaker</span><span class="p">())</span> <span class="c"># extension=ZopeTransactionExtension()))</span>
+
+
+<div class="viewcode-block" id="OrderClauseList"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.OrderClauseList">[docs]</a><span class="k">class</span> <span class="nc">OrderClauseList</span><span class="p">(</span><span class="n">ClauseList</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom clause list for ORDER BY clauses.</span>
+<span class="sd">    </span>
+<span class="sd">    Suppresses the grouping parentheses which would trigger a syntax error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">self_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">against</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+</div>
+<div class="viewcode-block" id="commit_veto"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.commit_veto">[docs]</a><span class="k">def</span> <span class="nf">commit_veto</span><span class="p">(</span><span class="n">environ</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span> <span class="c"># unused pylint: disable=W0613</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Strict commit veto to use with the transaction manager.</span>
+<span class="sd">    </span>
+<span class="sd">    Unlike the default commit veto supplied with the transaction manager,</span>
+<span class="sd">    this will veto all commits for HTTP status codes other than 2xx unless</span>
+<span class="sd">    a commit is explicitly requested by setting the &quot;x-tm&quot; response header to</span>
+<span class="sd">    &quot;commit&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="n">status</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;2&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;x-tm&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s">&#39;commit&#39;</span>
+
+</div>
+<div class="viewcode-block" id="as_slug_expression"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.as_slug_expression">[docs]</a><span class="k">def</span> <span class="nf">as_slug_expression</span><span class="p">(</span><span class="n">attr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts the given instrumented string attribute into an SQL expression</span>
+<span class="sd">    that can be used as a slug.</span>
+
+<span class="sd">    Slugs are identifiers for members in a collection that can be used in an</span>
+<span class="sd">    URL. We create slug columns by replacing non-URL characters with dashes</span>
+<span class="sd">    and lower casing the result. We need this at the ORM level so that we can</span>
+<span class="sd">    use the slug in a query expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slug_expr</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s">&#39; &#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">)</span>
+    <span class="n">slug_expr</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">slug_expr</span><span class="p">,</span> <span class="s">&#39;_&#39;</span><span class="p">,</span> <span class="s">&#39;-&#39;</span><span class="p">)</span>
+    <span class="n">slug_expr</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="n">lower</span><span class="p">(</span><span class="n">slug_expr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">slug_expr</span>
+
+</div>
+<span class="k">class</span> <span class="nc">hybrid_descriptor</span><span class="p">(</span><span class="n">hybrid_property</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper class wrapping a data descriptor into a hybrid property.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">expr</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__descriptor</span> <span class="o">=</span> <span class="n">descriptor</span>
+        <span class="n">hybrid_property</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">fget</span><span class="p">,</span>
+                                 <span class="n">fset</span><span class="o">=</span><span class="n">descriptor</span><span class="o">.</span><span class="n">fset</span><span class="p">,</span> <span class="n">fdel</span><span class="o">=</span><span class="n">descriptor</span><span class="o">.</span><span class="n">fdel</span><span class="p">,</span>
+                                 <span class="n">expr</span><span class="o">=</span><span class="n">expr</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__descriptor</span>
+
+
+<div class="viewcode-block" id="mapper"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.mapper">[docs]</a><span class="k">def</span> <span class="nf">mapper</span><span class="p">(</span><span class="n">class_</span><span class="p">,</span> <span class="n">local_table</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">id_attribute</span><span class="o">=</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="n">slug_expression</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+           <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience wrapper around the SA mapper which will set up the hybrid</span>
+<span class="sd">    &quot;id&quot; and &quot;slug&quot; attributes required by everest after calling the SA</span>
+<span class="sd">    mapper.</span>
+<span class="sd">    </span>
+<span class="sd">    If you (e.g., for testing purposes) want to clear mappers created with</span>
+<span class="sd">    this function, use the :func:`clear_mappers` function in this module.</span>
+<span class="sd">    </span>
+<span class="sd">    :param str id_attribute: the name of the column in the table to use as</span>
+<span class="sd">      ID column (will be aliased to a new &quot;id&quot; attribute in the mapped class)</span>
+<span class="sd">    :param slug_expression: function to generate a slug SQL expression given</span>
+<span class="sd">      the mapped class as argument.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mpr</span> <span class="o">=</span> <span class="n">sa_mapper</span><span class="p">(</span><span class="n">class_</span><span class="p">,</span> <span class="n">local_table</span><span class="o">=</span><span class="n">local_table</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c"># Set up the ID attribute as a hybrid property, if necessary.</span>
+    <span class="k">if</span> <span class="n">id_attribute</span> <span class="o">!=</span> <span class="s">&#39;id&#39;</span><span class="p">:</span>
+        <span class="c"># Make sure we are not overwriting an already mapped or customized</span>
+        <span class="c"># &#39;id&#39; attribute.</span>
+        <span class="k">if</span> <span class="s">&#39;id&#39;</span> <span class="ow">in</span> <span class="n">mpr</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">mpr</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Attempting to overwrite the mapped &quot;id&quot; &#39;</span>
+                             <span class="s">&#39;attribute.&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">isdatadescriptor</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">class_</span><span class="p">,</span> <span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)):</span>
+            <span class="n">mpr</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Attempting to overwrite the custom data &#39;</span>
+                             <span class="s">&#39;descriptor defined for the &quot;id&quot; attribute.&#39;</span><span class="p">)</span>
+        <span class="n">fget</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">obj</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">id_attribute</span><span class="p">)</span>
+        <span class="n">fset</span> <span class="o">=</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_attribute</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="n">class_</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">hybrid_property</span><span class="p">(</span><span class="n">fget</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">fset</span><span class="p">,</span> <span class="n">expr</span><span class="o">=</span><span class="n">fget</span><span class="p">)</span>
+    <span class="c"># Set up the slug attribute as a hybrid property.</span>
+    <span class="k">if</span> <span class="n">slug_expression</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cls_expr</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">cls</span><span class="p">:</span> <span class="n">cast</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="s">&#39;id&#39;</span><span class="p">),</span> <span class="n">String</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cls_expr</span> <span class="o">=</span> <span class="n">slug_expression</span>
+    <span class="n">class_</span><span class="o">.</span><span class="n">slug</span> <span class="o">=</span> <span class="n">hybrid_descriptor</span><span class="p">(</span><span class="n">class_</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span> <span class="n">expr</span><span class="o">=</span><span class="n">cls_expr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mpr</span>
+
+</div>
+<div class="viewcode-block" id="clear_mappers"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.clear_mappers">[docs]</a><span class="k">def</span> <span class="nf">clear_mappers</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clears all mappers set up by SA and also clears all custom &quot;id&quot; and</span>
+<span class="sd">    &quot;slug&quot; attributes inserted by the :func:`mapper` function in this module.</span>
+<span class="sd">    </span>
+<span class="sd">    This should only ever be needed in a testing context.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Remove our hybrid property constructs.</span>
+    <span class="k">for</span> <span class="n">mpr</span><span class="p">,</span> <span class="n">is_primary</span> <span class="ow">in</span> <span class="n">_mapper_registry</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">is_primary</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;slug&#39;</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">attr</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">mpr</span><span class="o">.</span><span class="n">class_</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">hybrid_property</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">attr_name</span> <span class="o">==</span> <span class="s">&#39;id&#39;</span><span class="p">:</span>
+                            <span class="nb">delattr</span><span class="p">(</span><span class="n">mpr</span><span class="o">.</span><span class="n">class_</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="nb">setattr</span><span class="p">(</span><span class="n">mpr</span><span class="o">.</span><span class="n">class_</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr</span><span class="o">.</span><span class="n">descriptor</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+    <span class="n">sa_clear_mappers</span><span class="p">()</span>
+
+</div>
+<span class="k">def</span> <span class="nf">map_system_entities</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">reset</span><span class="p">):</span>
+    <span class="c"># Map the user message system entity.</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="n">MetaData</span><span class="p">()</span>
+    <span class="n">msg_tbl</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="s">&#39;_user_messages&#39;</span><span class="p">,</span> <span class="n">md</span><span class="p">,</span>
+                    <span class="n">Column</span><span class="p">(</span><span class="s">&#39;guid&#39;</span><span class="p">,</span> <span class="n">String</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+                    <span class="n">Column</span><span class="p">(</span><span class="s">&#39;text&#39;</span><span class="p">,</span> <span class="n">String</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+                    <span class="n">Column</span><span class="p">(</span><span class="s">&#39;time_stamp&#39;</span><span class="p">,</span> <span class="n">DateTime</span><span class="p">(</span><span class="n">timezone</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+                           <span class="n">nullable</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">func</span><span class="o">.</span><span class="n">now</span><span class="p">()),</span>
+                    <span class="p">)</span>
+    <span class="n">mapper</span><span class="p">(</span><span class="n">UserMessage</span><span class="p">,</span> <span class="n">msg_tbl</span><span class="p">,</span> <span class="n">id_attribute</span><span class="o">=</span><span class="s">&#39;guid&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reset</span><span class="p">:</span>
+        <span class="n">md</span><span class="o">.</span><span class="n">drop_all</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">tables</span><span class="o">=</span><span class="p">[</span><span class="n">msg_tbl</span><span class="p">])</span>
+    <span class="n">md</span><span class="o">.</span><span class="n">create_all</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">,</span> <span class="n">tables</span><span class="o">=</span><span class="p">[</span><span class="n">msg_tbl</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="empty_metadata"><a class="viewcode-back" href="../../api/everest.orm.html#everest.orm.empty_metadata">[docs]</a><span class="k">def</span> <span class="nf">empty_metadata</span><span class="p">(</span><span class="n">engine</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default metadata factory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">MetaData</span><span class="p">()</span>
+    <span class="n">metadata</span><span class="o">.</span><span class="n">create_all</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">metadata</span>
+
+</div>
+<span class="k">class</span> <span class="nc">OrmTestCaseMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">tear_down</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OrmTestCaseMixin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">tear_down</span><span class="p">()</span>
+        <span class="n">Session</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">teardown_class</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">base_cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">OrmTestCaseMixin</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">base_cls</span><span class="o">.</span><span class="n">teardown_class</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">Session</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">has</span><span class="p">()</span>
+        <span class="n">reset_metadata</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

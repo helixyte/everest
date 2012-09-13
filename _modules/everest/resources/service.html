@@ -1,0 +1,201 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.service &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.service</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Service.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jul 27, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">as_repository</span>
+<span class="kn">from</span> <span class="nn">everest.resources.base</span> <span class="kn">import</span> <span class="n">Resource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IService</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Service&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="Service"><a class="viewcode-back" href="../../../api/everest.resources.service.html#everest.resources.service.Service">[docs]</a><span class="k">class</span> <span class="nc">Service</span><span class="p">(</span><span class="n">Resource</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The service resource class.</span>
+
+<span class="sd">    The service resource is placed at the root of the resource tree and </span>
+<span class="sd">    provides traversal (=URL) access to all exposed collection resources. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IService</span><span class="p">)</span>
+
+    <span class="n">relation</span> <span class="o">=</span> <span class="s">&#39;service&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">Resource</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c"># Setting the __name__ to None ensures a leading slash in model paths.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="c"># Collects all interfaces managed by the service.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__registered_interfaces</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="c"># Maps collection names to resource interfaces.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__started</span> <span class="o">=</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="Service.register"><a class="viewcode-back" href="../../../api/everest.resources.service.html#everest.resources.service.Service.register">[docs]</a>    <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">irc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Registers the given resource interface with this service.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__started</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Can not register new resource interfaces when &quot;</span>
+                               <span class="s">&quot;the service has been started.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__registered_interfaces</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Service.start"><a class="viewcode-back" href="../../../api/everest.resources.service.html#everest.resources.service.Service.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Starts the service.</span>
+<span class="sd">        </span>
+<span class="sd">        This adds all registered resource interfaces to the service. Multiple</span>
+<span class="sd">        calls to this method will only perform the startup once.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__started</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__started</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">for</span> <span class="n">irc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__registered_interfaces</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Service.__getitem__"><a class="viewcode-back" href="../../../api/everest.resources.service.html#everest.resources.service.Service.__getitem__">[docs]</a>    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Overrides __getitem__ to return a clone of the requested collection.</span>
+
+<span class="sd">        :param key: collection name.</span>
+<span class="sd">        :type key: str</span>
+<span class="sd">        :returns: object implementing</span>
+<span class="sd">          :class:`everest.resources.interfaces.ICollectionResource`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">irc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">repo</span> <span class="o">=</span> <span class="n">as_repository</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="o">.</span><span class="n">iterkeys</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                           <span class="s">&#39;started&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__started</span> <span class="k">else</span> <span class="s">&#39;not started&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">irc</span><span class="p">):</span>
+        <span class="n">repo</span> <span class="o">=</span> <span class="n">as_repository</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">coll</span><span class="o">.</span><span class="n">__name__</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Root collection for collection name </span><span class="si">%s</span><span class="s"> &#39;</span>
+                             <span class="s">&#39; already exists.&#39;</span> <span class="o">%</span> <span class="n">coll</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="c"># We replace the repository collection with a clone that has the</span>
+        <span class="c"># service as the parent so that URL generation works.</span>
+        <span class="n">coll</span><span class="o">.</span><span class="n">__parent__</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">repo</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">irc</span><span class="p">,</span> <span class="n">coll</span><span class="p">)</span>
+        <span class="c"># </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="p">[</span><span class="n">coll</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">irc</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">irc</span><span class="p">):</span>
+        <span class="n">repo</span> <span class="o">=</span> <span class="n">as_repository</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">irc</span><span class="p">)</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__collections</span><span class="p">[</span><span class="n">coll</span><span class="o">.</span><span class="n">__name__</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="k">return</span> <span class="n">coll</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

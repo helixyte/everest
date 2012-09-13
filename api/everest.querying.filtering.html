@@ -1,0 +1,165 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.filtering &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.querying.filtering">
+<span id="everest-querying-filtering"></span><h1>everest.querying.filtering<a class="headerlink" href="#module-everest.querying.filtering" title="Permalink to this headline">¶</a></h1>
+<p>Filter specification builder, visitor, director classes.</p>
+<dl class="class">
+<dt id="everest.querying.filtering.CqlFilterSpecificationVisitor">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">CqlFilterSpecificationVisitor</tt><a class="reference internal" href="../_modules/everest/querying/filtering.html#CqlFilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.CqlFilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.filtering.FilterSpecificationVisitor" title="everest.querying.filtering.FilterSpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.filtering.FilterSpecificationVisitor</span></tt></a></p>
+<p>Filter specification visitor building a CQL expression.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.filtering.EvalFilterSpecificationVisitor">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">EvalFilterSpecificationVisitor</tt><a class="reference internal" href="../_modules/everest/querying/filtering.html#EvalFilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.EvalFilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.filtering.FilterSpecificationVisitor" title="everest.querying.filtering.FilterSpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.filtering.FilterSpecificationVisitor</span></tt></a></p>
+<p>Filter specification visitor building an evaluator for in-memory 
+filtering.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.filtering.FilterSpecificationBuilder">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationBuilder</tt><big>(</big><em>spec_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationBuilder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationBuilder" title="everest.querying.base.SpecificationBuilder"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationBuilder</span></tt></a></p>
+<p>Filter specification builder.</p>
+<p>The filter specification builder is responsible for building concrete
+specs with build methods dispatched by the director and for forming 
+disjunction specs when a) multiple values are given in a single criterion;
+or b) the same combination of attribute name and operator is encountered
+multiple times.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.filtering.FilterSpecificationDirector">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationDirector</tt><big>(</big><em>parser</em>, <em>builder</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationDirector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationDirector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationDirector" title="everest.querying.base.SpecificationDirector"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationDirector</span></tt></a></p>
+<p>Director for filter specifications.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.filtering.FilterSpecificationVisitor">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationVisitor</tt><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationVisitor" title="everest.querying.base.SpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationVisitor</span></tt></a></p>
+<p>Base class for filter specification visitors.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.filtering.SqlFilterSpecificationVisitor">
+<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">SqlFilterSpecificationVisitor</tt><big>(</big><em>entity_class</em>, <em>custom_clause_factories=None</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#SqlFilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.SqlFilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.filtering.FilterSpecificationVisitor" title="everest.querying.filtering.FilterSpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.filtering.FilterSpecificationVisitor</span></tt></a></p>
+<p>Filter specification visitor building a SQL expression.</p>
+<dl class="method">
+<dt id="everest.querying.filtering.SqlFilterSpecificationVisitor.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>entity_class</em>, <em>custom_clause_factories=None</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#SqlFilterSpecificationVisitor.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.SqlFilterSpecificationVisitor.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a SqlFilterSpecificationVisitor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>entity_class</strong> &#8211; an entity class that is mapped with SQLAlchemy</li>
+<li><strong>custom_clause_factories</strong> &#8211; a map containing custom clause factory 
+functions for selected (attribute name, operator) combinations.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.querying.filtering.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

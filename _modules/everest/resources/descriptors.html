@@ -1,0 +1,398 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.descriptors &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.descriptors</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Attribute descriptors for resource classes.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Apr 19, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.utils</span> <span class="kn">import</span> <span class="n">slug_from_identifier</span>
+<span class="kn">from</span> <span class="nn">everest.relationship</span> <span class="kn">import</span> <span class="n">Relationship</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">as_member</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_root_collection</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">new_stage_collection</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">id_generator</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface.interfaces</span> <span class="kn">import</span> <span class="n">IInterface</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;attribute_alias&#39;</span><span class="p">,</span>
+           <span class="s">&#39;attribute_base&#39;</span><span class="p">,</span>
+           <span class="s">&#39;collection_attribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;member_attribute&#39;</span><span class="p">,</span>
+           <span class="s">&#39;terminal_attribute&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">CARDINALITY</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cardinality constants for non-terminal resource attributes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ONETOMANY</span> <span class="o">=</span> <span class="s">&#39;ONETOMANY&#39;</span>
+    <span class="n">MANYTOONE</span> <span class="o">=</span> <span class="s">&#39;MANYTOONE&#39;</span>
+    <span class="n">MANYTOMANY</span> <span class="o">=</span> <span class="s">&#39;MANYTOMANY&#39;</span>
+
+
+<div class="viewcode-block" id="attribute_base"><a class="viewcode-back" href="../../../api/everest.resources.descriptors.html#everest.resources.descriptors.attribute_base">[docs]</a><span class="k">class</span> <span class="nc">attribute_base</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all attribute descriptors.</span>
+
+<span class="sd">    :ivar attr_type: the type (or interface) of the controlled entity </span>
+<span class="sd">      attribute.</span>
+<span class="sd">    :ivar entity_attr: the entity attribute the descriptor references. May</span>
+<span class="sd">      be *None*.</span>
+<span class="sd">    :ivar cardinality: indicates the cardinality of the relationship for </span>
+<span class="sd">      non-terminal attributes. This is always `None` for terminal attributes. </span>
+<span class="sd">    :ivar int id: unique sequential numeric ID for this attribute. Since this</span>
+<span class="sd">      ID is incremented each time a new resource attribute is declared,</span>
+<span class="sd">      it can be used to establish a well-defined sorting order on all</span>
+<span class="sd">      attribute declarations of a resource.</span>
+<span class="sd">    :ivar resource_attr: the resource attribute this descriptor is mapped to.</span>
+<span class="sd">      This is set after instantiation. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__id_gen</span> <span class="o">=</span> <span class="n">id_generator</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attr_type</span> <span class="o">=</span> <span class="n">attr_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span> <span class="o">=</span> <span class="n">entity_attr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cardinality</span> <span class="o">=</span> <span class="n">cardinality</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__id_gen</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_attr</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_set_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">parent</span><span class="p">,</span> <span class="n">entity_attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_nested</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s">&#39;Can not set attribute &quot;</span><span class="si">%s</span><span class="s">&quot; on None value.&#39;</span>
+                                 <span class="o">%</span> <span class="n">entity_attr</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">):</span>
+        <span class="n">parent</span><span class="p">,</span> <span class="n">entity_attr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__resolve_nested</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">attr_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attr_value</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">attr_value</span>
+
+    <span class="k">def</span> <span class="nf">__resolve_nested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">):</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="n">entity_attr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">entity</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">entity</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">tokens</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="terminal_attribute"><a class="viewcode-back" href="../../../api/everest.resources.descriptors.html#everest.resources.descriptors.terminal_attribute">[docs]</a><span class="k">class</span> <span class="nc">terminal_attribute</span><span class="p">(</span><span class="n">attribute_base</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Descriptor for declaring terminal attributes of a resource as attributes</span>
+<span class="sd">    from its underlying entity.</span>
+
+<span class="sd">    A terminal attribute is an attribute that the framework will not look</span>
+<span class="sd">    into any further for querying or serialization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_type</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;The attribute type of a terminal attribute &#39;</span>
+                             <span class="s">&#39;must be a class.&#39;</span><span class="p">)</span>
+        <span class="n">attribute_base</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Class level access.</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">get_entity</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_nested</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">get_entity</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">_relation_attribute</span><span class="p">(</span><span class="n">attribute_base</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for relation resource descriptors (i.e., descriptors managing</span>
+<span class="sd">    a related member or collection resource).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">cardinality</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">is_nested</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param bool is_nested: indicates if the URLs generated for this</span>
+<span class="sd">            relation descriptor should be relative to the parent (&quot;nested&quot;)</span>
+<span class="sd">            or absolute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">attr_type</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">IInterface</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">attr_type</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;The attribute type of a member or collection &#39;</span>
+                             <span class="s">&#39; attribute must be a class or an interface.&#39;</span><span class="p">)</span>
+        <span class="n">attribute_base</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_nested</span> <span class="o">=</span> <span class="n">is_nested</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="member_attribute"><a class="viewcode-back" href="../../../api/everest.resources.descriptors.html#everest.resources.descriptors.member_attribute">[docs]</a><span class="k">class</span> <span class="nc">member_attribute</span><span class="p">(</span><span class="n">_relation_attribute</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Descriptor for declaring member attributes of a resource as attributes</span>
+<span class="sd">    from its underlying entity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">cardinality</span><span class="o">=</span><span class="n">CARDINALITY</span><span class="o">.</span><span class="n">MANYTOONE</span><span class="p">,</span> <span class="n">is_nested</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">_relation_attribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span>
+                                     <span class="n">entity_attr</span><span class="o">=</span><span class="n">entity_attr</span><span class="p">,</span>
+                                     <span class="n">cardinality</span><span class="o">=</span><span class="n">cardinality</span><span class="p">,</span>
+                                     <span class="n">is_nested</span><span class="o">=</span><span class="n">is_nested</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">get_entity</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">obj</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_nested</span><span class="p">:</span>
+                    <span class="n">member</span> <span class="o">=</span> <span class="n">as_member</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+                    <span class="n">coll</span> <span class="o">=</span> <span class="n">get_root_collection</span><span class="p">(</span><span class="n">member</span><span class="p">)</span>
+                    <span class="n">member</span><span class="o">.</span><span class="n">__parent__</span> <span class="o">=</span> <span class="n">coll</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">member</span> <span class="o">=</span> <span class="n">as_member</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">resource</span><span class="p">)</span>
+                    <span class="n">member</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">slug_from_identifier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_attr</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">member</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># class level access</span>
+            <span class="n">member</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">return</span> <span class="n">member</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_nested</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">get_entity</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">,</span> <span class="n">ent</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="collection_attribute"><a class="viewcode-back" href="../../../api/everest.resources.descriptors.html#everest.resources.descriptors.collection_attribute">[docs]</a><span class="k">class</span> <span class="nc">collection_attribute</span><span class="p">(</span><span class="n">_relation_attribute</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Descriptor for declaring collection attributes of a resource as attributes</span>
+<span class="sd">    from its underlying entity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span> <span class="n">entity_attr</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">cardinality</span><span class="o">=</span><span class="n">CARDINALITY</span><span class="o">.</span><span class="n">ONETOMANY</span><span class="p">,</span>
+                 <span class="n">is_nested</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">backref</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param str backref: attribute of the members of the target</span>
+<span class="sd">          collection which back-references the current resource (parent).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">entity_attr</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">backref</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Either the entity_attr or the backref parameter &#39;</span>
+                             <span class="s">&#39;to a collection attribute may be None, but &#39;</span>
+                             <span class="s">&#39;not both.&#39;</span><span class="p">)</span>
+        <span class="n">_relation_attribute</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_type</span><span class="p">,</span>
+                                     <span class="n">entity_attr</span><span class="o">=</span><span class="n">entity_attr</span><span class="p">,</span>
+                                     <span class="n">cardinality</span><span class="o">=</span><span class="n">cardinality</span><span class="p">,</span>
+                                     <span class="n">is_nested</span><span class="o">=</span><span class="n">is_nested</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backref</span> <span class="o">=</span> <span class="n">backref</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__resource_backref</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_backref</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__need_backref_setup</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">backref</span> <span class="ow">is</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__need_backref_setup</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__setup_backref</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Create a collection. We can not just return the</span>
+            <span class="c"># entity attribute here as that would load the whole entity</span>
+            <span class="c"># collection.</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">children</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_nested</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_attr</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">children</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__make_collection</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">children</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Class level access.</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">return</span> <span class="n">coll</span>
+
+<span class="c"># FIXME: Not sure if we want to support replacement of child containers.</span>
+<span class="c">#    def __set__(self, resource, value):</span>
+<span class="c">#        ent_coll = self._get_nested(resource.get_entity(), self.entity_attr)</span>
+<span class="c">#        ent_coll_cls = type(ent_coll)</span>
+<span class="c">#        new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])</span>
+<span class="c">#        self._set_nested(resource.get_entity(), self.entity_attr, new_ent_coll)</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setup_backref</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">backref</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># We require the backref to be a resource attribute of the target.</span>
+            <span class="n">attr_mb_class</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_type</span><span class="p">)</span>
+            <span class="n">backref_rc_descr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">attr_mb_class</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backref</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+<span class="c">#            if backref_rc_descr is None:</span>
+<span class="c">#                raise ValueError(&#39;The &quot;backref&quot; attribute must be a &#39;</span>
+<span class="c">#                                 &#39;resource attribute declared on the &#39;</span>
+<span class="c">#                                 &#39;target of the descriptor.&#39;)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">backref_rc_descr</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__resource_backref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backref</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__entity_backref</span> <span class="o">=</span> <span class="n">backref_rc_descr</span><span class="o">.</span><span class="n">entity_attr</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># FIXME: Falling back on the entity attribute here is fishy.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__entity_backref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backref</span> <span class="c"># pragma: no cover</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__need_backref_setup</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__make_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">children</span><span class="p">):</span>
+        <span class="c"># Create a new collection.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">__parent__</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Use the resource repository that created this resource&#39;s parent</span>
+            <span class="c"># (collection) to create a new collection.</span>
+            <span class="n">rc_repo</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">__parent__</span><span class="o">.</span><span class="n">__repository__</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="n">rc_repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_type</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># This is a floating member, assume stage repository.</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="n">new_stage_collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_type</span><span class="p">)</span>
+        <span class="c"># Set up entity access in the new collection.</span>
+        <span class="n">agg_relationship</span> <span class="o">=</span> <span class="n">Relationship</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">children</span><span class="p">,</span>
+                                        <span class="n">backref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__entity_backref</span><span class="p">)</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">get_aggregate</span><span class="p">()</span>
+        <span class="n">agg</span><span class="o">.</span><span class="n">set_relationship</span><span class="p">(</span><span class="n">agg_relationship</span><span class="p">)</span>
+        <span class="c"># Set up URL generation.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_nested</span><span class="p">:</span>
+            <span class="c"># Make URL generation relative to the resource.</span>
+            <span class="n">coll</span><span class="o">.</span><span class="n">__parent__</span> <span class="o">=</span> <span class="n">resource</span>
+            <span class="c"># Set the collection&#39;s name to the descriptor&#39;s resource</span>
+            <span class="c"># attribute name.</span>
+            <span class="n">coll</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">slug_from_identifier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_attr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Add a filter specification for the root collection through</span>
+            <span class="c"># a relationship.</span>
+            <span class="n">coll_relationship</span> <span class="o">=</span> <span class="n">Relationship</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">coll</span><span class="p">,</span>
+                                             <span class="n">backref</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__resource_backref</span><span class="p">)</span>
+            <span class="n">coll</span><span class="o">.</span><span class="n">set_relationship</span><span class="p">(</span><span class="n">coll_relationship</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">coll</span>
+
+</div>
+<div class="viewcode-block" id="attribute_alias"><a class="viewcode-back" href="../../../api/everest.resources.descriptors.html#everest.resources.descriptors.attribute_alias">[docs]</a><span class="k">class</span> <span class="nc">attribute_alias</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Descriptor for declaring an alias to another attribute declared by an</span>
+<span class="sd">    attribute descriptor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alias_attr</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alias_attr</span> <span class="o">=</span> <span class="n">alias_attr</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Class level access.</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">descr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">resource_class</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias_attr</span><span class="p">)</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">descr</span><span class="o">.</span><span class="n">__get__</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">descr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">resource</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">alias_attr</span><span class="p">)</span>
+        <span class="n">descr</span><span class="o">.</span><span class="n">__set__</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

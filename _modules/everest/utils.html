@@ -1,0 +1,406 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.utils &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.utils</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">General purpose utilities.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Oct 7, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span> <span class="nn">everest.interfaces</span> <span class="kn">import</span> <span class="n">IRepositoryManager</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IOrderSpecificationVisitor</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_registry</span>
+<span class="kn">from</span> <span class="nn">weakref</span> <span class="kn">import</span> <span class="n">ref</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;BidirectionalLookup&#39;</span><span class="p">,</span>
+           <span class="s">&#39;check_email&#39;</span><span class="p">,</span>
+           <span class="s">&#39;classproperty&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_filter_specification_visitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_order_specification_visitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_repository_manager&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+<span class="n">EMAIL_REGEX</span> <span class="o">=</span> <span class="s">r&#39;^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$&#39;</span>
+
+<span class="n">check_email</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">EMAIL_REGEX</span><span class="p">)</span><span class="o">.</span><span class="n">match</span>
+
+
+<div class="viewcode-block" id="classproperty"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.classproperty">[docs]</a><span class="k">class</span> <span class="nc">classproperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Property descriptor for class objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__get</span> <span class="o">=</span> <span class="n">get</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">id_generator</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generator for sequential numeric numbers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">send_value</span> <span class="o">=</span> <span class="p">(</span><span class="k">yield</span> <span class="n">count</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">send_value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">send_value</span> <span class="o">&lt;</span> <span class="n">count</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Values from ID generator must increase &#39;</span>
+                                 <span class="s">&#39;monotonically (current value: </span><span class="si">%d</span><span class="s">; value &#39;</span>
+                                 <span class="s">&#39;sent to generator: </span><span class="si">%d</span><span class="s">).&#39;</span>
+                                 <span class="o">%</span> <span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">send_value</span><span class="p">))</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="n">send_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+<span class="k">def</span> <span class="nf">get_traceback</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fetches the last traceback from :var:`sys.exc_info` and returns it as a</span>
+<span class="sd">    formatted string.</span>
+
+<span class="sd">    :returns: formatted traceback (string)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+    <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">(</span><span class="nb">file</span><span class="o">=</span><span class="n">buf</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="get_filter_specification_visitor"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.get_filter_specification_visitor">[docs]</a><span class="k">def</span> <span class="nf">get_filter_specification_visitor</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a the class registered as the filter specification </span>
+<span class="sd">    visitor utility under the given name (one of the </span>
+<span class="sd">    :const:`everest.querying.base.EXPRESSION_KINDS` constants).</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: class implementing </span>
+<span class="sd">        :class:`everest.interfaces.IFilterSpecificationVisitor`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IFilterSpecificationVisitor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_order_specification_visitor"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.get_order_specification_visitor">[docs]</a><span class="k">def</span> <span class="nf">get_order_specification_visitor</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the class registered as the order specification </span>
+<span class="sd">    visitor utility under the given name (one of the </span>
+<span class="sd">    :const:`everest.querying.base.EXPRESSION_KINDS` constants).</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: class implementing </span>
+<span class="sd">        :class:`everest.interfaces.IOrderSpecificationVisitor`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IOrderSpecificationVisitor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_repository_manager"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.get_repository_manager">[docs]</a><span class="k">def</span> <span class="nf">get_repository_manager</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registers the object registered as the repository manager utility.</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: object implementing </span>
+<span class="sd">        :class:`everest.interfaces.IRepositoryManager`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IRepositoryManager</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="BidirectionalLookup"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.BidirectionalLookup">[docs]</a><span class="k">class</span> <span class="nc">BidirectionalLookup</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bidirectional mapping between a left and a right collection of items.</span>
+<span class="sd">    </span>
+<span class="sd">    Each element of the left collection is mapped to exactly one element of</span>
+<span class="sd">    the right collection; both collections contain unique elements.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BidirectionalLookup.__init__"><a class="viewcode-back" href="../../api/everest.utils.html#everest.utils.BidirectionalLookup.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_map</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">map_type</span><span class="o">=</span><span class="nb">dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param init_map: map-like object to initialize this instance with</span>
+<span class="sd">        :param map_type: type to use for the left and right item maps</span>
+<span class="sd">          (dictionary like)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__left</span> <span class="o">=</span> <span class="n">map_type</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__right</span> <span class="o">=</span> <span class="n">map_type</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">init_map</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="ow">in</span> <span class="n">init_map</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_item</span><span class="p">,</span> <span class="n">right_item</span><span class="p">):</span>
+        <span class="n">is_right_in_left</span> <span class="o">=</span> <span class="n">right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span>
+        <span class="n">is_left_in_right</span> <span class="o">=</span> <span class="n">left_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span>
+        <span class="n">in_both</span> <span class="o">=</span> <span class="n">is_right_in_left</span> <span class="ow">and</span> <span class="n">is_left_in_right</span>
+        <span class="k">if</span> <span class="n">is_right_in_left</span> <span class="ow">or</span> <span class="n">is_left_in_right</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_both</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Cannot use the existing item &quot;</span><span class="si">%s</span><span class="s">&quot; from the </span><span class="si">%s</span><span class="s"> &#39;</span>
+                             <span class="s">&#39;set as item in the </span><span class="si">%s</span><span class="s"> set!&#39;</span>
+                             <span class="o">%</span> <span class="p">((</span><span class="n">left_item</span><span class="p">,</span> <span class="s">&#39;right&#39;</span><span class="p">,</span> <span class="s">&#39;left&#39;</span><span class="p">)</span> <span class="k">if</span>
+                                <span class="n">is_left_in_right</span> <span class="k">else</span>
+                                <span class="p">(</span><span class="n">right_item</span><span class="p">,</span> <span class="s">&#39;left&#39;</span><span class="p">,</span> <span class="s">&#39;right&#39;</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">left_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">[</span><span class="n">left_item</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">[</span><span class="n">left_item</span><span class="p">]</span> <span class="o">=</span> <span class="n">right_item</span>
+        <span class="k">if</span> <span class="n">right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">[</span><span class="n">right_item</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">[</span><span class="n">right_item</span><span class="p">]</span> <span class="o">=</span> <span class="n">left_item</span>
+
+    <span class="k">def</span> <span class="nf">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_or_right_item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">[</span><span class="n">left_or_right_item</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">[</span><span class="n">left_or_right_item</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">left_or_right_item</span><span class="p">,))</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_or_right_item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">[</span><span class="n">left_or_right_item</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">[</span><span class="n">left_or_right_item</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s">&quot;&#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">left_or_right_item</span><span class="p">,))</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_or_right_item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="p">)</span> \
+               <span class="ow">or</span> <span class="p">(</span><span class="n">left_or_right_item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">has_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span>
+
+    <span class="k">def</span> <span class="nf">has_right</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_or_right_item</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="n">left_or_right_item</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="k">def</span> <span class="nf">get_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">left_item</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_right</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">right_item</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">right_item</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">pop_left</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_item</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">right_item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">left_item</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">right_item</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">right_item</span>
+
+    <span class="k">def</span> <span class="nf">pop_right</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">right_item</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">left_item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">right_item</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">left_item</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">left_item</span>
+
+    <span class="k">def</span> <span class="nf">left_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">right_keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">left_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">right_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">left_items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">right_items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__left</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__right</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+</div>
+<span class="k">class</span> <span class="nc">WeakList</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    List containing weakly referenced items.</span>
+
+<span class="sd">    All objects stored in a weak list are only weakly referenced, but</span>
+<span class="sd">    accessing an element returns a strong reference. If an object referenced</span>
+<span class="sd">    by an element in a weak list dies, the corresponding weak reference is</span>
+<span class="sd">    removed automatically.</span>
+
+<span class="sd">    :note: only weakly referenceable objects can be stored</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sequence</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">)()</span>
+
+    <span class="k">def</span> <span class="nf">__setslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">__setslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span>
+                          <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">__getslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">item</span><span class="p">()</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">list</span><span class="o">.</span><span class="n">__getslice__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span> <span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="o">.</span><span class="n">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
+        <span class="n">new_weak_list</span> <span class="o">=</span> <span class="n">WeakList</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span>
+        <span class="n">new_weak_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_weak_list</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__iterator</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">item_weakref</span> <span class="o">=</span> <span class="nb">list</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item_weakref</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sequence_to_weakref</span><span class="p">(</span><span class="n">sequence</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">list</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cmp_items</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get_weakref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ref</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__remove_by_weakref</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__remove_by_weakref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weakref</span><span class="p">):</span>
+        <span class="c"># Cleanup callback called on garbage collection.</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__delitem__</span><span class="p">(</span><span class="nb">list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weakref</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">break</span>
+
+    <span class="k">def</span> <span class="nf">__sequence_to_weakref</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sequence</span><span class="p">,</span> <span class="n">WeakList</span><span class="p">):</span>
+            <span class="n">weakrefs</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__get_weakref</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">sequence</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weakrefs</span> <span class="o">=</span> <span class="n">sequence</span>
+        <span class="k">return</span> <span class="n">weakrefs</span>
+
+    <span class="k">def</span> <span class="nf">__cmp_items</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_ref</span><span class="p">,</span> <span class="n">right_ref</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">left_ref</span><span class="p">(),</span> <span class="n">right_ref</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">__iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">cnt</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">(</span><span class="n">cnt</span><span class="p">)</span>
+            <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

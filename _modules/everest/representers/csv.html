@@ -1,0 +1,421 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.csv &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.representers.csv</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">CSV representers.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on May 19, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span> <span class="c"># Makes the import below absolute</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">Dialect</span>
+<span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">QUOTE_NONNUMERIC</span>
+<span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">reader</span>
+<span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">register_dialect</span>
+<span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">writer</span>
+<span class="kn">from</span> <span class="nn">everest.mime</span> <span class="kn">import</span> <span class="n">CsvMime</span>
+<span class="kn">from</span> <span class="nn">everest.representers.base</span> <span class="kn">import</span> <span class="n">RepresentationGenerator</span>
+<span class="kn">from</span> <span class="nn">everest.representers.base</span> <span class="kn">import</span> <span class="n">RepresentationParser</span>
+<span class="kn">from</span> <span class="nn">everest.representers.base</span> <span class="kn">import</span> <span class="n">ResourceRepresenter</span>
+<span class="kn">from</span> <span class="nn">everest.representers.config</span> <span class="kn">import</span> <span class="n">RepresenterConfiguration</span>
+<span class="kn">from</span> <span class="nn">everest.representers.converters</span> <span class="kn">import</span> <span class="n">BooleanConverter</span>
+<span class="kn">from</span> <span class="nn">everest.representers.converters</span> <span class="kn">import</span> <span class="n">ConverterRegistry</span>
+<span class="kn">from</span> <span class="nn">everest.representers.converters</span> <span class="kn">import</span> <span class="n">DateTimeConverter</span>
+<span class="kn">from</span> <span class="nn">everest.representers.converters</span> <span class="kn">import</span> <span class="n">NoOpConverter</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleCollectionDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleLinkedDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.dataelements</span> <span class="kn">import</span> <span class="n">SimpleMemberDataElement</span>
+<span class="kn">from</span> <span class="nn">everest.representers.mapping</span> <span class="kn">import</span> <span class="n">SimpleMappingRegistry</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">DataElementTreeTraverser</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">PROCESSING_DIRECTIONS</span>
+<span class="kn">from</span> <span class="nn">everest.representers.traversal</span> <span class="kn">import</span> <span class="n">ResourceDataVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.representers.utils</span> <span class="kn">import</span> <span class="n">get_mapping_registry</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">is_resource_url</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">provides_member_resource</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">product</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">everest.representers.interfaces</span> <span class="kn">import</span> <span class="n">IRepresentationConverter</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">classProvides</span> <span class="k">as</span> <span class="n">class_provides</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;CsvCollectionDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvData&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvDataElementTreeVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvLinkedDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvMappingRegistry&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvMemberDataElement&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvRepresentationGenerator&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvRepresentationParser&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvRepresenterConfiguration&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CsvResourceRepresenter&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">_DefaultCsvDialect</span><span class="p">(</span><span class="n">Dialect</span><span class="p">):</span> <span class="c"># ignore no __init__ pylint: disable=W0232</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Default dialect to use when exporting resources to CSV.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">delimiter</span> <span class="o">=</span> <span class="s">&#39;,&#39;</span>
+    <span class="n">quotechar</span> <span class="o">=</span> <span class="s">&#39;&quot;&#39;</span>
+    <span class="n">doublequote</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">skipinitialspace</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">lineterminator</span> <span class="o">=</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span>
+    <span class="n">quoting</span> <span class="o">=</span> <span class="n">QUOTE_NONNUMERIC</span>
+<span class="n">register_dialect</span><span class="p">(</span><span class="s">&#39;export&#39;</span><span class="p">,</span> <span class="n">_DefaultCsvDialect</span><span class="p">)</span>
+<span class="n">register_dialect</span><span class="p">(</span><span class="s">&#39;import&#39;</span><span class="p">,</span> <span class="n">_DefaultCsvDialect</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">CsvConverterRegistry</span><span class="p">(</span><span class="n">ConverterRegistry</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">CsvIntConverter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Specialized converter coping with the CSV reader&#39;s unfortunate habit</span>
+<span class="sd">    to convert integers to floats upon reading.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">class_provides</span><span class="p">(</span><span class="n">IRepresentationConverter</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_representation</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">to_representation</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+<span class="n">CsvConverterRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">,</span> <span class="n">DateTimeConverter</span><span class="p">)</span>
+<span class="n">CsvConverterRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">bool</span><span class="p">,</span> <span class="n">BooleanConverter</span><span class="p">)</span>
+<span class="n">CsvConverterRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">CsvIntConverter</span><span class="p">)</span>
+<span class="n">CsvConverterRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">NoOpConverter</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CsvRepresentationParser"><a class="viewcode-back" href="../../../api/everest.representers.csv.html#everest.representers.csv.CsvRepresentationParser">[docs]</a><span class="k">class</span> <span class="nc">CsvRepresentationParser</span><span class="p">(</span><span class="n">RepresentationParser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parser converting CSV representations of resources into a data element.</span>
+<span class="sd">    </span>
+<span class="sd">    :note: Nested resources have to be provided as links (i.e., there is no </span>
+<span class="sd">           support for recursive data element tree building).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">mp_reg</span> <span class="o">=</span> <span class="n">get_mapping_registry</span><span class="p">(</span><span class="n">CsvMime</span><span class="p">)</span>
+        <span class="n">is_member_rpr</span> <span class="o">=</span> <span class="n">provides_member_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_class</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_member_rpr</span><span class="p">:</span>
+            <span class="n">member_cls</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_class</span>
+            <span class="n">result_data_el</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Collection resource: Create a wrapping collection data element.</span>
+            <span class="n">member_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_class</span><span class="p">)</span>
+            <span class="n">coll_mp</span> <span class="o">=</span> <span class="n">mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resource_class</span><span class="p">)</span>
+            <span class="n">coll_data_el</span> <span class="o">=</span> <span class="n">coll_mp</span><span class="o">.</span><span class="n">create_data_element</span><span class="p">()</span>
+            <span class="n">result_data_el</span> <span class="o">=</span> <span class="n">coll_data_el</span>
+        <span class="n">mb_mp</span> <span class="o">=</span> <span class="n">mp_reg</span><span class="o">.</span><span class="n">find_or_create_mapping</span><span class="p">(</span><span class="n">member_cls</span><span class="p">)</span>
+        <span class="n">csv_reader</span> <span class="o">=</span> <span class="n">reader</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_option</span><span class="p">(</span><span class="s">&#39;dialect&#39;</span><span class="p">))</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="n">mb_mp</span><span class="o">.</span><span class="n">get_attribute_map</span><span class="p">()</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv_reader</span><span class="p">:</span>
+            <span class="n">mb_data_el</span> <span class="o">=</span> <span class="n">mb_mp</span><span class="o">.</span><span class="n">create_data_element</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">header</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># Check if the header is valid.</span>
+                <span class="n">attr_names</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                <span class="n">header</span> <span class="o">=</span> <span class="n">row</span>
+                <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attr_names</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid field &quot;</span><span class="si">%s</span><span class="s">&quot; in CSV input &#39;</span>
+                                         <span class="s">&#39;detected.&#39;</span> <span class="o">%</span> <span class="n">attr</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Invalid row length (found: </span><span class="si">%s</span><span class="s">, expected: &quot;</span>
+                                 <span class="s">&quot;</span><span class="si">%s</span><span class="s">).&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">csv_attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+                <span class="n">attr</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="n">csv_attr</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">is_resource_url</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                    <span class="n">link</span> <span class="o">=</span> <span class="n">CsvLinkedDataElement</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">attr</span><span class="o">.</span><span class="n">kind</span><span class="p">)</span>
+                    <span class="n">mb_data_el</span><span class="o">.</span><span class="n">set_nested</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mb_data_el</span><span class="o">.</span><span class="n">set_terminal_converted</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_member_rpr</span><span class="p">:</span>
+                <span class="n">result_data_el</span> <span class="o">=</span> <span class="n">mb_data_el</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">coll_data_el</span><span class="o">.</span><span class="n">add_member</span><span class="p">(</span><span class="n">mb_data_el</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result_data_el</span>
+
+</div>
+<span class="k">class</span> <span class="nc">CsvData</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">CsvData</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">value</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">expand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_data</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">self_row</span><span class="p">,</span> <span class="n">other_row</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">product</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">)):</span>
+                <span class="n">new_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">self_row</span> <span class="o">+</span> <span class="n">other_row</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">new_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">fields</span>
+
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">fields</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">CsvDataElementTreeVisitor</span><span class="p">(</span><span class="n">ResourceDataVisitor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">encoding</span><span class="p">):</span>
+        <span class="n">ResourceDataVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__encoding</span> <span class="o">=</span> <span class="n">encoding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__csv_data</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">visit_member</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">member_node</span><span class="p">,</span> <span class="n">member_data</span><span class="p">,</span>
+                     <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">new_field_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_field_name</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                                   <span class="n">attribute</span><span class="p">)</span>
+            <span class="n">mb_data</span> <span class="o">=</span> <span class="n">CsvData</span><span class="p">({</span><span class="n">new_field_name</span><span class="p">:</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">__encode</span><span class="p">(</span><span class="n">member_node</span><span class="o">.</span><span class="n">get_url</span><span class="p">())})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rpr_mb_data</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">member_data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">new_field_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_field_name</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+                <span class="n">rpr_mb_data</span><span class="p">[</span><span class="n">new_field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">mb_data</span> <span class="o">=</span> <span class="n">CsvData</span><span class="p">(</span><span class="n">rpr_mb_data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">index</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Collection member. Store in parent data with index as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">mb_data</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c"># Top level - store as CSV data..</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__csv_data</span> <span class="o">=</span> <span class="n">mb_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Nested member. Store in parent data with attribute as key.</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">mb_data</span>
+
+    <span class="k">def</span> <span class="nf">visit_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">,</span> <span class="n">collection_node</span><span class="p">,</span>
+                         <span class="n">collection_data</span><span class="p">,</span> <span class="n">is_link_node</span><span class="p">,</span> <span class="n">parent_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_link_node</span><span class="p">:</span>
+            <span class="n">new_field_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_field_name</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                                   <span class="n">attribute</span><span class="p">)</span>
+            <span class="n">coll_data</span> <span class="o">=</span> <span class="n">CsvData</span><span class="p">({</span><span class="n">new_field_name</span><span class="p">:</span><span class="n">collection_node</span><span class="o">.</span><span class="n">get_url</span><span class="p">()})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">coll_data</span> <span class="o">=</span> <span class="n">CsvData</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">collection_data</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="n">mb_data</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">coll_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mb_data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute_key</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__csv_data</span> <span class="o">=</span> <span class="n">coll_data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">parent_data</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span> <span class="o">=</span> <span class="n">coll_data</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">csv_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__csv_data</span>
+
+    <span class="k">def</span> <span class="nf">__get_field_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">attribute</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">repr_name</span><span class="p">:</span>
+            <span class="n">field_name</span> <span class="o">=</span> <span class="n">attribute</span><span class="o">.</span><span class="n">repr_name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">field_name</span> <span class="o">=</span> <span class="s">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">attribute_key</span> <span class="o">+</span> <span class="p">(</span><span class="n">attribute</span><span class="o">.</span><span class="n">name</span><span class="p">,))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__encode</span><span class="p">(</span><span class="n">field_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">unicode</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__encoding</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+
+<div class="viewcode-block" id="CsvRepresentationGenerator"><a class="viewcode-back" href="../../../api/everest.representers.csv.html#everest.representers.csv.CsvRepresentationGenerator">[docs]</a><span class="k">class</span> <span class="nc">CsvRepresentationGenerator</span><span class="p">(</span><span class="n">RepresentationGenerator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A generator converting data elements into CSV representations.</span>
+
+<span class="sd">    :note: Nested member and collection resources are handled by adding </span>
+<span class="sd">           more columns (member attributes) and rows (collection members)</span>
+<span class="sd">           dynamically. By default, column names for nested member attributes</span>
+<span class="sd">           are built as dot-concatenation of the corresponding attribute key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_element</span><span class="p">):</span>
+        <span class="c"># We do not want the traverser to emit converted terminals since the</span>
+        <span class="c"># CSV writer will take care of that.</span>
+        <span class="n">trv</span> <span class="o">=</span> <span class="n">DataElementTreeTraverser</span><span class="p">(</span><span class="n">data_element</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mapping</span><span class="p">,</span>
+                                       <span class="n">PROCESSING_DIRECTIONS</span><span class="o">.</span><span class="n">WRITE</span><span class="p">)</span>
+<span class="c">#                                       convert_terminals=False)</span>
+        <span class="n">vst</span> <span class="o">=</span> <span class="n">CsvDataElementTreeVisitor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_option</span><span class="p">(</span><span class="s">&#39;encoding&#39;</span><span class="p">))</span>
+        <span class="n">trv</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">vst</span><span class="p">)</span>
+        <span class="n">csv_data</span> <span class="o">=</span> <span class="n">vst</span><span class="o">.</span><span class="n">csv_data</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">csv_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">csv_writer</span> <span class="o">=</span> <span class="n">writer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream</span><span class="p">,</span>
+                                <span class="n">dialect</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_option</span><span class="p">(</span><span class="s">&#39;dialect&#39;</span><span class="p">))</span>
+            <span class="n">csv_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">csv_data</span><span class="o">.</span><span class="n">fields</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">row_data</span> <span class="ow">in</span> <span class="n">csv_data</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+                <span class="n">csv_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">row_data</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">CsvResourceRepresenter</span><span class="p">(</span><span class="n">ResourceRepresenter</span><span class="p">):</span>
+
+    <span class="n">content_type</span> <span class="o">=</span> <span class="n">CsvMime</span>
+
+    <span class="c">#: The CSV dialect to use for exporting CSV data.</span>
+    <span class="n">CSV_EXPORT_DIALECT</span> <span class="o">=</span> <span class="s">&#39;export&#39;</span>
+    <span class="c">#: The CSV dialect to use for importing CSV data.</span>
+    <span class="n">CSV_IMPORT_DIALECT</span> <span class="o">=</span> <span class="s">&#39;import&#39;</span>
+    <span class="c">#: The encoding to use for exporting and importing CSV data.</span>
+    <span class="n">ENCODING</span> <span class="o">=</span> <span class="s">&#39;utf-8&#39;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">make_mapping_registry</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CsvMappingRegistry</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_make_representation_parser</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="n">parser</span> <span class="o">=</span> <span class="n">CsvRepresentationParser</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s">&#39;dialect&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CSV_IMPORT_DIALECT</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parser</span>
+
+    <span class="k">def</span> <span class="nf">_make_representation_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="n">generator</span> <span class="o">=</span> <span class="n">CsvRepresentationGenerator</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">resource_class</span><span class="p">,</span> <span class="n">mapping</span><span class="p">)</span>
+        <span class="n">generator</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s">&#39;dialect&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">CSV_EXPORT_DIALECT</span><span class="p">)</span>
+        <span class="n">generator</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s">&#39;encoding&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ENCODING</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">generator</span>
+
+
+<span class="k">class</span> <span class="nc">CsvMemberDataElement</span><span class="p">(</span><span class="n">SimpleMemberDataElement</span><span class="p">):</span>
+    <span class="n">converter_registry</span> <span class="o">=</span> <span class="n">CsvConverterRegistry</span>
+
+
+<span class="k">class</span> <span class="nc">CsvCollectionDataElement</span><span class="p">(</span><span class="n">SimpleCollectionDataElement</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">CsvLinkedDataElement</span><span class="p">(</span><span class="n">SimpleLinkedDataElement</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">CsvRepresenterConfiguration</span><span class="p">(</span><span class="n">RepresenterConfiguration</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="CsvMappingRegistry"><a class="viewcode-back" href="../../../api/everest.representers.csv.html#everest.representers.csv.CsvMappingRegistry">[docs]</a><span class="k">class</span> <span class="nc">CsvMappingRegistry</span><span class="p">(</span><span class="n">SimpleMappingRegistry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registry for CSV mappings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">member_data_element_base_class</span> <span class="o">=</span> <span class="n">CsvMemberDataElement</span>
+    <span class="n">collection_data_element_base_class</span> <span class="o">=</span> <span class="n">CsvCollectionDataElement</span>
+    <span class="n">linked_data_element_base_class</span> <span class="o">=</span> <span class="n">CsvLinkedDataElement</span>
+    <span class="n">configuration_class</span> <span class="o">=</span> <span class="n">CsvRepresenterConfiguration</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

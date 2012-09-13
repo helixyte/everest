@@ -1,0 +1,154 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.attributes &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.resources.attributes">
+<span id="everest-resources-attributes"></span><h1>everest.resources.attributes<a class="headerlink" href="#module-everest.resources.attributes" title="Permalink to this headline">¶</a></h1>
+<p>This file is part of the everest project. 
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</p>
+<dl class="class">
+<dt id="everest.resources.attributes.CollectionResourceAttribute">
+<em class="property">class </em><tt class="descclassname">everest.resources.attributes.</tt><tt class="descname">CollectionResourceAttribute</tt><big>(</big><em>name</em>, <em>value_type</em>, <em>cardinality='ONETOMANY'</em>, <em>entity_name=None</em>, <em>is_nested=False</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/attributes.html#CollectionResourceAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.attributes.CollectionResourceAttribute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.resources.attributes._ResourceResourceAttribute</span></tt></p>
+<p>Resource attribute class for collection attribute declarations.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.attributes.MemberResourceAttribute">
+<em class="property">class </em><tt class="descclassname">everest.resources.attributes.</tt><tt class="descname">MemberResourceAttribute</tt><big>(</big><em>name</em>, <em>value_type</em>, <em>cardinality='MANYTOONE'</em>, <em>entity_name=None</em>, <em>is_nested=False</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/attributes.html#MemberResourceAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.attributes.MemberResourceAttribute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.resources.attributes._ResourceResourceAttribute</span></tt></p>
+<p>Resource attribute class for member attribute declarations.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.attributes.MetaResourceAttributeCollector">
+<em class="property">class </em><tt class="descclassname">everest.resources.attributes.</tt><tt class="descname">MetaResourceAttributeCollector</tt><big>(</big><em>mcs</em>, <em>name</em>, <em>bases</em>, <em>class_dict</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/attributes.html#MetaResourceAttributeCollector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.attributes.MetaResourceAttributeCollector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">type</span></tt></p>
+<p>Meta class for member resource classes managing declared attributes.</p>
+<p>Extracts relevant information from the resource class descriptors for
+use e.g. in the representers.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.attributes.ResourceAttributeKinds">
+<em class="property">class </em><tt class="descclassname">everest.resources.attributes.</tt><tt class="descname">ResourceAttributeKinds</tt><a class="reference internal" href="../_modules/everest/resources/attributes.html#ResourceAttributeKinds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.attributes.ResourceAttributeKinds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Static container for resource attribute kind constants.</p>
+<dl class="docutils">
+<dt>We have three kinds of resource attribute:</dt>
+<dd><dl class="first last docutils">
+<dt>MEMBER :</dt>
+<dd>a member resource attribute</dd>
+<dt>COLLECTION :</dt>
+<dd>a collection resource attribute</dd>
+<dt>TERMINAL :</dt>
+<dd>an attribute that is not a resource</dd>
+</dl>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="everest.resources.attributes.ResourceAttributeKinds.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.resources.attributes.ResourceAttributeKinds.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.attributes.TerminalResourceAttribute">
+<em class="property">class </em><tt class="descclassname">everest.resources.attributes.</tt><tt class="descname">TerminalResourceAttribute</tt><big>(</big><em>name</em>, <em>value_type</em>, <em>entity_name=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/attributes.html#TerminalResourceAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.attributes.TerminalResourceAttribute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.resources.attributes._ResourceAttribute</span></tt></p>
+<p>Resource attribute class for terminal attribute declarations.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.resources.attributes.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

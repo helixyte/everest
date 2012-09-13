@@ -1,0 +1,319 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.utils &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.utils</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Resource related utilities.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Nov 3, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.interfaces</span> <span class="kn">import</span> <span class="n">IRepositoryManager</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">REPOSITORIES</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">as_repository</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">ICollectionResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IMemberResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IResource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IService</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_repository_manager</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_registry</span>
+<span class="kn">from</span> <span class="nn">pyramid.traversal</span> <span class="kn">import</span> <span class="n">model_path</span>
+<span class="kn">from</span> <span class="nn">urlparse</span> <span class="kn">import</span> <span class="n">urlparse</span>
+<span class="kn">from</span> <span class="nn">urlparse</span> <span class="kn">import</span> <span class="n">urlunparse</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface.interfaces</span> <span class="kn">import</span> <span class="n">IInterface</span>  <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IRelation</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;as_member&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_collection_class&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_member_class&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_resource_class_for_relation&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_resource_url&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_root_collection&#39;</span><span class="p">,</span>
+           <span class="s">&#39;get_stage_collection&#39;</span><span class="p">,</span>
+           <span class="s">&#39;is_resource_url&#39;</span><span class="p">,</span>
+           <span class="s">&#39;provides_collection_resource&#39;</span><span class="p">,</span>
+           <span class="s">&#39;provides_member_resource&#39;</span><span class="p">,</span>
+           <span class="s">&#39;provides_resource&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="get_root_collection"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_root_collection">[docs]</a><span class="k">def</span> <span class="nf">get_root_collection</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a clone of the collection from the repository registered for the</span>
+<span class="sd">    given registered resource.</span>
+
+<span class="sd">    :param rc: registered resource</span>
+<span class="sd">    :type rc: class implementing or instance providing or subclass of</span>
+<span class="sd">        a registered resource interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">repo</span> <span class="o">=</span> <span class="n">as_repository</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="get_stage_collection"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_stage_collection">[docs]</a><span class="k">def</span> <span class="nf">get_stage_collection</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a clone of the collection in the stage repository matching the </span>
+<span class="sd">    given registered resource.</span>
+
+<span class="sd">    :param rc: registered resource</span>
+<span class="sd">    :type rc: class implementing or instance providing or subclass of</span>
+<span class="sd">        a registered resource interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">repo_mgr</span> <span class="o">=</span> <span class="n">get_repository_manager</span><span class="p">()</span>
+    <span class="n">repo</span> <span class="o">=</span> <span class="n">repo_mgr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">MEMORY</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">new_stage_collection</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a new, empty collection matching the given registered resource.</span>
+
+<span class="sd">    :param rc: registered resource</span>
+<span class="sd">    :type rc: class implementing or instance providing or subclass of</span>
+<span class="sd">        a registered resource interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">repo_mgr</span> <span class="o">=</span> <span class="n">get_repository_manager</span><span class="p">()</span>
+    <span class="n">new_repo</span> <span class="o">=</span> <span class="n">repo_mgr</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">MEMORY</span><span class="p">)</span>
+    <span class="n">new_repo</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">new_repo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_member_class"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_member_class">[docs]</a><span class="k">def</span> <span class="nf">get_member_class</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the registered member class for the given resource.</span>
+
+<span class="sd">    :param rc: registered resource</span>
+<span class="sd">    :type rc: class implementing or instance providing or subclass of</span>
+<span class="sd">        a registered resource interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">IInterface</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+        <span class="n">member_class</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;member-class&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">member_class</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getAdapter</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">IMemberResource</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;member-class&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">member_class</span>
+
+</div>
+<div class="viewcode-block" id="get_collection_class"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_collection_class">[docs]</a><span class="k">def</span> <span class="nf">get_collection_class</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the registered collection resource class for the given marker</span>
+<span class="sd">    interface or member resource class or instance.</span>
+
+<span class="sd">    :param rc: registered resource</span>
+<span class="sd">    :type rc: class implementing or instance providing or subclass of</span>
+<span class="sd">        a registered resource interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">IInterface</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+        <span class="n">coll_class</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;collection-class&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">coll_class</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getAdapter</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">ICollectionResource</span><span class="p">,</span>
+                                    <span class="n">name</span><span class="o">=</span><span class="s">&#39;collection-class&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">coll_class</span>
+
+</div>
+<div class="viewcode-block" id="get_resource_class_for_relation"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_resource_class_for_relation">[docs]</a><span class="k">def</span> <span class="nf">get_resource_class_for_relation</span><span class="p">(</span><span class="n">relation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the resource class that was registered for the given</span>
+<span class="sd">    relation.</span>
+<span class="sd">    </span>
+<span class="sd">    :param str relation: relation string.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IRelation</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">relation</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="as_member"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.as_member">[docs]</a><span class="k">def</span> <span class="nf">as_member</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adapts an object to a location aware member resource.</span>
+
+<span class="sd">    :param entity: a domain object for which a resource adapter has been</span>
+<span class="sd">        registered</span>
+<span class="sd">    :type entity: an object implementing</span>
+<span class="sd">        :class:`everest.entities.interfaces.IEntity`</span>
+<span class="sd">    :param parent: optional parent collection resource to make the new member</span>
+<span class="sd">        a child of</span>
+<span class="sd">    :type parent: an object implementing</span>
+<span class="sd">        :class:`everest.resources.interfaces.ICollectionResource`</span>
+<span class="sd">    :returns: an object implementing</span>
+<span class="sd">        :class:`everest.resources.interfaces.IMemberResource`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">rc</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getAdapter</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="n">IMemberResource</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">parent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">rc</span><span class="o">.</span><span class="n">__parent__</span> <span class="o">=</span> <span class="n">parent</span> <span class="c"># interface method pylint: disable=E1121</span>
+    <span class="k">return</span> <span class="n">rc</span>
+
+</div>
+<div class="viewcode-block" id="is_resource_url"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.is_resource_url">[docs]</a><span class="k">def</span> <span class="nf">is_resource_url</span><span class="p">(</span><span class="n">url_string</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the given URL string is a resource URL.</span>
+
+<span class="sd">    Currently, this check only looks if the URL scheme is either &quot;http&quot; or</span>
+<span class="sd">    &quot;https&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">url_string</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">)</span> \
+           <span class="ow">and</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">url_string</span><span class="p">)</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;http&#39;</span><span class="p">,</span> <span class="s">&#39;https&#39;</span><span class="p">)</span> <span class="c"># pylint: disable=E1101</span>
+
+</div>
+<div class="viewcode-block" id="get_resource_url"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.get_resource_url">[docs]</a><span class="k">def</span> <span class="nf">get_resource_url</span><span class="p">(</span><span class="n">resource</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the URL for the given resource.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">model_path</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+    <span class="n">parsed</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">urlparse</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+    <span class="n">parsed</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">urlunparse</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="provides_resource"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.provides_resource">[docs]</a><span class="k">def</span> <span class="nf">provides_resource</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the given type or instance provides the</span>
+<span class="sd">    :class:`everest.resources.interfaces.IResource` interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">IResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="provides_member_resource"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.provides_member_resource">[docs]</a><span class="k">def</span> <span class="nf">provides_member_resource</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the given type or instance provides the</span>
+<span class="sd">    :class:`everest.resources.interfaces.IMemberResource` interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">IMemberResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="provides_collection_resource"><a class="viewcode-back" href="../../../api/everest.resources.utils.html#everest.resources.utils.provides_collection_resource">[docs]</a><span class="k">def</span> <span class="nf">provides_collection_resource</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if the given type or instance provides the</span>
+<span class="sd">    :class:`everest.resources.interfaces.ICollectionResource` interface.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="n">__new__</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ICollectionResource</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">get_registered_collection_resources</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a list of all registered collection resource classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">util</span><span class="o">.</span><span class="n">component</span>
+            <span class="k">for</span> <span class="n">util</span> <span class="ow">in</span> <span class="n">reg</span><span class="o">.</span><span class="n">registeredUtilities</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">util</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;collection-class&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">get_repository</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the resource repository with the given name.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">repo_mgr</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IRepositoryManager</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">repo_mgr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_service</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Registers the object registered as the service utility.</span>
+<span class="sd">    </span>
+<span class="sd">    :returns: object implementing </span>
+<span class="sd">        :class:`everest.interfaces.IService`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">IService</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,277 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.operators &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.querying.operators</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Custom querying operators.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Dec 5, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">BinaryOperator</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">UnaryOperator</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;ASCENDING&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CONJUNCTION&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CONTAINED&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CONTAINS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CQL_FILTER_OPERATORS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;CQL_ORDER_OPERATORS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DESCENDING&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DISJUNCTION&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ENDS_WITH&#39;</span><span class="p">,</span>
+           <span class="s">&#39;EQUAL_TO&#39;</span><span class="p">,</span>
+           <span class="s">&#39;GREATER_OR_EQUALS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;GREATER_THAN&#39;</span><span class="p">,</span>
+           <span class="s">&#39;IN_RANGE&#39;</span><span class="p">,</span>
+           <span class="s">&#39;LESS_OR_EQUALS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;LESS_THAN&#39;</span><span class="p">,</span>
+           <span class="s">&#39;NEGATION&#39;</span><span class="p">,</span>
+           <span class="s">&#39;STARTS_WITH&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">STARTS_WITH</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;starts_with&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">ref_value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref_value</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">class</span> <span class="nc">ENDS_WITH</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;ends_with&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">ref_value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref_value</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">class</span> <span class="nc">CONTAINED</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;contained&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">CONTAINS</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;contains&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ref_value</span> <span class="ow">in</span> <span class="n">value</span>
+
+
+<span class="k">class</span> <span class="nc">EQUAL_TO</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;equal_to&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">==</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">LESS_THAN</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;less_than&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">LESS_OR_EQUALS</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;less_than_or_equal_to&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">GREATER_THAN</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;greater_than&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">GREATER_OR_EQUALS</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;greater_than_or_equal_to&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">ref_value</span>
+
+
+<span class="k">class</span> <span class="nc">IN_RANGE</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;in_range&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">ref_value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">ref_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">ref_value</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">ASCENDING</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;asc&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">DESCENDING</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;desc&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">NEGATION</span><span class="p">(</span><span class="n">UnaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;negation&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">x</span>
+
+
+<span class="k">class</span> <span class="nc">CONJUNCTION</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;conjunction&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="ow">and</span> <span class="n">y</span>
+
+
+<span class="k">class</span> <span class="nc">DISJUNCTION</span><span class="p">(</span><span class="n">BinaryOperator</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;disjunction&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="ow">or</span> <span class="n">y</span>
+
+
+<div class="viewcode-block" id="CQL_FILTER_OPERATORS"><a class="viewcode-back" href="../../../api/everest.querying.operators.html#everest.querying.operators.CQL_FILTER_OPERATORS">[docs]</a><span class="k">class</span> <span class="nc">CQL_FILTER_OPERATORS</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static container for all CQL filtering operators.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">STARTS_WITH</span> <span class="o">=</span> <span class="n">STARTS_WITH</span>
+    <span class="n">ENDS_WITH</span> <span class="o">=</span> <span class="n">ENDS_WITH</span>
+    <span class="n">CONTAINED</span> <span class="o">=</span> <span class="n">CONTAINED</span>
+    <span class="n">CONTAINS</span> <span class="o">=</span> <span class="n">CONTAINS</span>
+    <span class="n">EQUAL_TO</span> <span class="o">=</span> <span class="n">EQUAL_TO</span>
+    <span class="n">LESS_THAN</span> <span class="o">=</span> <span class="n">LESS_THAN</span>
+    <span class="n">LESS_OR_EQUALS</span> <span class="o">=</span> <span class="n">LESS_OR_EQUALS</span>
+    <span class="n">GREATER_THAN</span> <span class="o">=</span> <span class="n">GREATER_THAN</span>
+    <span class="n">GREATER_OR_EQUALS</span> <span class="o">=</span> <span class="n">GREATER_OR_EQUALS</span>
+    <span class="n">IN_RANGE</span> <span class="o">=</span> <span class="n">IN_RANGE</span>
+
+</div>
+<div class="viewcode-block" id="CQL_ORDER_OPERATORS"><a class="viewcode-back" href="../../../api/everest.querying.operators.html#everest.querying.operators.CQL_ORDER_OPERATORS">[docs]</a><span class="k">class</span> <span class="nc">CQL_ORDER_OPERATORS</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Static container for all CQL ordering operators.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ASCENDING</span> <span class="o">=</span> <span class="n">ASCENDING</span>
+    <span class="n">DESCENDING</span> <span class="o">=</span> <span class="n">DESCENDING</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

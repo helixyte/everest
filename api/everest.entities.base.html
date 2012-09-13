@@ -1,0 +1,304 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.entities.base &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.entities.base">
+<span id="everest-entities-base"></span><h1>everest.entities.base<a class="headerlink" href="#module-everest.entities.base" title="Permalink to this headline">¶</a></h1>
+<p>Entity and aggregate base classes.</p>
+<dl class="class">
+<dt id="everest.entities.base.Aggregate">
+<em class="property">class </em><tt class="descclassname">everest.entities.base.</tt><tt class="descname">Aggregate</tt><big>(</big><em>entity_class</em>, <em>session_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract base class for all aggregates.</p>
+<p>An aggregate is an accessor for a set of entities of the same type which 
+are held in some repository.</p>
+<p>The wrapped entity set may be a &#8220;root&#8221; set of all entities in the 
+repository or a &#8220;relation&#8221; set defined by a relationship to entities of 
+some other type.</p>
+<p>Supports filtering, sorting, slicing, counting, iteration as well as
+retrieving, adding and removing entities.</p>
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>entity_class</em>, <em>session_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>entity_class</strong> (a class implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; the entity class (type) of the entities in this
+aggregate.</li>
+<li><strong>session</strong> &#8211; Session object.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.entities.base.Aggregate.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.entities.base.Aggregate.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.add">
+<tt class="descname">add</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds an entity to the aggregate.</p>
+<p>If the entity has an ID, it must be unique within the aggregate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>entity</strong> (object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; entity (domain object) to add</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises ValueError:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">if an entity with the same ID exists</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.clone">
+<tt class="descname">clone</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.clone"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.clone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a clone of this aggregate.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.count">
+<tt class="descname">count</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the total number of entities in the underlying aggregate.
+If specified, filter specs are applied. A specified slice key is
+ignored.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">number of aggregate members (<tt class="xref py py-class docutils literal"><span class="pre">int</span></tt>)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="everest.entities.base.Aggregate.create">
+<em class="property">classmethod </em><tt class="descname">create</tt><big>(</big><em>entity_class</em>, <em>session_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Factory class method to create a new aggregate.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.entities.base.Aggregate.entity_class">
+<tt class="descname">entity_class</tt><em class="property"> = None</em><a class="headerlink" href="#everest.entities.base.Aggregate.entity_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>Entity class (type) of the entities in this aggregate.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.get_by_id">
+<tt class="descname">get_by_id</tt><big>(</big><em>id_key</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.get_by_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.get_by_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an entity by ID from the underlying aggregate or <cite>None</cite> if
+the entity is not found.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body">if a filter is set which matches the requested entity, it
+will not be found.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>id_key</strong> (<cite>int</cite> or <cite>str</cite>) &#8211; ID value to look up</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises :</th><td class="field-body"><a class="reference internal" href="everest.exceptions.html#everest.exceptions.DuplicateException" title="everest.exceptions.DuplicateException"><tt class="xref py py-class docutils literal"><span class="pre">everest.exceptions.DuplicateException</span></tt></a> if more than
+one entity is found for the given ID value.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">specified entity or <cite>None</cite></td>
+</tr>
+</tbody>
+</table>
+<p>Returns a single entity from the underlying aggregate by ID.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.get_by_slug">
+<tt class="descname">get_by_slug</tt><big>(</big><em>slug</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.get_by_slug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.get_by_slug" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an entity by slug or <cite>None</cite> if the entity is not found.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>slug</strong> (<cite>str</cite>) &#8211; slug value to look up</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises :</th><td class="field-body"><a class="reference internal" href="everest.exceptions.html#everest.exceptions.DuplicateException" title="everest.exceptions.DuplicateException"><tt class="xref py py-class docutils literal"><span class="pre">everest.exceptions.DuplicateException</span></tt></a> if more than
+one entity is found for the given ID value.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">entity or <cite>None</cite></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.iterator">
+<tt class="descname">iterator</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns an iterator for the entities contained in the underlying
+aggregate.</p>
+<p>If specified, filter, order, and slice settings are applied.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">an iterator for the aggregate entities</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.remove">
+<tt class="descname">remove</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.remove"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.remove" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes an entity from the aggregate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>entity</strong> (object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; entity (domain object) to remove</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Raises ValueError:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">entity was not found</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.set_relationship">
+<tt class="descname">set_relationship</tt><big>(</big><em>relationship</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.set_relationship"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.set_relationship" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a relationship for this aggregate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>relationship</strong> &#8211; instance of <a class="reference internal" href="everest.relationship.html#everest.relationship.Relationship" title="everest.relationship.Relationship"><tt class="xref py py-class docutils literal"><span class="pre">everest.relationship.Relationship</span></tt></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.entities.base.Entity">
+<em class="property">class </em><tt class="descclassname">everest.entities.base.</tt><tt class="descname">Entity</tt><big>(</big><em>id=None</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract base class for all model entities.</p>
+<p>All entities have an ID which is used as the default value for equality
+comparison. The object may be initialized without an ID.</p>
+<dl class="attribute">
+<dt id="everest.entities.base.Entity.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.entities.base.Entity.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.entities.base.Entity.slug">
+<tt class="descname">slug</tt><a class="reference internal" href="../_modules/everest/entities/base.html#Entity.slug"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Entity.slug" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a human-readable and URL-compatible string that is unique
+within all siblings of this entity.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.entities.base.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

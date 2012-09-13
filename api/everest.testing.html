@@ -1,0 +1,385 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.testing &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.testing">
+<span id="everest-testing"></span><h1>everest.testing<a class="headerlink" href="#module-everest.testing" title="Permalink to this headline">¶</a></h1>
+<p>Testing base classes and services.</p>
+<dl class="class">
+<dt id="everest.testing.DummyContext">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">DummyContext</tt><big>(</big><em>resolved=&lt;class 'everest.testing.DummyModule'&gt;</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#DummyContext"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.DummyContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dummy context for testing.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.DummyModule">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">DummyModule</tt><a class="reference internal" href="../_modules/everest/testing.html#DummyModule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.DummyModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Dummy module for testing.</p>
+<dl class="attribute">
+<dt id="everest.testing.DummyModule.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.testing.DummyModule.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.EntityTestCase">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">EntityTestCase</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#EntityTestCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.EntityTestCase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.testing.BaseTestCaseWithConfiguration</span></tt></p>
+<p>Use this for test cases that need access to a configured registry.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.FunctionalTestCase">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">FunctionalTestCase</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#FunctionalTestCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.FunctionalTestCase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.testing.TestCaseWithIni" title="everest.testing.TestCaseWithIni"><tt class="xref py py-class docutils literal"><span class="pre">everest.testing.TestCaseWithIni</span></tt></a></p>
+<p>Use this for test cases that need access to a WSGI application.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>app</strong> &#8211; <tt class="xref py py-class docutils literal"><span class="pre">webtest.TestApp</span></tt> instance wrapping our WSGI app to test.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="everest.testing.FunctionalTestCase.app_name">
+<tt class="descname">app_name</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.FunctionalTestCase.app_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the application to test.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.OrmContextManager">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">OrmContextManager</tt><big>(</big><em>autoflush=True</em>, <em>engine_name=None</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#OrmContextManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.OrmContextManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Context manager for ORM tests.</p>
+<p>Configures the entity repository to use the ORM implementation as
+a default, sets up an outer transaction before the test is run and rolls
+this transaction back after the test has finished.</p>
+<dl class="attribute">
+<dt id="everest.testing.OrmContextManager.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.testing.OrmContextManager.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.Pep8CompliantTestCase">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">Pep8CompliantTestCase</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#Pep8CompliantTestCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">unittest.case.TestCase</span></tt></p>
+<p>Use this for simple unit tests with PEP8 compliant method names.</p>
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_almost_equal">
+<tt class="descname">assert_almost_equal</tt><big>(</big><em>first</em>, <em>second</em>, <em>places=None</em>, <em>msg=None</em>, <em>delta=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_almost_equal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail if the two objects are unequal as determined by their
+difference rounded to the given number of decimal places
+(default 7) and comparing to zero, or by comparing that the
+between the two objects is more than the given delta.</p>
+<p>Note that decimal places (from zero) are usually not the same
+as significant digits (measured from the most signficant digit).</p>
+<p>If the two objects compare equal then they will automatically
+compare almost equal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_equal">
+<tt class="descname">assert_equal</tt><big>(</big><em>first</em>, <em>second</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_equal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail if the two objects are unequal as determined by the &#8216;==&#8217;
+operator.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_equals">
+<tt class="descname">assert_equals</tt><big>(</big><em>first</em>, <em>second</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_equals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail if the two objects are unequal as determined by the &#8216;==&#8217;
+operator.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_false">
+<tt class="descname">assert_false</tt><big>(</big><em>expr</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_false" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that the expression is false.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_is_none">
+<tt class="descname">assert_is_none</tt><big>(</big><em>obj</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_is_none" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same as self.assertTrue(obj is None), with a nicer default message.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_is_not_none">
+<tt class="descname">assert_is_not_none</tt><big>(</big><em>obj</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_is_not_none" title="Permalink to this definition">¶</a></dt>
+<dd><p>Included for symmetry with assertIsNone.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_not_almost_equal">
+<tt class="descname">assert_not_almost_equal</tt><big>(</big><em>first</em>, <em>second</em>, <em>places=None</em>, <em>msg=None</em>, <em>delta=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_not_almost_equal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail if the two objects are equal as determined by their
+difference rounded to the given number of decimal places
+(default 7) and comparing to zero, or by comparing that the
+between the two objects is less than the given delta.</p>
+<p>Note that decimal places (from zero) are usually not the same
+as significant digits (measured from the most signficant digit).</p>
+<p>Objects that are equal automatically fail.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_not_equal">
+<tt class="descname">assert_not_equal</tt><big>(</big><em>first</em>, <em>second</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_not_equal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail if the two objects are equal as determined by the &#8216;==&#8217;
+operator.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_raises">
+<tt class="descname">assert_raises</tt><big>(</big><em>excClass</em>, <em>callableObj=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_raises" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fail unless an exception of class excClass is thrown
+by callableObj when invoked with arguments args and keyword
+arguments kwargs. If a different type of exception is
+thrown, it will not be caught, and the test case will be
+deemed to have suffered an error, exactly as for an
+unexpected exception.</p>
+<p>If called with callableObj omitted or None, will return a
+context object used like this:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">SomeException</span><span class="p">):</span>
+    <span class="n">do_something</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The context manager keeps a reference to the exception as
+the &#8216;exception&#8217; attribute. This allows you to inspect the
+exception after the assertion:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">SomeException</span><span class="p">)</span> <span class="k">as</span> <span class="n">cm</span><span class="p">:</span>
+    <span class="n">do_something</span><span class="p">()</span>
+<span class="n">the_exception</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">exception</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">the_exception</span><span class="o">.</span><span class="n">error_code</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.testing.Pep8CompliantTestCase.assert_true">
+<tt class="descname">assert_true</tt><big>(</big><em>expr</em>, <em>msg=None</em><big>)</big><a class="headerlink" href="#everest.testing.Pep8CompliantTestCase.assert_true" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check that the expression is true.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.ResourceTestCase">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">ResourceTestCase</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#ResourceTestCase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.ResourceTestCase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.testing.BaseTestCaseWithConfiguration</span></tt></p>
+<p>Use this for test cases that need access to a configured registry, a
+request object and a service object.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.TestCaseWithConfiguration">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">TestCaseWithConfiguration</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#TestCaseWithConfiguration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.TestCaseWithConfiguration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.testing.BaseTestCaseWithConfiguration</span></tt></p>
+<p>Use this for test cases that need access to an initialized (but not
+configured) registry.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.testing.TestCaseWithIni">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">TestCaseWithIni</tt><big>(</big><em>methodName='runTest'</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#TestCaseWithIni"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.TestCaseWithIni" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.testing.Pep8CompliantTestCase" title="everest.testing.Pep8CompliantTestCase"><tt class="xref py py-class docutils literal"><span class="pre">everest.testing.Pep8CompliantTestCase</span></tt></a></p>
+<p>Use this for unit tests that need access to settings specified in an
+.ini file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>ini</strong> &#8211; The ini file parser. This will only be set up if the 
+<cite>ini_file_path</cite> and <cite>ini_section_name</cite> class variables were set up 
+sensibly.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="everest.testing.TestCaseWithIni.ini_file_path">
+<tt class="descname">ini_file_path</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.ini_file_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>The path to the application initialization (ini) file name. Override
+as needed in derived classes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.testing.TestCaseWithIni.ini_section_name">
+<tt class="descname">ini_section_name</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.ini_section_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The section name in the ini file to look for settings. Override as
+needed in derived classes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.testing.TestCaseWithIni.package_name">
+<tt class="descname">package_name</tt><em class="property"> = 'everest'</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.package_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the package where the tests reside. May be overridden in
+derived classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.testing.check_attributes">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">check_attributes</tt><big>(</big><em>test_object</em>, <em>attribute_map</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#check_attributes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.check_attributes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility function to test whether the test object attributes match the
+expected ones (given the dictionary).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>test_object</strong> &#8211; a test object</li>
+<li><strong>attribute_map</strong> &#8211; a dictionary with key = attribute name
+and value = expected value for this attribute</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.testing.elapsed">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">elapsed</tt><big>(</big><em>func</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#elapsed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.elapsed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Useful decorator to print out the elapsed time for a unit test.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.testing.no_autoflush">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">no_autoflush</tt><big>(</big><em>scoped_session=None</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#no_autoflush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.no_autoflush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to disable autoflush on the session for the duration of a
+test call. Uses the scoped session from the <tt class="xref py py-mod docutils literal"><span class="pre">everest.db</span></tt> module
+as default.</p>
+<p>Adapted from
+<a class="reference external" href="http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush">http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.testing.persist">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">persist</tt><big>(</big><em>session</em>, <em>entity_class</em>, <em>attribute_map</em>, <em>do_attribute_check=True</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#persist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.persist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility function which creates an object of the given class with the
+given attribute map, commits it to the backend, reloads it from the
+backend and then tests if the attributes compare equal.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>entity_class</strong> &#8211; class inheriting from
+<a class="reference internal" href="everest.entities.base.html#everest.entities.base.Entity" title="everest.entities.base.Entity"><tt class="xref py py-class docutils literal"><span class="pre">everest.entities.base.Entity</span></tt></a></li>
+<li><strong>attribute_map</strong> &#8211; a dictionary containint attribute names as keys
+and expected attribute values as values. The attribute map must
+contain all mandatory attributes required for instantiation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.testing.with_orm">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">with_orm</tt><big>(</big><em>autoflush=True</em>, <em>init_callback=None</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#with_orm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.with_orm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator for ORM tests which uses a <a class="reference internal" href="#everest.testing.OrmContextManager" title="everest.testing.OrmContextManager"><tt class="xref py py-class docutils literal"><span class="pre">OrmContextManager</span></tt></a> for the
+call to the decorated test function.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.testing.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

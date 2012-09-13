@@ -1,0 +1,314 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.io &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.resources.io">
+<span id="everest-resources-io"></span><h1>everest.resources.io<a class="headerlink" href="#module-everest.resources.io" title="Permalink to this headline">¶</a></h1>
+<p>Input/Output operations on resources.</p>
+<dl class="class">
+<dt id="everest.resources.io.ConnectedResourcesSerializer">
+<em class="property">class </em><tt class="descclassname">everest.resources.io.</tt><tt class="descname">ConnectedResourcesSerializer</tt><big>(</big><em>content_type</em>, <em>dependency_graph=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#ConnectedResourcesSerializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Serializer for a graph of connected resources.</p>
+<dl class="method">
+<dt id="everest.resources.io.ConnectedResourcesSerializer.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>content_type</em>, <em>dependency_graph=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#ConnectedResourcesSerializer.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>content_type</strong> (object implementing 
+<tt class="xref py py-class docutils literal"><span class="pre">everest.interfaces.IMime</span></tt>.) &#8211; MIME content type to use for representations</li>
+<li><strong>dependency_graph</strong> &#8211; graph determining which resource connections
+to follow when the graph of connected resources for a given
+resource is built.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.resources.io.ConnectedResourcesSerializer.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.resources.io.ConnectedResourcesSerializer.to_files">
+<tt class="descname">to_files</tt><big>(</big><em>resource</em>, <em>directory</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#ConnectedResourcesSerializer.to_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer.to_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the given resource and all resources linked to it into a set of
+representation files in the given directory.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.resources.io.ConnectedResourcesSerializer.to_strings">
+<tt class="descname">to_strings</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#ConnectedResourcesSerializer.to_strings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer.to_strings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the all resources reachable from the given resource to a map of 
+string representations using the specified content_type (defaults
+to CSV).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">dictionary mapping resource member classes to string 
+representations</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.resources.io.ConnectedResourcesSerializer.to_zipfile">
+<tt class="descname">to_zipfile</tt><big>(</big><em>resource</em>, <em>zipfile</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#ConnectedResourcesSerializer.to_zipfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ConnectedResourcesSerializer.to_zipfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the given resource and all resources linked to it into the given
+ZIP file.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.resources.io.ResourceGraph">
+<em class="property">class </em><tt class="descclassname">everest.resources.io.</tt><tt class="descname">ResourceGraph</tt><a class="reference internal" href="../_modules/everest/resources/io.html#ResourceGraph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.ResourceGraph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">pygraph.classes.digraph.digraph</span></tt></p>
+<p>Specialized digraph for resource instances.</p>
+<p>Nodes are resources, edges represent relationships between resources. 
+Since resources are wrapper objects generated on the fly, the presence 
+of a resource in the graph is determined by its underlying entity, using
+the entity class and its ID as a key.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.build_resource_dependency_graph">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">build_resource_dependency_graph</tt><big>(</big><em>resource_classes</em>, <em>include_backrefs=False</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#build_resource_dependency_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.build_resource_dependency_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds a graph of dependencies among the given resource classes.</p>
+<p>The dependency graph is a directed graph with member resource classes as 
+nodes. An edge between two nodes represents a member or collection
+attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>resource_classes</strong> (<em>sequence of registered resources.</em>) &#8211; resource classes to determine interdependencies
+of.</li>
+<li><strong>include_backrefs</strong> (<em>bool</em>) &#8211; flag indicating if dependencies
+introduced by back-references (e.g., a child resource referencing its
+parent) should be included in the dependency graph.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.build_resource_graph">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">build_resource_graph</tt><big>(</big><em>resource</em>, <em>dependency_graph=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#build_resource_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.build_resource_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Traverses the graph of resources that is reachable from the given 
+resource.</p>
+<p>If a resource dependency graph is given, links to other resources are 
+only followed if the dependency graph has an edge connecting the two 
+corresponding resource classes; otherwise, a default graph is built
+which ignores all direct cyclic resource references.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Resource :</th><td class="field-body">a <tt class="xref py py-class docutils literal"><span class="pre">everest.resources.MemberResource</span></tt> instance.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a <a class="reference internal" href="#everest.resources.io.ResourceGraph" title="everest.resources.io.ResourceGraph"><tt class="xref py py-class docutils literal"><span class="pre">ResourceGraph</span></tt></a> instance representing the graph of 
+resources reachable from the given resource.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.dump_resource">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">dump_resource</tt><big>(</big><em>resource</em>, <em>stream</em>, <em>content_type=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#dump_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.dump_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps the given resource to the given stream using the specified MIME
+content type (defaults to CSV).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.dump_resource_to_files">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">dump_resource_to_files</tt><big>(</big><em>resource</em>, <em>content_type=None</em>, <em>directory=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#dump_resource_to_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.dump_resource_to_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function. See 
+<a class="reference internal" href="#everest.resources.io.ConnectedResourcesSerializer.to_files" title="everest.resources.io.ConnectedResourcesSerializer.to_files"><tt class="xref py py-meth docutils literal"><span class="pre">everest.resources.io.ConnectedResourcesSerializer.to_files()</span></tt></a> for 
+details.</p>
+<p>If no directory is given, the current working directory is used. 
+The given context type defaults to CSV.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.dump_resource_to_zipfile">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">dump_resource_to_zipfile</tt><big>(</big><em>resource</em>, <em>zipfile</em>, <em>content_type=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#dump_resource_to_zipfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.dump_resource_to_zipfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function. See 
+<a class="reference internal" href="#everest.resources.io.ConnectedResourcesSerializer.to_zipfile" title="everest.resources.io.ConnectedResourcesSerializer.to_zipfile"><tt class="xref py py-meth docutils literal"><span class="pre">everest.resources.io.ConnectedResourcesSerializer.to_zipfile()</span></tt></a> for 
+details.</p>
+<p>The given context type defaults to CSV.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.find_connected_resources">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">find_connected_resources</tt><big>(</big><em>resource</em>, <em>dependency_graph=None</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#find_connected_resources"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.find_connected_resources" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collects all resources connected to the given resource and returns a 
+dictionary mapping member resource classes to new collections containing
+the members found.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.load_collection_from_file">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">load_collection_from_file</tt><big>(</big><em>collection_class</em>, <em>filename</em>, <em>content_type=None</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#load_collection_from_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.load_collection_from_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads resources from the specified file into the given collection
+resource.</p>
+<p>If no content type is provided, an attempt is made to look up the 
+extension of the given filename in the MIME content type registry.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.load_collection_from_stream">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">load_collection_from_stream</tt><big>(</big><em>collection_class</em>, <em>stream</em>, <em>content_type</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#load_collection_from_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.load_collection_from_stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads resources from the given stream into the given collection resource.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.load_collection_from_url">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">load_collection_from_url</tt><big>(</big><em>collection_class</em>, <em>url</em>, <em>content_type=None</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#load_collection_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.load_collection_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a collection resource of the given registered resource type from a 
+representation contained in the given URL.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">collection resource</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.load_into_collection_from_url">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">load_into_collection_from_url</tt><big>(</big><em>collection</em>, <em>url</em>, <em>content_type=None</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#load_into_collection_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.load_into_collection_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function that adds all members loaded from the given
+collection URL to the given collection.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.io.load_into_collections_from_zipfile">
+<tt class="descclassname">everest.resources.io.</tt><tt class="descname">load_into_collections_from_zipfile</tt><big>(</big><em>collections</em>, <em>zipfile</em>, <em>resolve_urls=True</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/io.html#load_into_collections_from_zipfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.io.load_into_collections_from_zipfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads resources contained in the given ZIP archive for each of the
+given collection classes.</p>
+<p>The ZIP file is expected to contain a list of file names obtained with
+the <tt class="xref py py-func docutils literal"><span class="pre">get_collection_filename()</span></tt> function, each pointing to a file
+of zipped collection resource data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>collection_classes</strong> &#8211; sequence of collection resource classes</li>
+<li><strong>zipfile</strong> (<em>str</em>) &#8211; ZIP file name</li>
+<li><strong>resolve_urls</strong> (<em>bool</em>) &#8211; Flag indicating if URLs should be resolved 
+during loading.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.resources.io.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,262 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.repository &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.repository</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Resource repository.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jan 13, 2012.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.aggregates</span> <span class="kn">import</span> <span class="n">MemoryAggregate</span>
+<span class="kn">from</span> <span class="nn">everest.entities.aggregates</span> <span class="kn">import</span> <span class="n">OrmAggregate</span>
+<span class="kn">from</span> <span class="nn">everest.entities.repository</span> <span class="kn">import</span> <span class="n">EntityRepository</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">REPOSITORIES</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">Repository</span>
+<span class="kn">from</span> <span class="nn">everest.resources.entitystores</span> <span class="kn">import</span> <span class="n">CachingEntityStore</span>
+<span class="kn">from</span> <span class="nn">everest.resources.entitystores</span> <span class="kn">import</span> <span class="n">FileSystemEntityStore</span>
+<span class="kn">from</span> <span class="nn">everest.resources.entitystores</span> <span class="kn">import</span> <span class="n">OrmEntityStore</span>
+<span class="kn">from</span> <span class="nn">everest.resources.io</span> <span class="kn">import</span> <span class="n">load_into_collection_from_url</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_collection_class</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">id_generator</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;RepositoryManager&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceRepository&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="ResourceRepository"><a class="viewcode-back" href="../../../api/everest.resources.repository.html#everest.resources.repository.ResourceRepository">[docs]</a><span class="k">class</span> <span class="nc">ResourceRepository</span><span class="p">(</span><span class="n">Repository</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The resource repository manages resource accessors (collections).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_repository</span><span class="p">):</span>
+        <span class="n">Repository</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__managed_collections</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span> <span class="o">=</span> <span class="n">entity_repository</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">):</span>
+        <span class="n">Repository</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">Repository</span><span class="o">.</span><span class="n">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">clear_all</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">load_representation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span>
+                            <span class="n">content_type</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">resolve_urls</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+        <span class="n">load_into_collection_from_url</span><span class="p">(</span><span class="n">coll</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span>
+                                      <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+                                      <span class="n">resolve_urls</span><span class="o">=</span><span class="n">resolve_urls</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">manage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_class</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__managed_collections</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">collection_class</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">managed_collections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__managed_collections</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">):</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+        <span class="n">coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">coll_cls</span><span class="o">.</span><span class="n">create_from_aggregate</span><span class="p">(</span><span class="n">agg</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">is_initialized</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_repository</span><span class="o">.</span><span class="n">configuration</span>
+
+    <span class="k">def</span> <span class="nf">_make_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">rc</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="RepositoryManager"><a class="viewcode-back" href="../../../api/everest.resources.repository.html#everest.resources.repository.RepositoryManager">[docs]</a><span class="k">class</span> <span class="nc">RepositoryManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The repository manager creates, initializes and holds resource </span>
+<span class="sd">    repositories by name.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__repo_id_gen</span> <span class="o">=</span> <span class="n">id_generator</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__default_repo</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_repo</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_reset_on_start</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repo</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span> \
+           <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can not replace repositories that have been &#39;</span>
+                             <span class="s">&#39;initialized.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">repo</span>
+        <span class="k">if</span> <span class="n">make_default</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__default_repo</span> <span class="o">=</span> <span class="n">repo</span>
+
+    <span class="k">def</span> <span class="nf">get_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__default_repo</span>
+
+    <span class="k">def</span> <span class="nf">new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repo_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+            <span class="n">entity_store_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">aggregate_class</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="n">repo_type</span><span class="p">:</span>
+            <span class="c"># This is a root repository.</span>
+            <span class="n">is_root_repository</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">is_root_repository</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">repo_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repo_id_gen</span><span class="o">.</span><span class="n">next</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">repo_type</span> <span class="o">==</span> <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">MEMORY</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">entity_store_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">entity_store_class</span> <span class="o">=</span> <span class="n">CachingEntityStore</span>
+            <span class="k">if</span> <span class="n">aggregate_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">aggregate_class</span> <span class="o">=</span> <span class="n">MemoryAggregate</span>
+        <span class="k">elif</span> <span class="n">repo_type</span> <span class="o">==</span> <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">ORM</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">entity_store_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">entity_store_class</span> <span class="o">=</span> <span class="n">OrmEntityStore</span>
+            <span class="k">if</span> <span class="n">aggregate_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">aggregate_class</span> <span class="o">=</span> <span class="n">OrmAggregate</span>
+        <span class="k">elif</span> <span class="n">repo_type</span> <span class="o">==</span> <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">FILE_SYSTEM</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">entity_store_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">entity_store_class</span> <span class="o">=</span> <span class="n">FileSystemEntityStore</span>
+            <span class="k">if</span> <span class="n">aggregate_class</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">aggregate_class</span> <span class="o">=</span> <span class="n">MemoryAggregate</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Unknown repository type.&#39;</span><span class="p">)</span>
+        <span class="n">ent_store</span> <span class="o">=</span> <span class="n">entity_store_class</span><span class="p">(</span><span class="n">name</span><span class="p">,</span>
+                                       <span class="n">join_transaction</span><span class="o">=</span><span class="n">is_root_repository</span><span class="p">)</span>
+        <span class="n">ent_repo</span> <span class="o">=</span> <span class="n">EntityRepository</span><span class="p">(</span><span class="n">ent_store</span><span class="p">,</span> <span class="n">aggregate_class</span><span class="o">=</span><span class="n">aggregate_class</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ResourceRepository</span><span class="p">(</span><span class="n">ent_repo</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RepositoryManager.setup_messaging"><a class="viewcode-back" href="../../../api/everest.resources.repository.html#everest.resources.repository.RepositoryManager.setup_messaging">[docs]</a>    <span class="k">def</span> <span class="nf">setup_messaging</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repository</span><span class="p">,</span> <span class="n">reset_on_start</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets up messaging for the given repository.</span>
+<span class="sd">        </span>
+<span class="sd">        :param str repository: Name of the repository to use to store user</span>
+<span class="sd">          messages. </span>
+<span class="sd">        :param bool reset_on_start: Flag to indicate whether stored user </span>
+<span class="sd">          messsages should be discarded on startup.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_repo</span> <span class="o">=</span> <span class="n">repository</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_reset_on_start</span> <span class="o">=</span> <span class="n">reset_on_start</span>
+</div>
+<div class="viewcode-block" id="RepositoryManager.initialize_all"><a class="viewcode-back" href="../../../api/everest.resources.repository.html#everest.resources.repository.RepositoryManager.initialize_all">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience method to initialize all repositories that have not been</span>
+<span class="sd">        initialized yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">repo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repositories</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">repo</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">repo</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_repo</span><span class="p">:</span>
+                    <span class="n">repo</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span>
+                            <span class="n">messaging_enable</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                            <span class="n">messaging_reset_on_start</span><span class="o">=</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">__messaging_reset_on_start</span><span class="p">)</span>
+                <span class="n">repo</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,348 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.entities.aggregates &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.entities.aggregates</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Aggregate implementations.</span>
+
+<span class="sd">This file is part of the everest project.</span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Sep 25, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.base</span> <span class="kn">import</span> <span class="n">Aggregate</span>
+<span class="kn">from</span> <span class="nn">everest.exceptions</span> <span class="kn">import</span> <span class="n">DuplicateException</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">EXPRESSION_KINDS</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_filter_specification_visitor</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">get_order_specification_visitor</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.exc</span> <span class="kn">import</span> <span class="n">MultipleResultsFound</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm.exc</span> <span class="kn">import</span> <span class="n">NoResultFound</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;MemoryAggregate&#39;</span><span class="p">,</span>
+           <span class="s">&#39;OrmAggregate&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="MemoryAggregate"><a class="viewcode-back" href="../../../api/everest.entities.aggregates.html#everest.entities.aggregates.MemoryAggregate">[docs]</a><span class="k">class</span> <span class="nc">MemoryAggregate</span><span class="p">(</span><span class="n">Aggregate</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    In-memory implementation for aggregates.</span>
+
+<span class="sd">    :note: When &quot;blank&quot; entities without an ID and a slug are added to a</span>
+<span class="sd">        memory aggregate, they can not be retrieved using the</span>
+<span class="sd">        :meth:`get_by_id` or :meth:`get_by_slug` methods since there </span>
+<span class="sd">        is no mechanism to autogenerate IDs or slugs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__get_entities</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">get_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">,</span> <span class="n">id_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span> \
+               <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span><span class="o">.</span><span class="n">is_satisfied_by</span><span class="p">(</span><span class="n">ent</span><span class="p">):</span>
+                <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__filter_by_attr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="p">,</span>
+                                        <span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="n">id_key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ent</span>
+
+    <span class="k">def</span> <span class="nf">get_by_slug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slug</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">get_by_slug</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">,</span> <span class="n">slug</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span> \
+               <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span><span class="o">.</span><span class="n">is_satisfied_by</span><span class="p">(</span><span class="n">ent</span><span class="p">):</span>
+                <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__filter_by_attr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="p">,</span>
+                                        <span class="s">&#39;slug&#39;</span><span class="p">,</span> <span class="n">slug</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ent</span>
+
+    <span class="k">def</span> <span class="nf">iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_entities</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">ent</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can only add entities of type &quot;</span><span class="si">%s</span><span class="s">&quot; to this &#39;</span>
+                             <span class="s">&#39;aggregate.&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">,</span> <span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="bp">None</span> \
+               <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__check_existing</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Duplicate ID or slug.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">,</span> <span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_apply_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_apply_order</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_apply_slice</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__get_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">visitor</span> <span class="o">=</span> <span class="n">get_filter_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">EVAL</span><span class="p">)()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">(</span><span class="n">ents</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order_spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">visitor</span> <span class="o">=</span> <span class="n">get_order_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">EVAL</span><span class="p">)()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_order_spec</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">(</span><span class="n">ents</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="n">ents</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ents</span>
+
+    <span class="k">def</span> <span class="nf">__check_existing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ents</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="p">[</span><span class="n">ent</span> <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">ents</span>
+                 <span class="k">if</span> <span class="n">ent</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span> <span class="ow">or</span> <span class="n">ent</span><span class="o">.</span><span class="n">slug</span> <span class="o">==</span> <span class="n">entity</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">__filter_by_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ents</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">matching_ents</span> <span class="o">=</span> \
+                <span class="p">[</span><span class="n">ent</span> <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">ents</span> <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ent</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="o">==</span> <span class="n">value</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">matching_ents</span> <span class="o">=</span> \
+                <span class="p">[</span><span class="n">ent</span> <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">ents</span>
+                 <span class="k">if</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">ent</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span> <span class="o">==</span> <span class="n">value</span>
+                     <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span><span class="o">.</span><span class="n">is_satisfied_by</span><span class="p">(</span><span class="n">ent</span><span class="p">))]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">matching_ents</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="n">matching_ents</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">matching_ents</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DuplicateException</span><span class="p">(</span><span class="s">&#39;Duplicates found for &quot;</span><span class="si">%s</span><span class="s">&quot; value of &#39;</span> <span class="c"># pragma: no cover</span>
+                                     <span class="s">&#39;&quot;</span><span class="si">%s</span><span class="s">&quot; attribue.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">attr</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ent</span>
+
+</div>
+<div class="viewcode-block" id="OrmAggregate"><a class="viewcode-back" href="../../../api/everest.entities.aggregates.html#everest.entities.aggregates.OrmAggregate">[docs]</a><span class="k">class</span> <span class="nc">OrmAggregate</span><span class="p">(</span><span class="n">Aggregate</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ORM implementation for aggregates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">,</span> <span class="n">session_factory</span><span class="p">,</span> <span class="n">search_mode</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">Aggregate</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">,</span> <span class="n">session_factory</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_mode</span> <span class="o">=</span> <span class="n">search_mode</span>
+
+    <span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># We need a flush here because we may have newly added entities</span>
+            <span class="c"># in the aggregate which need to get an ID *before* we build the</span>
+            <span class="c"># relation filter spec.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__defaults_empty</span><span class="p">:</span>
+            <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cnt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_filtered_query</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">cnt</span>
+
+    <span class="k">def</span> <span class="nf">get_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">id_key</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_filtered_query</span><span class="p">(</span><span class="n">id_key</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">id_key</span><span class="p">)</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">NoResultFound</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">except</span> <span class="n">MultipleResultsFound</span><span class="p">:</span> <span class="c"># pragma: no cover</span>
+            <span class="k">raise</span> <span class="n">DuplicateException</span><span class="p">(</span><span class="s">&#39;Duplicates found for ID &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">id_key</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ent</span>
+
+    <span class="k">def</span> <span class="nf">get_by_slug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slug</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_filtered_query</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">slug</span><span class="o">=</span><span class="n">slug</span><span class="p">)</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">NoResultFound</span><span class="p">:</span>
+            <span class="n">ent</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">except</span> <span class="n">MultipleResultsFound</span><span class="p">:</span> <span class="c"># pragma: no cover</span>
+            <span class="k">raise</span> <span class="n">DuplicateException</span><span class="p">(</span><span class="s">&#39;Duplicates found for slug &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">slug</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ent</span>
+
+    <span class="k">def</span> <span class="nf">iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__defaults_empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">new</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># We need a flush here because we may have newly added </span>
+                <span class="c"># entities in the aggregate which need to get an ID *before* </span>
+                <span class="c"># we build the query expression.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_data_query</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">iter</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_apply_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_apply_order</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_apply_slice</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_query_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span> <span class="c"># unused pylint: disable=W0613</span>
+        <span class="k">return</span> <span class="n">query</span>
+
+    <span class="k">def</span> <span class="nf">_filter_visitor_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">visitor_cls</span> <span class="o">=</span> <span class="n">get_filter_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">SQL</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">visitor_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_order_visitor_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">visitor_cls</span> <span class="o">=</span> <span class="n">get_order_specification_visitor</span><span class="p">(</span><span class="n">EXPRESSION_KINDS</span><span class="o">.</span><span class="n">SQL</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">visitor_cls</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_base_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># Pre-filter the base query with the relation specification.</span>
+            <span class="n">rel_spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_relationship</span><span class="o">.</span><span class="n">specification</span>
+            <span class="n">visitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_visitor_factory</span><span class="p">()</span>
+            <span class="n">rel_spec</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+            <span class="n">expr</span> <span class="o">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">expression</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entity_class</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">expr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">query</span>
+
+    <span class="k">def</span> <span class="nf">_get_data_query</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_ordered_query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_slice_key</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">query</span>
+
+    <span class="k">def</span> <span class="nf">__get_filtered_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query_generator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_base_query</span><span class="p">(),</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">visitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_visitor_factory</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">query</span>
+
+    <span class="k">def</span> <span class="nf">__get_ordered_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_filtered_query</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order_spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">visitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_order_visitor_factory</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_order_spec</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">join_expr</span> <span class="ow">in</span> <span class="n">visitor</span><span class="o">.</span><span class="n">get_joins</span><span class="p">():</span>
+                <span class="c"># FIXME: only join when needed here.</span>
+                <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">outerjoin</span><span class="p">(</span><span class="n">join_expr</span><span class="p">)</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">visitor</span><span class="o">.</span><span class="n">expression</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">query</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">__defaults_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_spec</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_mode</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

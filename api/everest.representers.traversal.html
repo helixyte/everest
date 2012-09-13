@@ -1,0 +1,196 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.representers.traversal &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="everest-representers-traversal">
+<h1>everest.representers.traversal<a class="headerlink" href="#everest-representers-traversal" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-everest.representers.traversal"></span><p>Resource data tree traversal.</p>
+<dl class="class">
+<dt id="everest.representers.traversal.AttributeKey">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">AttributeKey</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#AttributeKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.AttributeKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Value object used as a key during resource data tree traversal.</p>
+<p>Each key consists of a tuple of attribute strings that uniquely 
+determine a node&#8217;s position in the resource data tree.</p>
+<dl class="attribute">
+<dt id="everest.representers.traversal.AttributeKey.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.traversal.AttributeKey.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.traversal.DataTreeTraverser">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">DataTreeTraverser</tt><big>(</big><em>root</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract base class for data tree traversers.</p>
+<dl class="attribute">
+<dt id="everest.representers.traversal.DataTreeTraverser.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.traversal.DataTreeTraverser.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.traversal.DataTreeTraverser.run">
+<tt class="descname">run</tt><big>(</big><em>visitor</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataTreeTraverser.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataTreeTraverser.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs this traverser.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.traversal.DataElementTreeTraverser">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">DataElementTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.traversal.ResourceDataTreeTraverser" title="everest.representers.traversal.ResourceDataTreeTraverser"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.traversal.ResourceDataTreeTraverser</span></tt></a></p>
+<p>Traverser for data element trees.</p>
+<p>This traverser can be used both inbound during reading (data element 
+-&gt; resource) and outbound during writing (resource -&gt; data element).</p>
+<dl class="method">
+<dt id="everest.representers.traversal.DataElementTreeTraverser.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>direction</strong> &#8211; processing direction (read or write). One of the</td>
+</tr>
+</tbody>
+</table>
+<p><a class="reference internal" href="#everest.representers.traversal.PROCESSING_DIRECTIONS" title="everest.representers.traversal.PROCESSING_DIRECTIONS"><tt class="xref py py-class docutils literal"><span class="pre">PROCESSING_DIRECTIONS</span></tt></a> constant attributes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.traversal.ResourceDataTreeTraverser">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">ResourceDataTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#ResourceDataTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.ResourceDataTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.traversal.DataTreeTraverser" title="everest.representers.traversal.DataTreeTraverser"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.traversal.DataTreeTraverser</span></tt></a></p>
+<p>Abstract base class for resource data tree traversers.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.traversal.ResourceTreeTraverser">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">ResourceTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#ResourceTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.ResourceTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.traversal.ResourceDataTreeTraverser" title="everest.representers.traversal.ResourceDataTreeTraverser"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.traversal.ResourceDataTreeTraverser</span></tt></a></p>
+<p>Mapping traverser for resource trees.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.representers.traversal.PROCESSING_DIRECTIONS">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">PROCESSING_DIRECTIONS</tt><a class="reference internal" href="../_modules/everest/representers/traversal.html#PROCESSING_DIRECTIONS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.PROCESSING_DIRECTIONS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Constants specifying the direction resource data are processed.</p>
+<dl class="attribute">
+<dt id="everest.representers.traversal.PROCESSING_DIRECTIONS.READ">
+<tt class="descname">READ</tt><em class="property"> = 'READ'</em><a class="headerlink" href="#everest.representers.traversal.PROCESSING_DIRECTIONS.READ" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resource data are being read (i.e., a representation is converted
+to a resource.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.representers.traversal.PROCESSING_DIRECTIONS.WRITE">
+<tt class="descname">WRITE</tt><em class="property"> = 'WRITE'</em><a class="headerlink" href="#everest.representers.traversal.PROCESSING_DIRECTIONS.WRITE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resource data are being written (i.e., a resource is converted
+to a representation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="everest.representers.traversal.PROCESSING_DIRECTIONS.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.traversal.PROCESSING_DIRECTIONS.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.representers.traversal.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

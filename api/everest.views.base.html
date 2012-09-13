@@ -1,0 +1,158 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.views.base &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.views.base">
+<span id="everest-views-base"></span><h1>everest.views.base<a class="headerlink" href="#module-everest.views.base" title="Permalink to this headline">¶</a></h1>
+<p>View base classes.</p>
+<dl class="class">
+<dt id="everest.views.base.GetResourceView">
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">GetResourceView</tt><big>(</big><em>resource</em>, <em>request</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#GetResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.GetResourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.views.base.ResourceView" title="everest.views.base.ResourceView"><tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.ResourceView</span></tt></a></p>
+<p>Abstract base class for all collection views</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="everest.views.base.HttpWarningResubmit">
+<em class="property">exception </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">HttpWarningResubmit</tt><big>(</big><em>detail=None</em>, <em>headers=None</em>, <em>comment=None</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#HttpWarningResubmit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.HttpWarningResubmit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">paste.httpexceptions.HTTPTemporaryRedirect</span></tt></p>
+<p>Special 307 HTTP Temporary Redirect exception which transports</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.views.base.PutOrPostResourceView">
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">PutOrPostResourceView</tt><big>(</big><em>resource</em>, <em>request</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#PutOrPostResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.PutOrPostResourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.views.base.ResourceView" title="everest.views.base.ResourceView"><tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.ResourceView</span></tt></a></p>
+<p>Abstract base class for all member views</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.views.base.ResourceView">
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">ResourceView</tt><big>(</big><em>context</em>, <em>request</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#ResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.ResourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Abstract base class for all resource views.</p>
+<p>Resource views know how to handle a number of things that can go wrong
+in a REST request.</p>
+<dl class="attribute">
+<dt id="everest.views.base.ResourceView.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.views.base.ResourceView.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.views.base.ViewUserMessageChecker">
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">ViewUserMessageChecker</tt><a class="reference internal" href="../_modules/everest/views/base.html#ViewUserMessageChecker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.ViewUserMessageChecker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.messaging.html#everest.messaging.UserMessageChecker" title="everest.messaging.UserMessageChecker"><tt class="xref py py-class docutils literal"><span class="pre">everest.messaging.UserMessageChecker</span></tt></a></p>
+<p>Custom user message checker for views.</p>
+<dl class="method">
+<dt id="everest.views.base.ViewUserMessageChecker.check">
+<tt class="descname">check</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#ViewUserMessageChecker.check"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.ViewUserMessageChecker.check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements user message checking for views.</p>
+<p>Checks if the current request has an explicit &#8220;ignore-message&#8221; 
+parameter (a GUID) pointing to a message with identical text from a 
+previous request, in which case further processing is allowed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.views.base.ViewUserMessageChecker.create_307_response">
+<tt class="descname">create_307_response</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#ViewUserMessageChecker.create_307_response"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.ViewUserMessageChecker.create_307_response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a 307 &#8220;Temporary Redirect&#8221; response including a HTTP Warning 
+header with code 299 that contains the user message received during
+processing the request.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.views.base.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

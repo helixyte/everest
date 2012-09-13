@@ -1,0 +1,533 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.directives &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.directives</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">ZCML directives for everest.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jun 16, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.configuration</span> <span class="kn">import</span> <span class="n">Configurator</span>
+<span class="kn">from</span> <span class="nn">everest.repository</span> <span class="kn">import</span> <span class="n">REPOSITORIES</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_collection_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+<span class="kn">from</span> <span class="nn">pyramid.threadlocal</span> <span class="kn">import</span> <span class="n">get_current_registry</span>
+<span class="kn">from</span> <span class="nn">pyramid_zcml</span> <span class="kn">import</span> <span class="n">IViewDirective</span>
+<span class="kn">from</span> <span class="nn">pyramid_zcml</span> <span class="kn">import</span> <span class="n">view</span> <span class="k">as</span> <span class="n">pyramid_view</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.config</span> <span class="kn">import</span> <span class="n">GroupingContextDecorator</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.config</span> <span class="kn">import</span> <span class="n">IConfigurationContext</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.fields</span> <span class="kn">import</span> <span class="n">Bool</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.fields</span> <span class="kn">import</span> <span class="n">GlobalObject</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.fields</span> <span class="kn">import</span> <span class="n">Path</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.configuration.fields</span> <span class="kn">import</span> <span class="n">Tokens</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">Interface</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">providedBy</span> <span class="k">as</span> <span class="n">provided_by</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.interface.interfaces</span> <span class="kn">import</span> <span class="n">IInterface</span>  <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.schema</span> <span class="kn">import</span> <span class="n">Choice</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.schema</span> <span class="kn">import</span> <span class="n">TextLine</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;RESOURCE_KINDS&#39;</span><span class="p">,</span>
+           <span class="s">&#39;RepresenterDirective&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceDirective&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceRepresenterAttributeDirective&#39;</span><span class="p">,</span>
+           <span class="s">&#39;ResourceRepresenterDirective&#39;</span><span class="p">,</span>
+           <span class="s">&#39;collection_view&#39;</span><span class="p">,</span>
+           <span class="s">&#39;filesystem_repository&#39;</span><span class="p">,</span>
+           <span class="s">&#39;member_view&#39;</span><span class="p">,</span>
+           <span class="s">&#39;memory_repository&#39;</span><span class="p">,</span>
+           <span class="s">&#39;messaging&#39;</span><span class="p">,</span>
+           <span class="s">&#39;option&#39;</span><span class="p">,</span>
+           <span class="s">&#39;orm_repository&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="c"># interfaces to not have an __init__ # pylint: disable=W0232</span>
+
+<span class="k">class</span> <span class="nc">IRepositoryDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Name of this repository. Must be unique among all &quot;</span>
+                        <span class="s">&quot;repositories. If no name is given, or the name is &quot;</span>
+                        <span class="s">&quot;specified as &#39;DEFAULT&#39;, the built-in repository is &quot;</span>
+                        <span class="s">&quot;configured with the given directive.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">False</span>
+                 <span class="p">)</span>
+    <span class="n">aggregate_class</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;A class to use as the default aggregate &quot;</span>
+                            <span class="s">&quot;implementation for this repository.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">entity_store_class</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;A class to use as the entity store &quot;</span>
+                            <span class="s">&quot;implementation for this repository.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">make_default</span> <span class="o">=</span> \
+        <span class="n">Bool</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Indicates if this repository should be made the default &quot;</span>
+                    <span class="s">&quot;for all resources that do not explicitly specify a &quot;</span>
+                    <span class="s">&quot;repository. Defaults to False.&quot;</span><span class="p">,</span>
+             <span class="n">required</span><span class="o">=</span><span class="bp">False</span>
+             <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">make_default</span><span class="p">,</span> <span class="n">agg_cls</span><span class="p">,</span> <span class="n">ent_store_cls</span><span class="p">,</span>
+                <span class="n">repo_type</span><span class="p">,</span> <span class="n">config_method</span><span class="p">,</span> <span class="n">cnf</span><span class="p">):</span>
+    <span class="c"># Repository directives are applied eagerly. Note that custom repositories </span>
+    <span class="c"># must be declared *before* they can be referenced in resource directives.</span>
+    <span class="n">discriminator</span> <span class="o">=</span> <span class="p">(</span><span class="n">repo_type</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">_context</span><span class="o">.</span><span class="n">action</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="n">discriminator</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="n">_context</span><span class="o">.</span><span class="n">package</span><span class="p">)</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">config_method</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="c"># re-configure builtin repository.</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">repo_type</span>
+    <span class="n">method</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">aggregate_class</span><span class="o">=</span><span class="n">agg_cls</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="o">=</span><span class="n">ent_store_cls</span><span class="p">,</span>
+           <span class="n">configuration</span><span class="o">=</span><span class="n">cnf</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="n">make_default</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">IMemoryRepositoryDirective</span><span class="p">(</span><span class="n">IRepositoryDirective</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">memory_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                      <span class="n">aggregate_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="n">_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">make_default</span><span class="p">,</span>
+                <span class="n">aggregate_class</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="p">,</span>
+                <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">MEMORY</span><span class="p">,</span> <span class="s">&#39;add_memory_repository&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+
+<span class="k">class</span> <span class="nc">IFileSystemRepositoryDirective</span><span class="p">(</span><span class="n">IRepositoryDirective</span><span class="p">):</span>
+    <span class="n">directory</span> <span class="o">=</span> \
+        <span class="n">Path</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The directory the representation files for the &quot;</span>
+                    <span class="s">&quot;root collection resources are kept. Defaults to &quot;</span>
+                    <span class="s">&quot;the current working directory.&quot;</span><span class="p">,</span>
+             <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+             <span class="p">)</span>
+    <span class="n">content_type</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The (MIME) content type to use for the &quot;</span>
+                            <span class="s">&quot;representation files. Defaults to CSV.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="filesystem_repository"><a class="viewcode-back" href="../../api/everest.directives.html#everest.directives.filesystem_repository">[docs]</a><span class="k">def</span> <span class="nf">filesystem_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                          <span class="n">aggregate_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                          <span class="n">directory</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Directive for registering a file-system based repository.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cnf</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">directory</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cnf</span><span class="p">[</span><span class="s">&#39;directory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">directory</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content_type</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cnf</span><span class="p">[</span><span class="s">&#39;content_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content_type</span>
+    <span class="n">_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">make_default</span><span class="p">,</span>
+                <span class="n">aggregate_class</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="p">,</span>
+                <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">FILE_SYSTEM</span><span class="p">,</span> <span class="s">&#39;add_filesystem_repository&#39;</span><span class="p">,</span> <span class="n">cnf</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">IOrmRepositoryDirective</span><span class="p">(</span><span class="n">IRepositoryDirective</span><span class="p">):</span>
+    <span class="n">db_string</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;String to use to connect to the DB server. Defaults &quot;</span>
+                        <span class="s">&quot;to an in-memory sqlite DB.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">metadata_factory</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Callback that initializes and returns the &quot;</span>
+                            <span class="s">&quot;metadata for the ORM.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="orm_repository"><a class="viewcode-back" href="../../api/everest.directives.html#everest.directives.orm_repository">[docs]</a><span class="k">def</span> <span class="nf">orm_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">make_default</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                   <span class="n">aggregate_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                   <span class="n">db_string</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">metadata_factory</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Directive for registering an ORM based repository.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cnf</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">db_string</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cnf</span><span class="p">[</span><span class="s">&#39;db_string&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">db_string</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">metadata_factory</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">cnf</span><span class="p">[</span><span class="s">&#39;metadata_factory&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata_factory</span>
+    <span class="n">_repository</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">make_default</span><span class="p">,</span>
+                <span class="n">aggregate_class</span><span class="p">,</span> <span class="n">entity_store_class</span><span class="p">,</span>
+                <span class="n">REPOSITORIES</span><span class="o">.</span><span class="n">ORM</span><span class="p">,</span> <span class="s">&#39;add_orm_repository&#39;</span><span class="p">,</span> <span class="n">cnf</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">IMessagingDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">repository</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Repository to use for the messaging system.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                 <span class="p">)</span>
+    <span class="n">reset_on_start</span> <span class="o">=</span> \
+        <span class="n">Bool</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Erase all stored user messages on startup. This only &quot;</span>
+                    <span class="s">&quot;has an effect in persistent repositories.&quot;</span><span class="p">,</span>
+             <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="messaging"><a class="viewcode-back" href="../../api/everest.directives.html#everest.directives.messaging">[docs]</a><span class="k">def</span> <span class="nf">messaging</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">repository</span><span class="p">,</span> <span class="n">reset_on_start</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Directive for setting up the user message resource in the appropriate</span>
+<span class="sd">    repository.</span>
+<span class="sd">    </span>
+<span class="sd">    :param str repository: The repository to create the user messages resource</span>
+<span class="sd">      in.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">discriminator</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;messaging&#39;</span><span class="p">,</span> <span class="n">repository</span><span class="p">)</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="n">_context</span><span class="o">.</span><span class="n">package</span><span class="p">)</span>
+    <span class="n">_context</span><span class="o">.</span><span class="n">action</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="n">discriminator</span><span class="p">,</span> <span class="c"># pylint: disable=E1101</span>
+                    <span class="nb">callable</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">setup_messaging</span><span class="p">,</span>
+                    <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">repository</span><span class="p">,),</span>
+                    <span class="n">kw</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">reset_on_start</span><span class="o">=</span><span class="n">reset_on_start</span><span class="p">))</span>
+
+</div>
+<span class="k">class</span> <span class="nc">IResourceDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">interface</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The marker interface to use for this resource.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                     <span class="p">)</span>
+    <span class="n">member</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The member resource class for this resource.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                     <span class="p">)</span>
+    <span class="n">entity</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The entity class associated with the member &quot;</span>
+                            <span class="s">&quot;resource.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                     <span class="p">)</span>
+    <span class="n">collection</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The collection resource class for the member &quot;</span>
+                            <span class="s">&quot;resource. If this is not specified, a dynamic &quot;</span>
+                            <span class="s">&quot;default class is created using the values of &quot;</span>
+                            <span class="s">&quot;`collection_root_name` and `collection_title` &quot;</span>
+                            <span class="s">&quot;as root name and title, respectively.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                     <span class="p">)</span>
+    <span class="n">collection_root_name</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The name for the root collection (used as URL path &quot;</span>
+                        <span class="s">&quot;to the root collection inside the service). Defaults &quot;</span>
+                        <span class="s">&quot;to the root_name attribute of the collection class.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="p">)</span>
+    <span class="n">collection_title</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The name for the root collection (used as URL path &quot;</span>
+                        <span class="s">&quot;to the root collection inside the service). Defaults &quot;</span>
+                        <span class="s">&quot;to the root_name attribute of the collection class.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                 <span class="p">)</span>
+    <span class="n">repository</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The name of the repository that should be used for &quot;</span>
+                        <span class="s">&quot;this resource. Defaults to &#39;MEMORY&#39;, the built-in &quot;</span>
+                        <span class="s">&quot;in-memory repository (i.e., no persistence); see &quot;</span>
+                        <span class="s">&quot;the IRepositoryDirective for other possible values.&quot;</span><span class="p">,</span>
+                 <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">expose</span> <span class="o">=</span> \
+        <span class="n">Bool</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Flag indicating if this collection should be exposed in &quot;</span>
+                    <span class="s">&quot;the service.&quot;</span><span class="p">,</span>
+             <span class="n">default</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+             <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+             <span class="p">)</span>
+<span class="c">#    request_methods = \</span>
+<span class="c">#        Tokens(title=u&quot;HTTP request methods supported by this resource.&quot;,</span>
+<span class="c">#               value_type=Choice(values=[&#39;GET&#39;, &#39;POST&#39;, &#39;DELETE&#39;]),</span>
+<span class="c">#               default=&#39;GET&#39;,</span>
+<span class="c">#               )</span>
+
+
+<div class="viewcode-block" id="ResourceDirective"><a class="viewcode-back" href="../../api/everest.directives.html#everest.directives.ResourceDirective">[docs]</a><span class="k">class</span> <span class="nc">ResourceDirective</span><span class="p">(</span><span class="n">GroupingContextDecorator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Directive for registering a resource. Calls</span>
+<span class="sd">    :meth:`everest.configuration.Configurator.add_resource`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IConfigurationContext</span><span class="p">,</span> <span class="n">IResourceDirective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">interface</span><span class="p">,</span> <span class="n">member</span><span class="p">,</span> <span class="n">entity</span><span class="p">,</span>
+                 <span class="n">collection</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">collection_root_name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">collection_title</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">repository</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">expose</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">interface</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">member</span> <span class="o">=</span> <span class="n">member</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entity</span> <span class="o">=</span> <span class="n">entity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">collection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collection_root_name</span> <span class="o">=</span> <span class="n">collection_root_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collection_title</span> <span class="o">=</span> <span class="n">collection_title</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repository</span> <span class="o">=</span> <span class="n">repository</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expose</span> <span class="o">=</span> <span class="n">expose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">representers</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">after</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Register resources eagerly so the various adapters and utilities are</span>
+        <span class="c"># available for other directives.</span>
+        <span class="n">discriminator</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;resource&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">package</span><span class="p">)</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">add_resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">member</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">entity</span><span class="p">,</span>
+                            <span class="n">collection</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">,</span>
+                            <span class="n">collection_root_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collection_root_name</span><span class="p">,</span>
+                            <span class="n">collection_title</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collection_title</span><span class="p">,</span>
+                            <span class="n">repository</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">repository</span><span class="p">,</span>
+                            <span class="n">expose</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">expose</span><span class="p">,</span>
+                            <span class="n">_info</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">info</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">representers</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">cnt_type</span><span class="p">,</span> <span class="n">rc_kind</span> <span class="o">=</span> <span class="n">key</span>
+            <span class="n">opts</span><span class="p">,</span> <span class="n">mp_opts</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">if</span> <span class="n">rc_kind</span> <span class="o">==</span> <span class="n">RESOURCE_KINDS</span><span class="o">.</span><span class="n">member</span><span class="p">:</span>
+                <span class="n">rc</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">rc_kind</span> <span class="o">==</span> <span class="n">RESOURCE_KINDS</span><span class="o">.</span><span class="n">collection</span><span class="p">:</span>
+                <span class="n">rc</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span> <span class="c"># None</span>
+                <span class="n">rc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span>
+            <span class="n">discriminator</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;resource_representer&#39;</span><span class="p">,</span> <span class="n">rc</span><span class="p">,</span> <span class="n">cnt_type</span><span class="p">,</span> <span class="n">rc_kind</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="n">discriminator</span><span class="p">,</span> <span class="c"># pylint: disable=E1101</span>
+                        <span class="nb">callable</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">add_resource_representer</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="n">cnt_type</span><span class="p">),</span>
+                        <span class="n">kw</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">opts</span><span class="p">,</span>
+                                <span class="n">attribute_options</span><span class="o">=</span><span class="n">mp_opts</span><span class="p">,</span>
+                                <span class="n">_info</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">info</span><span class="p">),</span>
+                        <span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">ICollectionViewDirective</span><span class="p">(</span><span class="n">IViewDirective</span><span class="p">):</span>
+    <span class="n">for_</span> <span class="o">=</span> \
+        <span class="n">Tokens</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The collection resource classes or interfaces to use &quot;</span>
+                      <span class="s">&quot;this collection resource view with.&quot;</span><span class="p">,</span>
+               <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+               <span class="n">value_type</span><span class="o">=</span><span class="n">GlobalObject</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">collection_view</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span>
+                  <span class="n">for_</span><span class="p">,</span>
+                  <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">rc</span> <span class="ow">in</span> <span class="n">for_</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">IInterface</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+            <span class="n">rc</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="s">&#39;collection-class&#39;</span><span class="p">)</span>
+        <span class="n">pyramid_view</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">rc</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">IMemberViewDirective</span><span class="p">(</span><span class="n">IViewDirective</span><span class="p">):</span>
+    <span class="n">for_</span> <span class="o">=</span> \
+        <span class="n">Tokens</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The member resource classes or interfaces to use this &quot;</span>
+                      <span class="s">&quot;member resource view with.&quot;</span><span class="p">,</span>
+               <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+               <span class="n">value_type</span><span class="o">=</span><span class="n">GlobalObject</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">member_view</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span>
+                  <span class="n">for_</span><span class="p">,</span>
+                  <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">rc</span> <span class="ow">in</span> <span class="n">for_</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">IInterface</span> <span class="ow">in</span> <span class="n">provided_by</span><span class="p">(</span><span class="n">rc</span><span class="p">):</span>
+            <span class="n">rc</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">getUtility</span><span class="p">(</span><span class="n">rc</span><span class="p">,</span> <span class="s">&#39;member-class&#39;</span><span class="p">)</span>
+        <span class="n">pyramid_view</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">rc</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">IRepresenterDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">content_type</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The (MIME) content type for the representer &quot;</span>
+                            <span class="s">&quot;to configure. If this is given, the &quot;</span>
+                            <span class="s">&quot;&#39;representer_class&#39; option must not be given.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">representer_class</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Class to use for the representer.  If this is &quot;</span>
+                            <span class="s">&quot;given, the &#39;content_type&#39; option must not be &quot;</span>
+                            <span class="s">&quot;given.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">RepresenterDirective</span><span class="p">(</span><span class="n">GroupingContextDecorator</span><span class="p">):</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IConfigurationContext</span><span class="p">,</span> <span class="n">IRepresenterDirective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">representer_class</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">=</span> <span class="n">content_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">representer_class</span> <span class="o">=</span> <span class="n">representer_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">after</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">discriminator</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="s">&#39;representer&#39;</span><span class="p">,</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">representer_class</span><span class="o">.</span><span class="n">content_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="n">discriminator</span><span class="p">)</span> <span class="c"># pylint: disable=E1101</span>
+        <span class="c"># Representers are created eagerly so the resource declarations can use</span>
+        <span class="c"># them.</span>
+        <span class="n">reg</span> <span class="o">=</span> <span class="n">get_current_registry</span><span class="p">()</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">package</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">package</span><span class="p">)</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">add_representer</span><span class="p">(</span><span class="n">content_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span>
+                               <span class="n">representer_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">representer_class</span><span class="p">,</span>
+                               <span class="n">options</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">RESOURCE_KINDS</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">member</span> <span class="o">=</span> <span class="s">&#39;member&#39;</span>
+    <span class="n">collection</span> <span class="o">=</span> <span class="s">&#39;collection&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">IResourceRepresenterDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">content_type</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;The (MIME) content type the representer manages.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">kind</span> <span class="o">=</span> \
+        <span class="n">Choice</span><span class="p">(</span><span class="n">values</span><span class="o">=</span><span class="p">(</span><span class="n">RESOURCE_KINDS</span><span class="o">.</span><span class="n">member</span><span class="p">,</span> <span class="n">RESOURCE_KINDS</span><span class="o">.</span><span class="n">collection</span><span class="p">),</span>
+               <span class="n">title</span><span class="o">=</span><span class="s">u&quot;Specifies the kind of resource the representer should &quot;</span>
+                      <span class="s">&quot;be used for (&#39;member&#39; or &#39;collection&#39;). If this is &quot;</span>
+                      <span class="s">&quot;not provided, the representer is used for both &quot;</span>
+                      <span class="s">&quot;resource kinds.&quot;</span><span class="p">,</span>
+               <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ResourceRepresenterDirective"><a class="viewcode-back" href="../../api/everest.directives.html#everest.directives.ResourceRepresenterDirective">[docs]</a><span class="k">class</span> <span class="nc">ResourceRepresenterDirective</span><span class="p">(</span><span class="n">GroupingContextDecorator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Grouping directive for registering a representer for a given resource(s) </span>
+<span class="sd">    and content type combination. Delegates the work to a</span>
+<span class="sd">    :class:`everest.configuration.Configurator`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IConfigurationContext</span><span class="p">,</span> <span class="n">IResourceRepresenterDirective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">content_type</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">=</span> <span class="n">content_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="n">kind</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attribute_options</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">after</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">attribute_options</span> <span class="o">=</span> <span class="bp">None</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attribute_options</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> \
+                            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_options</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">representers</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">)]</span> <span class="o">=</span> \
+                                                <span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">attribute_options</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">IResourceRepresenterAttributeDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Name of the representer attribute.&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ResourceRepresenterAttributeDirective</span><span class="p">(</span><span class="n">GroupingContextDecorator</span><span class="p">):</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IConfigurationContext</span><span class="p">,</span> <span class="n">IResourceRepresenterAttributeDirective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">context</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">after</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Convert the (nested) attribute names into keys.</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">attribute_options</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span>
+
+
+<span class="k">class</span> <span class="nc">IOptionDirective</span><span class="p">(</span><span class="n">Interface</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Name of the option.&quot;</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> \
+        <span class="n">TextLine</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Value of the option.&quot;</span><span class="p">)</span>
+    <span class="nb">type</span> <span class="o">=</span> \
+        <span class="n">GlobalObject</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">u&quot;Type of the option. This is only needed if the &quot;</span>
+                            <span class="s">&quot;option value needs to be something else than a &quot;</span>
+                            <span class="s">&quot;string; should be a Zope configuration field &quot;</span>
+                            <span class="s">&quot;type such as zope.configuration.fields.Bool.&quot;</span><span class="p">,</span>
+                     <span class="n">required</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">option</span><span class="p">(</span><span class="n">_context</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span> <span class="c"># pylint: disable=W0622</span>
+    <span class="n">grouping_context</span> <span class="o">=</span> <span class="n">_context</span><span class="o">.</span><span class="n">context</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">type</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">field</span> <span class="o">=</span> <span class="nb">type</span><span class="p">()</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">fromUnicode</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">grouping_context</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="c"># pylint: enable=W0232</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

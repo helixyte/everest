@@ -1,0 +1,135 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.traversal &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.traversal</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Custom resource object tree traverser.</span>
+
+<span class="sd">This file is part of the everest project.</span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Feb 4, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IResource</span>
+<span class="kn">from</span> <span class="nn">pyramid.traversal</span> <span class="kn">import</span> <span class="n">ModelGraphTraverser</span> <span class="c"># pylint: disable-msg=E0611, F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;SuffixResourceTraverser&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="SuffixResourceTraverser"><a class="viewcode-back" href="../../api/everest.traversal.html#everest.traversal.SuffixResourceTraverser">[docs]</a><span class="k">class</span> <span class="nc">SuffixResourceTraverser</span><span class="p">(</span><span class="n">ModelGraphTraverser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A custom model traverser that allows us to specify the representation</span>
+<span class="sd">    for resources with a suffix as in `http://everest/racks.csv`.</span>
+
+<span class="sd">    Rather than to reproduce the functionality of the `__call__` method, we</span>
+<span class="sd">    check if base part of the current view name (`racks` in the example) can</span>
+<span class="sd">    be retrieved as a child resource from the context. If yes, we set the</span>
+<span class="sd">    context to the resource and the view name to the extension part of the</span>
+<span class="sd">    current view name (`csv` in the example); if no, nothing is changed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">system</span> <span class="o">=</span> <span class="n">ModelGraphTraverser</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">system</span><span class="p">[</span><span class="s">&#39;context&#39;</span><span class="p">]</span>
+        <span class="n">view_name</span> <span class="o">=</span> <span class="n">system</span><span class="p">[</span><span class="s">&#39;view_name&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">IResource</span><span class="o">.</span><span class="n">providedBy</span><span class="p">(</span><span class="n">context</span><span class="p">)</span> <span class="ow">and</span> <span class="s">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">view_name</span><span class="p">:</span> <span class="c"># pylint: disable=E1101</span>
+            <span class="n">rc_name</span><span class="p">,</span> <span class="n">repr_name</span> <span class="o">=</span> <span class="n">view_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">collection</span> <span class="o">=</span> <span class="n">context</span><span class="p">[</span><span class="n">rc_name</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">IResource</span><span class="o">.</span><span class="n">providedBy</span><span class="p">(</span><span class="n">collection</span><span class="p">):</span> <span class="c"># pylint: disable=E1101</span>
+                    <span class="n">system</span><span class="p">[</span><span class="s">&#39;context&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">collection</span>
+                    <span class="n">system</span><span class="p">[</span><span class="s">&#39;view_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">repr_name</span>
+        <span class="k">return</span> <span class="n">system</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

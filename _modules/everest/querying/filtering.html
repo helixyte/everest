@@ -1,0 +1,626 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.filtering &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.querying.filtering</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Filter specification builder, visitor, director classes.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jul 5, 2011.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">everest.entities.attributes</span> <span class="kn">import</span> <span class="n">EntityAttributeKinds</span>
+<span class="kn">from</span> <span class="nn">everest.entities.utils</span> <span class="kn">import</span> <span class="n">slug_from_identifier</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">CqlExpression</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">SpecificationBuilder</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">SpecificationDirector</span>
+<span class="kn">from</span> <span class="nn">everest.querying.base</span> <span class="kn">import</span> <span class="n">SpecificationVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationBuilder</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationDirector</span>
+<span class="kn">from</span> <span class="nn">everest.querying.interfaces</span> <span class="kn">import</span> <span class="n">IFilterSpecificationVisitor</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">CONTAINED</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">CONTAINS</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">ENDS_WITH</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">EQUAL_TO</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">GREATER_OR_EQUALS</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">GREATER_THAN</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">IN_RANGE</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">LESS_OR_EQUALS</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">LESS_THAN</span>
+<span class="kn">from</span> <span class="nn">everest.querying.operators</span> <span class="kn">import</span> <span class="n">STARTS_WITH</span>
+<span class="kn">from</span> <span class="nn">everest.querying.utils</span> <span class="kn">import</span> <span class="n">OrmAttributeInspector</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IResource</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">resource_to_url</span>
+<span class="kn">from</span> <span class="nn">everest.url</span> <span class="kn">import</span> <span class="n">url_to_resource</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">and_</span> <span class="k">as</span> <span class="n">operator_and</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">or_</span> <span class="k">as</span> <span class="n">operator_or</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">and_</span> <span class="k">as</span> <span class="n">sqlalchemy_and</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">not_</span> <span class="k">as</span> <span class="n">sqlalchemy_not</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">or_</span> <span class="k">as</span> <span class="n">sqlalchemy_or</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;CqlFilterSpecificationVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;EvalFilterSpecificationVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;FilterSpecificationBuilder&#39;</span><span class="p">,</span>
+           <span class="s">&#39;FilterSpecificationDirector&#39;</span><span class="p">,</span>
+           <span class="s">&#39;FilterSpecificationVisitor&#39;</span><span class="p">,</span>
+           <span class="s">&#39;SqlFilterSpecificationVisitor&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="FilterSpecificationDirector"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.FilterSpecificationDirector">[docs]</a><span class="k">class</span> <span class="nc">FilterSpecificationDirector</span><span class="p">(</span><span class="n">SpecificationDirector</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Director for filter specifications.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IFilterSpecificationDirector</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_process_parse_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parse_result</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">crit</span> <span class="ow">in</span> <span class="n">parse_result</span><span class="o">.</span><span class="n">criteria</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">op_string</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">crit</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> <span class="c"># criteria with no values are ignored</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_identifier</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">op_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_identifier</span><span class="p">(</span><span class="n">op_string</span><span class="p">)</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__prepare_values</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+                <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_build_function</span><span class="p">(</span><span class="n">op_name</span><span class="p">)</span>
+                <span class="n">func</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__prepare_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="n">prepared</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_empty_string</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_url</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+                <span class="c"># URLs - convert to resource.</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">url_to_resource</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">prepared</span><span class="p">:</span>
+                <span class="n">prepared</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">prepared</span>
+
+    <span class="k">def</span> <span class="nf">__is_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">)</span> <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;http://&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__is_empty_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+</div>
+<div class="viewcode-block" id="FilterSpecificationBuilder"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.FilterSpecificationBuilder">[docs]</a><span class="k">class</span> <span class="nc">FilterSpecificationBuilder</span><span class="p">(</span><span class="n">SpecificationBuilder</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter specification builder.</span>
+<span class="sd">    </span>
+<span class="sd">    The filter specification builder is responsible for building concrete</span>
+<span class="sd">    specs with build methods dispatched by the director and for forming </span>
+<span class="sd">    disjunction specs when a) multiple values are given in a single criterion;</span>
+<span class="sd">    or b) the same combination of attribute name and operator is encountered</span>
+<span class="sd">    multiple times.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IFilterSpecificationBuilder</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec_factory</span><span class="p">):</span>
+        <span class="n">SpecificationBuilder</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec_factory</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__history</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">build_equal_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_equal_to</span><span class="p">,</span>
+                              <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_equal_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_equal_to</span><span class="p">,</span>
+                              <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_starts_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_starts_with</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_starts_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_starts_with</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_ends_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_ends_with</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_ends_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_ends_with</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_contained</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="c"># For the CONTAINED spec, we treat all parsed values as one value.</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_contained</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="p">[</span><span class="n">attr_values</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_contained</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="c"># For the CONTAINED spec, we treat all parsed values as one value.</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_contained</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="p">[</span><span class="n">attr_values</span><span class="p">])</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_contains</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_contains</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_less_than_or_equal_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_less_than_or_equal_to</span><span class="p">,</span>
+                            <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_less_than</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_less_than</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_greater_than_or_equal_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_greater_than_or_equal_to</span><span class="p">,</span>
+                        <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_greater_than</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_greater_than</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_in_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_in_range</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">build_not_in_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_in_range</span><span class="p">,</span>
+                                 <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">)</span><span class="o">.</span><span class="n">not_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_specification</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__build_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">constructor</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_values</span><span class="p">):</span>
+        <span class="c"># Check if this (constructor, attr_name) combination has been seen</span>
+        <span class="c"># before. Currently, this is handled with an exception.</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">constructor</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__history</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can not build multiple specifications with &#39;</span>
+                             <span class="s">&#39;the same combination of attribute name and &#39;</span>
+                             <span class="s">&#39;filter operator.&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="c"># Builds a single specification with the given spec constructor, </span>
+        <span class="c"># attribute name and attribute values. </span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="c"># Iterate over attribute values, forming disjunctions if more than one</span>
+        <span class="c"># was provided.</span>
+        <span class="k">for</span> <span class="n">attr_value</span> <span class="ow">in</span> <span class="n">attr_values</span><span class="p">:</span>
+            <span class="n">cur_spec</span> <span class="o">=</span> <span class="n">constructor</span><span class="p">(</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">attr_value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">spec</span> <span class="o">=</span> <span class="n">cur_spec</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spec_factory</span><span class="o">.</span><span class="n">create_disjunction</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">cur_spec</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">spec</span>
+
+</div>
+<div class="viewcode-block" id="FilterSpecificationVisitor"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.FilterSpecificationVisitor">[docs]</a><span class="k">class</span> <span class="nc">FilterSpecificationVisitor</span><span class="p">(</span><span class="n">SpecificationVisitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for filter specification visitors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">SpecificationVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_negation_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_starts_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_ends_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contains_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contained_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_in_range_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">CqlFilterExpression</span><span class="p">(</span><span class="n">CqlExpression</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    CQL expression representing a filter criterion.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__cql_format</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%(attr)s</span><span class="s">:</span><span class="si">%(op)s</span><span class="s">:</span><span class="si">%(val)s</span><span class="s">&#39;</span>
+    <span class="n">__cql_or</span> <span class="o">=</span> <span class="s">&#39;,&#39;</span>
+    <span class="n">__cql_not</span> <span class="o">=</span> <span class="s">&#39;not-&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">,</span> <span class="n">op_name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">CqlExpression</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span> <span class="o">=</span> <span class="n">attr_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">=</span> <span class="n">op_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">_as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cql_format</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span><span class="n">attr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span>
+                                        <span class="n">op</span><span class="o">=</span><span class="n">slug_from_identifier</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">op_name</span><span class="p">),</span>
+                                        <span class="n">val</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">attr_name</span> \
+           <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">op_name</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Attribute name and operator need to be the same &#39;</span>
+                             <span class="s">&#39;for CQL OR operation.&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__cql_or</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">__invert__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="ow">in</span> <span class="p">[</span><span class="n">STARTS_WITH</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ENDS_WITH</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">CONTAINED</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                            <span class="n">CONTAINS</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">EQUAL_TO</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">IN_RANGE</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+            <span class="n">op_name</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%s%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__cql_not</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">==</span> <span class="n">LESS_THAN</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">op_name</span> <span class="o">=</span> <span class="n">GREATER_OR_EQUALS</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">==</span> <span class="n">GREATER_THAN</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">op_name</span> <span class="o">=</span> <span class="n">LESS_OR_EQUALS</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">==</span> <span class="n">LESS_OR_EQUALS</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">op_name</span> <span class="o">=</span> <span class="n">GREATER_THAN</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span> <span class="o">==</span> <span class="n">GREATER_OR_EQUALS</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">op_name</span> <span class="o">=</span> <span class="n">LESS_THAN</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid (non-invertible) operator name </span><span class="si">%s</span><span class="s">.&#39;</span>
+                             <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">op_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">op_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CqlFilterSpecificationVisitor"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.CqlFilterSpecificationVisitor">[docs]</a><span class="k">class</span> <span class="nc">CqlFilterSpecificationVisitor</span><span class="p">(</span><span class="n">FilterSpecificationVisitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter specification visitor building a CQL expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IFilterSpecificationVisitor</span><span class="p">)</span>
+
+    <span class="n">__cql_range_format</span> <span class="o">=</span> <span class="s">&#39;</span><span class="si">%(from_value)s</span><span class="s">-</span><span class="si">%(to_value)s</span><span class="s">&#39;</span>
+
+    <span class="k">def</span> <span class="nf">_starts_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">STARTS_WITH</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_ends_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">ENDS_WITH</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_contains_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">CONTAINS</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_contained_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">value_string</span> <span class="o">=</span> \
+            <span class="s">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">CONTAINED</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="n">value_string</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">EQUAL_TO</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">LESS_THAN</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">LESS_OR_EQUALS</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">GREATER_THAN</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">GREATER_OR_EQUALS</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_in_range_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">from_value</span><span class="p">,</span> <span class="n">to_value</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cql_range_format</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span>
+                          <span class="n">from_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">from_value</span><span class="p">),</span>
+                          <span class="n">to_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_value</span><span class="p">(</span><span class="n">to_value</span><span class="p">)</span>
+                          <span class="p">)</span>
+        <span class="k">return</span> <span class="n">CqlFilterExpression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__preprocess_attribute</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">),</span>
+                                   <span class="n">IN_RANGE</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                   <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_conjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span> <span class="c"># unused pylint:disable=W0613</span>
+        <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="n">operator_and</span><span class="p">,</span> <span class="n">expressions</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="n">operator_or</span><span class="p">,</span> <span class="n">expressions</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_negation_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">return</span> <span class="o">~</span><span class="n">expression</span>
+
+    <span class="k">def</span> <span class="nf">__preprocess_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">slug_from_identifier</span><span class="p">(</span><span class="n">attr_name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__preprocess_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">basestring</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="s">&#39;&quot;</span><span class="si">%s</span><span class="s">&quot;&#39;</span> <span class="o">%</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="n">IResource</span><span class="o">.</span><span class="n">providedBy</span><span class="p">(</span><span class="n">value</span><span class="p">):</span> <span class="c"># pylint: disable=E1101</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">resource_to_url</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+</div>
+<div class="viewcode-block" id="SqlFilterSpecificationVisitor"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.SqlFilterSpecificationVisitor">[docs]</a><span class="k">class</span> <span class="nc">SqlFilterSpecificationVisitor</span><span class="p">(</span><span class="n">FilterSpecificationVisitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter specification visitor building a SQL expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IFilterSpecificationVisitor</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SqlFilterSpecificationVisitor.__init__"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.SqlFilterSpecificationVisitor.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">,</span> <span class="n">custom_clause_factories</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs a SqlFilterSpecificationVisitor</span>
+
+<span class="sd">        :param entity_class: an entity class that is mapped with SQLAlchemy</span>
+<span class="sd">        :param custom_clause_factories: a map containing custom clause factory </span>
+<span class="sd">          functions for selected (attribute name, operator) combinations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">FilterSpecificationVisitor</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_class</span> <span class="o">=</span> <span class="n">entity_class</span>
+        <span class="k">if</span> <span class="n">custom_clause_factories</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">custom_clause_factories</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__custom_clause_factories</span> <span class="o">=</span> <span class="n">custom_clause_factories</span>
+</div>
+    <span class="k">def</span> <span class="nf">visit_nullary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__custom_clause_factories</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_push</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__custom_clause_factories</span><span class="p">[</span><span class="n">key</span><span class="p">](</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">FilterSpecificationVisitor</span><span class="o">.</span><span class="n">visit_nullary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_starts_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;startswith&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_ends_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;endswith&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contains_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;contains&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contained_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;in_&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;__eq__&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;__lt__&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;__le__&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;__gt__&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;__ge__&#39;</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_in_range_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="n">from_value</span><span class="p">,</span> <span class="n">to_value</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">attr_value</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__build</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">attr_name</span><span class="p">,</span> <span class="s">&#39;between&#39;</span><span class="p">,</span> <span class="n">from_value</span><span class="p">,</span> <span class="n">to_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_conjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sqlalchemy_and</span><span class="p">(</span><span class="o">*</span><span class="n">expressions</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sqlalchemy_or</span><span class="p">(</span><span class="o">*</span><span class="n">expressions</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_negation_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sqlalchemy_not</span><span class="p">(</span><span class="n">expression</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__build</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute_name</span><span class="p">,</span> <span class="n">sql_op</span><span class="p">,</span> <span class="o">*</span><span class="n">values</span><span class="p">):</span>
+        <span class="c"># Builds an SQL expression from the given (possibly dotted) </span>
+        <span class="c"># attribute name, SQL operation name, and values.</span>
+        <span class="n">exprs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">infos</span> <span class="o">=</span> <span class="n">OrmAttributeInspector</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__entity_class</span><span class="p">,</span>
+                                              <span class="n">attribute_name</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">infos</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">infos</span><span class="p">):</span>
+            <span class="n">kind</span><span class="p">,</span> <span class="n">entity_attr</span> <span class="o">=</span> <span class="n">info</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c">#</span>
+                <span class="n">args</span> <span class="o">=</span> \
+                    <span class="p">[</span><span class="n">val</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span> <span class="k">if</span> <span class="n">IResource</span><span class="o">.</span><span class="n">providedBy</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">else</span> <span class="n">val</span> <span class="c"># pylint: disable=E1101</span>
+                     <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+                <span class="n">expr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">entity_attr</span><span class="p">,</span> <span class="n">sql_op</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">ENTITY</span><span class="p">:</span>
+                <span class="n">expr</span> <span class="o">=</span> <span class="n">entity_attr</span><span class="o">.</span><span class="n">has</span>
+                <span class="n">exprs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">expr</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">EntityAttributeKinds</span><span class="o">.</span><span class="n">AGGREGATE</span><span class="p">:</span>
+                <span class="n">expr</span> <span class="o">=</span> <span class="n">entity_attr</span><span class="o">.</span><span class="n">any</span>
+                <span class="n">exprs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">expr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">g</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="n">h</span><span class="p">(</span><span class="n">g</span><span class="p">),</span> <span class="n">exprs</span><span class="p">,</span> <span class="n">expr</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="EvalFilterSpecificationVisitor"><a class="viewcode-back" href="../../../api/everest.querying.filtering.html#everest.querying.filtering.EvalFilterSpecificationVisitor">[docs]</a><span class="k">class</span> <span class="nc">EvalFilterSpecificationVisitor</span><span class="p">(</span><span class="n">FilterSpecificationVisitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter specification visitor building an evaluator for in-memory </span>
+<span class="sd">    filtering.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implements</span><span class="p">(</span><span class="n">IFilterSpecificationVisitor</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__evaluator</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">entities</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">ent</span> <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">entities</span> <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">is_satisfied_by</span><span class="p">(</span><span class="n">ent</span><span class="p">)]</span>
+
+    <span class="k">def</span> <span class="nf">_conjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disjunction_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="o">*</span><span class="n">expressions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_negation_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_starts_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_ends_with_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contains_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_contained_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_less_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_greater_than_or_equal_to_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_in_range_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__evaluator</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

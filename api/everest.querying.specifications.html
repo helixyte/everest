@@ -1,0 +1,389 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.querying.specifications &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-everest.querying.specifications">
+<span id="everest-querying-specifications"></span><h1>everest.querying.specifications<a class="headerlink" href="#module-everest.querying.specifications" title="Permalink to this headline">¶</a></h1>
+<p>Specifications.</p>
+<p>This file is part of the everest project. 
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</p>
+<p>The central idea of a Specification is to separate the statement of how to 
+match a candidate from the candidate object that it is matched against.</p>
+<dl class="class">
+<dt id="everest.querying.specifications.CompositeFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">CompositeFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#CompositeFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.CompositeFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.FilterSpecification</span></tt></a></p>
+<p>Abstract base class for specifications that are composed of two other
+specifications.</p>
+<dl class="method">
+<dt id="everest.querying.specifications.CompositeFilterSpecification.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#CompositeFilterSpecification.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.CompositeFilterSpecification.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a CompositeFilterSpecification</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>left_spec</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the left part of the composite specification</li>
+<li><strong>right_spec</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the right part of the composite specification</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ConjunctionFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ConjunctionFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ConjunctionFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CompositeFilterSpecification" title="everest.querying.specifications.CompositeFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CompositeFilterSpecification</span></tt></a></p>
+<p>Concrete conjuction specification.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.CriterionFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">CriterionFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#CriterionFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.CriterionFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.LeafFilterSpecification" title="everest.querying.specifications.LeafFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.LeafFilterSpecification</span></tt></a></p>
+<p>Abstract base class for specifications representing filter criteria.</p>
+<dl class="method">
+<dt id="everest.querying.specifications.CriterionFilterSpecification.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#CriterionFilterSpecification.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.CriterionFilterSpecification.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a filter specification for a query criterion.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>operator</strong> (<tt class="xref py py-class docutils literal"><span class="pre">everest.querying.operators.Operator</span></tt>) &#8211; operator</li>
+<li><strong>attr_name</strong> (<em>str</em>) &#8211; the candidate&#8217;s attribute name</li>
+<li><strong>attr_value</strong> &#8211; the value that satisfies the specification</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.DisjuctionFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">DisjuctionFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#DisjuctionFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CompositeFilterSpecification" title="everest.querying.specifications.CompositeFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CompositeFilterSpecification</span></tt></a></p>
+<p>Concrete disjuction specification.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.FilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">FilterSpecification</tt><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.Specification" title="everest.querying.base.Specification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.Specification</span></tt></a></p>
+<p>Abstract base class for all filter specifications.</p>
+<dl class="method">
+<dt id="everest.querying.specifications.FilterSpecification.and_">
+<tt class="descname">and_</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.and_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.and_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="everest.querying.specifications.ConjunctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">ConjunctionFilterSpecification</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the other specification</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a new conjuction specification</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="everest.querying.specifications.ConjunctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">ConjunctionFilterSpecification</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.querying.specifications.FilterSpecification.is_satisfied_by">
+<tt class="descname">is_satisfied_by</tt><big>(</big><em>candidate</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.is_satisfied_by"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.is_satisfied_by" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tells if the given candidate object matches this specification.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>candidate</strong> (<em>object</em>) &#8211; the candidate object</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if the specification is met by the candidate.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.querying.specifications.FilterSpecification.not_">
+<tt class="descname">not_</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.not_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.not_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.NegationFilterSpecification" title="everest.querying.specifications.NegationFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">NegationFilterSpecification</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a new negation specification</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.NegationFilterSpecification" title="everest.querying.specifications.NegationFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">NegationFilterSpecification</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.querying.specifications.FilterSpecification.or_">
+<tt class="descname">or_</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.or_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.or_" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="everest.querying.specifications.DisjuctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">DisjuctionFilterSpecification</span></tt></a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the other specification</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a new disjuction specification</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="everest.querying.specifications.DisjuctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">DisjuctionFilterSpecification</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.FilterSpecificationFactory">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">FilterSpecificationFactory</tt><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecificationFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecificationFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Filter specification factory.</p>
+<dl class="attribute">
+<dt id="everest.querying.specifications.FilterSpecificationFactory.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.querying.specifications.FilterSpecificationFactory.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.LeafFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">LeafFilterSpecification</tt><a class="reference internal" href="../_modules/everest/querying/specifications.html#LeafFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.LeafFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.FilterSpecification</span></tt></a></p>
+<p>Abstract base class for specifications that represent leaves in a 
+specification tree.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.NaturalOrderSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">NaturalOrderSpecification</tt><big>(</big><em>attr_name</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#NaturalOrderSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.NaturalOrderSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.ObjectOrderSpecification</span></tt></p>
+<p>See <a class="reference external" href="http://www.codinghorror.com/blog/2007/12/sorting-for-humans-natural-sort-order.html">http://www.codinghorror.com/blog/2007/12/sorting-for-humans-natural-sort-order.html</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.NegationFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">NegationFilterSpecification</tt><big>(</big><em>wrapped_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#NegationFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.NegationFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.FilterSpecification</span></tt></a></p>
+<p>Concrete negation specification.</p>
+<dl class="method">
+<dt id="everest.querying.specifications.NegationFilterSpecification.__eq__">
+<tt class="descname">__eq__</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#NegationFilterSpecification.__eq__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.NegationFilterSpecification.__eq__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Equality operator</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.querying.specifications.NegationFilterSpecification.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>wrapped_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#NegationFilterSpecification.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.NegationFilterSpecification.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructs a NegationFilterSpecification</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>wrapped</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the wrapped specification</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.querying.specifications.NegationFilterSpecification.__ne__">
+<tt class="descname">__ne__</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#NegationFilterSpecification.__ne__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.NegationFilterSpecification.__ne__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inequality operator</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.OrderSpecificationFactory">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">OrderSpecificationFactory</tt><a class="reference internal" href="../_modules/everest/querying/specifications.html#OrderSpecificationFactory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.OrderSpecificationFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Order specification factory.</p>
+<dl class="attribute">
+<dt id="everest.querying.specifications.OrderSpecificationFactory.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.querying.specifications.OrderSpecificationFactory.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueContainedFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueContainedFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueContainedFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueContainedFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value contained in a list of values specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueContainsFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueContainsFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueContainsFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueContainsFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value contains specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueEndsWithFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueEndsWithFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueEndsWithFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueEndsWithFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value ends with specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueEqualToFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueEqualToFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueEqualToFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueEqualToFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value equal to specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueGreaterThanFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueGreaterThanFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueGreaterThanFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueGreaterThanFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value greater than specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueGreaterThanOrEqualToFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueGreaterThanOrEqualToFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueGreaterThanOrEqualToFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueGreaterThanOrEqualToFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value greater than or equal to specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueInRangeFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueInRangeFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueInRangeFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueInRangeFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete specification for a range of values</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueLessThanFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueLessThanFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueLessThanFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueLessThanFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value less than specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueLessThanOrEqualToFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueLessThanOrEqualToFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueLessThanOrEqualToFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueLessThanOrEqualToFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value less than or equal to specification</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="everest.querying.specifications.ValueStartsWithFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ValueStartsWithFilterSpecification</tt><big>(</big><em>attr_name</em>, <em>attr_value</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ValueStartsWithFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ValueStartsWithFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CriterionFilterSpecification" title="everest.querying.specifications.CriterionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CriterionFilterSpecification</span></tt></a></p>
+<p>Concrete value starts with specification</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/api/everest.querying.specifications.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">everest 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,818 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>everest.resources.entitystores &mdash; everest 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="everest 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for everest.resources.entitystores</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Entity stores.</span>
+
+<span class="sd">This file is part of the everest project. </span>
+<span class="sd">See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.</span>
+
+<span class="sd">Created on Jan 31, 2012.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">everest.mime</span> <span class="kn">import</span> <span class="n">CsvMime</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">Session</span> <span class="k">as</span> <span class="n">SaSessionFactory</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">empty_metadata</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">get_engine</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">get_metadata</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">is_engine_initialized</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">is_metadata_initialized</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">map_system_entities</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">set_engine</span>
+<span class="kn">from</span> <span class="nn">everest.orm</span> <span class="kn">import</span> <span class="n">set_metadata</span>
+<span class="kn">from</span> <span class="nn">everest.resources.interfaces</span> <span class="kn">import</span> <span class="n">IEntityStore</span>
+<span class="kn">from</span> <span class="nn">everest.resources.io</span> <span class="kn">import</span> <span class="n">dump_resource</span>
+<span class="kn">from</span> <span class="nn">everest.resources.io</span> <span class="kn">import</span> <span class="n">get_read_collection_path</span>
+<span class="kn">from</span> <span class="nn">everest.resources.io</span> <span class="kn">import</span> <span class="n">get_write_collection_path</span>
+<span class="kn">from</span> <span class="nn">everest.resources.io</span> <span class="kn">import</span> <span class="n">load_collection_from_url</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_collection_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">get_member_class</span>
+<span class="kn">from</span> <span class="nn">everest.resources.utils</span> <span class="kn">import</span> <span class="n">new_stage_collection</span>
+<span class="kn">from</span> <span class="nn">everest.utils</span> <span class="kn">import</span> <span class="n">id_generator</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.engine</span> <span class="kn">import</span> <span class="n">create_engine</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.pool</span> <span class="kn">import</span> <span class="n">StaticPool</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">RLock</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">local</span>
+<span class="kn">from</span> <span class="nn">transaction.interfaces</span> <span class="kn">import</span> <span class="n">IDataManager</span>
+<span class="kn">from</span> <span class="nn">weakref</span> <span class="kn">import</span> <span class="n">WeakValueDictionary</span>
+<span class="kn">from</span> <span class="nn">zope.interface</span> <span class="kn">import</span> <span class="n">implements</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">from</span> <span class="nn">zope.sqlalchemy</span> <span class="kn">import</span> <span class="n">ZopeTransactionExtension</span> <span class="c"># pylint: disable=E0611,F0401</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">transaction</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s">&#39;reStructuredText en&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;CachingEntityStore&#39;</span><span class="p">,</span>
+           <span class="s">&#39;DataManager&#39;</span><span class="p">,</span>
+           <span class="s">&#39;EntityStore&#39;</span><span class="p">,</span>
+           <span class="s">&#39;FileSystemEntityStore&#39;</span><span class="p">,</span>
+           <span class="s">&#39;OrmEntityStore&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="EntityStore"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.EntityStore">[docs]</a><span class="k">class</span> <span class="nc">EntityStore</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all entity stores.</span>
+<span class="sd">    </span>
+<span class="sd">    An entity store is responsible for configuration and initialization of a</span>
+<span class="sd">    storage backend for entities. It also creates and holds a session factory</span>
+<span class="sd">    which is used to create a (thread-local) session. The session alone</span>
+<span class="sd">    provides access to the entities loaded from the entity store. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IEntityStore</span><span class="p">)</span>
+
+    <span class="n">_configurables</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;messaging_enable&#39;</span><span class="p">,</span> <span class="s">&#39;messaging_reset_on_start&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c">#: Flag indicating that the sessions using this entity store should</span>
+        <span class="c">#: join the zope transaction.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span> <span class="o">=</span> <span class="n">join_transaction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__session_factory</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configurables</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Invalid configuration key &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Perform initialization specific to the derived class.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize</span><span class="p">()</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">session_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__session_factory</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Create a session factory. The call to _initialize may depend on </span>
+            <span class="c"># the session factory being instantiated.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__session_factory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_session_factory</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__session_factory</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__name</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="EntityStore.configuration"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.EntityStore.configuration">[docs]</a>    <span class="k">def</span> <span class="nf">configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a copy of the configuration for this entity store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_initialized</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs initialization of the entity store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_make_session_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create the session factory for this entity store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">SessionFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">join_transaction</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span> <span class="o">=</span> <span class="n">join_transaction</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&#39;Abstract method.&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">OrmSessionFactory</span><span class="p">(</span><span class="n">SessionFactory</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">SaSessionFactory</span><span class="o">.</span><span class="n">registry</span><span class="o">.</span><span class="n">has</span><span class="p">():</span>
+            <span class="c"># Enable the transaction extension.</span>
+            <span class="n">SaSessionFactory</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">extension</span><span class="o">=</span><span class="n">ZopeTransactionExtension</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">SaSessionFactory</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="OrmEntityStore"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.OrmEntityStore">[docs]</a><span class="k">class</span> <span class="nc">OrmEntityStore</span><span class="p">(</span><span class="n">EntityStore</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    EntityStore connected to an ORM backend.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_configurables</span> <span class="o">=</span> <span class="n">EntityStore</span><span class="o">.</span><span class="n">_configurables</span> \
+                     <span class="o">+</span> <span class="p">[</span><span class="s">&#39;db_string&#39;</span><span class="p">,</span> <span class="s">&#39;metadata_factory&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">EntityStore</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="n">join_transaction</span><span class="p">)</span>
+        <span class="c"># Default to an in-memory sqlite DB.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">db_string</span><span class="o">=</span><span class="s">&#39;sqlite://&#39;</span><span class="p">,</span> <span class="n">metadata_factory</span><span class="o">=</span><span class="n">empty_metadata</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Manages an ORM engine and a metadata instance for this entity store.</span>
+        <span class="c"># Both are global objects that should only be created once per process</span>
+        <span class="c"># (for each ORM entity store), hence we use a global object manager. </span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_engine_initialized</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">db_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;db_string&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">db_string</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;sqlite://&#39;</span><span class="p">):</span>
+                <span class="c"># Enable connection sharing across threads for pysqlite. </span>
+                <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;poolclass&#39;</span><span class="p">:</span><span class="n">StaticPool</span><span class="p">,</span>
+                      <span class="s">&#39;connect_args&#39;</span><span class="p">:{</span><span class="s">&#39;check_same_thread&#39;</span><span class="p">:</span><span class="bp">False</span><span class="p">}</span>
+                      <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">kw</span> <span class="o">=</span> <span class="p">{}</span> <span class="c"># pragma: no cover</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="n">db_string</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+            <span class="c"># Bind the session factory to the engine.</span>
+            <span class="n">SaSessionFactory</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
+            <span class="n">set_engine</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">engine</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">get_engine</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_metadata_initialized</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            <span class="n">md_fac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;metadata_factory&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;messaging_enable&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">):</span>
+                <span class="c"># Wrap the metadata callback to also call the mapping function</span>
+                <span class="c"># for system entities.</span>
+                <span class="n">reset_on_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;messaging_reset_on_start&#39;</span><span class="p">,</span>
+                                                  <span class="bp">False</span><span class="p">)</span>
+                <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span>
+                            <span class="n">reset_on_start</span><span class="o">=</span><span class="n">reset_on_start</span><span class="p">):</span>
+                    <span class="n">metadata</span> <span class="o">=</span> <span class="n">md_fac</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+                    <span class="n">map_system_entities</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">reset_on_start</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">metadata</span>
+                <span class="n">metadata</span> <span class="o">=</span> <span class="n">wrapper</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">metadata</span> <span class="o">=</span> <span class="n">md_fac</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
+            <span class="n">set_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">metadata</span><span class="o">.</span><span class="n">bind</span> <span class="o">=</span> <span class="n">engine</span>
+
+    <span class="k">def</span> <span class="nf">_make_session_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OrmSessionFactory</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">InMemorySessionFactory</span><span class="p">(</span><span class="n">SessionFactory</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Factory for :class:`InMemorySession` instances.</span>
+<span class="sd">    </span>
+<span class="sd">    The factory creates exactly one session per thread.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_store</span><span class="p">,</span> <span class="n">autoflush</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="n">SessionFactory</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">join_transaction</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span> <span class="o">=</span> <span class="n">entity_store</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__autoflush</span> <span class="o">=</span> <span class="n">autoflush</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__session_registry</span> <span class="o">=</span> <span class="n">local</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__session_registry</span><span class="p">,</span> <span class="s">&#39;session&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">session</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">session</span> <span class="o">=</span> <span class="n">InMemorySession</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span><span class="p">,</span>
+                                      <span class="n">autoflush</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__autoflush</span><span class="p">,</span>
+                                      <span class="n">join_transaction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__session_registry</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
+        <span class="k">return</span> <span class="n">session</span>
+
+
+<div class="viewcode-block" id="CachingEntityStore"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.CachingEntityStore">[docs]</a><span class="k">class</span> <span class="nc">CachingEntityStore</span><span class="p">(</span><span class="n">EntityStore</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An entity store that caches all entities in memory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_configurables</span> <span class="o">=</span> <span class="n">EntityStore</span><span class="o">.</span><span class="n">_configurables</span>
+
+<div class="viewcode-block" id="CachingEntityStore.__init__"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.CachingEntityStore.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">cache_loader</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cosntructor.</span>
+<span class="sd">        </span>
+<span class="sd">        :param name: name for this entity store (propagated to repository).</span>
+<span class="sd">        :param join_transaction: indicates whether this store should </span>
+<span class="sd">            participate in the Zope transaction.</span>
+<span class="sd">        :param cache_loader: optional callable accepting an entity class</span>
+<span class="sd">            and returning a list of entities that will be used for initial</span>
+<span class="sd">            population of the cache upon first access.    </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">EntityStore</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="n">join_transaction</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_id_generators</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">id_generator</span><span class="p">)</span>
+        <span class="c"># Maps entity classes to lists of entities.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span> <span class="o">=</span> <span class="n">EntityCacheMap</span><span class="p">(</span><span class="n">cache_loader</span><span class="p">)</span>
+        <span class="c"># Lock for cache operations.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_lock</span> <span class="o">=</span> <span class="n">RLock</span><span class="p">()</span>
+        <span class="c"># The cache populator.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span> <span class="o">=</span> <span class="n">cache_loader</span>
+</div>
+    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_lock</span><span class="p">:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">entity_cls</span><span class="p">,</span> <span class="n">added_entities</span><span class="p">)</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">added</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">added_entity</span> <span class="ow">in</span> <span class="n">added_entities</span><span class="p">:</span>
+                    <span class="n">cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">added_entity</span><span class="p">)</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">entity_cls</span><span class="p">,</span> <span class="n">removed_entities</span><span class="p">)</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">removed</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">rmvd_entity</span> <span class="ow">in</span> <span class="n">removed_entities</span><span class="p">:</span>
+                    <span class="n">cache</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">rmvd_entity</span><span class="p">)</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">entity_cls</span><span class="p">,</span> <span class="n">dirty_entities</span><span class="p">)</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">dirty</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+                <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">drt_entity</span> <span class="ow">in</span> <span class="n">dirty_entities</span><span class="p">:</span>
+                    <span class="n">cache</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">drt_entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+        <span class="c"># FIXME: Is there anything we should do here? pylint: disable=W0511</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_make_session_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">InMemorySessionFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                      <span class="n">join_transaction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CachingEntityStore.copy"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.CachingEntityStore.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a deep copy of the entire entity cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</div>
+    <span class="k">def</span> <span class="nf">get_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">):</span>
+        <span class="n">id_gen</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_id_generators</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">id_gen</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ent_cls</span><span class="p">):</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ent_cls</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="n">EntityCache</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">ent_cls</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span><span class="p">(</span><span class="n">ent_cls</span><span class="p">):</span>
+                    <span class="n">cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ent</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cache</span>
+
+</div>
+<div class="viewcode-block" id="FileSystemEntityStore"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.FileSystemEntityStore">[docs]</a><span class="k">class</span> <span class="nc">FileSystemEntityStore</span><span class="p">(</span><span class="n">CachingEntityStore</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    EntityStore using the file system as storage.</span>
+<span class="sd">    </span>
+<span class="sd">    On initialization, this entity store loads resource representations from</span>
+<span class="sd">    files into the root repository. Each commit operation writes the specified</span>
+<span class="sd">    resource back to file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_configurables</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;directory&#39;</span><span class="p">,</span> <span class="s">&#39;content_type&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="n">CachingEntityStore</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+                                    <span class="n">join_transaction</span><span class="o">=</span><span class="n">join_transaction</span><span class="p">,</span>
+                                    <span class="n">cache_loader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__load_entities</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="n">content_type</span><span class="o">=</span><span class="n">CsvMime</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FileSystemEntityStore.commit"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.FileSystemEntityStore.commit">[docs]</a>    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dump all resources that were modified by the given session back into</span>
+<span class="sd">        the store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">CachingEntityStore</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">entity_cls</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">dirty</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__dump_entities</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_make_session_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">InMemorySessionFactory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                      <span class="n">autoflush</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                                      <span class="n">join_transaction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_join_transaction</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__load_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">):</span>
+        <span class="n">coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">get_read_collection_path</span><span class="p">(</span><span class="n">coll_cls</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;content_type&#39;</span><span class="p">],</span>
+                                      <span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;directory&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fn</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="s">&#39;file://</span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="n">fn</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="n">load_collection_from_url</span><span class="p">(</span><span class="n">coll_cls</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span>
+                                            <span class="n">content_type</span><span class="o">=</span>
+                                                <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;content_type&#39;</span><span class="p">],</span>
+                                            <span class="n">resolve_urls</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="p">[</span><span class="n">mb</span><span class="o">.</span><span class="n">get_entity</span><span class="p">()</span> <span class="k">for</span> <span class="n">mb</span> <span class="ow">in</span> <span class="n">coll</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="n">ents</span>
+
+    <span class="k">def</span> <span class="nf">__dump_entities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">):</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cache</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="n">coll_cls</span> <span class="o">=</span> <span class="n">get_collection_class</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="n">mb_cls</span> <span class="o">=</span> <span class="n">get_member_class</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">get_write_collection_path</span><span class="p">(</span><span class="n">coll_cls</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;content_type&#39;</span><span class="p">],</span>
+                                       <span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;directory&#39;</span><span class="p">])</span>
+        <span class="c"># Wrap the entities in a temporary collection.</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="n">new_stage_collection</span><span class="p">(</span><span class="n">coll_cls</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_all</span><span class="p">():</span>
+            <span class="n">coll</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">mb_cls</span><span class="o">.</span><span class="n">create_from_entity</span><span class="p">(</span><span class="n">ent</span><span class="p">))</span>
+        <span class="c"># Open stream for writing and dump the collection.</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="nb">file</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">stream</span><span class="p">:</span>
+            <span class="n">dump_resource</span><span class="p">(</span><span class="n">coll</span><span class="p">,</span> <span class="n">stream</span><span class="p">,</span>
+                          <span class="n">content_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_config</span><span class="p">[</span><span class="s">&#39;content_type&#39;</span><span class="p">])</span>
+
+</div>
+<span class="k">class</span> <span class="nc">EntityCache</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cache for entities.</span>
+<span class="sd">    </span>
+<span class="sd">    Supports add, remove, and replace operations as well as lookup by ID and </span>
+<span class="sd">    by slug.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># List of cached entities. This is the only place we are holding a </span>
+        <span class="c"># real reference to the entity.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c"># Dictionary mapping entity IDs to entities for fast lookup by ID.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span> <span class="o">=</span> <span class="n">WeakValueDictionary</span><span class="p">()</span>
+        <span class="c"># Dictionary mapping entity slugs to entities for fast lookup by slug.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span> <span class="o">=</span> <span class="n">WeakValueDictionary</span><span class="p">()</span>
+        <span class="c"># Internal flag indicating that the cache has to be rebuilt (i.e.,</span>
+        <span class="c"># the id and slug maps have to be updated). </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Clears the cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">rebuild</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Rebuilds the cache (i.e., rebuilds the ID -&gt; entity and slug -&gt; </span>
+<span class="sd">        entity mappings).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs a lookup of an entity by its ID.</span>
+<span class="sd">        </span>
+<span class="sd">        :param int entity_id: entity ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entity_id</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_by_slug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_slug</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs a lookup of an entity by its sluyg.</span>
+<span class="sd">        </span>
+<span class="sd">        :param str entity_id: entity slug</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">entity_slug</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns (a copy of) the list of all entities in this cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="p">[:]</span>
+
+    <span class="k">def</span> <span class="nf">replace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Replaces the entity in the cache that has the same ID as the given</span>
+<span class="sd">        entity with the latter.</span>
+<span class="sd">        </span>
+<span class="sd">        :param entity: entity to replace the cached entity with (must have</span>
+<span class="sd">            a not-None ID).</span>
+<span class="sd">        :type entity: object implementing :class:`everest.interfaces.IEntity`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Can only replace entities that have an ID.&#39;</span><span class="p">)</span>
+        <span class="n">old_entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">entity</span><span class="o">.</span><span class="n">slug</span> <span class="o">!=</span> <span class="n">old_entity</span><span class="o">.</span><span class="n">slug</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="p">[</span><span class="n">old_entity</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">old_entity</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds the given entity to this cache.</span>
+<span class="sd">        </span>
+<span class="sd">        At the point an entity is added, it must not have an ID or a slug</span>
+<span class="sd">        of another entity that is already in the cache. However, both the ID</span>
+<span class="sd">        and the slug may be *None* values.</span>
+
+<span class="sd">        :param entity: entity to add.</span>
+<span class="sd">        :type entity: object implementing :class:`everest.interfaces.IEntity`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+        <span class="c"># Perform checks first.</span>
+        <span class="n">ent_id</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ent_id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Duplicate entity ID &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">ent_id</span><span class="p">)</span>
+<span class="c">#            self.__id_map[ent_id] = entity</span>
+        <span class="n">ent_slug</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">slug</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ent_slug</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ent_slug</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Duplicate entity slug &quot;</span><span class="si">%s</span><span class="s">&quot;.&#39;</span> <span class="o">%</span> <span class="n">ent_slug</span><span class="p">)</span>
+<span class="c">#            self.__slug_map[ent_slug] = entity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># Sometimes, the slug is a lazy attribute; we *always* have to rebuild</span>
+        <span class="c"># when an entity was added.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Removes the given entity to this cache.</span>
+<span class="sd">        </span>
+<span class="sd">        :param entity: entity to remove.</span>
+<span class="sd">        :type entity: object implementing :class:`everest.interfaces.IEntity`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__rebuild</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span><span class="o">.</span><span class="n">slug</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="p">[</span><span class="n">entity</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a (deep) copy of this entity cache.</span>
+<span class="sd">        </span>
+<span class="sd">        :note: deep copying is necessary to ensure that changes on session</span>
+<span class="sd">            entities do not propagate to the reference entities in the store.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="p">:</span>
+            <span class="n">new_cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">ent</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">new_cache</span>
+
+    <span class="k">def</span> <span class="nf">__rebuild</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">entity</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entities</span><span class="p">:</span>
+            <span class="n">ent_id</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">id</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ent_id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__id_map</span><span class="p">[</span><span class="n">ent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+            <span class="n">ent_slug</span> <span class="o">=</span> <span class="n">entity</span><span class="o">.</span><span class="n">slug</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ent_slug</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__slug_map</span><span class="p">[</span><span class="n">ent_slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">entity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_rebuild</span> <span class="o">=</span> <span class="bp">False</span>
+
+
+<span class="k">class</span> <span class="nc">EntityCacheMap</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A map of entity caches.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_loader</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="nb">dict</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span> <span class="o">=</span> <span class="n">cache_loader</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">):</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_class</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">ents</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span><span class="p">(</span><span class="n">entity_class</span><span class="p">)</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="n">EntityCache</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">ent</span> <span class="ow">in</span> <span class="n">ents</span><span class="p">:</span>
+                <span class="n">cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ent</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__setitem__</span><span class="p">(</span><span class="n">entity_class</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cache</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">new_cache_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__cache_loader</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ent_cls</span><span class="p">,</span> <span class="n">cache</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">new_cache_map</span><span class="p">[</span><span class="n">ent_cls</span><span class="p">]</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">new_cache_map</span>
+
+
+<span class="k">class</span> <span class="nc">InMemorySession</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Session that uses a map of :class:`EntityCache` instances to</span>
+<span class="sd">    manage a &quot;unit of work&quot; on entities.</span>
+<span class="sd">    </span>
+<span class="sd">    Commit and rollback operations trigger the corresponding call on the</span>
+<span class="sd">    underlying caching entity store.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_store</span><span class="p">,</span> <span class="n">autoflush</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">join_transaction</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span> <span class="o">=</span> <span class="n">entity_store</span>
+        <span class="c">#: Flag controlling if a flush should be performed automatically</span>
+        <span class="c">#: at the time any of the get_* methods is executed.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">autoflush</span> <span class="o">=</span> <span class="n">autoflush</span>
+        <span class="c">#: Flag controlling if this session should join the zope transaction</span>
+        <span class="c">#: </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">join_transaction</span> <span class="o">=</span> <span class="n">join_transaction</span>
+        <span class="c"># Session state: modified entities (by entity class)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">weakref</span><span class="o">.</span><span class="n">WeakSet</span><span class="p">)</span>
+        <span class="c"># Session state: added entities (by entity class)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__added</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">weakref</span><span class="o">.</span><span class="n">WeakSet</span><span class="p">)</span>
+        <span class="c"># Session state: removed entities (by entity class)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__removed</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="n">weakref</span><span class="o">.</span><span class="n">WeakSet</span><span class="p">)</span>
+        <span class="c"># Session state: entities in the session (net of add and remove ops).</span>
+        <span class="c"># This is re-initialized when a sync with the store is performed.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span> <span class="o">=</span> <span class="n">EntityCacheMap</span><span class="p">()</span>
+        <span class="c"># Internal flag indicating that a flush is needed.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="c"># Internal flag indicating that the session needs to be synced with the</span>
+        <span class="c"># store.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="c">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Always flush before a commit.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="c"># Tell the entity store to do a commit.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c"># Reset state.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Tell the entity store to do a rollback.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span><span class="o">.</span><span class="n">rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c"># Reset state.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__added</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__removed</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">cache</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+            <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sync_with_store</span><span class="p">()</span>
+        <span class="c"># Avoid conflicting operations.</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__removed</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">removed</span><span class="p">:</span>
+            <span class="n">removed</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">added</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__added</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+            <span class="n">added</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># Update session cache.</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># If the removed entity was marked as dirty, discard. </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># Mark for flush.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">remove</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">,</span> <span class="n">entity</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sync_with_store</span><span class="p">()</span>
+        <span class="c"># Avoid conflicting operations.</span>
+        <span class="n">added</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__added</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">entity</span> <span class="ow">in</span> <span class="n">added</span><span class="p">:</span>
+            <span class="n">added</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">removed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__removed</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+            <span class="n">removed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># Update session cache.</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># If the removed entity was marked as dirty, discard. </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="c"># Mark for flush.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">get_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">,</span> <span class="n">entity_id</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sync_with_store</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">autoflush</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="n">entity_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entity</span>
+
+    <span class="k">def</span> <span class="nf">get_by_slug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">,</span> <span class="n">entity_slug</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sync_with_store</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">autoflush</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">entity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">get_by_slug</span><span class="p">(</span><span class="n">entity_slug</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">entity</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">entity</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entity</span>
+
+    <span class="k">def</span> <span class="nf">get_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entity_cls</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__sync_with_store</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">autoflush</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="n">entities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">get_all</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entities</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">entities</span>
+
+    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_flush</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="c"># Iterate over added entities and obtain new IDs from the store for </span>
+        <span class="c"># entities that do not have one.</span>
+        <span class="n">rebuild_cache</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">entity_cls</span><span class="p">,</span> <span class="n">added_entities</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__added</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="p">[</span><span class="n">entity_cls</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">ad_ent</span> <span class="ow">in</span> <span class="n">added_entities</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">ad_ent</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">new_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span><span class="o">.</span><span class="n">get_id</span><span class="p">(</span><span class="n">entity_cls</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">rebuild_cache</span><span class="p">:</span>
+                        <span class="n">rebuild_cache</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="n">ad_ent</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">new_id</span>
+        <span class="k">if</span> <span class="n">rebuild_cache</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cache</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span><span class="o">.</span><span class="n">itervalues</span><span class="p">():</span>
+                <span class="n">cache</span><span class="o">.</span><span class="n">rebuild</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">added</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__added</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">removed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__removed</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dirty</span>
+
+    <span class="k">def</span> <span class="nf">__sync_with_store</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">join_transaction</span><span class="p">:</span>
+            <span class="c"># If we have not already done so, create a data manager and join </span>
+            <span class="c"># the zope transaction.</span>
+            <span class="n">trx</span> <span class="o">=</span> <span class="n">transaction</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">trx</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span><span class="p">:</span>
+                <span class="n">dm</span> <span class="o">=</span> <span class="n">DataManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                <span class="n">trx</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dm</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__transaction</span> <span class="o">=</span> <span class="n">trx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__needs_sync</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entity_cache_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entity_store</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="DataManager"><a class="viewcode-back" href="../../../api/everest.resources.entitystores.html#everest.resources.entitystores.DataManager">[docs]</a><span class="k">class</span> <span class="nc">DataManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Data manager to plug an :class:`InMemorySession` into a zope transaction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># TODO: implement safepoints.</span>
+    <span class="n">implements</span><span class="p">(</span><span class="n">IDataManager</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
+
+    <span class="k">def</span> <span class="nf">abort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tpc_begin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tpc_vote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">tpc_finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">tpc_abort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trans</span><span class="p">):</span> <span class="c"># pylint: disable=W0613</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">sortKey</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;everest:</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">everest 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright Copyright (c) 2011-2012 F. Oliver Gathmann, Cenix BioScience, Dresden, Germany .
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
