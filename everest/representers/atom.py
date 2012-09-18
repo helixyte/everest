@@ -165,7 +165,7 @@ class AtomMappingRegistry(XmlMappingRegistry):
 
     def _initialize(self):
         # Create mappings for Member and Collection resource bases classes.
-        atom_opts = dict(xml_schema='everest:representers/atom.xsd',
+        atom_opts = dict(xml_schema='everest:schemata/atom.xsd',
                          xml_ns=XML_NS_ATOM,
                          xml_prefix=XML_PREFIX_ATOM)
         mb_config = \

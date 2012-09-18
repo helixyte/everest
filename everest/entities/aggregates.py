@@ -87,10 +87,17 @@ class MemoryAggregate(Aggregate):
         pass
 
     def __get_entities(self):
-        if self._relationship is None or self._relationship.children is None:
+        if self._relationship is None:
             ents = self._session.get_all(self.entity_class)
         else:
-            ents = self._relationship.children
+            if self._relationship.children is None:
+                ents = self._session.get_all(self.entity_class)
+                visitor = \
+                    get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
+                self._relationship.specification.accept(visitor)
+                ents = visitor.expression(ents)
+            else:
+                ents = self._relationship.children
         if not self._filter_spec is None:
             visitor = get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
             self._filter_spec.accept(visitor)

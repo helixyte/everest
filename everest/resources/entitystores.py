@@ -229,15 +229,20 @@ class CachingEntityStore(EntityStore):
             population of the cache upon first access.    
         """
         EntityStore.__init__(self, name, join_transaction=join_transaction)
-        self._id_generators = defaultdict(id_generator)
+        # A map of (global) ID generators.
+        self.__id_generators = {}
+        self.__next_id_map = {}
         # Maps entity classes to lists of entities.
-        self.__entity_cache_map = EntityCacheMap(cache_loader)
+        self.__entity_cache_map = {}
         # Lock for cache operations.
         self.__cache_lock = RLock()
-        # The cache populator.
+        # The cache loader.
         self.__cache_loader = cache_loader
 
     def commit(self, session):
+        """
+        Perform a commit using the given session's state.
+        """
         with self.__cache_lock:
             for (entity_cls, added_entities) in session.added.iteritems():
                 cache = self._get_cache(entity_cls)
@@ -253,8 +258,29 @@ class CachingEntityStore(EntityStore):
                     cache.replace(drt_entity)
 
     def rollback(self, session):
+        """
+        Perform a rollback using the given session's state.
+        """
         # FIXME: Is there anything we should do here? pylint: disable=W0511
         pass
+
+    def get_copy(self, entity_class):
+        """
+        Returns a deep copy of the cache for the given entity class.
+        
+        :returns: :class:`everest.resources.entitystores.EntityCache`
+        """
+        return self._get_cache(entity_class).copy()
+
+    def get_id(self, entity_cls):
+        """
+        Generates a new (global) ID for the given entity class.
+        """
+        with self.__cache_lock:
+            id_gen = self.__get_id_generator(entity_cls)
+            next_id = id_gen.next()
+            self.__next_id_map[entity_cls] = next_id
+            return next_id - 1
 
     def _initialize(self):
         pass
@@ -263,24 +289,46 @@ class CachingEntityStore(EntityStore):
         return InMemorySessionFactory(self,
                                       join_transaction=self._join_transaction)
 
-    def copy(self):
-        """
-        Returns a deep copy of the entire entity cache.
-        """
-        return self.__entity_cache_map.copy()
-
-    def get_id(self, entity_cls):
-        id_gen = self._id_generators[entity_cls]
-        return id_gen.next()
-
     def _get_cache(self, ent_cls):
+        """
+        Returns the entity cache for the given entity class. The cache will
+        be initialized on the fly if necessary.
+        
+        :returns: :class:`everest.resources.entitystores.EntityCache` 
+        """
         cache = self.__entity_cache_map.get(ent_cls)
         if cache is None:
-            cache = EntityCache()
-            self.__entity_cache_map[ent_cls] = cache
-            if not self.__cache_loader is None:
-                for ent in self.__cache_loader(ent_cls):
-                    cache.add(ent)
+            cache = self.__initialize_cache(ent_cls)
+        return cache
+
+    def __get_id_generator(self, ent_cls):
+        id_gen = self.__id_generators.get(ent_cls)
+        if id_gen is None:
+            # Initialize the global ID generator for the given entity class.
+            id_gen = self.__id_generators[ent_cls] = id_generator()
+            self.__next_id_map[ent_cls] = id_gen.next()
+            # Make sure the cache is initialized (and possibly loaded); this
+            # might affect the value for the next ID.
+            if self.__entity_cache_map.get(ent_cls) is None:
+                self.__initialize_cache(ent_cls)
+        return id_gen
+
+    def __initialize_cache(self, ent_cls):
+        cache = self.__entity_cache_map[ent_cls] = EntityCache()
+        if not self.__cache_loader is None:
+            max_id = -1
+            for ent in self.__cache_loader(ent_cls):
+                if ent.id is None:
+                    ent.id = self.get_id(ent_cls)
+                elif isinstance(ent.id, int) \
+                     and ent.id >= self.__next_id_map.get(ent_cls, 0):
+                    # If the loaded entity already has an ID, record the highest
+                    # ID so we can adjust the ID generator.
+                    max_id = ent.id + 1
+                cache.add(ent)
+            if max_id != -1:
+                id_gen = self.__get_id_generator(ent_cls)
+                id_gen.send(max_id)
         return cache
 
 
@@ -502,32 +550,32 @@ class EntityCache(object):
         self.__needs_rebuild = False
 
 
-class EntityCacheMap(dict):
-    """
-    A map of entity caches.
-    """
-    def __init__(self, cache_loader=None):
-        dict.__init__(self)
-        self.__cache_loader = cache_loader
-
-    def __getitem__(self, entity_class):
-        cache = dict.get(self, entity_class)
-        if cache is None:
-            if self.__cache_loader is None:
-                ents = []
-            else:
-                ents = self.__cache_loader(entity_class)
-            cache = EntityCache()
-            for ent in ents:
-                cache.add(ent)
-            self.__setitem__(entity_class, cache)
-        return cache
-
-    def copy(self):
-        new_cache_map = self.__class__(self.__cache_loader)
-        for ent_cls, cache in self.iteritems():
-            new_cache_map[ent_cls] = cache.copy()
-        return new_cache_map
+#class EntityCacheMap(dict):
+#    """
+#    A map of entity caches.
+#    """
+#    def __init__(self, cache_loader=None):
+#        dict.__init__(self)
+#        self.__cache_loader = cache_loader
+#
+#    def __getitem__(self, entity_class):
+#        cache = dict.get(self, entity_class)
+#        if cache is None:
+#            if self.__cache_loader is None:
+#                ents = []
+#            else:
+#                ents = self.__cache_loader(entity_class)
+#            cache = EntityCache()
+#            for ent in ents:
+#                cache.add(ent)
+#            self.__setitem__(entity_class, cache)
+#        return cache
+#
+#    def copy(self):
+#        new_cache_map = self.__class__(self.__cache_loader)
+#        for ent_cls, cache in self.iteritems():
+#            new_cache_map[ent_cls] = cache.copy()
+#        return new_cache_map
 
 
 class InMemorySession(object):
@@ -554,14 +602,19 @@ class InMemorySession(object):
         self.__removed = defaultdict(weakref.WeakSet)
         # Session state: entities in the session (net of add and remove ops).
         # This is re-initialized when a sync with the store is performed.
-        self.__entity_cache_map = EntityCacheMap()
+        self.__entity_cache_map = {}
         # Internal flag indicating that a flush is needed.
         self.__needs_flush = False
-        # Internal flag indicating that the session needs to be synced with the
-        # store.
-        self.__needs_sync = True
-        #
+        # Internal reference to the transaction (if joined).
         self.__transaction = None
+        if self.join_transaction:
+            # If we have not already done so, create a data manager and join 
+            # the zope transaction.
+            trx = transaction.get()
+            if not trx is self.__transaction:
+                dm = DataManager(self)
+                trx.join(dm)
+                self.__transaction = trx
 
     def commit(self):
         # Always flush before a commit.
@@ -581,14 +634,10 @@ class InMemorySession(object):
         self.__dirty.clear()
         self.__added.clear()
         self.__removed.clear()
-        for cache in self.__entity_cache_map.itervalues():
-            cache.clear()
+        self.__entity_cache_map.clear()
         self.__needs_flush = False
-        self.__needs_sync = True
 
     def add(self, entity_cls, entity):
-        if self.__needs_sync:
-            self.__sync_with_store()
         # Avoid conflicting operations.
         removed = self.__removed[entity_cls]
         if entity in removed:
@@ -597,7 +646,7 @@ class InMemorySession(object):
             added = self.__added[entity_cls]
             added.add(entity)
         # Update session cache.
-        cache = self.__entity_cache_map[entity_cls]
+        cache = self.__get_cache(entity_cls)
         cache.add(entity)
         # If the removed entity was marked as dirty, discard. 
         self.__dirty[entity_cls].discard(entity)
@@ -605,8 +654,6 @@ class InMemorySession(object):
         self.__needs_flush = True
 
     def remove(self, entity_cls, entity):
-        if self.__needs_sync:
-            self.__sync_with_store()
         # Avoid conflicting operations.
         added = self.__added[entity_cls]
         if entity in added:
@@ -615,7 +662,7 @@ class InMemorySession(object):
             removed = self.__removed[entity_cls]
             removed.add(entity)
         # Update session cache.
-        cache = self.__entity_cache_map[entity_cls]
+        cache = self.__get_cache(entity_cls)
         cache.remove(entity)
         # If the removed entity was marked as dirty, discard. 
         self.__dirty[entity_cls].discard(entity)
@@ -623,31 +670,25 @@ class InMemorySession(object):
         self.__needs_flush = True
 
     def get_by_id(self, entity_cls, entity_id):
-        if self.__needs_sync:
-            self.__sync_with_store()
         if self.__needs_flush and self.autoflush:
             self.flush()
-        entity = self.__entity_cache_map[entity_cls].get_by_id(entity_id)
+        entity = self.__get_cache(entity_cls).get_by_id(entity_id)
         if not entity is None:
             self.__dirty[entity_cls].add(entity)
         return entity
 
     def get_by_slug(self, entity_cls, entity_slug):
-        if self.__needs_sync:
-            self.__sync_with_store()
         if self.__needs_flush and self.autoflush:
             self.flush()
-        entity = self.__entity_cache_map[entity_cls].get_by_slug(entity_slug)
+        entity = self.__get_cache(entity_cls).get_by_slug(entity_slug)
         if not entity is None:
             self.__dirty[entity_cls].add(entity)
         return entity
 
     def get_all(self, entity_cls):
-        if self.__needs_sync:
-            self.__sync_with_store()
         if self.__needs_flush and self.autoflush:
             self.flush()
-        entities = self.__entity_cache_map[entity_cls].get_all()
+        entities = self.__get_cache(entity_cls).get_all()
         self.__dirty[entity_cls].update(entities)
         return entities
 
@@ -657,7 +698,7 @@ class InMemorySession(object):
         # entities that do not have one.
         rebuild_cache = False
         for (entity_cls, added_entities) in self.__added.iteritems():
-            cache = self.__entity_cache_map[entity_cls]
+            cache = self.__get_cache(entity_cls)
             for ad_ent in added_entities:
                 if ad_ent.id is None:
                     new_id = self.__entity_store.get_id(entity_cls)
@@ -680,17 +721,12 @@ class InMemorySession(object):
     def dirty(self):
         return self.__dirty
 
-    def __sync_with_store(self):
-        if self.join_transaction:
-            # If we have not already done so, create a data manager and join 
-            # the zope transaction.
-            trx = transaction.get()
-            if not trx is self.__transaction:
-                dm = DataManager(self)
-                trx.join(dm)
-                self.__transaction = trx
-        self.__needs_sync = False
-        self.__entity_cache_map = self.__entity_store.copy()
+    def __get_cache(self, ent_cls):
+        cache = self.__entity_cache_map.get(ent_cls)
+        if cache is None:
+            cache = self.__entity_store.get_copy(ent_cls)
+            self.__entity_cache_map[ent_cls] = cache
+        return cache
 
 
 class DataManager(object):

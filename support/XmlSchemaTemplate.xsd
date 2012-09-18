@@ -7,7 +7,7 @@
     xmlns:app="http://schemata.everest.org/application"
 >
     <import
-        schemaLocation="../everest/representers/Resource.xsd"
+        schemaLocation="Resource.xsd"
         namespace="http://schemata.everest.org/resource"
     >
     </import>
