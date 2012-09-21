@@ -52,10 +52,9 @@ from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import UserMessageMember
-from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
 from everest.url import ResourceUrlConverter
+from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
 from everest.views.postcollection import PostCollectionView
@@ -67,7 +66,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from everest.views.deletemember import DeleteMemberView
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -384,8 +382,8 @@ class Configurator(PyramidConfigurator):
     def add_resource_view(self, resource, view=None, request_method='GET',
                           **kw):
         if IInterface in provided_by(resource):
-            rcs = [get_member_class(resource),
-                   get_collection_class(resource)]
+            rcs = [self._get_utility(resource, 'collection-class'),
+                   self._get_utility(resource, 'member-class')]
         else:
             rcs = [resource]
         guess_default_view = view is None
@@ -410,13 +408,16 @@ class Configurator(PyramidConfigurator):
     def add_collection_view(self, resource, request_method='GET',
                             **kw):
         if IInterface in provided_by(resource):
-            resource = get_collection_class(resource)
+            resource = self._get_utility(resource, 'collection-class')
         self.add_resource_view(resource, request_method=request_method, **kw)
 
     def add_member_view(self, resource, request_method='GET', **kw):
         if IInterface in provided_by(resource):
-            resource = get_member_class(resource)
+            resource = self._get_utility(resource, 'member-class')
         self.add_resource_view(resource, request_method=request_method, **kw)
+
+    def _get_utility(self, *args, **kw):
+        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
 
     def _register_utility(self, *args, **kw):
         return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
