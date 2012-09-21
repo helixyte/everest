@@ -61,6 +61,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             schema="everest.directives.IOptionDirective"
             handler="everest.directives.option" />
         <meta:directive
+            name="resource_view"
+            schema="everest.directives.IResourceViewDirective"
+            handler="everest.directives.resource_view" />
+        <meta:directive
             name="collection_view"
             schema="everest.directives.ICollectionViewDirective"
             handler="everest.directives.collection_view" />

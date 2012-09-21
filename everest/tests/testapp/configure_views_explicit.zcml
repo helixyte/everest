@@ -1,0 +1,65 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Renderers. -->
+
+    <renderer
+        name="csv"
+        factory="everest.renderers.RendererFactory" />
+
+    <!-- Representers. -->
+
+    <!-- Resource declarations. -->
+
+    <resource
+        interface='.interfaces.IFoo'
+        collection=".resources.FooCollection"
+        member=".resources.FooMember"
+        entity=".entities.FooEntity"
+        collection_root_name="foos">
+        
+        <representer
+            kind="member"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foo" />
+        </representer>
+        <representer
+            kind="collection"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foos" />
+        </representer>
+    </resource>
+        
+    <!-- Views. -->
+    
+    <resource_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        name="csv"
+        renderer="csv"
+        request_method="GET" />
+
+    <resource_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <resource_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
+</configure>

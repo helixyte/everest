@@ -35,6 +35,7 @@ from everest.querying.ordering import OrderSpecificationDirector
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
+from everest.renderers import RendererFactory
 from everest.repository import REPOSITORIES
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
@@ -51,7 +52,14 @@ from everest.resources.interfaces import IService
 from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import UserMessageMember
+from everest.resources.utils import get_collection_class
+from everest.resources.utils import get_member_class
+from everest.resources.utils import provides_member_resource
 from everest.url import ResourceUrlConverter
+from everest.views.getcollection import GetCollectionView
+from everest.views.getmember import GetMemberView
+from everest.views.postcollection import PostCollectionView
+from everest.views.putmember import PutMemberView
 from pyramid.configuration import Configurator as PyramidConfigurator
 from pyramid.interfaces import IRequest
 from pyramid.path import caller_package
@@ -59,7 +67,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from everest.renderers import RendererFactory
+from everest.views.deletemember import DeleteMemberView
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -372,6 +380,43 @@ class Configurator(PyramidConfigurator):
                                            attribute_options=attribute_options)
         for rc in rcs:
             rpr_reg.register(rc, content_type, configuration=rpr_config)
+
+    def add_resource_view(self, resource, view=None, request_method='GET',
+                          **kw):
+        if IInterface in provided_by(resource):
+            rcs = [get_member_class(resource),
+                   get_collection_class(resource)]
+        else:
+            rcs = [resource]
+        guess_default_view = view is None
+        for rc in rcs:
+            if guess_default_view:
+                # Attempt to guess a default view.
+                if provides_member_resource(rc):
+                    if request_method == 'GET':
+                        view = GetMemberView
+                    elif request_method == 'PUT':
+                        view = PutMemberView
+                    elif request_method == 'DELETE':
+                        view = DeleteMemberView
+                else:
+                    if request_method == 'GET':
+                        view = GetCollectionView
+                    elif request_method == 'POST':
+                        view = PostCollectionView
+            self.add_view(context=rc, view=view, request_method=request_method,
+                         **kw)
+
+    def add_collection_view(self, resource, request_method='GET',
+                            **kw):
+        if IInterface in provided_by(resource):
+            resource = get_collection_class(resource)
+        self.add_resource_view(resource, request_method=request_method, **kw)
+
+    def add_member_view(self, resource, request_method='GET', **kw):
+        if IInterface in provided_by(resource):
+            resource = get_member_class(resource)
+        self.add_resource_view(resource, request_method=request_method, **kw)
 
     def _register_utility(self, *args, **kw):
         return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103

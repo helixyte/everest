@@ -10,7 +10,6 @@ from everest.orm import reset_metadata
 from everest.renderers import RendererFactory
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
 from everest.testing import FunctionalTestCase
@@ -28,11 +27,7 @@ from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.testing import create_collection
 from everest.traversal import SuffixResourceTraverser
 from everest.utils import get_repository_manager
-from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
-from everest.views.getmember import GetMemberView
-from everest.views.postcollection import PostCollectionView
-from everest.views.putmember import PutMemberView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
 from pkg_resources import resource_filename # pylint: disable=E0611
@@ -54,26 +49,18 @@ class BasicViewTestCase(FunctionalTestCase):
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
-        self.config.add_view(context=get_member_class(IMyEntity),
-                             view=GetMemberView,
-                             renderer='csv',
-                             request_method='GET')
-        self.config.add_view(context=get_collection_class(IMyEntity),
-                             view=GetCollectionView,
-                             renderer='csv',
-                             request_method='GET')
-        self.config.add_view(context=get_member_class(IMyEntity),
-                             view=PutMemberView,
-                             renderer='csv',
-                             request_method='PUT')
-        self.config.add_view(context=get_collection_class(IMyEntity),
-                             view=PostCollectionView,
-                             renderer='csv',
-                             request_method='POST')
-        self.config.add_view(context=get_member_class(IMyEntity),
-                             view=DeleteMemberView,
-                             renderer='csv',
-                             request_method='DELETE')
+        self.config.add_resource_view(IMyEntity,
+                                      renderer='csv',
+                                      request_method='GET')
+        self.config.add_member_view(IMyEntity,
+                                    renderer='csv',
+                                    request_method='PUT')
+        self.config.add_collection_view(IMyEntity,
+                                        renderer='csv',
+                                        request_method='POST')
+        self.config.add_member_view(IMyEntity,
+                                    renderer='csv',
+                                    request_method='DELETE')
 
     def test_get_collection_defaults(self):
         res = self.app.get(self.path, status=200)
@@ -200,7 +187,9 @@ class PredicatedViewTestCase(FunctionalTestCase):
         self.app.get(self.path, headers=dict(accept=CSV_MIME), status=200)
 
 
-class SuffixResourceTraverserTestCase(FunctionalTestCase):
+class _ConfiguredViewsTestCase(FunctionalTestCase):
+    views_config_file_name = None
+
     package_name = 'everest.tests.testapp'
     ini_file_path = resource_filename('everest.tests.testapp',
                                       'testapp_views.ini')
@@ -209,7 +198,7 @@ class SuffixResourceTraverserTestCase(FunctionalTestCase):
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.testapp:configure_views.zcml')
+        self.config.load_zcml(self.views_config_file_name)
 
     def test_get_by_suffix(self):
         coll = get_root_collection(IFoo)
@@ -226,6 +215,15 @@ class SuffixResourceTraverserTestCase(FunctionalTestCase):
             self.assert_true(fn(res.body))
         # Fail for non-existing collection.
         self.app.get('/bars.csv', status=404)
+
+
+class ImplicitlyConfiguredViewsTestCase(_ConfiguredViewsTestCase):
+    views_config_file_name = 'everest.tests.testapp:configure_views.zcml'
+
+
+class ExplicitlyConfiguredViewsTestCase(_ConfiguredViewsTestCase):
+    views_config_file_name = \
+                'everest.tests.testapp:configure_views_explicit.zcml'
 
 
 class StaticViewTestCase(FunctionalTestCase):
@@ -258,12 +256,12 @@ class ExceptionViewTestCase(FunctionalTestCase):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(
                         'everest.tests.testapp_db:configure_no_orm.zcml')
-        self.config.add_view(context=get_member_class(IMyEntity),
-                             view=ExceptionPutMemberView,
-                             request_method='PUT')
-        self.config.add_view(context=get_collection_class(IMyEntity),
-                             view=ExceptionPostCollectionView,
-                             request_method='POST')
+        self.config.add_resource_view(IMyEntity,
+                                      view=ExceptionPutMemberView,
+                                      request_method='PUT')
+        self.config.add_resource_view(IMyEntity,
+                                      view=ExceptionPostCollectionView,
+                                      request_method='POST')
 
     def test_put_member_raises_error(self):
         coll = get_root_collection(IMyEntity)

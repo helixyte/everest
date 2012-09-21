@@ -12,7 +12,6 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
 from pyramid_zcml import IViewDirective
-from pyramid_zcml import view as pyramid_view
 from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
 from zope.configuration.config import IConfigurationContext # pylint: disable=E0611,F0401
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
@@ -21,8 +20,6 @@ from zope.configuration.fields import Path # pylint: disable=E0611,F0401
 from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 
@@ -284,40 +281,55 @@ class ResourceDirective(GroupingContextDecorator):
                         )
 
 
-class ICollectionViewDirective(IViewDirective):
+def _resource_view(_context, for_, config_callable_name, kw):
+    reg = get_current_registry()
+    config = Configurator(reg, package=_context.package)
+    config_callable = getattr(config, config_callable_name)
+    for rc in for_:
+        discriminator = ('resource_view', rc, config_callable_name,
+                         kw.get('request_method'), kw.get('renderer'))
+        _context.action(discriminator=discriminator, # pylint: disable=E1101
+                        callable=config_callable,
+                        args=(rc,),
+                        kw=kw)
+
+
+class IResourceViewDirective(IViewDirective):
     for_ = \
-        Tokens(title=u"The collection resource classes or interfaces to use "
-                      "this collection resource view with.",
+        Tokens(title=u"The resource classes or interfaces to set up views "
+                      "for. For each interface in the sequence, views for "
+                      "the associated member and collection resource classes "
+                      "are generated.",
                required=True,
                value_type=GlobalObject())
 
 
-def collection_view(_context,
-                  for_,
-                  **kw):
-    reg = get_current_registry()
-    for rc in for_:
-        if IInterface in provided_by(rc):
-            rc = reg.getUtility(rc, 'collection-class')
-        pyramid_view(_context, context=rc, **kw)
+def resource_view(_context, for_, **kw):
+    _resource_view(_context, for_, 'add_resource_view', kw)
+
+
+class ICollectionViewDirective(IViewDirective):
+    for_ = \
+        Tokens(title=u"The collection resource classes or interfaces to set "
+                      "up views for.",
+               required=True,
+               value_type=GlobalObject())
+
+
+def collection_view(_context, for_, **kw):
+    _resource_view(_context, for_, 'add_collection_view', kw)
 
 
 class IMemberViewDirective(IViewDirective):
     for_ = \
-        Tokens(title=u"The member resource classes or interfaces to use this "
-                      "member resource view with.",
+        Tokens(title=u"The member resource classes or interfaces to set "
+                      "up views for.",
                required=True,
                value_type=GlobalObject())
 
 
-def member_view(_context,
-                  for_,
-                  **kw):
-    reg = get_current_registry()
-    for rc in for_:
-        if IInterface in provided_by(rc):
-            rc = reg.getUtility(rc, 'member-class')
-        pyramid_view(_context, context=rc, **kw)
+def member_view(_context, for_, **kw):
+    _resource_view(_context, for_, 'add_member_view', kw)
 
 
 class IRepresenterDirective(Interface):
