@@ -22,6 +22,10 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import IGNORE_ON_READ_OPTION
+from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import WRITE_AS_LINK_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RESOURCE_KINDS',
@@ -446,6 +450,10 @@ def option(_context, name, value, type=None): # pylint: disable=W0622
     grouping_context = _context.context
     if not type is None:
         field = type()
+        value = field.fromUnicode(value)
+    elif name in (IGNORE_OPTION, IGNORE_ON_READ_OPTION,
+                  IGNORE_ON_WRITE_OPTION, WRITE_AS_LINK_OPTION):
+        field = Bool()
         value = field.fromUnicode(value)
     grouping_context.options[name] = value
 

@@ -625,9 +625,8 @@ class AtomRepresentationTestCase(ResourceTestCase):
             rpr_str.find('<entry xmlns:ent="http://xml.test.org/tests"'), -1)
 
 
-class RepresenterConfigurationTestCase(ResourceTestCase):
+class _RepresenterConfigurationTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_rpr.zcml'
 
     def test_configure_rpr_with_zcml(self):
         coll = create_collection()
@@ -636,9 +635,18 @@ class RepresenterConfigurationTestCase(ResourceTestCase):
         lines = rpr_str.split(os.linesep)
         chld_field_idx = lines[0].split(',').index('"children"')
         row_data = lines[1].split(',')
-        # Now, the collection should be a link.
+        # Collection should be a link.
         self.assert_not_equal(
                 row_data[chld_field_idx].find('my-entities/0/children/'), -1)
+
+
+class RepresenterConfigurationNoTypesTestCase(
+                                            _RepresenterConfigurationTestCase):
+    config_file_name = 'configure_rpr_no_types.zcml'
+
+
+class RepresenterConfigurationTestCase(_RepresenterConfigurationTestCase):
+    config_file_name = 'configure_rpr.zcml'
 
     def test_configure_existing(self):
         foo_namespace = 'http://bogus.org/foo'

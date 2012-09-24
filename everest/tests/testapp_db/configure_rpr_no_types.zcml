@@ -1,0 +1,51 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+
+    <!-- Include special directives. -->
+
+    <include package="everest.includes" />
+
+    <!-- Utilities -->
+
+    <!-- Repositories. -->
+
+    <!-- Representers. -->
+
+    <resource
+        interface='.interfaces.IMyEntityParent'
+        member=".resources.MyEntityParentMember"
+        entity=".entities.MyEntityParent"
+        collection_root_name="my-entity-parents"
+    >
+    </resource>
+    <resource
+        interface='.interfaces.IMyEntity'
+        member=".resources.MyEntityMember"
+        entity=".entities.MyEntity"
+        collection_root_name="my-entities"
+    >
+        <representer content_type='everest.mime.CsvMime'>
+            <attribute name="children">
+                <option
+                    name="ignore"
+                    value="false" />
+                <option
+                    name="write_as_link"
+                    value="true" />
+            </attribute>
+        </representer>
+    </resource>
+    <resource
+        interface='.interfaces.IMyEntityChild'
+        member=".resources.MyEntityChildMember"
+        entity=".entities.MyEntityChild"
+        collection_root_name="my-entity-children"
+    >
+    </resource>
+    <resource
+        interface='.interfaces.IMyEntityGrandchild'
+        member=".resources.MyEntityGrandchildMember"
+        entity=".entities.MyEntityGrandchild"
+        collection_root_name="my-entity-grandchildren"
+    >
+    </resource>
+</configure>
