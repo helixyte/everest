@@ -224,6 +224,23 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
                                             CsvMime, directory=tmp_dir)
         self.assert_true(tmp_path is None)
 
+    def test_add(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=2)
+        mb_add = MyEntityMember.create_from_entity(ent)
+        coll.add(mb_add)
+        transaction.commit()
+        self.assert_equal(len(coll), 2)
+
+    def test_add_no_id(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity()
+        mb_add = MyEntityMember.create_from_entity(ent)
+        coll.add(mb_add)
+        transaction.commit()
+        self.assert_is_not_none(ent.id)
+        self.assert_equal(len(coll), 2)
+
     def test_add_remove(self):
         coll = get_root_collection(IMyEntity)
         mb_rm = iter(coll).next()
@@ -232,6 +249,7 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         mb_add = MyEntityMember.create_from_entity(ent)
         coll.add(mb_add)
         transaction.commit()
+        self.assert_equal(len(coll), 1)
 
     def test_add_remove_same_member(self):
         coll = get_root_collection(IMyEntity)

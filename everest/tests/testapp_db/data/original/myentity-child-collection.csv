@@ -1,2 +1,2 @@
-"id","parent","children","no_backref_children","backref_only_children","text","text_rc"
-0,"http://0.0.0.0:6543/my-entities/0/",,,,"TEXT",
+"parent","children","no_backref_children","backref_only_children","text","text_rc"
+"http://0.0.0.0:6543/my-entities/0/",,,,"TEXT",

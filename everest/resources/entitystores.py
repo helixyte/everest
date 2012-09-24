@@ -307,10 +307,6 @@ class CachingEntityStore(EntityStore):
             # Initialize the global ID generator for the given entity class.
             id_gen = self.__id_generators[ent_cls] = id_generator()
             self.__next_id_map[ent_cls] = id_gen.next()
-            # Make sure the cache is initialized (and possibly loaded); this
-            # might affect the value for the next ID.
-            if self.__entity_cache_map.get(ent_cls) is None:
-                self.__initialize_cache(ent_cls)
         return id_gen
 
     def __initialize_cache(self, ent_cls):
@@ -320,13 +316,12 @@ class CachingEntityStore(EntityStore):
             for ent in self.__cache_loader(ent_cls):
                 if ent.id is None:
                     ent.id = self.get_id(ent_cls)
-                elif isinstance(ent.id, int) \
-                     and ent.id >= self.__next_id_map.get(ent_cls, 0):
+                elif isinstance(ent.id, int) and ent.id >= max_id:
                     # If the loaded entity already has an ID, record the highest
                     # ID so we can adjust the ID generator.
                     max_id = ent.id + 1
                 cache.add(ent)
-            if max_id != -1:
+            if max_id != -1 and max_id > self.__next_id_map.get(ent_cls, 0):
                 id_gen = self.__get_id_generator(ent_cls)
                 id_gen.send(max_id)
         return cache
@@ -417,14 +412,6 @@ class EntityCache(object):
         # Internal flag indicating that the cache has to be rebuilt (i.e.,
         # the id and slug maps have to be updated). 
         self.__needs_rebuild = False
-
-    def clear(self):
-        """
-        Clears the cache.
-        """
-        self.__entities = []
-        self.__id_map.clear()
-        self.__slug_map.clear()
 
     def rebuild(self):
         """
