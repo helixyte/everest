@@ -291,7 +291,7 @@ def _resource_view(_context, for_, config_callable_name, kw):
     config_callable = getattr(config, config_callable_name)
     for rc in for_:
         discriminator = ('resource_view', rc, config_callable_name) + \
-                         tuple(sorted(kw.items()))
+                         tuple(sorted([(k, str(v)) for (k, v) in kw.items()]))
         _context.action(discriminator=discriminator, # pylint: disable=E1101
                         callable=config_callable,
                         args=(rc,),
