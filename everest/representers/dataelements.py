@@ -337,9 +337,16 @@ class DataElementAttributeProxy(object):
         if ILinkedDataElement in provided_by(data_element):
             raise ValueError('Do not use data element proxies with linked '
                              'data elements.')
-        self.__data_element = data_element
         attrs = data_element.mapping.attribute_iterator()
         self.__attr_map = dict([(attr.repr_name, attr) for attr in attrs])
+        self.__data_element = data_element
+
+    def get_data_element(self):
+        """
+        Returns the wrapped data element. Useful for proxies returned from
+        accessing nested attributes.
+        """
+        return self.__data_element
 
     def __getattr__(self, name):
         try:
@@ -361,3 +368,22 @@ class DataElementAttributeProxy(object):
                     value = [DataElementAttributeProxy(mb_el)
                              for mb_el in nested_data_el.get_members()]
         return value
+
+    def __setattr__(self, name, value):
+        # Avoid recursion for setting instance data during constructor call.
+        if name in ['_DataElementAttributeProxy__data_element',
+                    '_DataElementAttributeProxy__attr_map']:
+            self.__dict__[name] = value
+        else:
+            try:
+                attr = self.__attr_map[name]
+            except KeyError:
+                raise AttributeError(name)
+            else:
+                if attr.kind == ResourceAttributeKinds.TERMINAL:
+                    self.__data_element.set_terminal(attr, value)
+                else:
+                    if not (isinstance(value, DataElement) or value is None):
+                        raise ValueError('Need a data element or None as '
+                                         'attribute value.')
+                    self.__data_element.set_nested(attr, value)

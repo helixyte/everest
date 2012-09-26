@@ -207,8 +207,14 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         return child
 
     def set_nested(self, attr, data_element):
-        data_element.tag = self.__get_q_tag(attr)
-        self.append(data_element)
+        q_tag = self.__get_q_tag(attr)
+        if data_element is None:
+            el = getattr(self, q_tag, None)
+            if not el is None:
+                self.remove(el)
+        else:
+            data_element.tag = q_tag
+            self.append(data_element)
 
     def get_terminal(self, attr):
         if attr.repr_name == 'id':

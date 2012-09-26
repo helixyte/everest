@@ -68,6 +68,7 @@ class MappingTestCase(ResourceTestCase):
             mp = mp_reg.find_or_create_mapping(MyEntityMember)
             de = mp.map_to_data_element(mb)
             prx = DataElementAttributeProxy(de)
+            self.assert_true(prx.get_data_element() is de)
             self.assert_equal(prx.id, 0)
             self.assert_equal(prx.text, 'TEXT')
             self.assert_equal(prx.number, 1)
@@ -81,6 +82,15 @@ class MappingTestCase(ResourceTestCase):
                 self.assert_true(isinstance(children_el, LinkedDataElement))
             # Nonexisting attribute raises error.
             self.assert_raises(AttributeError, getattr, prx, 'foo')
+            self.assert_raises(AttributeError, setattr, prx, 'foo', 'murks')
+            # Set terminal attribute.
+            prx.id = 1
+            self.assert_equal(prx.id, 1)
+            # Set nested attribute.
+            setattr(prx, parent_repr_name, None)
+            self.assert_is_none(getattr(prx, parent_repr_name))
+            self.assert_raises(ValueError, setattr, prx, parent_repr_name,
+                               1)
         _test(XmlMime, 'myentityparent', 'myentitychildren')
         _test(CsvMime, 'parent', 'children')
 
