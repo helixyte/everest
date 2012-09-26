@@ -290,8 +290,8 @@ def _resource_view(_context, for_, config_callable_name, kw):
     config = Configurator(reg, package=_context.package)
     config_callable = getattr(config, config_callable_name)
     for rc in for_:
-        discriminator = ('resource_view', rc, config_callable_name,
-                         kw.get('request_method'), kw.get('renderer'))
+        discriminator = ('resource_view', rc, config_callable_name) + \
+                         tuple(sorted(kw.items()))
         _context.action(discriminator=discriminator, # pylint: disable=E1101
                         callable=config_callable,
                         args=(rc,),
