@@ -18,7 +18,6 @@ from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.url import resource_to_url
-from everest.url import url_to_resource
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
@@ -355,10 +354,7 @@ class DataElementAttributeProxy(object):
                 if nested_data_el is None:
                     value = None
                 elif ILinkedDataElement in provided_by(nested_data_el):
-                    try:
-                        value = url_to_resource(nested_data_el.get_url())
-                    except KeyError: # traversal did not find anything.
-                        value = None
+                    value = nested_data_el # links are returned as-is.
                 elif attr.kind == ResourceAttributeKinds.MEMBER:
                     value = DataElementAttributeProxy(nested_data_el)
                 else:

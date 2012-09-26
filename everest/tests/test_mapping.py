@@ -19,6 +19,7 @@ from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.testing import create_entity
 from everest.tests.test_entities import MyEntity
+from everest.representers.dataelements import LinkedDataElement
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingTestCase',
@@ -70,10 +71,15 @@ class MappingTestCase(ResourceTestCase):
             self.assert_equal(prx.id, 0)
             self.assert_equal(prx.text, 'TEXT')
             self.assert_equal(prx.number, 1)
-            # The parent is a link which can not be resolved at this point.
-            self.assert_is_none(getattr(prx, parent_repr_name))
-            # The children are ignored.
-            self.assert_is_none(getattr(prx, children_repr_name))
+            # The parent and children attributes are links.
+            self.assert_true(isinstance(getattr(prx, parent_repr_name),
+                                        LinkedDataElement))
+            children_el = getattr(prx, children_repr_name)
+            if cnt_type is XmlMime:
+                self.assert_is_none(children_el)
+            else:
+                self.assert_true(isinstance(children_el, LinkedDataElement))
+            # Nonexisting attribute raises error.
             self.assert_raises(AttributeError, getattr, prx, 'foo')
         _test(XmlMime, 'myentityparent', 'myentitychildren')
         _test(CsvMime, 'parent', 'children')
