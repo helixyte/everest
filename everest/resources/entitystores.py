@@ -635,7 +635,7 @@ class InMemorySession(object):
         # Update session cache.
         cache = self.__get_cache(entity_cls)
         cache.add(entity)
-        # If the removed entity was marked as dirty, discard. 
+        # If the added entity was marked as dirty, discard. 
         self.__dirty[entity_cls].discard(entity)
         # Mark for flush.
         self.__needs_flush = True
@@ -683,18 +683,17 @@ class InMemorySession(object):
         self.__needs_flush = False
         # Iterate over added entities and obtain new IDs from the store for 
         # entities that do not have one.
-        rebuild_cache = False
+        caches_to_rebuild = set()
         for (entity_cls, added_entities) in self.__added.iteritems():
             cache = self.__get_cache(entity_cls)
             for ad_ent in added_entities:
                 if ad_ent.id is None:
                     new_id = self.__entity_store.get_id(entity_cls)
-                    if not rebuild_cache:
-                        rebuild_cache = True
+                    if not cache in caches_to_rebuild:
+                        caches_to_rebuild.add(cache)
                     ad_ent.id = new_id
-        if rebuild_cache:
-            for cache in self.__entity_cache_map.itervalues():
-                cache.rebuild()
+        for cache_to_rebuild in caches_to_rebuild:
+            cache_to_rebuild.rebuild()
 
     @property
     def added(self):

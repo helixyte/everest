@@ -40,6 +40,7 @@ __all__ = ['RESOURCE_KINDS',
            'messaging',
            'option',
            'orm_repository',
+           'resource_view',
            ]
 
 
@@ -285,13 +286,16 @@ class ResourceDirective(GroupingContextDecorator):
                         )
 
 
-def _resource_view(_context, for_, config_callable_name, kw):
+def _resource_view(_context, for_, default_content_type,
+                   config_callable_name, kw):
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     config_callable = getattr(config, config_callable_name)
+    option_tuples = tuple(sorted([(k, str(v)) for (k, v) in kw.items()]))
+    kw['default_content_type'] = default_content_type
     for rc in for_:
-        discriminator = ('resource_view', rc, config_callable_name) + \
-                         tuple(sorted([(k, str(v)) for (k, v) in kw.items()]))
+        discriminator = ('resource_view', rc, config_callable_name) \
+                        + option_tuples
         _context.action(discriminator=discriminator, # pylint: disable=E1101
                         callable=config_callable,
                         args=(rc,),
@@ -302,38 +306,31 @@ class IResourceViewDirective(IViewDirective):
     for_ = \
         Tokens(title=u"The resource classes or interfaces to set up views "
                       "for. For each interface in the sequence, views for "
-                      "the associated member and collection resource classes "
-                      "are generated.",
+                      "the associated member resource class (member_view), "
+                      "the associated collection resource class "
+                      "(collection_view) or both (resource_view) are"
+                      "generated.",
                required=True,
                value_type=GlobalObject())
+    default_content_type = \
+        GlobalObject(title=u"The default MIME content type to use when the "
+                            "client does not indicate a preference.",
+                     required=False)
 
 
-def resource_view(_context, for_, **kw):
-    _resource_view(_context, for_, 'add_resource_view', kw)
+def resource_view(_context, for_, default_context_type=None, **kw):
+    _resource_view(_context, for_, default_context_type,
+                   'add_resource_view', kw)
 
 
-class ICollectionViewDirective(IViewDirective):
-    for_ = \
-        Tokens(title=u"The collection resource classes or interfaces to set "
-                      "up views for.",
-               required=True,
-               value_type=GlobalObject())
+def collection_view(_context, for_, default_context_type=None, **kw):
+    _resource_view(_context, for_, default_context_type,
+                   'add_collection_view', kw)
 
 
-def collection_view(_context, for_, **kw):
-    _resource_view(_context, for_, 'add_collection_view', kw)
-
-
-class IMemberViewDirective(IViewDirective):
-    for_ = \
-        Tokens(title=u"The member resource classes or interfaces to set "
-                      "up views for.",
-               required=True,
-               value_type=GlobalObject())
-
-
-def member_view(_context, for_, **kw):
-    _resource_view(_context, for_, 'add_member_view', kw)
+def member_view(_context, for_, default_context_type=None, **kw):
+    _resource_view(_context, for_, default_context_type,
+                   'add_member_view', kw)
 
 
 class IRepresenterDirective(Interface):

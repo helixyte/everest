@@ -7,12 +7,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
-from everest.representers.traversal import AttributeKey
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS

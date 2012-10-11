@@ -25,10 +25,6 @@ class PutMemberView(PutOrPostResourceView):
 
     See http://bitworking.org/projects/atom/rfc5023.html#edit-via-PUT
     """
-
-    def _extract_request_data(self):
-        return self.representer.data_from_representation(self.request.body)
-
     def _process_request_data(self, data):
         initial_name = self.context.__name__
         self.context.update_from_data(data)
@@ -39,10 +35,8 @@ class PutMemberView(PutOrPostResourceView):
             self.request.response.headerlist = \
                 [('Location',
                   resource_to_url(self.context, request=self.request))]
-        # We return the representation of the updated member to
+        # We return the (representation of) the updated member to
         # assist the client in doing the right thing. 
         # Not all clients give access to the Response headers and we 
         # cannot find the new location when HTTP/1.1 301 is returned.
-        return {'context' : self.context}
-
-
+        return self._get_result(self.context)

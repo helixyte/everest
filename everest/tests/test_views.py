@@ -17,7 +17,6 @@ from everest.tests.testapp.entities import FooEntity
 from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp.resources import FooCollection
 from everest.tests.testapp.resources import FooMember
-from everest.tests.testapp.views import DummyExceptionView
 from everest.tests.testapp.views import ExceptionPostCollectionView
 from everest.tests.testapp.views import ExceptionPutMemberView
 from everest.tests.testapp.views import UserMessagePostCollectionView
@@ -121,7 +120,7 @@ class BasicViewTestCase(FunctionalTestCase):
         req_body = '"id","text","number"\n1,"abc",2\n'
         res = self.app.put("%s/0" % self.path,
                            params=req_body,
-                           content_type=CsvMime.mime_string,
+                           content_type=CsvMime.mime_type_string,
                            status=200)
         self.assert_is_not_none(res)
         mb = iter(coll).next()
@@ -132,7 +131,7 @@ class BasicViewTestCase(FunctionalTestCase):
         req_body = '"id","text","number"\n0,"abc",2\n'
         res = self.app.post("%s" % self.path,
                             params=req_body,
-                            content_type=CsvMime.mime_string,
+                            content_type=CsvMime.mime_type_string,
                             status=201)
         self.assert_is_not_none(res)
         coll = get_root_collection(IMyEntity)
@@ -143,13 +142,13 @@ class BasicViewTestCase(FunctionalTestCase):
         coll = create_collection()
         self.assert_equal(len(coll), 2)
         res = self.app.delete("%s/0" % self.path,
-                              content_type=CsvMime.mime_string,
+                              content_type=CsvMime.mime_type_string,
                               status=200)
         self.assert_is_not_none(res)
         self.assert_equal(len(coll), 1)
         # Second delete triggers 404.
         self.app.delete("%s/0" % self.path,
-                        content_type=CsvMime.mime_string,
+                        content_type=CsvMime.mime_type_string,
                         status=404)
         coll_cls = get_collection_class(IMyEntity)
         old_remove = coll_cls.__dict__.get('remove')
@@ -158,7 +157,7 @@ class BasicViewTestCase(FunctionalTestCase):
         coll_cls.remove = remove_with_exception
         try:
             self.app.delete("%s/1" % self.path,
-                            content_type=CsvMime.mime_string,
+                            content_type=CsvMime.mime_type_string,
                             status=500)
         finally:
             if not old_remove is None:
@@ -199,31 +198,74 @@ class _ConfiguredViewsTestCase(FunctionalTestCase):
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(self.views_config_file_name)
-
-    def test_get_by_suffix(self):
         coll = get_root_collection(IFoo)
         coll.create_member(FooEntity(id=0))
         transaction.commit()
-        self.app.get(self.path, status=404)
+
+    def test_with_suffix(self):
+        self._test_with_view_name(
+                            lambda path, suffix: "%s.%s" % (path, suffix))
+
+    def test_with_at_at(self):
+        self._test_with_view_name(
+                            lambda path, suffix: "%s/@@%s" % (path, suffix))
+
+    def test_custom_view_with_interface_raises_error(self):
+        self.assert_raises(ValueError,
+                           self.config.add_resource_view, IFoo,
+                           view=lambda context, request: None)
+
+    def _test_with_view_name(self, path_fn):
         # Use suffix traverser as default.
         self.config.add_traverser(SuffixResourceTraverser)
         for sfx, fn in (('csv', lambda body: body.startswith('"id"')),
                         ('json', lambda body: body.startswith('[{"id": 0')),
                         ('xml', lambda body: body.strip().endswith('</foos>'))
                         ):
-            res = self.app.get("%s.%s" % (self.path, sfx), status=200)
+            res = self.app.get(path_fn(self.path, sfx), status=200)
             self.assert_true(fn(res.body))
         # Fail for non-existing collection.
         self.app.get('/bars.csv', status=404)
 
 
-class ImplicitlyConfiguredViewsTestCase(_ConfiguredViewsTestCase):
-    views_config_file_name = 'everest.tests.testapp:configure_views.zcml'
-
-
-class ExplicitlyConfiguredViewsTestCase(_ConfiguredViewsTestCase):
+class ClassicStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     views_config_file_name = \
-                'everest.tests.testapp:configure_views_explicit.zcml'
+                    'everest.tests.testapp:configure_views_classic.zcml'
+
+    def test_default(self):
+        # No default - triggers a 404.
+        self.app.get(self.path, status=404)
+
+
+class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
+    views_config_file_name = \
+                'everest.tests.testapp:configure_views.zcml'
+
+    def test_default(self):
+        # New style views return the default_content_type.
+        res = self.app.get(self.path, status=200)
+        self.assert_true(res.body.startswith('"id"'))
+
+    def test_custom_view(self):
+        TXT = 'my custom response body'
+        def custom_view(context, request): # context unused pylint: disable=W0613
+            request.response.body = TXT
+            return request.response
+        self.config.add_collection_view(IFoo, view=custom_view, name='custom')
+        res = self.app.get('/foos/@@custom')
+        self.assert_equal(res.body, TXT)
+
+    def test_invalid_accept_header(self):
+        self.app.get(self.path,
+                     headers=dict(accept='application/foobar'),
+                     status=406)
+
+    def test_invalid_request_content_type(self):
+        self.config.add_collection_view(IFoo, request_method='POST')
+        self.app.post(self.path,
+                      params='foobar',
+                      content_type='application/foobar',
+                      status=415)
 
 
 class StaticViewTestCase(FunctionalTestCase):
@@ -256,12 +298,12 @@ class ExceptionViewTestCase(FunctionalTestCase):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(
                         'everest.tests.testapp_db:configure_no_orm.zcml')
-        self.config.add_resource_view(IMyEntity,
-                                      view=ExceptionPutMemberView,
-                                      request_method='PUT')
-        self.config.add_resource_view(IMyEntity,
-                                      view=ExceptionPostCollectionView,
-                                      request_method='POST')
+        self.config.add_member_view(IMyEntity,
+                                    view=ExceptionPutMemberView,
+                                    request_method='PUT')
+        self.config.add_collection_view(IMyEntity,
+                                        view=ExceptionPostCollectionView,
+                                        request_method='POST')
 
     def test_put_member_raises_error(self):
         coll = get_root_collection(IMyEntity)
@@ -275,7 +317,7 @@ class ExceptionViewTestCase(FunctionalTestCase):
         req_body = '"id","text","number"\n0,"abc",2\n'
         self.app.post("%s" % self.path,
                      params=req_body,
-                     content_type=CsvMime.mime_string,
+                     content_type=CsvMime.mime_type_string,
                      status=500)
 
 
@@ -290,14 +332,12 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(self.config_file_name)
-        self.config.add_view(context=FooCollection,
-                             view=UserMessagePostCollectionView,
-                             renderer='csv',
-                             request_method='POST')
-        self.config.add_view(context=FooMember,
-                             view=UserMessagePutMemberView,
-                             renderer='csv',
-                             request_method='PUT')
+        self.config.add_collection_view(FooCollection,
+                                        view=UserMessagePostCollectionView,
+                                        request_method='POST')
+        self.config.add_member_view(FooMember,
+                                    view=UserMessagePutMemberView,
+                                    request_method='PUT')
 
     def test_post_collection_empty_body(self):
         res = self.app.post(self.path, params='',
@@ -395,12 +435,12 @@ class WarningWithExceptionViewTestCase(FunctionalTestCase):
         self.config.load_zcml(
                         'everest.tests.testapp_db:configure_no_orm.zcml')
         self.config.add_view(context=get_collection_class(IMyEntity),
-                             view=DummyExceptionView,
+                             view=ExceptionPostCollectionView,
                              request_method='POST')
 
     def test_post_collection_raises_error(self):
         req_body = '"id","text","number"\n0,"abc",2\n'
         self.app.post("%s" % self.path,
                      params=req_body,
-                     content_type=CsvMime.mime_string,
+                     content_type=CsvMime.mime_type_string,
                      status=500)

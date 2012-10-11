@@ -82,7 +82,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                                           name='entity-class'))
         self.assert_is_none(reg.queryAdapter(ent, IMemberResource))
         self.assert_is_none(reg.queryAdapter(coll, IRepresenter,
-                                          name=CsvMime.mime_string))
+                                          name=CsvMime.mime_type_string))
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
         config.load_zcml('everest.tests.testapp:configure.zcml')

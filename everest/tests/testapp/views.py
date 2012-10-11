@@ -39,7 +39,7 @@ class UserMessagePutMemberView(PutMemberView):
         return self.context
 
     def _process_request_data(self, data):
-        return dict(context=data)
+        return self._get_result(data)
 
 
 class _ExtractDataExceptionViewMixin(object):
@@ -59,9 +59,3 @@ class ExceptionPutMemberView(_ExtractDataExceptionViewMixin, PutMemberView):
 class ExceptionPostCollectionView(_ProcessDataExceptionViewMixin,
                                   PutMemberView):
     pass
-
-
-class DummyExceptionView(PostCollectionView):
-    def _process_request_data(self, data):
-        raise ValueError()
-

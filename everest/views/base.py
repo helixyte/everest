@@ -8,13 +8,21 @@ Created on Oct 7, 2011.j
 """
 from everest.messaging import UserMessageChecker
 from everest.messaging import UserMessageHandlingContextManager
+from everest.mime import CsvMime
+from everest.mime import TextPlainMime
+from everest.mime import get_registered_mime_strings
+from everest.mime import get_registered_mime_type_for_name
 from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
-from paste.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
-from paste.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPError
+from pyramid.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPNotAcceptable
+from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPUnsupportedMediaType
+from pyramid.response import Response
 from pyramid.threadlocal import get_current_request
 from webob.exc import HTTPBadRequest
 from webob.exc import HTTPConflict
@@ -33,7 +41,8 @@ __all__ = ['GetResourceView',
 
 class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=W0232
     """
-    Special 307 HTTP Temporary Redirect exception which transports 
+    Special 307 HTTP Temporary Redirect exception which transports a URL
+    at which the user may resubmit the request with the warning suppressed.
     """
     explanation = 'Your request triggered warnings. You may resubmit ' \
                   'the request under the given location to ignore ' \
@@ -51,7 +60,6 @@ class ResourceView(object):
     Resource views know how to handle a number of things that can go wrong
     in a REST request.
     """
-
     implements(IResourceView)
 
     __context = None
@@ -63,7 +71,6 @@ class ResourceView(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.__context = context
         self.__request = request
-        self.__representer = None
 
     @property
     def context(self):
@@ -73,13 +80,8 @@ class ResourceView(object):
     def request(self):
         return self.__request
 
-    @property
-    def representer(self):
-        if self.__representer is None:
-            mime_type = \
-              get_registered_mime_type_for_string(self.__request.content_type)
-            self.__representer = as_representer(self.__context, mime_type)
-        return self.__representer
+    def __call__(self):
+        raise NotImplementedError('Abstract method.')
 
     def _handle_unknown_exception(self, message, traceback):
         """
@@ -94,29 +96,123 @@ class ResourceView(object):
         return self.request.get_response(http_exc)
 
 
-class GetResourceView(ResourceView): # still abstract pylint: disable=W0223
+class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W0223
+    """
+    A resource view with an associated representer.
+    """
+    def __init__(self, context, request,
+                 default_content_type=None, convert_response=True):
+        if self.__class__ is RepresentingResourceView:
+            raise NotImplementedError('Abstract class')
+        ResourceView.__init__(self, context, request)
+        #: Flag indicating if the response body should be converted using
+        #: the representer associated with this view.
+        self._convert_response = convert_response
+        #: The default content type for the representer associated with this
+        #: view.
+        if default_content_type is None:
+            # FIXME: make this configurable.
+            default_content_type = CsvMime
+        self._default_content_type = default_content_type
+
+    def _get_response_representer(self):
+        """
+        Creates a representer for this view.
+        
+        :raises: :class:`pyramid.httpexceptions.HTTPNotAcceptable` if the
+          MIME content type(s) the client specified can not be handled by 
+          the view.
+        :returns: :class:`everest.representers.base.ResourceRepresenter`
+        """
+        view_name = self.request.view_name
+        if view_name != '':
+            mime_type = get_registered_mime_type_for_name(view_name)
+            rpr = as_representer(self.context, mime_type)
+        else:
+            mime_type = None
+            acc = None
+            for acc in self.request.accept:
+                try:
+                    mime_type = \
+                            get_registered_mime_type_for_string(acc.lower())
+                except KeyError:
+                    pass
+                else:
+                    break
+            if mime_type is None:
+                if not acc is None:
+                    # The client specified a MIME type we can not handle; this
+                    # is a 406 exxception. We supply allowed MIME content 
+                    # types in the body of the response.
+                    headers = \
+                        [('Location', self.request.path_url),
+                         ('Content-Type', TextPlainMime.mime_type_string),
+                         ]
+                    mime_strings = get_registered_mime_strings()
+                    exc = HTTPNotAcceptable('Requested MIME content type(s) '
+                                            'not acceptable.',
+                                            body=','.join(mime_strings),
+                                            headers=headers)
+                    raise exc
+                mime_type = self._default_content_type
+            rpr = as_representer(self.context, mime_type)
+        return rpr
+
+    def _get_result(self, resource):
+        """
+        Converts the given resource to a result to be returned from the view.
+        Unless a custom renderer is employed, this will involve creating
+        a representer and using it to convert the resource to a string.
+        
+        :returns: :class:`pyramid.reposnse.Response` object or a dictionary
+          with a single key "context" mapped to the given resource (to be
+          passed on to a custom renderer).
+        """
+        if self._convert_response:
+            try:
+                rpr = self._get_response_representer()
+            except HTTPError, http_exc:
+                result = self.request.get_response(http_exc)
+            else:
+                # Set content type and body of the response.
+                self.request.response.content_type = \
+                                        rpr.content_type.mime_type_string
+                self.request.response.body = rpr.to_string(resource)
+                result = self.request.response
+        else:
+            result = dict(context=resource)
+        return result
+
+
+class GetResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
     """
     Abstract base class for all collection views
     """
-
-    def __init__(self, resource, request):
+    def __init__(self, resource, request, **kw):
         if self.__class__ is GetResourceView:
             raise NotImplementedError('Abstract class')
-        ResourceView.__init__(self, resource, request)
+        RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
+        self._logger.debug('Request URL: %s' % self.request.url)
+        result = self._prepare_resource()
+        if not isinstance(result, Response):
+            # Return a response to bypass Pyramid rendering.
+            result = self._get_result(result)
+        return result
+
+    def _prepare_resource(self):
         raise NotImplementedError('Abstract method.')
 
 
-class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W0223
+class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
     """
     Abstract base class for all member views
     """
-
-    def __init__(self, resource, request):
+    def __init__(self, resource, request, **kw):
         if self.__class__ is PutOrPostResourceView:
             raise NotImplementedError('Abstract class')
-        ResourceView.__init__(self, resource, request)
+        RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
         self._logger.debug('Request received on %s' % self.request.url)
@@ -136,17 +232,29 @@ class PutOrPostResourceView(ResourceView): # still abstract pylint: disable=W022
                         response = self._process_request_data(data)
                     if not checker.vote is True:
                         response = checker.create_307_response()
+            except HTTPError, err:
+                response = self.request.get_response(err)
             except Exception, err: # catch Exception pylint: disable=W0703
                 response = self._handle_unknown_exception(err.message,
                                                           get_traceback())
         return response
+
+    def _get_request_representer(self):
+        try:
+            mime_type = \
+              get_registered_mime_type_for_string(self.request.content_type)
+        except KeyError:
+            # The client requested a content type we do not support (415).
+            raise HTTPUnsupportedMediaType()
+        return as_representer(self.context, mime_type)
 
     def _extract_request_data(self):
         """
         Extracts the data from the representation submitted in the request
         body and returns it.
         """
-        raise NotImplementedError('Abstract method.')
+        rpr = self._get_request_representer()
+        return rpr.data_from_representation(self.request.body)
 
     def _process_request_data(self, data):
         """

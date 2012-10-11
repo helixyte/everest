@@ -10,10 +10,43 @@ from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
+from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.descriptors import CARDINALITY
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['MappedAttribute',
+__all__ = ['AttributeKey',
+           'MappedAttribute',
            ]
+
+
+class AttributeKey(object):
+    """
+    Value object used as a key during resource data tree traversal.
+    
+    Each key consists of a tuple of attribute strings that uniquely 
+    determine a node's position in the resource data tree.
+    """
+    def __init__(self, data):
+        self.__data = tuple(data)
+        self.offset = 0
+
+    def __hash__(self):
+        return hash(self.__data)
+
+    def __eq__(self, other):
+        return self.__data == tuple(other)
+
+    def __getitem__(self, index):
+        return self.__data.__getitem__(index)
+
+    def __len__(self):
+        return len(self.__data)
+
+    def __add__(self, other):
+        return AttributeKey(self.__data + tuple(other))
+
+    def __str__(self):
+        return 'AttributeKey(%s, %d)' % (self.__data, self.offset)
 
 
 class MappedAttribute(object):
@@ -49,6 +82,36 @@ class MappedAttribute(object):
         new_options = self.options.copy()
         new_options.update(options)
         return MappedAttribute(self.__attr, options=new_options)
+
+    def should_ignore(self, ignore_option_name, attribute_key):
+        """
+        Checks if the given attribute key should be ignored for the given
+        ignore option name.
+        
+        Rules for ignoring attributes:
+         * always ignore when IGNORE_ON_XXX_OPTION is set to True;
+         * always include when IGNORE_ON_XXX_OPTION is set to False;
+         * also ignore member attributes when the length of the attribute
+           key is > 0 or the cardinality is not MANYTOONE (this avoids
+           traversing circular attribute definitions such as parent ->
+           children -> parent);
+         * also ignore collection attributes when the cardinality is 
+           not MANYTOMANY.
+           
+        :ignore_option_name: configuration option name (IGNORE_ON_READ_OPTION
+          or IGNORE_ON_WRITE_OPTION).
+        :param attribute_key: :class:`AttributeKey` instance.
+        """
+        option_value = self.options.get(ignore_option_name)
+        do_ignore = option_value
+        if option_value is None:
+            if self.kind == ResourceAttributeKinds.MEMBER:
+                depth = len(attribute_key) + 1 - attribute_key.offset
+                do_ignore = depth > 1 \
+                            or self.cardinality != CARDINALITY.MANYTOONE
+            elif self.kind == ResourceAttributeKinds.COLLECTION:
+                do_ignore = self.cardinality != CARDINALITY.MANYTOMANY
+        return do_ignore
 
     @property
     def name(self):

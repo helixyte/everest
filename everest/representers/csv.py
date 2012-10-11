@@ -9,14 +9,16 @@ Created on May 19, 2011.
 from __future__ import absolute_import # Makes the import below absolute
 from collections import OrderedDict
 from csv import Dialect
+from csv import DictReader
 from csv import QUOTE_NONNUMERIC
-from csv import reader
 from csv import register_dialect
 from csv import writer
 from everest.mime import CsvMime
+from everest.representers.attributes import AttributeKey
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
 from everest.representers.base import ResourceRepresenter
+from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -25,18 +27,20 @@ from everest.representers.converters import NoOpConverter
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.interfaces import IRepresentationConverter
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
-from everest.representers.utils import get_mapping_registry
+from everest.resources.attributes import ResourceAttributeKinds
+from everest.resources.kinds import ResourceKinds
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
 from itertools import product
-import datetime
-from everest.representers.interfaces import IRepresentationConverter
 from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvCollectionDataElement',
@@ -95,56 +99,268 @@ CsvConverterRegistry.register(float, NoOpConverter)
 
 class CsvRepresentationParser(RepresentationParser):
     """
-    Parser converting CSV representations of resources into a data element.
+    Parser for CSV representations.
     
-    :note: Nested resources have to be provided as links (i.e., there is no 
-           support for recursive data element tree building).
+    The tabular structure of the CSV format makes it difficult to transport
+    nested (tree-like) data structures with it. The simplest way to solve 
+    this problem is to resort to links (URLs) for specifying nested resources
+    which implies that the referenced resources have to be created in 
+    advance. 
+    
+    Since it is quite a common use case to create a resource and its 
+    immediate children from one representation (i.e., in a single REST call),
+    the CSV parser also supports explicit specification of nested member 
+    attributes through separate CSV fields and specification of nested 
+    collection member attributes through separate
+    CSV fields and multiple rows (i.e., each row is specifying a member in
+    the nested collection while all other field values remain unchanged).
+    Nested collection members are allocated to their enclosing member either
+    by the member ID (if specified in a column named "id") or by the 
+    combined values of all remaining fields (sorted by field name).
+    
+    :note: The CSV column (field) names have to be mapped uniquely to 
+      (nested) attribute representation names.
+    :note: Polymorphic nested resources may not be mapped correctly.
     """
+    class _CollectionData(object):
+        def __init__(self, collection_class, attributes, attribute_key):
+            self.collection_class = collection_class
+            self.attribute_key = attribute_key
+            self.__attribute_names = \
+                        set([attr.repr_name for attr in attributes])
+            self.__data = {}
+
+        def has(self, key):
+            return key in self.__data
+
+        def get(self, key):
+            return self.__data.get(key)
+
+        def set(self, key, collection_data_element):
+            self.__data[key] = collection_data_element
+
+        def make_key(self, row_data):
+            if "id" in row_data.keys():
+                key = row_data['id']
+            else:
+                key = tuple([val for (key, val) in sorted(row_data.items())
+                             if not key in self.__attribute_names])
+            return key
+
+    def __init__(self, stream, resource_class, mapping):
+        RepresentationParser.__init__(self, stream, resource_class, mapping)
+        # Helper object for collecting member data for a nested collection.
+        self.__coll_data = None
+        # List of field names and copy of row data (first row only).
+        self.__first_row_field_names = None
+        self.__first_row_data = None
+        # Flag indicating state "in first row".
+        self.__is_first_row = True
+        # Key used to detect repeating rows for nested collection members.
+        self.__row_data_key = None
 
     def run(self):
-        mp_reg = get_mapping_registry(CsvMime)
+        csv_reader = DictReader(self._stream,
+                                dialect=self.get_option('dialect'))
         is_member_rpr = provides_member_resource(self._resource_class)
         if is_member_rpr:
-            member_cls = self._resource_class
-            result_data_el = None
+            coll_data_el = None
         else:
-            # Collection resource: Create a wrapping collection data element.
-            member_cls = get_member_class(self._resource_class)
-            coll_mp = mp_reg.find_or_create_mapping(self._resource_class)
-            coll_data_el = coll_mp.create_data_element()
+            coll_data_el = self._mapping.create_data_element()
+        for row_data in csv_reader:
+            if self.__is_first_row:
+                self.__first_row_field_names = set(csv_reader.fieldnames)
+                self.__first_row_data = row_data.copy()
+            if not self.__coll_data is None:
+                # We need to generate the row data key now because we 
+                # get attribute values destructively from the row_data.
+                self.__row_data_key = self.__coll_data.make_key(row_data)
+            mb_data_el = self.__process_row(row_data, self._resource_class,
+                                            AttributeKey(()))
+            if self.__is_first_row:
+                self.__is_first_row = False
+                if len(self.__first_row_field_names) > 0:
+                    raise ValueError('Invalid field name(s): %s'
+                                     % ','.join(self.__first_row_field_names))
+            if None in row_data.keys():
+                raise ValueError('Invalid row length.')
+            if not coll_data_el is None:
+                # The member data element will be None for all but the first
+                # member of nested collection resources. 
+                if not mb_data_el is None:
+                    coll_data_el.add_member(mb_data_el)
+        if is_member_rpr:
+            result_data_el = mb_data_el
+        else:
             result_data_el = coll_data_el
-        mb_mp = mp_reg.find_or_create_mapping(member_cls)
-        csv_reader = reader(self._stream, self.get_option('dialect'))
-        attrs = mb_mp.get_attribute_map()
-        header = None
-        for row in csv_reader:
-            mb_data_el = mb_mp.create_data_element()
-            if header is None:
-                # Check if the header is valid.
-                attr_names = attrs.keys()
-                header = row
-                for attr in header:
-                    if not attr in attr_names:
-                        raise ValueError('Invalid field "%s" in CSV input '
-                                         'detected.' % attr)
-                continue
-            if len(row) != len(header):
-                raise ValueError("Invalid row length (found: %s, expected: "
-                                 "%s)." % (len(row), len(header)))
-            for csv_attr, value in zip(header, row):
-                if value == '':
-                    value = None
-                attr = attrs[csv_attr]
-                if is_resource_url(value):
-                    link = CsvLinkedDataElement.create(value, attr.kind)
-                    mb_data_el.set_nested(attr, link)
-                else:
-                    mb_data_el.set_terminal_converted(attr, value)
-            if is_member_rpr:
-                result_data_el = mb_data_el
-            else:
-                coll_data_el.add_member(mb_data_el)
         return result_data_el
+
+    def __process_row(self, row_data, mapped_class, attribute_key):
+        is_repeating_row = len(attribute_key) == 0 \
+                           and not self.__coll_data is None \
+                           and self.__coll_data.has(self.__row_data_key)
+        if is_repeating_row:
+            self.__process_row(row_data,
+                               self.__coll_data.collection_class,
+                               self.__coll_data.attribute_key)
+            new_data_el = None
+        else:
+            mb_cls = get_member_class(mapped_class)
+            new_data_el = \
+                    self._mapping.create_data_element(mapped_class=mb_cls)
+            for attr in self._mapping.terminal_attribute_iterator(
+                                                mapped_class, attribute_key):
+                self.__process_attr(attr, attribute_key, new_data_el,
+                                    row_data)
+            for attr in self._mapping.nonterminal_attribute_iterator(
+                                                mapped_class, attribute_key):
+                self.__process_attr(attr, attribute_key, new_data_el,
+                                    row_data)
+            if not self.__coll_data is None \
+               and mapped_class == self.__coll_data.collection_class:
+                if not self.__coll_data.has(self.__row_data_key):
+                    coll_data_el = \
+                        self._mapping.create_data_element(mapped_class=
+                                                                mapped_class)
+                    self.__coll_data.set(self.__row_data_key, coll_data_el)
+                else:
+                    coll_data_el = self.__coll_data.get(self.__row_data_key)
+                coll_data_el.add_member(new_data_el)
+                new_data_el = coll_data_el
+        return new_data_el
+
+    def __process_attr(self, attribute, attribute_key, data_el, row_data):
+        attribute_value = row_data.pop(attribute.repr_name, None)
+        # In the first row, we check for extra field names by removing all
+        # fields we found from the set of all field names.
+        if self.__is_first_row:
+            self.__first_row_field_names.discard(attribute.repr_name)
+        if attribute.should_ignore(IGNORE_ON_READ_OPTION,
+                                   attribute_key):
+            if not attribute_value in (None, ''):
+                raise ValueError('Value for attribute "%s" found '
+                                 'which is configured to be ignored.'
+                                 % attribute.repr_name)
+        else:
+            if attribute.kind == ResourceAttributeKinds.TERMINAL:
+                if not attribute_value is None:
+                    data_el.set_terminal_converted(attribute, attribute_value)
+            else:
+                if not attribute_value in (None, ''):
+                    link_data_el = \
+                            self.__process_link(attribute_value, attribute)
+                    data_el.set_nested(attribute, link_data_el)
+                else:
+                    nested_attr_key = attribute_key + (attribute.name,)
+                    # We recursively look for nested resource attributes in 
+                    # other fields.
+                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                        # For polymorphic classes, this lookup will only work 
+                        # if a representer (and a mapping) was initialized 
+                        # for each derived class.
+                        nested_rc_cls = get_member_class(attribute.value_type)
+                    else: # collection attribute.
+                        nested_rc_cls = \
+                                    get_collection_class(attribute.value_type)
+                        if self.__coll_data is None:
+                            self.__coll_data = \
+                                self.__make_collection_data(nested_rc_cls,
+                                                            nested_attr_key)
+                            if self.__is_first_row:
+                                self.__row_data_key = \
+                                    self.__coll_data.make_key(
+                                                        self.__first_row_data)
+                        elif self.__coll_data.collection_class \
+                                                         != nested_rc_cls:
+                            raise ValueError('All but one nested collection '
+                                             'resource attributes have to '
+                                             'be provided as links.')
+                    nested_data_el = \
+                        self.__process_row(row_data, nested_rc_cls,
+                                           nested_attr_key)
+                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                        if len(nested_data_el.data) > 0:
+                            data_el.set_nested(attribute, nested_data_el)
+                    elif len(nested_data_el) > 0:
+                        data_el.set_nested(attribute, nested_data_el)
+
+    def __make_collection_data(self, collection_class, attribute_key):
+        attrs = self._mapping.attribute_iterator(collection_class,
+                                                 attribute_key)
+        return self._CollectionData(collection_class, attrs, attribute_key)
+
+    def __is_link(self, value):
+        return isinstance(value, basestring) and is_resource_url(value)
+
+    def __process_link(self, link, attr):
+        if not self.__is_link(link):
+            raise ValueError('Value for nested attribute "%s" '
+                             'is not a link.' % attr.repr_name)
+        if attr.kind == ResourceAttributeKinds.MEMBER:
+            kind = ResourceKinds.MEMBER
+            rc_cls = get_member_class(attr.value_type)
+        else:
+            kind = ResourceKinds.COLLECTION
+            rc_cls = get_collection_class(attr.value_type)
+        return self._mapping.create_linked_data_element(link,
+                                                        kind,
+                                                        relation=
+                                                            rc_cls.relation,
+                                                        title=rc_cls.title)
+
+
+#class CsvRepresentationParser(RepresentationParser):
+#    """
+#    Parser converting CSV representations of resources into a data element.
+#    
+#    :note: Nested resources have to be provided as links (i.e., there is no 
+#           support for recursive data element tree building).
+#    """
+#
+#    def run(self):
+#        mp_reg = get_mapping_registry(CsvMime)
+#        is_member_rpr = provides_member_resource(self._resource_class)
+#        if is_member_rpr:
+#            member_cls = self._resource_class
+#            result_data_el = None
+#        else:
+#            # Collection resource: Create a wrapping collection data element.
+#            member_cls = get_member_class(self._resource_class)
+#            coll_mp = mp_reg.find_or_create_mapping(self._resource_class)
+#            coll_data_el = coll_mp.create_data_element()
+#            result_data_el = coll_data_el
+#        mb_mp = mp_reg.find_or_create_mapping(member_cls)
+#        csv_reader = reader(self._stream, self.get_option('dialect'))
+#        attrs = mb_mp.get_attribute_map()
+#        header = None
+#        for row in csv_reader:
+#            mb_data_el = mb_mp.create_data_element()
+#            if header is None:
+#                # Check if the header is valid.
+#                attr_names = attrs.keys()
+#                header = row
+#                for attr in header:
+#                    if not attr in attr_names:
+#                        raise ValueError('Invalid field "%s" in CSV input '
+#                                         'detected.' % attr)
+#                continue
+#            if len(row) != len(header):
+#                raise ValueError("Invalid row length (found: %s, expected: "
+#                                 "%s)." % (len(row), len(header)))
+#            for csv_attr, value in zip(header, row):
+#                if value == '':
+#                    value = None
+#                attr = attrs[csv_attr]
+#                if is_resource_url(value):
+#                    link = CsvLinkedDataElement.create(value, attr.kind)
+#                    mb_data_el.set_nested(attr, link)
+#                else:
+#                    mb_data_el.set_terminal_converted(attr, value)
+#            if is_member_rpr:
+#                result_data_el = mb_data_el
+#            else:
+#                coll_data_el.add_member(mb_data_el)
+#        return result_data_el
 
 
 class CsvData(object):

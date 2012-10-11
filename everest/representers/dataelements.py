@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012
 """
 from collections import OrderedDict
-from everest.representers.base import data_element_tree_to_string
+from everest.representers.utils import data_element_tree_to_string
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement

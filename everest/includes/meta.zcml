@@ -66,11 +66,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             handler="everest.directives.resource_view" />
         <meta:directive
             name="collection_view"
-            schema="everest.directives.ICollectionViewDirective"
+            schema="everest.directives.IResourceViewDirective"
             handler="everest.directives.collection_view" />
         <meta:directive
             name="member_view"
-            schema="everest.directives.IMemberViewDirective"
+            schema="everest.directives.IResourceViewDirective"
             handler="everest.directives.member_view" />
     </meta:directives>
 </configure>

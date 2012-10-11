@@ -65,7 +65,10 @@ class IZipRequest(Interface):
 
 class IMime(Interface):
     """Base Interface for all MIME content types."""
-    mime_string = Text(title=u'MIME string for this MIME content type.')
+    mime_type_string = Text(title=u'MIME string for this MIME content type. '
+                                   '(e.g., "application/json".')
+    representer_name = Text(title=u'Name of the representer associated with '
+                                   'this MIME content type (e.g., "json").')
     file_extensions = List(title=u'Known file extensions for this MIME '
                                   'content type.')
 

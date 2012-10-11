@@ -9,7 +9,6 @@ Created on Apr 24, 2011.
 from everest.utils import get_traceback
 from everest.views.base import ResourceView
 from webob.exc import HTTPOk
-import logging
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DeleteMemberView',
@@ -29,16 +28,14 @@ class DeleteMemberView(ResourceView):
     See http://bitworking.org/projects/atom/rfc5023.html#delete-via-DELETE
     """
 
-    __logger = logging.getLogger(__name__)
-
     def __call__(self):
-        self.__logger.debug('DELETE Request received on %s' % self.request.url)
+        self._logger.debug('DELETE Request received on %s' % self.request.url)
         try:
             self.context.__parent__.remove(self.context)
         except Exception, err: # catch Exception pylint: disable=W0703
             response = self._handle_unknown_exception(err.message,
                                                       get_traceback())
         else:
-            response = HTTPOk()
+            response = self.request.get_response(HTTPOk())
         return response
 

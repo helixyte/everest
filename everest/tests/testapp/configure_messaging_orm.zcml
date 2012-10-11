@@ -16,6 +16,6 @@
         reset_on_start="true"/>
 
     <include
-        file="configure_views.zcml" />
+        file="configure_views_classic.zcml" />
 
 </configure>

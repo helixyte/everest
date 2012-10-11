@@ -7,13 +7,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 18, 2011.
 """
 from StringIO import StringIO
-from everest.representers.interfaces import ICollectionDataElement
-from everest.representers.interfaces import ILinkedDataElement
-from everest.representers.interfaces import IResourceDataElement
 from everest.representers.utils import get_mapping_registry
 from everest.resources.base import Resource
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-import os
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresentationGenerator',
@@ -21,7 +16,6 @@ __all__ = ['RepresentationGenerator',
            'Representer',
            'RepresenterRegistry',
            'ResourceRepresenter',
-           'data_element_tree_to_string',
            ]
 
 
@@ -321,50 +315,3 @@ class RepresentationGenerator(_RepresentationHandler):
         :param data_element: The data element tree to be serialized.
         """
         raise NotImplementedError('Abstract method.')
-
-
-def data_element_tree_to_string(data_element):
-    """
-    Creates a string representation of the given data element tree.
-    """
-    # FIXME: rewrite this as a visitor to use the data element tree traverser.
-    def __dump(data_el, stream, offset):
-        name = data_el.__class__.__name__
-        stream.write("%s%s" % (' ' * offset, name))
-        offset += 2
-        ifcs = provided_by(data_el)
-        if ICollectionDataElement in ifcs:
-            stream.write("[")
-            first_member = True
-            for member_data_el in data_el.get_members():
-                if first_member:
-                    stream.write('%s' % os.linesep + ' ' * offset)
-                    first_member = False
-                else:
-                    stream.write(',%s' % os.linesep + ' ' * offset)
-                __dump(member_data_el, stream, offset)
-            stream.write("]")
-        else:
-            stream.write("(")
-            if ILinkedDataElement in ifcs:
-                stream.write("url=%s, kind=%s, relation=%s" %
-                             (data_el.get_url(), data_el.get_kind(),
-                              data_el.get_relation()))
-            else:
-                first_attr = True
-                for attr_name, attr_value in data_el.data.iteritems():
-                    if first_attr:
-                        first_attr = False
-                    else:
-                        stream.write(',%s' % os.linesep
-                                     + ' ' * (offset + len(name) + 1))
-                    if attr_value is None:
-                        continue
-                    if not IResourceDataElement in provided_by(attr_value):
-                        stream.write("%s=%s" % (attr_name, attr_value))
-                    else:
-                        __dump(attr_value, stream, offset)
-            stream.write(')')
-    stream = StringIO()
-    __dump(data_element, stream, 0)
-    return stream.getvalue()

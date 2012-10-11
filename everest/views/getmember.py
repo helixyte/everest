@@ -17,7 +17,5 @@ class GetMemberView(GetResourceView):
     """
     View for GET requests on member resources.
     """
-
-    def __call__(self):
-        self._logger.debug('Request URL: %s' % self.request.url)
-        return {}
+    def _prepare_resource(self):
+        return self.context

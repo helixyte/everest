@@ -22,9 +22,7 @@ class GetCollectionView(GetResourceView):
     """
     View for GET requests on collection resources.
     """
-
-    def __call__(self):
-        self._logger.debug('Request URL: %s' % self.request.url)
+    def _prepare_resource(self):
         try:
             self.__filter_collection()
             self.__order_collection()
@@ -59,7 +57,7 @@ class GetCollectionView(GetResourceView):
                 last_link = self._create_nav_link(batch.last, 'last',
                                                   not needs_default_order)
                 self.context.add_link(last_link)
-            result = dict(batch=batch)
+            result = self.context
         return result
 
     def _create_batch(self):

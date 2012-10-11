@@ -62,7 +62,7 @@ class ResourceRenderer(object):
 
     @property
     def _format(self):
-        return self._content_type.mime_string
+        return self._content_type.mime_type_string
 
     def _validate(self, value):
         return IResource in  provided_by(value)

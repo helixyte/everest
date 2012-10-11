@@ -74,7 +74,7 @@ class ConverterRegistry(object):
         representation_value = value
         if not cnv is None:
             representation_value = cnv.to_representation(value)
-        elif not isinstance(value, basestring):
+        elif not isinstance(value, basestring) and not value is None:
             representation_value = str(value) # FIXME: use unicode?
         return representation_value
 

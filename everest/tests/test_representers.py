@@ -19,7 +19,8 @@ from everest.representers.csv import CsvData
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonDataTreeTraverser
-from everest.representers.traversal import DataElementBuilderRepresentationDataVisitor
+from everest.representers.traversal import \
+                        DataElementBuilderRepresentationDataVisitor
 from everest.representers.urlloader import LazyAttributeLoaderProxy
 from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
@@ -344,22 +345,37 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
             row_data = lines[1].split(',')
             # Second field should be the "parent.id" and contain '0'.
             self.assert_equal(row_data[1], '0')
-        self._test_with_member_expanded(check_string, do_roundtrip=False)
+        # Ensure unique representation names for nested attributes.
+        attribute_options = {
+            ('parent', 'id') : {REPR_NAME_OPTION:'parent.id'},
+            ('parent', 'text') : {REPR_NAME_OPTION:'parent.text'},
+            ('parent', 'text_rc') : {REPR_NAME_OPTION:'parent.text_rc'},
+             }
+        self._representer.configure(attribute_options=attribute_options)
+        self._test_with_member_expanded(check_string)
 
     def test_csv_with_collection_expanded(self):
         def check_string(rpr_str):
             lines = rpr_str.split(os.linesep)
             self.assert_equal(lines[0], '"id","parent","nested_parent",'
-                                        '"children.id","children.parent",'
+                                        '"children.id",'
                                         '"children.text","children.text_rc",'
                                         '"text","text_rc","number","date_time",'
                                         '"parent_text"')
             row_data = lines[1].split(',')
-            # Fourth field should now be "children.id" and contain '0'.
+            # Fourth field should now be "children.id" and contain 0.
             self.assert_equal(row_data[3], '0')
-            # Fifth field should be "children.parent" and contain a link.
-            self.assert_not_equal(row_data[4].find('my-entities/0/'), -1)
-        self._test_with_collection_expanded(check_string, do_roundtrip=False)
+            # Fifth field should be "children.text" and contain "TEXT".
+            self.assert_equal(row_data[4], '"TEXT"')
+        # Ensure unique representation names for nested attributes.
+        attribute_options = {
+            ('children', 'id') : {REPR_NAME_OPTION:'children.id'},
+            ('children', 'parent') : {IGNORE_OPTION:True},
+            ('children', 'text') : {REPR_NAME_OPTION:'children.text'},
+            ('children', 'text_rc') : {REPR_NAME_OPTION:'children.text_rc'},
+             }
+        self._representer.configure(attribute_options=attribute_options)
+        self._test_with_collection_expanded(check_string)
 
     def test_csv_resource_to_data_roundtrip(self):
         data_el = self._representer.data_from_resource(self._collection)
@@ -418,11 +434,55 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_invalid_field)
         self.assert_true(cm.exception.message.startswith('Invalid field'))
-        csv_invalid_row_length = '"id","text","number"\n0,"abc",0,"xyz"'
+        csv_invalid_row_length = '"id","text","number"\n0,"abc",0,"xyz",5'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_invalid_row_length)
         self.assert_true(
                     cm.exception.message.startswith('Invalid row length'))
+        csv_value_for_ignored_field = '"id","children"\n' \
+                                      '0,"http://0.0.0.0/my-entity-parents/0"'
+        with self.assert_raises(ValueError) as cm:
+            self._representer.data_from_representation(
+                                                csv_value_for_ignored_field)
+        self.assert_true(cm.exception.message.startswith(
+                                                    'Value for attribute'))
+        csv_invalid_link = '"id","parent"\n0,"my-entity-parents/0"'
+        with self.assert_raises(ValueError) as cm:
+            self._representer.data_from_representation(csv_invalid_link)
+        self.assert_true(cm.exception.message.startswith(
+                                            'Value for nested attribute'))
+
+    def test_csv_with_two_collections_expanded_fails(self):
+        attribute_options = {
+            ('children',) : {IGNORE_OPTION:False},
+            ('children', 'id') : {REPR_NAME_OPTION:'children.id'},
+            ('children', 'children',) : {IGNORE_OPTION:False},
+            ('children', 'children', 'id') :
+                            {REPR_NAME_OPTION:'children.children.id'},
+             }
+        self._representer.configure(attribute_options=attribute_options)
+        csv_two_colls_expanded = \
+                '"id","children.id","children.children.id"\n0,0,0'
+        with self.assert_raises(ValueError) as cm:
+            self._representer.data_from_representation(csv_two_colls_expanded)
+        self.assert_true(cm.exception.message.startswith(
+                                            'All but one nested collection'))
+
+    def test_csv_with_multiple_nested_members(self):
+        attribute_options = {
+            ('children',) : {IGNORE_OPTION:False},
+            ('children', 'id') : {REPR_NAME_OPTION:'children.id'},
+            }
+        self._representer.configure(attribute_options=attribute_options)
+        csv_multiple_nested_members = \
+                '"id","children.id"\n0,0\n0,1'
+        data_el = self._representer.data_from_representation(
+                                                csv_multiple_nested_members)
+        self.assert_true(len(data_el), 1)
+        self.assert_equal(
+          data_el.members[0].data['children'].members[1].data['children.id'],
+          1)
+
 
 
 class XmlRepresenterTestCase(ResourceTestCase):

@@ -8,6 +8,7 @@ Created on Apr 25, 2012.
 """
 from collections import OrderedDict
 from everest.entities.utils import get_entity_class
+from everest.representers.attributes import AttributeKey
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -28,8 +29,7 @@ from everest.url import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AttributeKey',
-           'DataElementBuilderResourceTreeVisitor',
+__all__ = ['DataElementBuilderResourceTreeVisitor',
            'DataElementTreeTraverserMixin',
            'DataTreeTraverser',
            'DataElementTreeTraverser',
@@ -51,36 +51,6 @@ class PROCESSING_DIRECTIONS(object):
     #: Resource data are being written (i.e., a resource is converted 
     #: to a representation.
     WRITE = 'WRITE'
-
-
-class AttributeKey(object):
-    """
-    Value object used as a key during resource data tree traversal.
-    
-    Each key consists of a tuple of attribute strings that uniquely 
-    determine a node's position in the resource data tree.
-    """
-    def __init__(self, data):
-        self.__data = tuple(data)
-        self.offset = 0
-
-    def __hash__(self):
-        return hash(self.__data)
-
-    def __eq__(self, other):
-        return self.__data == tuple(other)
-
-    def __getitem__(self, index):
-        return self.__data.__getitem__(index)
-
-    def __len__(self):
-        return len(self.__data)
-
-    def __add__(self, other):
-        return AttributeKey(self.__data + tuple(other))
-
-    def __str__(self):
-        return 'AttributeKey(%s, %d)' % (self.__data, self.offset)
 
 
 class ResourceDataVisitor(object):
@@ -427,12 +397,14 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
 
     def __ignore_attribute(self, ignore_opt, attr, attr_key):
         # Rules for ignoring attributes:
-        #  * always ignore when IGNORE_ON_XXX_OPTION is set to True
-        #  * always include when IGNORE_ON_XXX_OPTION is set to False
+        #  * always ignore when IGNORE_ON_XXX_OPTION is set to True;
+        #  * always include when IGNORE_ON_XXX_OPTION is set to False;
         #  * also ignore member attributes when the length of the attribute
-        #    key is > 0 or the cardinality is not MANYTOONE
+        #    key is > 0 or the cardinality is not MANYTOONE (this avoids
+        #    traversing circular attribute definitions such as parent ->
+        #    children -> parent);
         #  * also ignore collection attributes when the cardinality is 
-        #    not MANYTOMANY
+        #    not MANYTOMANY.
         do_ignore = ignore_opt
         if ignore_opt is None:
             if attr.kind == ResourceAttributeKinds.MEMBER:

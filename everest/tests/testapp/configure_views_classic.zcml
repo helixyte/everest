@@ -44,22 +44,47 @@
         
     <!-- Views. -->
     
-    <resource_view
+    <member_view
         for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
         name="csv"
         renderer="csv"
         request_method="GET" />
 
-    <resource_view
+    <collection_view
         for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="csv"
+        renderer="csv"
+        request_method="GET" />
+
+    <member_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
         name="json"
         renderer="json"
         request_method="GET" />
 
-    <resource_view
+    <collection_view
         for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <member_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
         name="xml"
         renderer="xml"
         request_method="GET" />
+
+    <collection_view
+        for="everest.tests.testapp.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
 
 </configure>

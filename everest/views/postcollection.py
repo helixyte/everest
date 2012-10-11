@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 14, 2011.
 """
 from everest.resources.utils import provides_member_resource
+from everest.resources.utils import provides_resource
 from everest.url import resource_to_url
 from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPCreated
@@ -28,16 +29,17 @@ class PostCollectionView(PutOrPostResourceView):
 
     See http://bitworking.org/projects/atom/rfc5023.html#post-to-create
     """
-
-    def _extract_request_data(self):
-        return self.representer.from_string(self.request.body)
-
     def _process_request_data(self, data):
-        member_was_posted = provides_member_resource(data)
-        if member_was_posted:
-            new_members = [data]
+        if not provides_resource(data):
+            rpr = self._get_request_representer()
+            resource = rpr.resource_from_data(data)
         else:
-            new_members = data
+            resource = data
+        member_was_posted = provides_member_resource(resource)
+        if member_was_posted:
+            new_members = [resource]
+        else:
+            new_members = resource
         was_created = True
         for new_member in new_members:
             if self.context.get(new_member.__name__) is not None:
@@ -49,10 +51,11 @@ class PostCollectionView(PutOrPostResourceView):
                 self.context.add(new_member)
         if was_created:
             if member_was_posted:
-                new_location = resource_to_url(data, request=self.request)
+                new_location = resource_to_url(resource, request=self.request)
             else:
-                new_location = resource_to_url(self.context, request=self.request)
+                new_location = resource_to_url(self.context,
+                                               request=self.request)
             self.request.response.status = self._status(HTTPCreated)
             self.request.response.headerlist = [('Location', new_location)]
-            response = {'context' : data}
+            response = self._get_result(resource)
         return response
