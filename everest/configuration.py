@@ -325,8 +325,9 @@ class Configurator(PyramidConfigurator):
         # Register utility collection relation -> collection class
         self._register_utility(collection, IRelation,
                                name=collection.relation)
-        # Register collection with the repository.
-        repo.manage(collection)
+        # Register the resource with the repository (and ultimately with the
+        # entity store).
+        repo.register_resource(interface)
         # Register adapter implementing interface -> repository.
         self._register_adapter(lambda obj: repo,
                                required=(interface,),

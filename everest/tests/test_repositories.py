@@ -8,7 +8,6 @@ from everest.entities.aggregates import MemoryAggregate
 from everest.entities.repository import EntityRepository
 from everest.repository import REPOSITORIES
 from everest.resources.entitystores import CachingEntityStore
-from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.testing import EntityTestCase
 from everest.testing import ResourceTestCase
@@ -91,10 +90,4 @@ class ResourceRepositoryTestCase(ResourceTestCase,
         self.assert_equal(len(coll), 0)
         repo.load_representation(IMyEntityParent, 'file://%s' % data_path)
         self.assert_equal(len(coll), 1)
-
-    def test_managed_collections(self):
-        repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORIES.MEMORY)
-        self.assert_true(get_collection_class(IMyEntityParent) in
-                         repo.managed_collections)
 

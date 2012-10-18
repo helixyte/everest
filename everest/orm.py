@@ -215,7 +215,21 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
     else:
         cls_expr = slug_expression
-    class_.slug = hybrid_descriptor(class_.slug, expr=cls_expr)
+    # If this is a polymorphic class, a base class may already have a 
+    # hybrid descriptor set as slug attribute.
+    slug_descr = None
+    for base_cls in class_.__mro__:
+        try:
+            slug_descr = object.__getattribute__(base_cls, 'slug')
+        except AttributeError:
+            pass
+        else:
+            break
+    if isinstance(slug_descr, hybrid_descriptor):
+        descr = slug_descr.descriptor
+    else:
+        descr = slug_descr
+    class_.slug = hybrid_descriptor(descr, expr=cls_expr)
     return mpr
 
 

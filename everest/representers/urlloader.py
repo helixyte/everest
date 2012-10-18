@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 25, 2012.
 """
+from pyramid.threadlocal import get_current_request
 __docformat__ = 'reStructuredText en'
 __all__ = ['LazyAttributeLoaderProxy',
            'LazyUrlLoader',
@@ -21,7 +22,15 @@ class LazyUrlLoader(object):
         self.__resolver = resolver
 
     def __call__(self):
-        return self.__resolver(self.__url)
+        request = get_current_request()
+        if request is None: # Traversal not yet usable.
+            result = None
+        else:
+            try:
+                result = self.__resolver(self.__url)
+            except KeyError: # Traversal problem - object not (yet) found.
+                result = None
+        return result
 
 
 class LazyAttributeLoaderProxy(object):
@@ -40,7 +49,6 @@ class LazyAttributeLoaderProxy(object):
     def __getattribute__(self, attr):
         attrs = object.__getattribute__(self, '__dict__')
         if attr in attrs.get('_loader_map', ()):
-            #  Setting this flag protects agains recursive loading.
             loaded_attrs = self.__load()
             try:
                 result = loaded_attrs[attr]
@@ -84,12 +92,13 @@ class LazyAttributeLoaderProxy(object):
             # To prevent recursive attempts to load the currently loading
             # attribute, we remove it from the loader map.
             del loader_map[attr]
-            try:
-                new_value = loader().get_entity()
-            except KeyError: # URL resolving (traversal) failed.
-                # Reinsert the attribute into the map for later loading.
+            resource = loader()
+            if resource is None:
+                # Resource could not yet be resolved; reinsert for later lazy
+                # loading.
                 loader_map[attr] = loader
             else:
+                new_value = resource.get_entity()
                 setattr(self, attr, new_value)
                 loaded_attrs[attr] = new_value
         # Once all attributes are loaded successfully, we do not need the

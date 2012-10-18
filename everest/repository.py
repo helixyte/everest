@@ -104,6 +104,13 @@ class Repository(object):
         """
         self.__obj_cache.clear()
 
+    def register_resource(self, resource):
+        """
+        Registers the given resource (interface or class participating in 
+        a resource declaration) with the repository.
+        """
+        raise NotImplementedError('Abstract method.')
+
     def _initialize(self):
         """
         Implements initialization of this repository.

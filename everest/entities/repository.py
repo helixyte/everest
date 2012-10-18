@@ -37,6 +37,9 @@ class EntityRepository(Repository):
         agg = self.aggregate_class.create(entity_cls, session_factory)
         return agg
 
+    def register_resource(self, resource):
+        self.__entity_store.register_type(get_entity_class(resource))
+
     @property
     def is_initialized(self):
         return self.__entity_store.is_initialized

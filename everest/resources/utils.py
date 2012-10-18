@@ -61,6 +61,7 @@ def get_stage_collection(rc):
     """
     repo_mgr = get_repository_manager()
     repo = repo_mgr.get(REPOSITORIES.MEMORY)
+    repo.register_resource(rc)
     return repo.get(rc)
 
 
@@ -74,6 +75,7 @@ def new_stage_collection(rc):
     """
     repo_mgr = get_repository_manager()
     new_repo = repo_mgr.new(REPOSITORIES.MEMORY)
+    new_repo.register_resource(rc)
     new_repo.initialize()
     return new_repo.get(rc)
 

@@ -30,7 +30,6 @@ class ResourceRepository(Repository):
     """
     def __init__(self, entity_repository):
         Repository.__init__(self)
-        self.__managed_collections = set()
         self.__entity_repository = entity_repository
 
     def clear(self, rc):
@@ -48,12 +47,8 @@ class ResourceRepository(Repository):
                                       content_type=content_type,
                                       resolve_urls=resolve_urls)
 
-    def manage(self, collection_class):
-        self.__managed_collections.add(collection_class)
-
-    @property
-    def managed_collections(self):
-        return self.__managed_collections.copy()
+    def register_resource(self, resource):
+        self.__entity_repository.register_resource(resource)
 
     def configure(self, **config):
         self.__entity_repository.configure(**config)

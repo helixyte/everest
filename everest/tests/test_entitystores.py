@@ -129,6 +129,29 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_equal(self._session.get_by_slug(_MyEntity, ent.slug).id,
                           ent.id)
 
+    def test_repeated_add_remove(self):
+        ent1 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent1)
+        self.assert_true(self._session.get_by_slug(_MyEntity, ent1.slug)
+                         is ent1)
+        self._session.remove(_MyEntity, ent1)
+        self.assert_is_none(self._session.get_by_slug(_MyEntity, ent1.slug))
+        ent2 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent2)
+        self.assert_true(self._session.get_by_slug(_MyEntity, ent2.slug)
+                         is ent2)
+        self._session.remove(_MyEntity, ent2)
+        self.assert_is_none(self._session.get_by_slug(_MyEntity, ent2.slug))
+        self.assert_true(ent1.id != ent2.id)
+
+    def test_add_remove_add(self):
+        ent1 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent1)
+        self._session.commit()
+        self._session.remove(_MyEntity, ent1)
+        self._session.add(_MyEntity, ent1)
+        self.assert_equal(ent1.id, 0)
+
     def test_remove_without_id(self):
         ent = _MyEntity()
         self._session.add(_MyEntity, ent)
@@ -173,6 +196,23 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
         thr.join()
         self.assert_true(thr.ok)
 
+    def test_failing_flush_duplicate_id(self):
+        ent1 = _MyEntity()
+        self._session.add(_MyEntity, ent1)
+        ent2 = _MyEntity()
+        self._session.add(_MyEntity, ent2)
+        ent2.id = 0
+        self.assert_raises(ValueError, self._session.commit)
+
+    def test_failing_flush_duplicate_slug(self):
+        ent1 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent1)
+        ent2 = _MyEntityWithSlug()
+        ent2.slug = None
+        self._session.add(_MyEntity, ent2)
+        ent2.slug = 'slug'
+        self.assert_raises(ValueError, self._session.commit)
+
 
 class FileSystemEntityStoreTestCase(ResourceTestCase):
     package_name = 'everest.tests.testapp_db'
@@ -181,12 +221,10 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
     def set_up(self):
         self.__data_dir = os.path.join(os.path.dirname(__file__),
                                        'testapp_db', 'data')
-        orig_data_dir = os.path.join(self.__data_dir, 'original')
-        for fn in glob.glob1(orig_data_dir, "*.csv"):
-            shutil.copy(os.path.join(orig_data_dir, fn), self.__data_dir)
+        self.__copy_data_files()
         try:
             ResourceTestCase.set_up(self)
-        except: # justified catch all pylint: disable=W0702
+        except Exception:
             self.__remove_data_files() # Always remove the copied files.
             raise
 
@@ -203,17 +241,6 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
                  ]
         for coll in colls:
             self.assert_equal(len(coll), 1)
-
-    def test_empty_initialization(self):
-        self.__remove_data_files()
-        colls = [
-                 get_root_collection(IMyEntityParent),
-                 get_root_collection(IMyEntity),
-                 get_root_collection(IMyEntityChild),
-                 get_root_collection(IMyEntityGrandchild),
-                 ]
-        for coll in colls:
-            self.assert_equal(len(coll), 0)
 
     def test_get_read_collection_path(self):
         path = get_read_collection_path(get_collection_class(IMyEntity),
@@ -256,15 +283,39 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         ent = MyEntity(id=1)
         mb = MyEntityMember.create_from_entity(ent)
         coll.add(mb)
+        transaction.commit()
         coll.remove(mb)
         transaction.commit()
+        self.assert_equal(len(coll), 1)
+
+    def test_repeated_add_remove_same_member_no_id(self):
+        coll = get_root_collection(IMyEntity)
+        ent1 = MyEntity()
+        mb1 = MyEntityMember.create_from_entity(ent1)
+        coll.add(mb1)
+        transaction.commit()
+        self.assert_equal(len(coll), 2)
+        coll.remove(mb1)
+        transaction.commit()
+        self.assert_equal(len(coll), 1)
+        ent2 = MyEntity()
+        mb2 = MyEntityMember.create_from_entity(ent2)
+        coll.add(mb2)
+        transaction.commit()
+        self.assert_equal(len(coll), 2)
+        coll.remove(mb2)
+        transaction.commit()
+        self.assert_equal(len(coll), 1)
+        self.assert_not_equal(mb1.id, mb2.id)
 
     def test_remove_add_same_member(self):
         coll = get_root_collection(IMyEntity)
         mb = iter(coll).next()
         coll.remove(mb)
+        transaction.commit()
         coll.add(mb)
         transaction.commit()
+        self.assert_equal(len(coll), 1)
 
     def test_commit(self):
         coll = get_root_collection(IMyEntity)
@@ -299,6 +350,11 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         repo_mgr = get_repository_manager()
         repo = repo_mgr.get(REPOSITORIES.FILE_SYSTEM)
         self.assert_raises(ValueError, repo.configure, foo='bar')
+
+    def __copy_data_files(self):
+        orig_data_dir = os.path.join(self.__data_dir, 'original')
+        for fn in glob.glob1(orig_data_dir, "*.csv"):
+            shutil.copy(os.path.join(orig_data_dir, fn), self.__data_dir)
 
     def __remove_data_files(self):
         for fn in glob.glob1(self.__data_dir, '*.csv'):
