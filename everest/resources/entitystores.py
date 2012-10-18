@@ -449,7 +449,7 @@ class EntityCache(object):
 
     def get_by_slug(self, entity_slug):
         """
-        Performs a lookup of an entity by its sluyg.
+        Performs a lookup of an entity by its slug.
         
         :param str entity_id: entity slug
         """

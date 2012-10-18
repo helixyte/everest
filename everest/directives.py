@@ -226,11 +226,6 @@ class IResourceDirective(Interface):
              default=True,
              required=False,
              )
-#    request_methods = \
-#        Tokens(title=u"HTTP request methods supported by this resource.",
-#               value_type=Choice(values=['GET', 'POST', 'DELETE']),
-#               default='GET',
-#               )
 
 
 class ResourceDirective(GroupingContextDecorator):
@@ -316,6 +311,13 @@ class IResourceViewDirective(IViewDirective):
         GlobalObject(title=u"The default MIME content type to use when the "
                             "client does not indicate a preference.",
                      required=False)
+    request_method = \
+        Tokens(title=u"One or more request methods that need to be matched.",
+               required=True,
+               value_type=Choice(values=('GET', 'POST', 'PUT', 'DELETE'),
+                                 default='GET',
+                                 ),
+               )
 
 
 def resource_view(_context, for_, default_context_type=None, **kw):

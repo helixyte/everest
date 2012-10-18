@@ -383,8 +383,13 @@ class Configurator(PyramidConfigurator):
             rpr_reg.register(rc, content_type, configuration=rpr_config)
 
     def add_resource_view(self, resource, view=None, name='', renderer=None,
-                          request_method='GET', default_content_type=None,
+                          request_method=('GET',), default_content_type=None,
                           **kw):
+        # FIXME: We should not allow **kw to support setting up standard
+        #        views here since some options may have undesired side
+        #        effects.
+        if isinstance(request_method, basestring):
+            request_method = (request_method,)
         if IInterface in provided_by(resource):
             if not view is None:
                 raise ValueError('Must pass a resource class, not an '
@@ -533,48 +538,51 @@ class Configurator(PyramidConfigurator):
                      for (name, key) in setting_info
                      if not settings.get(key, None) is None])
 
-    def __add_resource_view(self, rc, view, name, renderer, request_method,
+    def __add_resource_view(self, rc, view, name, renderer, request_methods,
                             default_content_type, options):
-        if view is None \
-           or (isinstance(view, type) and
-               issubclass(view, RepresentingResourceView)):
-            register_sub_views = name == ''
-            kw = dict(default_content_type=default_content_type,
-                      convert_response=renderer is None)
-            if view is None:
-                # Attempt to guess a default view. We register a factory so we
-                # can pass additional constructor arguments.
-                if provides_member_resource(rc):
-                    if request_method == 'GET':
-                        view = self.__make_view_factory(GetMemberView, kw)
-                    elif request_method in ('PUT', 'POST'):
-                        # FIXME: when using POST with members, we should 
-                        #        check for the X-HTTP-Method-Override:PUT
-                        #        header. 
-                        view = self.__make_view_factory(PutMemberView, kw)
-                    elif request_method == 'DELETE':
-                        # The DELETE view is special as it does not have to 
-                        # deal with representations.
-                        view = DeleteMemberView
-                        register_sub_views = False
+        for request_method in request_methods:
+            if view is None \
+               or (isinstance(view, type) and
+                   issubclass(view, RepresentingResourceView)):
+                register_sub_views = name == ''
+                kw = dict(default_content_type=default_content_type,
+                          convert_response=renderer is None)
+                if view is None:
+                    # Attempt to guess a default view. We register a factory
+                    # so we can pass additional constructor arguments.
+                    if provides_member_resource(rc):
+                        if request_method == 'GET':
+                            view = self.__make_view_factory(GetMemberView, kw)
+                        elif request_method in ('PUT', 'POST'):
+                            # FIXME: when using POST with members, we should
+                            #        check for the X-HTTP-Method-Override:PUT
+                            #        header.
+                            view = self.__make_view_factory(PutMemberView, kw)
+                        elif request_method == 'DELETE':
+                            # The DELETE view is special as it does not have 
+                            # to deal with representations.
+                            view = DeleteMemberView
+                            register_sub_views = False
+                    else:
+                        if request_method == 'GET':
+                            view = \
+                              self.__make_view_factory(GetCollectionView, kw)
+                        elif request_method == 'POST':
+                            view = \
+                              self.__make_view_factory(PostCollectionView, kw)
                 else:
-                    if request_method == 'GET':
-                        view = self.__make_view_factory(GetCollectionView, kw)
-                    elif request_method == 'POST':
-                        view = self.__make_view_factory(PostCollectionView, kw)
+                    view = self.__make_view_factory(view, kw)
             else:
-                view = self.__make_view_factory(view, kw)
-        else:
-            register_sub_views = False
-        vnames = set([name])
-        if register_sub_views:
-            # Add sub-views for registered representer names if this view
-            # uses representers (and is not a namned view itself).
-            vnames.update(get_registered_representer_names())
-        for vname in vnames:
-            self.add_view(context=rc, view=view, renderer=renderer,
-                          request_method=request_method, name=vname,
-                          **options)
+                register_sub_views = False
+            vnames = set([name])
+            if register_sub_views:
+                # Add sub-views for registered representer names if this view
+                # uses representers (and is not a namned view itself).
+                vnames.update(get_registered_representer_names())
+            for vname in vnames:
+                self.add_view(context=rc, view=view, renderer=renderer,
+                              request_method=request_method, name=vname,
+                              **options)
 
     def __make_view_factory(self, view_class, kw):
         def view_factory(context, request):

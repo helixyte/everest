@@ -38,6 +38,7 @@ from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
+from everest.testing import TestCaseWithConfiguration
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityParent
 from everest.tests.testapp_db.interfaces import IMyEntity
@@ -172,6 +173,13 @@ class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
         # successfully.
         self.assert_false(isinstance(mb.parent.get_entity(),
                                      LazyAttributeLoaderProxy))
+
+
+class LazyAttributeLoaderNoRequest(TestCaseWithConfiguration):
+    def test_lazy_loading(self):
+        loader = LazyUrlLoader('http://0.0.0.0/my-entity-parents/0',
+                               url_to_resource)
+        self.assert_is_none(loader())
 
 
 class TestCsvData(Pep8CompliantTestCase):
