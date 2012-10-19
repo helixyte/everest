@@ -315,7 +315,7 @@ class IResourceViewDirective(IViewDirective):
         Tokens(title=u"One or more request methods that need to be matched.",
                required=True,
                value_type=Choice(values=('GET', 'POST', 'PUT', 'DELETE',
-                                         'FAKE_DELETE', 'FAKE_PUT'),
+                                         'FAKE_PUT', 'FAKE_DELETE'),
                                  default='GET',
                                  ),
                )

@@ -541,7 +541,9 @@ class Configurator(PyramidConfigurator):
     def __add_resource_view(self, rc, view, name, renderer, request_methods,
                             default_content_type, options):
         for request_method in request_methods:
-            if view is None \
+            opts = options.copy()
+            vw = view
+            if vw is None \
                or (isinstance(view, type) and
                    issubclass(view, RepresentingResourceView)):
                 register_sub_views = name == ''
@@ -552,33 +554,32 @@ class Configurator(PyramidConfigurator):
                     # so we can pass additional constructor arguments.
                     if provides_member_resource(rc):
                         if request_method == 'GET':
-                            view = self.__make_view_factory(GetMemberView, kw)
+                            vw = self.__make_view_factory(GetMemberView, kw)
                         elif request_method == 'PUT':
-                            view = self.__make_view_factory(PutMemberView, kw)
+                            vw = self.__make_view_factory(PutMemberView, kw)
                         elif request_method == 'DELETE':
                             # The DELETE view is special as it does not have 
                             # to deal with representations.
-                            view = DeleteMemberView
+                            vw = DeleteMemberView
                             register_sub_views = False
                         elif request_method == 'FAKE_PUT':
                             request_method = 'POST'
-                            options['header'] = 'X-HTTP-Method-Override:PUT'
-                            view = self.__make_view_factory(PutMemberView, kw)
+                            opts['header'] = 'X-HTTP-Method-Override:PUT'
+                            vw = self.__make_view_factory(PutMemberView, kw)
                         elif request_method == 'FAKE_DELETE':
                             request_method = 'POST'
-                            options['header'] = \
-                                            'X-HTTP-Method-Override:DELETE'
-                            view = DeleteMemberView
+                            opts['header'] = 'X-HTTP-Method-Override:DELETE'
+                            vw = DeleteMemberView
                             register_sub_views = False
                     else:
                         if request_method == 'GET':
-                            view = \
+                            vw = \
                               self.__make_view_factory(GetCollectionView, kw)
                         elif request_method == 'POST':
-                            view = \
+                            vw = \
                               self.__make_view_factory(PostCollectionView, kw)
                 else:
-                    view = self.__make_view_factory(view, kw)
+                    vw = self.__make_view_factory(view, kw)
             else:
                 register_sub_views = False
             vnames = set([name])
@@ -587,9 +588,9 @@ class Configurator(PyramidConfigurator):
                 # uses representers (and is not a namned view itself).
                 vnames.update(get_registered_representer_names())
             for vname in vnames:
-                self.add_view(context=rc, view=view, renderer=renderer,
+                self.add_view(context=rc, view=vw, renderer=renderer,
                               request_method=request_method, name=vname,
-                              **options)
+                              **opts)
 
     def __make_view_factory(self, view_class, kw):
         def view_factory(context, request):
