@@ -553,14 +553,21 @@ class Configurator(PyramidConfigurator):
                     if provides_member_resource(rc):
                         if request_method == 'GET':
                             view = self.__make_view_factory(GetMemberView, kw)
-                        elif request_method in ('PUT', 'POST'):
-                            # FIXME: when using POST with members, we should
-                            #        check for the X-HTTP-Method-Override:PUT
-                            #        header.
+                        elif request_method == 'PUT':
                             view = self.__make_view_factory(PutMemberView, kw)
                         elif request_method == 'DELETE':
                             # The DELETE view is special as it does not have 
                             # to deal with representations.
+                            view = DeleteMemberView
+                            register_sub_views = False
+                        elif request_method == 'FAKE_PUT':
+                            request_method = 'POST'
+                            options['header'] = 'X-HTTP-Method-Override:PUT'
+                            view = self.__make_view_factory(PutMemberView, kw)
+                        elif request_method == 'FAKE_DELETE':
+                            request_method = 'POST'
+                            options['header'] = \
+                                            'X-HTTP-Method-Override:DELETE'
                             view = DeleteMemberView
                             register_sub_views = False
                     else:

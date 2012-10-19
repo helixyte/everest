@@ -267,6 +267,21 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
                       content_type='application/foobar',
                       status=415)
 
+    def test_fake_put_view(self):
+        self.config.add_member_view(IFoo, request_method='FAKE_PUT')
+        req_body = '"id"\n0'
+        self.app.post("%s/0" % self.path,
+                      params=req_body,
+                      content_type=CsvMime.mime_type_string,
+                      headers={'X-HTTP-Method-Override' : 'PUT'},
+                      status=200)
+
+    def test_fake_delete_view(self):
+        self.config.add_member_view(IFoo, request_method='FAKE_DELETE')
+        self.app.post("%s/0" % self.path,
+                      headers={'X-HTTP-Method-Override' : 'DELETE'},
+                      status=200)
+
 
 class StaticViewTestCase(FunctionalTestCase):
     package_name = 'everest.tests.testapp_db'
