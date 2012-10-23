@@ -162,3 +162,7 @@ class RepositoryManager(object):
                             messaging_reset_on_start=
                                             self.__messaging_reset_on_start)
                 repo.initialize()
+
+    def on_app_created(self, event): # pylint: disable=W0613
+        self.initialize_all()
+

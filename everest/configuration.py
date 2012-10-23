@@ -62,8 +62,12 @@ from everest.views.getmember import GetMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
 from pyramid.configuration import Configurator as PyramidConfigurator
+from pyramid.interfaces import IApplicationCreated
 from pyramid.interfaces import IRequest
+from pyramid.path import DottedNameResolver
 from pyramid.path import caller_package
+from pyramid.registry import Registry
+from pyramid_zcml import load_zcml
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -87,13 +91,13 @@ class Configurator(PyramidConfigurator):
                  order_specification_factory=None,
                  # Application level services.
                  service=None,
-                 filter_builder=None,
-                 filter_director=None,
+                 filter_specification_builder=None,
+                 filter_specification_director=None,
                  cql_filter_specification_visitor=None,
                  sql_filter_specification_visitor=None,
                  eval_filter_specification_visitor=None,
-                 order_builder=None,
-                 order_director=None,
+                 order_specification_builder=None,
+                 order_specification_director=None,
                  cql_order_specification_visitor=None,
                  sql_order_specification_visitor=None,
                  eval_order_specification_visitor=None,
@@ -102,25 +106,44 @@ class Configurator(PyramidConfigurator):
                  ):
         if package is None:
             package = caller_package()
+        call_setup = registry is None
+        if call_setup:
+            # Need to initialize our registry here to call our setup_registry 
+            # with the given custom option values rather than from the base
+            # class constructor.
+            # FIXME: There is some code duplication with Pyramid here.
+            name_resolver = DottedNameResolver(package)
+            name_resolver = name_resolver
+            package_name = name_resolver.get_package_name()
+            registry = Registry(package_name)
+            self.registry = registry
         PyramidConfigurator.__init__(self,
-                                 registry=registry, package=package, **kw)
+                                     registry=registry, package=package, **kw)
         # Set up configurator's load_zcml method.
-        self.include('pyramid_zcml')
-        if registry is None:
-            self.__setup(filter_specification_factory,
-                         order_specification_factory,
-                         service,
-                         filter_builder,
-                         filter_director,
-                         cql_filter_specification_visitor,
-                         sql_filter_specification_visitor,
-                         eval_filter_specification_visitor,
-                         order_builder,
-                         order_director,
-                         cql_order_specification_visitor,
-                         sql_order_specification_visitor,
-                         eval_order_specification_visitor,
-                         url_converter)
+        self.add_directive('load_zcml', load_zcml, action_wrap=False)
+        if call_setup:
+            self.setup_registry(
+               filter_specification_factory=filter_specification_factory,
+               order_specification_factory=order_specification_factory,
+               service=service,
+               filter_specification_builder=filter_specification_builder,
+               filter_specification_director=filter_specification_director,
+               cql_filter_specification_visitor=
+                                    cql_filter_specification_visitor,
+               sql_filter_specification_visitor=
+                                    sql_filter_specification_visitor,
+               eval_filter_specification_visitor=
+                                    eval_filter_specification_visitor,
+               order_specification_builder=order_specification_builder,
+               order_specification_director=order_specification_director,
+               cql_order_specification_visitor=
+                                    cql_order_specification_visitor,
+               sql_order_specification_visitor=
+                                    sql_order_specification_visitor,
+               eval_order_specification_visitor=
+                                    eval_order_specification_visitor,
+               url_converter=url_converter,
+               **kw)
 
     def get_registered_utility(self, *args, **kw):
         """
@@ -150,30 +173,57 @@ class Configurator(PyramidConfigurator):
                        eval_order_specification_visitor=None,
                        url_converter=None,
                        **kw):
+        # Set default values for options.
+        if filter_specification_factory is None:
+            filter_specification_factory = FilterSpecificationFactory()
+        if order_specification_factory is None:
+            order_specification_factory = OrderSpecificationFactory()
+        if service is None:
+            service = Service()
+        if filter_specification_builder is None:
+            filter_specification_builder = FilterSpecificationBuilder
+        if filter_specification_director is None:
+            filter_specification_director = FilterSpecificationDirector
+        if cql_filter_specification_visitor is None:
+            cql_filter_specification_visitor = CqlFilterSpecificationVisitor
+        if sql_filter_specification_visitor is None:
+            sql_filter_specification_visitor = SqlFilterSpecificationVisitor
+        if eval_filter_specification_visitor is None:
+            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
+        if order_specification_builder is None:
+            order_specification_builder = OrderSpecificationBuilder
+        if order_specification_director is None:
+            order_specification_director = OrderSpecificationDirector
+        if cql_order_specification_visitor is None:
+            cql_order_specification_visitor = CqlOrderSpecificationVisitor
+        if sql_order_specification_visitor is None:
+            sql_order_specification_visitor = SqlOrderSpecificationVisitor
+        if eval_order_specification_visitor is None:
+            eval_order_specification_visitor = EvalOrderSpecificationVisitor
+        if url_converter is None:
+            url_converter = ResourceUrlConverter
         PyramidConfigurator.setup_registry(self, **kw)
-        self.__setup(filter_specification_factory,
-                     order_specification_factory,
-                     service,
-                     filter_specification_builder,
-                     filter_specification_director,
-                     cql_filter_specification_visitor,
-                     sql_filter_specification_visitor,
-                     eval_filter_specification_visitor,
-                     order_specification_builder,
-                     order_specification_director,
-                     cql_order_specification_visitor,
-                     sql_order_specification_visitor,
-                     eval_order_specification_visitor,
-                     url_converter)
-
-    def make_wsgi_app(self):
-        """
-        Extended such that the repository manager initializes all repositories
-        before the wsgi app is created.
-        """
-        repo_mgr = self.get_registered_utility(IRepositoryManager)
-        repo_mgr.initialize_all()
-        return PyramidConfigurator.make_wsgi_app(self)
+        self.__setup_everest(
+               filter_specification_factory=filter_specification_factory,
+               order_specification_factory=order_specification_factory,
+               service=service,
+               filter_specification_builder=filter_specification_builder,
+               filter_specification_director=filter_specification_director,
+               cql_filter_specification_visitor=
+                                    cql_filter_specification_visitor,
+               sql_filter_specification_visitor=
+                                    sql_filter_specification_visitor,
+               eval_filter_specification_visitor=
+                                    eval_filter_specification_visitor,
+               order_specification_builder=order_specification_builder,
+               order_specification_director=order_specification_director,
+               cql_order_specification_visitor=
+                                    cql_order_specification_visitor,
+               sql_order_specification_visitor=
+                                    sql_order_specification_visitor,
+               eval_order_specification_visitor=
+                                    eval_order_specification_visitor,
+               url_converter=url_converter)
 
     def add_orm_repository(self, name=None, entity_store_class=None,
                            aggregate_class=None,
@@ -422,7 +472,75 @@ class Configurator(PyramidConfigurator):
     def _register_adapter(self, *args, **kw):
         return self.registry.registerAdapter(*args, **kw) # pylint: disable=E1103
 
-    def __setup(self,
+    def _set_filter_specification_factory(self, filter_specification_factory):
+        self._register_utility(filter_specification_factory,
+                               IFilterSpecificationFactory)
+
+    def _set_order_specification_factory(self, order_specification_factory):
+        self._register_utility(order_specification_factory,
+                               IOrderSpecificationFactory)
+
+    def _set_service(self, service):
+        self._register_utility(service, IService)
+
+    def _set_filter_specification_builder(self, filter_specification_builder):
+        self._register_utility(filter_specification_builder,
+                               IFilterSpecificationBuilder)
+
+    def _set_filter_specification_director(self,
+                                           filter_specification_director):
+        self._register_utility(filter_specification_director,
+                               IFilterSpecificationDirector)
+
+    def _set_cql_filter_specification_visitor(self,
+                                           cql_filter_specification_visitor):
+        self._register_utility(cql_filter_specification_visitor,
+                               IFilterSpecificationVisitor,
+                              name=EXPRESSION_KINDS.CQL)
+
+    def _set_sql_filter_specification_visitor(self,
+                                           sql_filter_specification_visitor):
+        self._register_utility(sql_filter_specification_visitor,
+                               IFilterSpecificationVisitor,
+                               name=EXPRESSION_KINDS.SQL)
+
+    def _set_eval_filter_specification_visitor(self,
+                                           eval_filter_specification_visitor):
+        self._register_utility(eval_filter_specification_visitor,
+                               IFilterSpecificationVisitor,
+                               name=EXPRESSION_KINDS.EVAL)
+
+    def _set_order_specification_builder(self, order_specification_builder):
+        self._register_utility(order_specification_builder,
+                               IOrderSpecificationBuilder)
+
+    def _set_order_specification_director(self, order_specification_director):
+        self._register_utility(order_specification_director,
+                               IOrderSpecificationDirector)
+
+    def _set_cql_order_specification_visitor(self,
+                                             cql_order_specification_visitor):
+        self._register_utility(cql_order_specification_visitor,
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.CQL)
+
+    def _set_sql_order_specification_visitor(self,
+                                             sql_order_specification_visitor):
+        self._register_utility(sql_order_specification_visitor,
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.SQL)
+
+    def _set_eval_order_specification_visitor(self,
+                                             eval_order_specification_visitor):
+        self._register_utility(eval_order_specification_visitor,
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.EVAL)
+
+    def _set_url_converter(self, url_converter):
+        self._register_adapter(url_converter, (IRequest,),
+                               IResourceUrlConverter)
+
+    def __setup_everest(self,
                 filter_specification_factory,
                 order_specification_factory,
                 service,
@@ -437,91 +555,69 @@ class Configurator(PyramidConfigurator):
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
                 url_converter):
-        # Set up the repository manager.
-        repo_mgr = RepositoryManager()
-        self._register_utility(repo_mgr, IRepositoryManager)
-        # Set up the root MEMORY repository and set it as the default
-        # for all resources that do not specify a repository.
-        mem_repo = repo_mgr.new(REPOSITORIES.MEMORY,
-                                name=REPOSITORIES.MEMORY)
-        repo_mgr.set(mem_repo, make_default=True)
-        # Set up filter and order specification factories.
-        if filter_specification_factory is None:
-            filter_specification_factory = FilterSpecificationFactory()
-        self._register_utility(filter_specification_factory,
-                               IFilterSpecificationFactory)
-        if order_specification_factory is None:
-            order_specification_factory = OrderSpecificationFactory()
-        self._register_utility(order_specification_factory,
-                               IOrderSpecificationFactory)
-        # Create representer registry and register builtin representer classes.
-        rpr_reg = RepresenterRegistry()
-        rpr_reg.register_representer_class(CsvResourceRepresenter)
-        rpr_reg.register_representer_class(JsonResourceRepresenter)
-        rpr_reg.register_representer_class(XmlResourceRepresenter)
-        rpr_reg.register_representer_class(AtomResourceRepresenter)
-        self._register_utility(rpr_reg, IRepresenterRegistry)
-        # Set up the service.
-        if service is None:
-            service = Service()
-        self._register_utility(service, IService)
-        # Set up filter and order specification builders, directors, visitors.
-        if filter_specification_builder is None:
-            filter_specification_builder = FilterSpecificationBuilder
-        self._register_utility(filter_specification_builder,
-                               IFilterSpecificationBuilder)
-        if filter_specification_director is None:
-            filter_specification_director = FilterSpecificationDirector
-        self._register_utility(filter_specification_director,
-                               IFilterSpecificationDirector)
-        if cql_filter_specification_visitor is None:
-            cql_filter_specification_visitor = CqlFilterSpecificationVisitor
-        self._register_utility(cql_filter_specification_visitor,
-                               IFilterSpecificationVisitor,
-                              name=EXPRESSION_KINDS.CQL)
-        if sql_filter_specification_visitor is None:
-            sql_filter_specification_visitor = SqlFilterSpecificationVisitor
-        self._register_utility(sql_filter_specification_visitor,
-                               IFilterSpecificationVisitor,
-                               name=EXPRESSION_KINDS.SQL)
-        if eval_filter_specification_visitor is None:
-            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
-        self._register_utility(eval_filter_specification_visitor,
-                               IFilterSpecificationVisitor,
-                               name=EXPRESSION_KINDS.EVAL)
-        if order_specification_builder is None:
-            order_specification_builder = OrderSpecificationBuilder
-        self._register_utility(order_specification_builder,
-                               IOrderSpecificationBuilder)
-        if order_specification_director is None:
-            order_specification_director = OrderSpecificationDirector
-        self._register_utility(order_specification_director,
-                               IOrderSpecificationDirector)
-        if cql_order_specification_visitor is None:
-            cql_order_specification_visitor = CqlOrderSpecificationVisitor
-        self._register_utility(cql_order_specification_visitor,
-                               IOrderSpecificationVisitor,
-                               name=EXPRESSION_KINDS.CQL)
-        if sql_order_specification_visitor is None:
-            sql_order_specification_visitor = SqlOrderSpecificationVisitor
-        self._register_utility(sql_order_specification_visitor,
-                               IOrderSpecificationVisitor,
-                               name=EXPRESSION_KINDS.SQL)
-        if eval_order_specification_visitor is None:
-            eval_order_specification_visitor = EvalOrderSpecificationVisitor
-        self._register_utility(eval_order_specification_visitor,
-                               IOrderSpecificationVisitor,
-                               name=EXPRESSION_KINDS.EVAL)
-        # URL converter adapter.
-        if url_converter is None:
-            url_converter = ResourceUrlConverter
-        self._register_adapter(url_converter, (IRequest,),
-                               IResourceUrlConverter)
-        # Add builtin renderers.
-        self.add_renderer('csv', RendererFactory)
-        self.add_renderer('json', RendererFactory)
-        self.add_renderer('xml', RendererFactory)
-        self.add_renderer('atom', RendererFactory)
+        if self.query_registered_utilities(IRepositoryManager) is None:
+            # These are core initializations which should only be done once.
+            # Set up the repository manager.
+            repo_mgr = RepositoryManager()
+            self._register_utility(repo_mgr, IRepositoryManager)
+            self.add_subscriber(repo_mgr.on_app_created, IApplicationCreated)
+            # Set up the root MEMORY repository and set it as the default
+            # for all resources that do not specify a repository.
+            mem_repo = repo_mgr.new(REPOSITORIES.MEMORY,
+                                    name=REPOSITORIES.MEMORY)
+            repo_mgr.set(mem_repo, make_default=True)
+            # Create representer registry and register builtin representer classes.
+            rpr_reg = RepresenterRegistry()
+            rpr_reg.register_representer_class(CsvResourceRepresenter)
+            rpr_reg.register_representer_class(JsonResourceRepresenter)
+            rpr_reg.register_representer_class(XmlResourceRepresenter)
+            rpr_reg.register_representer_class(AtomResourceRepresenter)
+            self._register_utility(rpr_reg, IRepresenterRegistry)
+        else:
+            # Add builtin renderers. This needs to be done late to make sure
+            # the pyramid default renderers will not override these.
+            self.add_renderer('csv', RendererFactory)
+            self.add_renderer('json', RendererFactory)
+            self.add_renderer('xml', RendererFactory)
+            self.add_renderer('atom', RendererFactory)
+        if not filter_specification_factory is None:
+            self._set_filter_specification_factory(
+                                                filter_specification_factory)
+        if not order_specification_factory is None:
+            self._set_order_specification_factory(order_specification_factory)
+        if not service is None:
+            self._set_service(service)
+        if not filter_specification_builder is None:
+            self._set_filter_specification_builder(
+                                                filter_specification_builder)
+        if not filter_specification_director is None:
+            self._set_filter_specification_director(
+                                                filter_specification_director)
+        if not cql_filter_specification_visitor is None:
+            self._set_cql_filter_specification_visitor(
+                                            cql_filter_specification_visitor)
+        if not sql_filter_specification_visitor is None:
+            self._set_sql_filter_specification_visitor(
+                                            sql_filter_specification_visitor)
+        if not eval_filter_specification_visitor is None:
+            self._set_eval_filter_specification_visitor(
+                                            eval_filter_specification_visitor)
+        if not order_specification_builder is None:
+            self._set_order_specification_builder(order_specification_builder)
+        if not order_specification_director is None:
+            self._set_order_specification_director(
+                                                order_specification_director)
+        if not cql_order_specification_visitor is None:
+            self._set_cql_order_specification_visitor(
+                                            cql_order_specification_visitor)
+        if not sql_order_specification_visitor is None:
+            self._set_sql_order_specification_visitor(
+                                            sql_order_specification_visitor)
+        if not eval_order_specification_visitor is None:
+            self._set_eval_order_specification_visitor(
+                                            eval_order_specification_visitor)
+        if not url_converter is None:
+            self._set_url_converter(url_converter)
 
     def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
                          make_default, cnf):
