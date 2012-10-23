@@ -8,6 +8,7 @@ Created on Jan 31, 2012.
 """
 from collections import defaultdict
 from copy import deepcopy
+from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
 from everest.orm import Session as SaSessionFactory
 from everest.orm import empty_metadata
@@ -71,7 +72,7 @@ class EntityStore(object):
         self.__is_initialized = False
         #: The set of resources (collection classes) managed by this entity
         #: store.
-        self.__registered_entity_classes = set()
+        self.__registered_resources = set()
 
     def configure(self, **config):
         for key, val in config.items():
@@ -79,12 +80,12 @@ class EntityStore(object):
                 raise ValueError('Invalid configuration key "%s".' % key)
             self._config[key] = val
 
-    def register_type(self, entity_class):
-        self.__registered_entity_classes.add(entity_class)
+    def register_resource(self, resource):
+        self.__registered_resources.add(resource)
 
     @property
     def registered_types(self):
-        return self.__registered_entity_classes
+        return [get_entity_class(rc) for rc in self.__registered_resources]
 
     def initialize(self):
         # Perform initialization specific to the derived class.
@@ -335,8 +336,8 @@ class CachingEntityStore(EntityStore):
                 if ent.id is None:
                     ent.id = self.new_id(ent_cls)
                 elif isinstance(ent.id, int) and ent.id >= max_id:
-                    # If the loaded entity already has an ID, record the highest
-                    # ID so we can adjust the ID generator.
+                    # If the loaded entity already has an ID, record the
+                    # highest ID so we can adjust the ID generator.
                     max_id = ent.id + 1
                 cache.add(ent)
             if max_id != -1 and max_id > self.__next_id_map.get(ent_cls, 0):
@@ -427,7 +428,7 @@ class EntityCache(object):
         self.__slug_map = WeakValueDictionary()
         # Internal flag indicating that the cache has to be rebuilt (i.e.,
         # the id and slug maps have to be updated). 
-        self.__needs_rebuild = False
+        self.__needs_rebuild = True
 
     def rebuild(self):
         """
@@ -536,18 +537,23 @@ class EntityCache(object):
     def __rebuild(self):
         self.__id_map.clear()
         self.__slug_map.clear()
+        rebuild_flag = False
         for entity in self.__entities:
             ent_id = entity.id
             if not ent_id is None:
                 if ent_id in self.__id_map:
                     raise ValueError('Duplicate entity ID "%s".' % ent_id)
                 self.__id_map[ent_id] = entity
+            else:
+                rebuild_flag = True
             ent_slug = entity.slug
             if not ent_slug is None:
                 if ent_slug in self.__slug_map:
                     raise ValueError('Duplicate entity slug "%s".' % ent_slug)
                 self.__slug_map[ent_slug] = entity
-        self.__needs_rebuild = False
+            else:
+                rebuild_flag = True
+        self.__needs_rebuild = rebuild_flag
 
 
 #class EntityCacheMap(dict):

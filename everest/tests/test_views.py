@@ -282,6 +282,16 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
                       headers={'X-HTTP-Method-Override' : 'DELETE'},
                       status=200)
 
+    def test_add_collection_view_with_put_fails(self):
+        with self.assert_raises(ValueError) as cm:
+            self.config.add_collection_view(IFoo, request_method='PUT')
+        self.assert_true(cm.exception.message.startswith('Autodetection'))
+
+    def test_add_member_view_with_post_fails(self):
+        with self.assert_raises(ValueError) as cm:
+            self.config.add_member_view(IFoo, request_method='POST')
+        self.assert_true(cm.exception.message.startswith('Autodetection'))
+
 
 class StaticViewTestCase(FunctionalTestCase):
     package_name = 'everest.tests.testapp_db'

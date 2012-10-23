@@ -38,7 +38,7 @@ class EntityRepository(Repository):
         return agg
 
     def register_resource(self, resource):
-        self.__entity_store.register_type(get_entity_class(resource))
+        self.__entity_store.register_resource(resource)
 
     @property
     def is_initialized(self):

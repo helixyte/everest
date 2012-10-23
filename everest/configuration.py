@@ -14,6 +14,7 @@ from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.interfaces import IUserMessageNotifier
 from everest.messaging import UserMessageNotifier
+from everest.mime import get_registered_representer_names
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import EvalFilterSpecificationVisitor
@@ -54,6 +55,7 @@ from everest.resources.service import Service
 from everest.resources.system import UserMessageMember
 from everest.resources.utils import provides_member_resource
 from everest.url import ResourceUrlConverter
+from everest.views.base import RepresentingResourceView
 from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
@@ -66,8 +68,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from everest.views.base import RepresentingResourceView
-from everest.mime import get_registered_representer_names
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -571,6 +571,12 @@ class Configurator(PyramidConfigurator):
                             opts['header'] = 'X-HTTP-Method-Override:DELETE'
                             vw = DeleteMemberView
                             register_sub_views = False
+                        else:
+                            raise ValueError('Autodetection for member '
+                                             'resource views requires '
+                                             '"GET", "PUT", "DELETE", '
+                                             '"FAKE_PUT", or "FAKE_DELETE" '
+                                             'as request method.')
                     else:
                         if request_method == 'GET':
                             vw = \
@@ -578,6 +584,11 @@ class Configurator(PyramidConfigurator):
                         elif request_method == 'POST':
                             vw = \
                               self.__make_view_factory(PostCollectionView, kw)
+                        else:
+                            raise ValueError('Autodetection for collectioon '
+                                             'resource views requires '
+                                             '"GET" or "POST" '
+                                             'as request method.')
                 else:
                     vw = self.__make_view_factory(view, kw)
             else:
