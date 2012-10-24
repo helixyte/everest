@@ -335,11 +335,12 @@ class ViewUserMessageChecker(UserMessageChecker):
         qs = self.__get_new_query_string(request.query_string,
                                          self.message.slug)
         resubmit_url = "%s?%s" % (request.path_url, qs)
-        headers = [('Location', resubmit_url),
-                   ('Warning', '299 %s' % self.message.text),
+        headers = [('Warning', '299 %s' % self.message.text),
 #                       ('Content-Type', cnt_type),
                    ]
-        http_exc = HttpWarningResubmit(self.message.text, headers=headers)
+        http_exc = HttpWarningResubmit(location=resubmit_url,
+                                       detail=self.message.text,
+                                       headers=headers)
         return request.get_response(http_exc)
 
     def __get_new_query_string(self, old_query_string, new_guid):

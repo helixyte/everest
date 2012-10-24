@@ -373,6 +373,8 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
         # First POST - get back a 307.
         res1 = self.app.post(self.path, params='foo name',
                              status=307)
+        self.assert_true(res1.body.rstrip().endswith(
+                                    UserMessagePostCollectionView.message))
         self.assert_true(res1.body.startswith('307 Temporary Redirect'))
         # Second POST to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
