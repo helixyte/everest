@@ -72,6 +72,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from pyramid.interfaces import IRendererFactory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -573,13 +574,12 @@ class Configurator(PyramidConfigurator):
             rpr_reg.register_representer_class(XmlResourceRepresenter)
             rpr_reg.register_representer_class(AtomResourceRepresenter)
             self._register_utility(rpr_reg, IRepresenterRegistry)
-        else:
-            # Add builtin renderers. This needs to be done late to make sure
-            # the pyramid default renderers will not override these.
-            self.add_renderer('csv', RendererFactory)
-            self.add_renderer('json', RendererFactory)
-            self.add_renderer('xml', RendererFactory)
-            self.add_renderer('atom', RendererFactory)
+        # Register renderer factories for registered representers.
+        for reg_rnd_name in get_registered_representer_names():
+            rnd = self.query_registered_utilities(IRendererFactory,
+                                                  reg_rnd_name)
+            if not isinstance(rnd, RendererFactory):
+                self.add_renderer(reg_rnd_name, RendererFactory)
         if not filter_specification_factory is None:
             self._set_filter_specification_factory(
                                                 filter_specification_factory)
