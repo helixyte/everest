@@ -158,8 +158,11 @@ class CompositeFilterSpecificationBuilderTestCase(TestCaseWithConfiguration):
                                                 left_values[0]).and_(
             ValueEqualToFilterSpecification(right_name, right_values[0])
             )
+        self.builder.build_open_group()
         self.builder.build_greater_than(left_name, left_values)
+        self.builder.build_and()
         self.builder.build_equal_to(right_name, right_values)
+        self.builder.build_close_group()
         self.assert_equal(expected_spec, self.builder.specification)
 
     def test_build_disjunction(self):
@@ -182,16 +185,59 @@ class CompositeFilterSpecificationBuilderTestCase(TestCaseWithConfiguration):
                 ValueStartsWithFilterSpecification(right_name, right_values[1])
                 )
             )
+        self.builder.build_open_group()
         self.builder.build_contained(left_name, left_values)
+        self.builder.build_and()
         self.builder.build_starts_with(right_name, right_values)
+        self.builder.build_close_group()
         self.assert_equal(expected_spec, self.builder.specification)
 
-    def test_build_repeating_criterion_different_values_raises_error(self):
-        name, values = ('age', [34, 44])
-        self.builder.build_equal_to(name, [values[0]])
-        self.assert_raises(ValueError, self.builder.build_equal_to,
-                           name, [values[1]])
+    def test_grouped_junctions(self):
+        name1, values1 = ('age', [34])
+        name2, values2 = ('gender', ['F'])
+        name3, values3 = ('name', ['Nikos'])
+        name4, values4 = ('gender', ['M'])
+        expected_spec = \
+            (ValueEqualToFilterSpecification(name1, values1[0]).and_(
+             ValueEqualToFilterSpecification(name2, values2[0]))).or_(
+            (ValueEqualToFilterSpecification(name3, values3[0]).and_(
+             ValueEqualToFilterSpecification(name4, values4[0]))))
+        self.builder.build_open_group()
+        self.builder.build_equal_to(name1, [values1[0]])
+        self.builder.build_and()
+        self.builder.build_equal_to(name2, [values2[0]])
+        self.builder.build_close_group()
+        self.builder.build_or()
+        self.builder.build_open_group()
+        self.builder.build_equal_to(name3, [values3[0]])
+        self.builder.build_and()
+        self.builder.build_equal_to(name4, [values4[0]])
+        self.builder.build_close_group()
+        self.assert_equal(expected_spec, self.builder.specification)
 
+    def test_nested_grouped_junctions(self):
+        name1, values1 = ('age', [34])
+        name2, values2 = ('gender', ['F'])
+        name3, values3 = ('name', ['Nikos'])
+        name4, values4 = ('gender', ['M'])
+        expected_spec = \
+            ValueEqualToFilterSpecification(name1, values1[0]).and_(
+            (ValueEqualToFilterSpecification(name2, values2[0]).or_(
+             ValueEqualToFilterSpecification(name3, values3[0])))).and_(
+             ValueEqualToFilterSpecification(name4, values4[0]))
+        self.builder.build_open_group()
+        self.builder.build_equal_to(name1, [values1[0]])
+        self.builder.build_and()
+        self.builder.build_open_group()
+        self.builder.build_equal_to(name2, [values2[0]])
+        self.builder.build_or()
+        self.builder.build_equal_to(name3, [values3[0]])
+        self.builder.build_close_group()
+        self.builder.build_and()
+        self.builder.build_open_group()
+        self.builder.build_equal_to(name4, [values4[0]])
+        self.builder.build_close_group()
+        self.assert_equal(expected_spec, self.builder.specification)
 
 class SqlFilterSpecificationVisitorTestCase(Pep8CompliantTestCase):
     def test_custom_clause(self):

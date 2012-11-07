@@ -208,7 +208,7 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         expr = self._run_visitor('in-range')
         self.assert_equal(str(expr), expected_cql)
 
-    def test_visit_conjuction(self):
+    def test_visit_Conjunction(self):
         expected_cql = 'age:greater-than:34~name:equal-to:"Nikos"'
         expr = self._run_visitor('conjunction')
         self.assert_equal(str(expr), expected_cql)
@@ -218,7 +218,7 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         expr = self._run_visitor('disjunction')
         self.assert_equal(str(expr), expected_cql)
 
-    def test_visit_conjuction_with_disjuction(self):
+    def test_visit_Conjunction_with_disjuction(self):
         expected_cql = 'age:equal-to:34,44~name:equal-to:"Nikos","Oliver"'
         expr = self._run_visitor('conjunction-with-disjunction')
         self.assert_equal(str(expr), expected_cql)
@@ -335,7 +335,7 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         expr = self._run_visitor('in-range')
         self.assert_equal(str(expr), str(expected_expr))
 
-    def test_visit_conjuction(self):
+    def test_visit_Conjunction(self):
         expected_expr = sa.and_(Person.age > 34, Person.name == 'Nikos')
         expr = self._run_visitor('conjunction')
         self.assert_equal(str(expr), str(expected_expr))
@@ -345,7 +345,7 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         expr = self._run_visitor('disjunction')
         self.assert_equal(str(expr), str(expected_expr))
 
-    def test_visit_conjuction_with_list_equality(self):
+    def test_visit_Conjunction_with_list_equality(self):
         expected_expr = sa.and_(Person.age.in_([34, 44]),
                                 Person.name.in_(['Nikos', 'Oliver']))
         spec_a = self.specs_factory.create_contained('age', [34, 44])

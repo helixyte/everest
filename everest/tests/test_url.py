@@ -151,6 +151,20 @@ class UrlTestCase(ResourceTestCase):
         _test('id:greater-than-or-equal-to:1', 'id', 1)
         _test('id:in-range:0-0', 'id', 0)
 
+    def test_url_to_resource_with_filter_no_values(self):
+        coll_from_url = url_to_resource(self.base_url + '?q=id:equal-to:')
+        self.assert_equal(len(coll_from_url), 2)
+
+    def test_url_to_resource_with_complex_filter(self):
+        criterion = '(id:equal-to:0 and text:equal-to:"foo0") or ' \
+                    '(id:equal-to:1 and text:equal-to:"too1")'
+        coll_from_url = \
+                    url_to_resource(self.base_url + '?q=%s' % criterion)
+        mbs = list(coll_from_url)
+        self.assert_equal(len(mbs), 2)
+        self.assert_equal(getattr(mbs[0], 'id'), 0)
+        self.assert_equal(getattr(mbs[1], 'id'), 1)
+
     def test_url_to_resource_with_order(self):
         coll_from_url = url_to_resource(self.base_url + '?sort=id:asc')
         self.assert_equal(len(coll_from_url), 2)

@@ -7,29 +7,35 @@ Created on Feb 4, 2011.
 from datetime import datetime
 from datetime import timedelta
 from everest.querying.base import UnaryOperator
+from everest.querying.specifications import ConjunctionFilterSpecification
+from everest.querying.specifications import DisjunctionFilterSpecification
 from everest.querying.specifications import FilterSpecification
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import NaturalOrderSpecification
 from everest.querying.specifications import OrderSpecificationFactory
+from everest.querying.specifications import and_
+from everest.querying.specifications import asc
+from everest.querying.specifications import cntd
+from everest.querying.specifications import cnts
+from everest.querying.specifications import desc
 from everest.querying.specifications import ends
 from everest.querying.specifications import eq
 from everest.querying.specifications import ge
 from everest.querying.specifications import gt
 from everest.querying.specifications import le
 from everest.querying.specifications import lt
+from everest.querying.specifications import or_
+from everest.querying.specifications import rng
 from everest.querying.specifications import starts
 from everest.testing import TestCaseWithConfiguration
 from everest.testing import TestCaseWithIni
 from nose.tools import raises
-from everest.querying.specifications import cnts
-from everest.querying.specifications import cntd
-from everest.querying.specifications import rng
-from everest.querying.specifications import asc
-from everest.querying.specifications import desc
+from everest.querying.specifications import not_
+from everest.querying.specifications import NegationFilterSpecification
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['TestConjuctionFilterSpecification',
-           'TestDisjuctionFilterSpecification',
+__all__ = ['TestConjunctionFilterSpecification',
+           'TestDisjunctionFilterSpecification',
            'TestNegationFilterSpecification',
            'TestValueContainedFilterSpecification',
            'TestValueContainsFilterSpecification',
@@ -496,44 +502,44 @@ class CompositeFilterSpecificationTestCase(TestCaseWithIni):
         self.always_true = AlwaysTrueFilterSpecification()
         self.always_false = AlwaysFalseFilterSpecification()
 
-    def create_conjuction_spec(self, left_spec, right_spec):
+    def create_Conjunction_spec(self, left_spec, right_spec):
         return self.factory.create_conjunction(left_spec, right_spec)
 
     def create_disjunction_spec(self, left_spec, right_spec):
         return self.factory.create_disjunction(left_spec, right_spec)
 
     def test_basics(self):
-        conj_spec = self.create_conjuction_spec(self.always_true,
+        conj_spec = self.create_Conjunction_spec(self.always_true,
                                                 self.always_false)
         self.assert_equal(conj_spec, conj_spec)
-        conj_spec_other_spec = self.create_conjuction_spec(self.always_false,
+        conj_spec_other_spec = self.create_Conjunction_spec(self.always_false,
                                                            self.always_true)
         self.assert_not_equal(conj_spec, conj_spec_other_spec)
         str_str = '<%s left_spec:' % conj_spec.__class__.__name__
         self.assert_equal(str(conj_spec)[:len(str_str)], str_str)
 
 
-class ConjuctionFilterSpecificationTestCase(
+class ConjunctionFilterSpecificationTestCase(
                                      CompositeFilterSpecificationTestCase):
 
-    def test_conjuction_is_statisfied_by_candidate(self):
-        spec = self.create_conjuction_spec(self.always_true, self.always_true)
+    def test_Conjunction_is_statisfied_by_candidate(self):
+        spec = self.create_Conjunction_spec(self.always_true, self.always_true)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
-    def test_conjuction_is_not_statisfied_by_candidate(self):
-        spec = self.create_conjuction_spec(self.always_false,
+    def test_Conjunction_is_not_statisfied_by_candidate(self):
+        spec = self.create_Conjunction_spec(self.always_false,
                                            self.always_true)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
-        spec = self.create_conjuction_spec(self.always_true,
+        spec = self.create_Conjunction_spec(self.always_true,
                                            self.always_false)
         self.assert_false(spec.is_satisfied_by(self.candidate))
-        spec = self.create_conjuction_spec(self.always_false,
+        spec = self.create_Conjunction_spec(self.always_false,
                                            self.always_false)
         self.assert_false(spec.is_satisfied_by(self.candidate))
 
 
-class DisjuctionFilterSpecificationTestCase(
+class DisjunctionFilterSpecificationTestCase(
                                     CompositeFilterSpecificationTestCase):
 
     def test_is_statisfied_by_candidate(self):
@@ -696,6 +702,11 @@ class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
         gen = rng(number_attr=(-1, 1))
         self.assert_true(gen.spec.is_satisfied_by(self.candidate))
 
+    def test_multiple_keywords(self):
+        gen = eq(number_attr=0, text_attr='attr')
+        self.assert_true(isinstance(gen.spec, ConjunctionFilterSpecification))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
     def test_asc_generator(self):
         second_candidate = Candidate(number_attr=0, text_attr='b')
         gen = asc('number_attr').and_(asc('text_attr'))
@@ -716,4 +727,19 @@ class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
 
     def test_generator_not(self):
         gen = lt(number_attr= -1).not_()
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_and_(self):
+        gen = and_(eq(number_attr=0), eq(text_attr='attr'))
+        self.assert_true(isinstance(gen.spec, ConjunctionFilterSpecification))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_or_(self):
+        gen = or_(eq(number_attr=1), eq(text_attr='attr'))
+        self.assert_true(isinstance(gen.spec, DisjunctionFilterSpecification))
+        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+
+    def test_not_(self):
+        gen = not_(eq(number_attr=1))
+        self.assert_true(isinstance(gen.spec, NegationFilterSpecification))
         self.assert_true(gen.spec.is_satisfied_by(self.candidate))

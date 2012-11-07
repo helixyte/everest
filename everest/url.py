@@ -68,7 +68,7 @@ class ResourceUrlConverter(object):
         rc = find_resource(self.__request.root, traversal_path(parsed_path))
         if ICollectionResource in provided_by(rc):
             # In case we found a collection, we have to filter, order, slice.
-            parsed_query = parsed.query # namedtupble problem pylint: disable=E1101
+            parsed_query = parsed.query # namedtuple problem pylint: disable=E1101
             params = dict(parse_qsl(parsed_query))
             filter_string = params.get('q')
             if not filter_string is None:

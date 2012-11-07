@@ -71,7 +71,7 @@ class ReverseOrderSpecificationTestCase(OrderSpecificationTestCase):
         self.assert_false(order.lt(self.person_a1, self.person_b1))
 
 
-class ConjuctionOrderSpecificationTestCase(OrderSpecificationTestCase):
+class ConjunctionOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
         order = \

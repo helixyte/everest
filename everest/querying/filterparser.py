@@ -11,6 +11,7 @@ from pyparsing import CaselessKeyword
 from pyparsing import CharsNotIn
 from pyparsing import Combine
 from pyparsing import Empty
+from pyparsing import Forward
 from pyparsing import Group
 from pyparsing import Literal
 from pyparsing import OneOrMore
@@ -43,6 +44,39 @@ ISO8601_REGEX = r'(?P<year>[0-9]{4})' \
                 r'(?P<timezone>Z|(([-+])([0-9]{2}):([0-9]{2})))?'
 
 
+AND_PAT = 'and'
+OR_PAT = 'or'
+OPEN_PAREN_PAT = '('
+CLOSE_PAREN_PAT = ')'
+
+colon = Literal(':')
+comma = Literal(',')
+dot = Literal('.')
+tilde = Literal('~')
+slash = Literal('/')
+open_paren = Literal(OPEN_PAREN_PAT).setParseAction(replaceWith('open-group'))
+close_paren = Literal(CLOSE_PAREN_PAT).setParseAction(replaceWith('close-group'))
+dbl_quote = Literal('"')
+nonzero_nums = srange('[1-9]')
+empty = Empty()
+true = CaselessKeyword("true").setParseAction(replaceWith(True))
+false = CaselessKeyword("false").setParseAction(replaceWith(False))
+attribute = Word(alphas, alphas + '-')
+identifier = \
+    Combine(attribute + ZeroOrMore('.' + attribute)).setName('identifier')
+and_ = CaselessKeyword(AND_PAT).setParseAction(replaceWith(AND_PAT))
+or_ = CaselessKeyword(OR_PAT).setParseAction(replaceWith(OR_PAT))
+
+#
+open_paren_parsed = open_paren('operator') \
+                        .setParseAction(replaceWith('open-group')) \
+                        .searchString(OPEN_PAREN_PAT)
+close_paren_parsed = close_paren('operator') \
+                        .setParseAction(replaceWith('close-group')) \
+                        .searchString(CLOSE_PAREN_PAT)
+
+
+
 def convert_number(seq):
     """
     pyparsing action that converts the given 1-element number string 
@@ -69,19 +103,20 @@ def convert_range(seq):
     return (seq.range[0], seq.range[-1])
 
 
-colon = Literal(':')
-comma = Literal(',')
-dot = Literal('.')
-tilde = Literal('~')
-slash = Literal('/')
-dbl_quote = Literal('"')
-nonzero_nums = srange('[1-9]')
-empty = Empty()
-true = CaselessKeyword("true").setParseAction(replaceWith(True))
-false = CaselessKeyword("false").setParseAction(replaceWith(False))
-attribute = Word(alphas, alphas + '-')
-identifier = Combine(attribute + ZeroOrMore('.' + attribute)
-                     ).setName('identifier')
+def convert_simple_criteria(seq):
+    toks = seq[0]
+    res = open_paren_parsed + toks + close_paren_parsed
+    return res
+
+
+def convert_op_criteria(seq):
+    res = seq[0]
+    return res
+
+
+def convert_query(seq):
+    return seq[0]
+
 
 # Numbers are converted to ints if possible.
 cql_number = Combine(Optional('-') + ('0' | Word(nonzero_nums, nums)) +
@@ -121,14 +156,53 @@ cql_values = Group(
         )
     )
 
+logical_op = Group(and_('operator') | or_('operator'))
+
 criterion = Group(identifier('name') + colon.suppress() +
                   identifier('operator') + colon.suppress() +
                   cql_values('value')
                   )
-criteria = Group(delimitedList(criterion, tilde)).setResultsName('criteria')
 
-def parse_filter(criteria_string):
+tilde_op = Group(tilde('operator').setParseAction(replaceWith(AND_PAT)))
+
+
+# Criteria group with arbitrary logical operator as separator.
+op_criteria = Group(criterion +
+                    ZeroOrMore(logical_op + criterion))
+
+# A simple criteria group not using parentheses.
+simple_op_criteria = op_criteria.copy()
+simple_op_criteria.setParseAction(convert_simple_criteria)
+
+# Simple criteria group using tilde character as separator (signifies AND).
+simple_tilde_criteria = Group(criterion +
+                            OneOrMore(tilde_op + criterion))
+simple_tilde_criteria.setParseAction(convert_simple_criteria)
+
+# Explicitly grouped criteria.
+grouped_criteria = Forward()
+grouped_op_criteria = op_criteria.copy()
+grouped_op_criteria.setParseAction(convert_op_criteria)
+grouped_criteria_item = grouped_op_criteria | grouped_criteria
+grouped_criteria << (Group(open_paren('operator')) + # pylint: disable=W0106
+                     grouped_criteria_item +
+                     ZeroOrMore(logical_op + grouped_criteria_item) +
+                     Group(close_paren('operator')))
+
+query_criteria = grouped_criteria | simple_op_criteria
+
+query = Group(simple_tilde_criteria |
+              (query_criteria + ZeroOrMore(logical_op + query_criteria)))
+query.setParseAction(convert_query)
+
+#criteria = \
+#    (Group(delimitedList(criterion, tilde)) |
+#     Group(delimitedList(criterion, logical_op))).setResultsName('criteria')
+
+
+
+def parse_filter(query_string):
     """
     Parses the given filter criteria string.
     """
-    return  criteria.parseString(criteria_string)
+    return query.parseString(query_string)

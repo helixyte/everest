@@ -55,14 +55,19 @@ class FilterSpecificationDirector(SpecificationDirector):
     implements(IFilterSpecificationDirector)
 
     def _process_parse_result(self, parse_result):
-        for crit in parse_result.criteria:
-            name, op_string, values = crit
-            if len(values) > 0: # criteria with no values are ignored
-                name = self._format_identifier(name)
-                op_name = self._format_identifier(op_string)
+        for res in parse_result:
+            op_name = self._format_identifier(res.operator)
+            if op_name in ('and', 'or', 'open_group', 'close_group'):
+                args = ()
+            else:
+                values = res.value
+                if len(values) == 0: # criteria with no values are ignored
+                    continue
+                name = self._format_identifier(res.name)
                 values = self.__prepare_values(values)
-                func = self._get_build_function(op_name)
-                func(name, values)
+                args = (name, values)
+            func = self._get_build_function(op_name)
+            func(*args)
 
     def __prepare_values(self, values):
         prepared = []
@@ -87,120 +92,134 @@ class FilterSpecificationBuilder(SpecificationBuilder):
     """
     Filter specification builder.
     
-    The filter specification builder is responsible for building concrete
-    specs with build methods dispatched by the director and for forming 
-    disjunction specs when a) multiple values are given in a single criterion;
-    or b) the same combination of attribute name and operator is encountered
-    multiple times.
+    The filter specification builder is responsible for building a
+    specification tree from the sequential calls to build functions by
+    the director.
     """
+
+    __OPEN_GROUP_MARKER = '('
 
     implements(IFilterSpecificationBuilder)
 
     def __init__(self, spec_factory):
         SpecificationBuilder.__init__(self, spec_factory)
-        self.__history = set()
+        self.__op_stack = []
+        self.__spec_stack = []
+
+    def build_and(self):
+        self.__op_stack.append(self._spec_factory.create_conjunction)
+
+    def build_or(self):
+        self.__op_stack.append(self._spec_factory.create_disjunction)
+
+    def build_open_group(self):
+        self.__op_stack.append(self.__OPEN_GROUP_MARKER)
+
+    def build_close_group(self):
+        while len(self.__op_stack) > 0 \
+              and self.__op_stack[-1] == self.__OPEN_GROUP_MARKER:
+            self.__op_stack.pop()
+            if len(self.__op_stack) > 0 \
+               and self.__op_stack[-1] != self.__OPEN_GROUP_MARKER:
+                self.__process_op()
 
     def build_equal_to(self, attr_name, attr_values):
-        self._record_specification(
-            self.__build_spec(self._spec_factory.create_equal_to,
-                              attr_name, attr_values)
-            )
+        spec = self.__build_crit_spec(self._spec_factory.create_equal_to,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_not_equal_to(self, attr_name, attr_values):
-        self._record_specification(
-            self.__build_spec(self._spec_factory.create_equal_to,
-                              attr_name, attr_values).not_()
-            )
+        spec = self.__build_crit_spec(self._spec_factory.create_equal_to,
+                                      attr_name, attr_values).not_()
+        self.__record_crit_spec(spec)
 
     def build_starts_with(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_starts_with,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_starts_with,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_not_starts_with(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_starts_with,
-                                 attr_name, attr_values).not_()
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_starts_with,
+                                      attr_name, attr_values).not_()
+        self.__record_crit_spec(spec)
 
     def build_ends_with(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_ends_with,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_ends_with,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_not_ends_with(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_ends_with,
-                                 attr_name, attr_values).not_()
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_ends_with,
+                                      attr_name, attr_values).not_()
+        self.__record_crit_spec(spec)
 
     def build_contained(self, attr_name, attr_values):
         # For the CONTAINED spec, we treat all parsed values as one value.
-        spec = self.__build_spec(self._spec_factory.create_contained,
-                                 attr_name, [attr_values])
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_contained,
+                                      attr_name, [attr_values])
+        self.__record_crit_spec(spec)
 
     def build_not_contained(self, attr_name, attr_values):
         # For the CONTAINED spec, we treat all parsed values as one value.
-        spec = self.__build_spec(self._spec_factory.create_contained,
-                                 attr_name, [attr_values]).not_()
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_contained,
+                                      attr_name, [attr_values]).not_()
+        self.__record_crit_spec(spec)
 
     def build_contains(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_contains,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_contains,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_not_contains(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_contains,
-                                 attr_name, attr_values).not_()
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_contains,
+                                      attr_name, attr_values).not_()
+        self.__record_crit_spec(spec)
 
     def build_less_than_or_equal_to(self, attr_name, attr_values):
-        spec = self.__build_spec(
+        spec = self.__build_crit_spec(
                             self._spec_factory.create_less_than_or_equal_to,
                             attr_name, attr_values)
-        self._record_specification(spec)
+        self.__record_crit_spec(spec)
 
     def build_less_than(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_less_than,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_less_than,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_greater_than_or_equal_to(self, attr_name, attr_values):
-        spec = self.__build_spec(
+        spec = self.__build_crit_spec(
                         self._spec_factory.create_greater_than_or_equal_to,
                         attr_name, attr_values)
-        self._record_specification(spec)
+        self.__record_crit_spec(spec)
 
     def build_greater_than(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_greater_than,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_greater_than,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_in_range(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_in_range,
-                                 attr_name, attr_values)
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_in_range,
+                                      attr_name, attr_values)
+        self.__record_crit_spec(spec)
 
     def build_not_in_range(self, attr_name, attr_values):
-        spec = self.__build_spec(self._spec_factory.create_in_range,
-                                 attr_name, attr_values).not_()
-        self._record_specification(spec)
+        spec = self.__build_crit_spec(self._spec_factory.create_in_range,
+                                      attr_name, attr_values).not_()
+        self.__record_crit_spec(spec)
 
-    def __build_spec(self, constructor, attr_name, attr_values):
-        # Check if this (constructor, attr_name) combination has been seen
-        # before. Currently, this is handled with an exception.
-        key = (constructor, attr_name)
-        if key in self.__history:
-            raise ValueError('Can not build multiple specifications with '
-                             'the same combination of attribute name and '
-                             'filter operator.')
+    @property
+    def specification(self):
+        if len(self.__op_stack) == 0 and len(self.__spec_stack) == 1:
+            specification = self.__spec_stack[0]
         else:
-            self.__history.add(key)
+            specification = None
+        return specification
+
+    def __build_crit_spec(self, constructor, attr_name, attr_values):
         # Builds a single specification with the given spec constructor, 
-        # attribute name and attribute values. 
+        # attribute name and attribute values. If more than one value was
+        # passed, a disjunction spec is formed.
         spec = None
-        # Iterate over attribute values, forming disjunctions if more than one
-        # was provided.
         for attr_value in attr_values:
             cur_spec = constructor(attr_name, attr_value)
             if spec is None:
@@ -208,6 +227,19 @@ class FilterSpecificationBuilder(SpecificationBuilder):
             else:
                 spec = self._spec_factory.create_disjunction(spec, cur_spec)
         return spec
+
+    def __record_crit_spec(self, spec):
+        self.__spec_stack.append(spec)
+        if len(self.__spec_stack) >= 2 \
+           and self.__op_stack[-1] != self.__OPEN_GROUP_MARKER:
+            self.__process_op()
+
+    def __process_op(self):
+        op = self.__op_stack.pop()
+        right_spec = self.__spec_stack.pop()
+        left_spec = self.__spec_stack.pop()
+        op_spec = op(left_spec, right_spec)
+        self.__spec_stack.append(op_spec)
 
 
 class FilterSpecificationVisitor(SpecificationVisitor):
@@ -367,7 +399,7 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
                                    IN_RANGE.name,
                                    value)
 
-    def _conjunction_op(self, spec, *expressions): # unused pylint:disable=W0613
+    def _conjunction_op(self, spec, *expressions):
         return reduce(operator_and, expressions)
 
     def _disjunction_op(self, spec, *expressions):

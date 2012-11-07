@@ -38,10 +38,10 @@ import re
 __docformat__ = 'reStructuredText en'
 __all__ = ['CompositeFilterSpecification',
            'ConjunctionFilterSpecification',
-           'ConjuctionOrderSpecification',
+           'ConjunctionOrderSpecification',
            'CriterionFilterSpecification',
            'DescendingOrderSpecification',
-           'DisjuctionFilterSpecification',
+           'DisjunctionFilterSpecification',
            'FilterSpecification',
            'FilterSpecificationFactory',
            'LeafFilterSpecification',
@@ -90,21 +90,21 @@ class FilterSpecification(Specification):
 
         :param other: the other specification
         :type other: :class:`FilterSpecification`
-        :returns: a new conjuction specification
+        :returns: a new Conjunction specification
         :rtype: :class:`ConjunctionFilterSpecification`
         """
         return ConjunctionFilterSpecification(self, other)
 
     def or_(self, other):
         """
-        Generative method to create a :class:`DisjuctionFilterSpecification`
+        Generative method to create a :class:`DisjunctionFilterSpecification`
 
         :param other: the other specification
         :type other: :class:`FilterSpecification`
         :returns: a new disjuction specification
-        :rtype: :class:`DisjuctionFilterSpecification`
+        :rtype: :class:`DisjunctionFilterSpecification`
         """
-        return DisjuctionFilterSpecification(self, other)
+        return DisjunctionFilterSpecification(self, other)
 
     def not_(self):
         """
@@ -241,13 +241,13 @@ class CompositeFilterSpecification(FilterSpecification):
 
 class ConjunctionFilterSpecification(CompositeFilterSpecification):
     """
-    Concrete conjuction specification.
+    Concrete Conjunction specification.
     """
 
     operator = CONJUNCTION
 
 
-class DisjuctionFilterSpecification(CompositeFilterSpecification):
+class DisjunctionFilterSpecification(CompositeFilterSpecification):
     """
     Concrete disjuction specification.
     """
@@ -430,7 +430,7 @@ class FilterSpecificationFactory(object):
         return ConjunctionFilterSpecification(left_spec, right_spec)
 
     def create_disjunction(self, left_spec, right_spec):
-        return DisjuctionFilterSpecification(left_spec, right_spec)
+        return DisjunctionFilterSpecification(left_spec, right_spec)
 
     def create_negation(self, wrapped):
         return NegationFilterSpecification(wrapped)
@@ -465,7 +465,7 @@ class OrderSpecification(Specification):
         return not self.lt(x, y)
 
     def and_(self, other):
-        return ConjuctionOrderSpecification(self, other)
+        return ConjunctionOrderSpecification(self, other)
 
 
 class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
@@ -536,7 +536,7 @@ class NaturalOrderSpecification(ObjectOrderSpecification):
         return int(txt) if txt.isdigit() else txt
 
 
-class ConjuctionOrderSpecification(OrderSpecification):
+class ConjunctionOrderSpecification(OrderSpecification):
 
     operator = CONJUNCTION
 
@@ -603,7 +603,7 @@ class OrderSpecificationFactory(object):
         return DescendingOrderSpecification(attr_name)
 
     def create_conjunction(self, left_spec, right_spec):
-        return ConjuctionOrderSpecification(left_spec, right_spec)
+        return ConjunctionOrderSpecification(left_spec, right_spec)
 
 
 class specification_attribute(object):
@@ -617,8 +617,7 @@ class specification_attribute(object):
 
     def __get__(self, generator, generator_class):
         if generator is None:
-            generator = SpecificationGenerator(self.factory,
-                                               self.attribute_name)
+            generator = generator_class(self.factory, self.attribute_name)
         else:
             generator.attribute_name = self.attribute_name
         return generator
@@ -631,10 +630,46 @@ class specification_attribute(object):
         return self.__factory
 
 
-class SpecificationGenerator(object):
+class _SpecificationGenerator(object):
     """
-    Helper class to simplify the generation of filter and order 
-    specifications.
+    Base class for specification generators.
+    """
+    def __init__(self, factory, attribute_name):
+        self.factory = factory
+        self.attribute_name = attribute_name
+        self.spec = None
+
+    def __call__(self, *args, **kw):
+        fn = getattr(self.factory, self.attribute_name)
+        args = tuple([arg.spec
+                      if isinstance(arg, _SpecificationGenerator)
+                      else arg
+                      for arg in args])
+        if self.spec is None:
+            self.spec = fn(*args)
+        else:
+            self.spec = fn(*((self.spec,) + args))
+        return self
+
+
+
+class OrderSpecificationGenerator(_SpecificationGenerator):
+    """
+    Helper class to simplify the generation of order specifications.
+    """
+    asc = specification_attribute(IOrderSpecificationFactory,
+                                  'create_ascending')
+    desc = specification_attribute(IOrderSpecificationFactory,
+                                   'create_descending')
+    or_ = specification_attribute(IOrderSpecificationFactory,
+                                  'create_disjunction')
+    and_ = specification_attribute(IOrderSpecificationFactory,
+                                  'create_conjunction')
+
+
+class FilterSpecificationGenerator(_SpecificationGenerator):
+    """
+    Helper class to simplify the generation of filter specifications.
     """
     eq = specification_attribute(IFilterSpecificationFactory,
                                  'create_equal_to')
@@ -656,103 +691,114 @@ class SpecificationGenerator(object):
                                    'create_contained')
     rng = specification_attribute(IFilterSpecificationFactory,
                                   'create_in_range')
-    asc = specification_attribute(IOrderSpecificationFactory,
-                                  'create_ascending')
-    desc = specification_attribute(IOrderSpecificationFactory,
-                                   'create_descending')
+    or_ = specification_attribute(IFilterSpecificationFactory,
+                                  'create_disjunction')
+    and_ = specification_attribute(IFilterSpecificationFactory,
+                                  'create_conjunction')
+    not_ = specification_attribute(IFilterSpecificationFactory,
+                                  'create_negation')
 
-    def __init__(self, factory, attribute_name):
-        self.factory = factory
-        self.attribute_name = attribute_name
-        self.spec = None
-
-    def and_(self, other):
-        self.spec = self.spec.and_(other.spec)
-        return self
-
-    def or_(self, other):
-        self.spec = self.spec.or_(other.spec)
-        return self
-
-    def not_(self):
-        self.spec = self.spec.not_()
-        return self
+#    def and_(self, other):
+#        self.spec = self.spec.and_(other.spec)
+#        return self
+#
+#    def or_(self, other):
+#        self.spec = self.spec.or_(other.spec)
+#        return self
+#
+#    def not_(self):
+#        self.spec = self.spec.not_()
+#        return self
 
     def __call__(self, *args, **kw):
-        if self.spec is None:
+        if kw: # Attribute specification.
             fn = getattr(self.factory, self.attribute_name)
+            spec = None
+            for (attr, value) in kw.items():
+                if spec is None:
+                    spec = fn(attr, value)
+                else:
+                    spec = spec.and_(fn(attr, value))
+            if self.spec is None:
+                self.spec = spec
+            else:
+                self.spec = self.spec.or_(spec)
         else:
-            # By default, sequences of generatives are chained as
-            # conjunctions.
-            fn = getattr(self.factory, self.attribute_name)
-        if args:
-            value, = args
-            spec = fn(value)
-        else:
-            (attr, value), = kw.items()
-            spec = fn(attr, value)
-        if self.spec is None:
-            self.spec = spec
-        else:
-            self.spec = self.spec.and_(spec)
+            # Conjunction, disjunction, or negation.
+            _SpecificationGenerator.__call__(self, *args)
         return self
 
 
 def eq(**kw):
     "Convenience function to create an equal_to specification."
-    return SpecificationGenerator.eq(**kw)
+    return FilterSpecificationGenerator.eq(**kw)
 
 
 def starts(**kw):
     "Convenience function to create a starts_with specification."
-    return SpecificationGenerator.starts(**kw)
+    return FilterSpecificationGenerator.starts(**kw)
 
 
 def ends(**kw):
     "Convenience function to create an ends_with specification."
-    return SpecificationGenerator.ends(**kw)
+    return FilterSpecificationGenerator.ends(**kw)
 
 
 def lt(**kw):
     "Convenience function to create a less_than specification."
-    return SpecificationGenerator.lt(**kw)
+    return FilterSpecificationGenerator.lt(**kw)
 
 
 def le(**kw):
     "Convenience function to create less_than_or_equal_to specification."
-    return SpecificationGenerator.le(**kw)
+    return FilterSpecificationGenerator.le(**kw)
 
 
 def gt(**kw):
     "Convenience function to create a greater_than specification."
-    return SpecificationGenerator.gt(**kw)
+    return FilterSpecificationGenerator.gt(**kw)
 
 
 def ge(**kw):
     "Convenience function to create a greater_than_or_equal specification."
-    return SpecificationGenerator.ge(**kw)
+    return FilterSpecificationGenerator.ge(**kw)
 
 
 def cnts(**kw):
     "Convenience function to create a contains specification."
-    return SpecificationGenerator.cnts(**kw)
+    return FilterSpecificationGenerator.cnts(**kw)
 
 
 def cntd(**kw):
     "Convenience function to create a contained specification."
-    return SpecificationGenerator.cntd(**kw)
+    return FilterSpecificationGenerator.cntd(**kw)
 
 
 def rng(**kw):
     "Convenience function to create an in_range specification."
-    return SpecificationGenerator.rng(**kw)
+    return FilterSpecificationGenerator.rng(**kw)
 
 
 def asc(arg):
-    "Convenience function to create an ascending specification."
-    return SpecificationGenerator.asc(arg)
+    "Convenience function to create an ascending order specification."
+    return OrderSpecificationGenerator.asc(arg)
 
 
 def desc(arg):
-    "Convenience function to create a descending specification."
-    return SpecificationGenerator.desc(arg)
+    "Convenience function to create a descending order specification."
+    return OrderSpecificationGenerator.desc(arg)
+
+
+def and_(left, right):
+    "Convenience function to create a conjunction filter specification."
+    return FilterSpecificationGenerator.and_(left, right)
+
+
+def or_(left, right):
+    "Convenience function to create a disjunction filter specification."
+    return FilterSpecificationGenerator.or_(left, right)
+
+
+def not_(arg):
+    "Convenience function to create a negation filter specification."
+    return FilterSpecificationGenerator.not_(arg)
