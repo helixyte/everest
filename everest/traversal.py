@@ -32,11 +32,11 @@ class SuffixResourceTraverser(ModelGraphTraverser):
         if IResource.providedBy(context) and '.' in view_name: # pylint: disable=E1101
             rc_name, repr_name = view_name.split('.')
             try:
-                collection = context[rc_name]
+                child_rc = context[rc_name]
             except KeyError:
                 pass
             else:
-                if IResource.providedBy(collection): # pylint: disable=E1101
-                    system['context'] = collection
+                if IResource.providedBy(child_rc): # pylint: disable=E1101
+                    system['context'] = child_rc
                     system['view_name'] = repr_name
         return system
