@@ -5,11 +5,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 from everest.querying.ordering import BubbleSorter
-from everest.querying.ordering import OrderSpecificationBuilder
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
-from everest.querying.specifications import OrderSpecificationFactory
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp.entities import FooEntity
 import random
@@ -74,34 +72,20 @@ class ReverseOrderSpecificationTestCase(OrderSpecificationTestCase):
 class ConjunctionOrderSpecificationTestCase(OrderSpecificationTestCase):
 
     def test_order_is_satisfied(self):
-        order = \
-            self.create_asc_order('name').and_(self.create_asc_order('age'))
+        order = self.create_asc_order('name') & self.create_asc_order('age')
         self.assert_true(order.lt(self.person_a1, self.person_b1))
 
     def test_order_is_not_satisfied(self):
-        order = \
-            self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = self.create_asc_order('name') & self.create_desc_order('age')
         self.assert_false(order.lt(self.person_b1, self.person_a1))
 
     def test_reverse_order_is_satisfied(self):
-        order = \
-            self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = self.create_asc_order('name') & self.create_desc_order('age')
         self.assert_true(order.lt(self.person_a2, self.person_a1))
 
     def test_reverse_order_is_not_satisfied(self):
-        order = \
-            self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = self.create_asc_order('name') & self.create_desc_order('age')
         self.assert_false(order.lt(self.person_a1, self.person_a2))
-
-
-class OrderSpecificationBuilderTestCase(OrderSpecificationTestCase):
-
-    def test_conjunction(self):
-        builder = OrderSpecificationBuilder(OrderSpecificationFactory())
-        builder.build_asc('name')
-        builder.build_desc('age')
-        self.assert_equal(builder.specification.left.attr_name, 'name')
-        self.assert_equal(builder.specification.right.attr_name, 'age')
 
 
 class SorterTestCase(Pep8CompliantTestCase):
@@ -150,29 +134,25 @@ class SorterTestCase(Pep8CompliantTestCase):
                 self.bill22, self.andrew11]
 
     def test_bubble_sorter(self):
-        order = \
-            self.create_asc_order('name').and_(self.create_asc_order('age'))
+        order = self.create_asc_order('name') & self.create_asc_order('age')
         sorter = BubbleSorter(order)
         sorter.sort(self.persons)
         self.assert_equal(self.persons,
                           self.get_persons_ordered_by_name_and_age())
 
-        order = \
-            self.create_desc_order('name').and_(self.create_asc_order('age'))
+        order = self.create_desc_order('name') & self.create_asc_order('age')
         sorter.set_order(order)
         sorter.sort(self.persons)
         self.assert_equal(self.persons,
                           self.get_persons_ordered_by_name_reversed_and_age())
 
-        order = \
-            self.create_asc_order('name').and_(self.create_desc_order('age'))
+        order = self.create_asc_order('name') & self.create_desc_order('age')
         sorter.set_order(order)
         sorter.sort(self.persons)
         self.assert_equal(self.persons,
                           self.get_persons_ordered_by_name_and_age_reversed())
 
-        order = \
-            self.create_desc_order('name').and_(self.create_desc_order('age'))
+        order = self.create_desc_order('name') & self.create_desc_order('age')
         sorter.set_order(order)
         sorter.sort(self.persons)
         self.assert_equal(self.persons,

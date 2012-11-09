@@ -8,22 +8,17 @@ Created on Dec 2, 2011.
 """
 from everest.entities.utils import identifier_from_slug
 from everest.querying.interfaces import ISpecification
-from everest.querying.interfaces import ISpecificationBuilder
-from everest.querying.interfaces import ISpecificationDirector
 from everest.querying.interfaces import ISpecificationVisitor
-from pyparsing import ParseException
 from zope.interface import implements # pylint: disable=E0611,F0401
-import logging
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BinaryOperator',
            'CqlExpression',
            'CqlExpressionList',
            'EXPRESSION_KINDS',
+           'NullaryOperator',
            'Operator',
            'Specification',
-           'SpecificationBuilder',
-           'SpecificationDirector',
            'SpecificationVisitor',
            'SpecificationVisitorBase',
            'UnaryOperator',
@@ -146,81 +141,6 @@ class Specification(object):
 
     def accept(self, visitor):
         raise NotImplementedError('Abstract method')
-
-
-class SpecificationDirector(object):
-    """
-    Abstract base class for specification directors.
-    """
-
-    implements(ISpecificationDirector)
-
-    def __init__(self, parser, builder):
-        self.__parser = parser
-        self.__builder = builder
-        self.__errors = []
-
-    def construct(self, expression):
-        try:
-            self._logger.debug('Expression received: %s' % expression)
-            result = self.__parser(expression)
-        except ParseException, err:
-            # FIXME: show better error messages.
-            self.__errors.append('Expression parameters have errors. %s' % err)
-        else:
-            self._process_parse_result(result)
-
-    def has_errors(self):
-        return len(self.__errors) > 0
-
-    def get_errors(self):
-        return self.__errors[:]
-
-    def _format_identifier(self, string):
-        return identifier_from_slug(string)
-
-    @property
-    def _logger(self):
-        return logging.getLogger(self.__class__.__name__)
-
-    def _get_build_function(self, op_name):
-        # Builder function dispatch using the operator name.
-        return getattr(self.__builder, 'build_%s' % op_name)
-
-    def _process_parse_result(self, parse_result):
-        raise NotImplementedError('Abstract method.')
-
-
-class SpecificationBuilder(object):
-    """
-    Base class for specification builders.
-    """
-
-    implements(ISpecificationBuilder)
-
-    def __init__(self, spec_factory):
-        self._spec_factory = spec_factory
-        self.__specification = None
-
-    def _record_specification(self, new_specification):
-        """
-        Records a built specification. If another spec has been recorded 
-        already by the builder, form the conjunction between the previously 
-        recorded and the given spec.
-        """
-        if self.__specification is None:
-            self.__specification = new_specification
-        else:
-            self.__specification = \
-                self._spec_factory.create_conjunction(self.__specification,
-                                                      new_specification)
-
-    @property
-    def specification(self):
-        """
-        Returns the built specification.
-        """
-        return self.__specification
 
 
 class SpecificationVisitorBase(object):

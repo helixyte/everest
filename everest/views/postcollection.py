@@ -8,7 +8,7 @@ Created on Oct 14, 2011.
 """
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
-from everest.url import resource_to_url
+from everest.resources.utils import resource_to_url
 from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPCreated
 

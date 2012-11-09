@@ -6,7 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
 """
-from everest.url import resource_to_url
+from everest.resources.utils import resource_to_url
 from everest.views.base import PutOrPostResourceView
 from webob.exc import HTTPOk
 

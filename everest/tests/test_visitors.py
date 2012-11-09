@@ -128,28 +128,27 @@ class FilterVisitorTestCase(VisitorTestCase):
             self.specs_factory.create_in_range('age', (30, 40))
         left_spec = self.specs_factory.create_greater_than('age', 34)
         right_spec = self.specs_factory.create_equal_to('name', 'Nikos')
-        sm['conjunction'] = left_spec.and_(right_spec)
+        sm['conjunction'] = left_spec & right_spec
         spec1 = self.specs_factory.create_equal_to('age', 34)
         spec2 = self.specs_factory.create_equal_to('age', 44)
-        sm['disjunction'] = spec1.or_(spec2)
+        sm['disjunction'] = spec1 | spec2
         spec_a1 = self.specs_factory.create_equal_to('age', 34)
         spec_a2 = self.specs_factory.create_equal_to('age', 44)
-        spec_a = spec_a1.or_(spec_a2)
+        spec_a = spec_a1 | spec_a2
         spec_b1 = self.specs_factory.create_equal_to('name', 'Nikos')
         spec_b2 = self.specs_factory.create_equal_to('name', 'Oliver')
-        spec_b = spec_b1.or_(spec_b2)
-        sm['conjunction-with-disjunction'] = spec_a.and_(spec_b)
-        sm['not-starts-with'] = sm['starts-with'].not_()
-        sm['not-ends-with'] = sm['ends-with'].not_()
-        sm['not-contains'] = sm['contains'].not_()
-        sm['not-contained'] = sm['contained'].not_()
-        sm['not-equal-to'] = sm['equal-to'].not_()
-        sm['not-less-than'] = sm['less-than'].not_()
-        sm['not-less-than-or-equal-to'] = sm['less-than-or-equal-to'].not_()
-        sm['not-greater-than'] = sm['greater-than'].not_()
-        sm['not-greater-than-or-equal-to'] = \
-                    sm['greater-than-or-equal-to'].not_()
-        sm['not-in-range'] = sm['in-range'].not_()
+        spec_b = spec_b1 | spec_b2
+        sm['conjunction-with-disjunction'] = spec_a & spec_b
+        sm['not-starts-with'] = ~sm['starts-with']
+        sm['not-ends-with'] = ~sm['ends-with']
+        sm['not-contains'] = ~sm['contains']
+        sm['not-contained'] = ~sm['contained']
+        sm['not-equal-to'] = ~sm['equal-to']
+        sm['not-less-than'] = ~sm['less-than']
+        sm['not-less-than-or-equal-to'] = ~sm['less-than-or-equal-to']
+        sm['not-greater-than'] = ~sm['greater-than']
+        sm['not-greater-than-or-equal-to'] = ~sm['greater-than-or-equal-to']
+        sm['not-in-range'] = ~sm['in-range']
         return sm
 
 
@@ -351,7 +350,7 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         spec_a = self.specs_factory.create_contained('age', [34, 44])
         spec_b = self.specs_factory.create_contained('name',
                                                      ['Nikos', 'Oliver'])
-        spec = spec_a.and_(spec_b)
+        spec = spec_a & spec_b
         spec.accept(self.visitor)
         self.assert_equal(str(self.visitor.expression),
                           str(expected_expr))
@@ -414,22 +413,14 @@ class OrderVisitorTestCase(VisitorTestCase):
         sm = {}
         sm['one-asc'] = self.specs_factory.create_ascending('name')
         sm['one-desc'] = self.specs_factory.create_descending('name')
-        sm['two-asc-asc'] = \
-            self.specs_factory.create_ascending('name').and_(
-                                    self.specs_factory.create_ascending('age')
-                                    )
-        sm['two-desc-asc'] = \
-            self.specs_factory.create_descending('name').and_(
-                                    self.specs_factory.create_ascending('age')
-                                    )
-        sm['two-asc-desc'] = \
-            self.specs_factory.create_ascending('name').and_(
-                              self.specs_factory.create_descending('age')
-                              )
-        sm['two-desc-desc'] = \
-            self.specs_factory.create_descending('name').and_(
-                              self.specs_factory.create_descending('age')
-                              )
+        sm['two-asc-asc'] = self.specs_factory.create_ascending('name') \
+                            & self.specs_factory.create_ascending('age')
+        sm['two-desc-asc'] = self.specs_factory.create_descending('name') \
+                             & self.specs_factory.create_ascending('age')
+        sm['two-asc-desc'] = self.specs_factory.create_ascending('name') \
+                             & self.specs_factory.create_descending('age')
+        sm['two-desc-desc'] = self.specs_factory.create_descending('name') \
+                              & self.specs_factory.create_descending('age')
         return sm
 
 

@@ -20,11 +20,7 @@ from everest.entities.attributes import EntityAttributeKinds
 from everest.entities.utils import slug_from_identifier
 from everest.orm import OrderClauseList
 from everest.querying.base import CqlExpression
-from everest.querying.base import SpecificationBuilder
-from everest.querying.base import SpecificationDirector
 from everest.querying.base import SpecificationVisitor
-from everest.querying.interfaces import IOrderSpecificationBuilder
-from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
 from everest.querying.utils import OrmAttributeInspector
@@ -35,8 +31,6 @@ from zope.interface import implements # pylint: disable=E0611,F0401
 __docformat__ = 'reStructuredText en'
 __all__ = ['BubbleSorter',
            'EvalOrderSpecificationVisitor',
-           'OrderSpecificationBuilder',
-           'OrderSpecificationDirector',
            'Sorter',
            'SorterTemplate',
            ]
@@ -98,38 +92,6 @@ class BubbleSorter(SorterTemplate):
 
     def _join(self, lst, low_index, split_index, high_index):
         pass
-
-
-class OrderSpecificationDirector(SpecificationDirector):
-    """
-    Director for order specifications.
-    """
-
-    implements(IOrderSpecificationDirector)
-
-    def _process_parse_result(self, parse_result):
-        for crit in parse_result.criteria:
-            name, op_string = crit
-            name = self._format_identifier(name)
-            op_name = self._format_identifier(op_string)
-            func = self._get_build_function(op_name)
-            func(name)
-
-
-class OrderSpecificationBuilder(SpecificationBuilder):
-    """
-    Order specification builder.
-    """
-
-    implements(IOrderSpecificationBuilder)
-
-    def build_asc(self, attr_name):
-        spec = self._spec_factory.create_ascending(attr_name)
-        self._record_specification(spec)
-
-    def build_desc(self, attr_name):
-        spec = self._spec_factory.create_descending(attr_name)
-        self._record_specification(spec)
 
 
 class OrderSpecificationVisitor(SpecificationVisitor):

@@ -4,8 +4,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
+from everest.querying.operators import ASCENDING
+from everest.querying.operators import DESCENDING
 from everest.querying.orderparser import parse_order
-from everest.testing import Pep8CompliantTestCase
+from everest.querying.specifications import AscendingOrderSpecification
+from everest.querying.specifications import ConjunctionOrderSpecification
+from everest.querying.specifications import DescendingOrderSpecification
+from everest.testing import TestCaseWithConfiguration
 from pyparsing import ParseException
 
 __docformat__ = 'reStructuredText en'
@@ -13,9 +18,10 @@ __all__ = ['OrderSpecificationParserTestCase',
            ]
 
 
-class OrderSpecificationParserTestCase(Pep8CompliantTestCase):
+class OrderSpecificationParserTestCase(TestCaseWithConfiguration):
 
     def set_up(self):
+        TestCaseWithConfiguration.set_up(self)
         self.parser = parse_order
 
     def test_no_criterion_query(self):
@@ -25,25 +31,26 @@ class OrderSpecificationParserTestCase(Pep8CompliantTestCase):
     def test_one_sort_order(self):
         expr = 'name:asc'
         result = self.parser(expr)
-        self.assert_equal(len(result.criteria), 1)
-        order = result.criteria[0]
-        self.assert_equal(order.name, 'name')
-        self.assert_equal(order.operator, 'asc')
+        self.assert_true(isinstance(result, AscendingOrderSpecification))
+        self.assert_equal(result.attr_name, 'name')
+        self.assert_equal(result.operator, ASCENDING)
 
     def test_one_sort_order_reversed(self):
         expr = 'name:desc'
         result = self.parser(expr)
-        self.assert_equal(len(result.criteria), 1)
-        order = result.criteria[0]
-        self.assert_equal(order.name, 'name')
-        self.assert_equal(order.operator, 'desc')
+        self.assert_true(isinstance(result, DescendingOrderSpecification))
+        self.assert_equal(result.attr_name, 'name')
+        self.assert_equal(result.operator, DESCENDING)
 
     def test_two_sort_order_left_reversed(self):
         expr = 'name:desc~age:asc'
         result = self.parser(expr)
-        self.assert_equal(len(result.criteria), 2)
-        first_order, second_order = result.criteria
-        self.assert_equal(first_order.name, 'name')
-        self.assert_equal(first_order.operator, 'desc')
-        self.assert_equal(second_order.name, 'age')
-        self.assert_equal(second_order.operator, 'asc')
+        self.assert_true(isinstance(result, ConjunctionOrderSpecification))
+        self.assert_true(isinstance(result.left,
+                                    DescendingOrderSpecification))
+        self.assert_true(isinstance(result.right,
+                                    AscendingOrderSpecification))
+        self.assert_equal(result.left.attr_name, 'name')
+        self.assert_equal(result.left.operator, DESCENDING)
+        self.assert_equal(result.right.attr_name, 'age')
+        self.assert_equal(result.right.operator, ASCENDING)

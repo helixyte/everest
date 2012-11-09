@@ -10,8 +10,8 @@ from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.testing import create_collection
 from everest.tests.testapp_db.testing import create_entity
-from everest.url import resource_to_url
-from everest.url import url_to_resource
+from everest.resources.utils import resource_to_url
+from everest.resources.utils import url_to_resource
 from urlparse import urlparse
 
 __docformat__ = 'reStructuredText en'
@@ -151,9 +151,9 @@ class UrlTestCase(ResourceTestCase):
         _test('id:greater-than-or-equal-to:1', 'id', 1)
         _test('id:in-range:0-0', 'id', 0)
 
-    def test_url_to_resource_with_filter_no_values(self):
-        coll_from_url = url_to_resource(self.base_url + '?q=id:equal-to:')
-        self.assert_equal(len(coll_from_url), 2)
+    def test_url_to_resource_with_filter_no_values_raises_error(self):
+        self.assert_raises(ValueError,
+                           url_to_resource, self.base_url + '?q=id:equal-to:')
 
     def test_url_to_resource_with_complex_filter(self):
         criterion = '(id:equal-to:0 and text:equal-to:"foo0") or ' \

@@ -6,6 +6,28 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
+from everest.entities.utils import identifier_from_slug
+from everest.querying.operators import CONTAINED
+from everest.querying.operators import CONTAINS
+from everest.querying.operators import ENDS_WITH
+from everest.querying.operators import EQUAL_TO
+from everest.querying.operators import GREATER_OR_EQUALS
+from everest.querying.operators import GREATER_THAN
+from everest.querying.operators import IN_RANGE
+from everest.querying.operators import LESS_OR_EQUALS
+from everest.querying.operators import LESS_THAN
+from everest.querying.operators import STARTS_WITH
+from everest.querying.specifications import cntd
+from everest.querying.specifications import cnts
+from everest.querying.specifications import ends
+from everest.querying.specifications import eq
+from everest.querying.specifications import ge
+from everest.querying.specifications import gt
+from everest.querying.specifications import le
+from everest.querying.specifications import lt
+from everest.querying.specifications import rng
+from everest.querying.specifications import starts
+from everest.resources.utils import url_to_resource
 from iso8601.iso8601 import parse_date
 from pyparsing import CaselessKeyword
 from pyparsing import CharsNotIn
@@ -19,10 +41,13 @@ from pyparsing import Optional
 from pyparsing import Regex
 from pyparsing import Word
 from pyparsing import ZeroOrMore
+from pyparsing import alphanums
 from pyparsing import alphas
 from pyparsing import dblQuotedString
 from pyparsing import delimitedList
 from pyparsing import nums
+from pyparsing import opAssoc
+from pyparsing import operatorPrecedence
 from pyparsing import removeQuotes
 from pyparsing import replaceWith
 from pyparsing import srange
@@ -49,32 +74,25 @@ OR_PAT = 'or'
 OPEN_PAREN_PAT = '('
 CLOSE_PAREN_PAT = ')'
 
+BINARY = 2
+
 colon = Literal(':')
 comma = Literal(',')
 dot = Literal('.')
 tilde = Literal('~')
 slash = Literal('/')
-open_paren = Literal(OPEN_PAREN_PAT).setParseAction(replaceWith('open-group'))
-close_paren = Literal(CLOSE_PAREN_PAT).setParseAction(replaceWith('close-group'))
+open_paren = Literal(OPEN_PAREN_PAT)
+close_paren = Literal(CLOSE_PAREN_PAT)
 dbl_quote = Literal('"')
 nonzero_nums = srange('[1-9]')
 empty = Empty()
 true = CaselessKeyword("true").setParseAction(replaceWith(True))
 false = CaselessKeyword("false").setParseAction(replaceWith(False))
-attribute = Word(alphas, alphas + '-')
+attribute = Word(alphas, alphanums + '-')
 identifier = \
     Combine(attribute + ZeroOrMore('.' + attribute)).setName('identifier')
-and_ = CaselessKeyword(AND_PAT).setParseAction(replaceWith(AND_PAT))
-or_ = CaselessKeyword(OR_PAT).setParseAction(replaceWith(OR_PAT))
-
-#
-open_paren_parsed = open_paren('operator') \
-                        .setParseAction(replaceWith('open-group')) \
-                        .searchString(OPEN_PAREN_PAT)
-close_paren_parsed = close_paren('operator') \
-                        .setParseAction(replaceWith('close-group')) \
-                        .searchString(CLOSE_PAREN_PAT)
-
+and_op = CaselessKeyword(AND_PAT).setParseAction(replaceWith(AND_PAT))
+or_op = CaselessKeyword(OR_PAT).setParseAction(replaceWith(OR_PAT))
 
 
 def convert_number(seq):
@@ -103,19 +121,97 @@ def convert_range(seq):
     return (seq.range[0], seq.range[-1])
 
 
+class CriterionConverter(object):
+    spec_map = {STARTS_WITH.name : starts,
+                ENDS_WITH.name : ends,
+                CONTAINS.name : cnts,
+                CONTAINED.name : cntd,
+                EQUAL_TO.name : eq,
+                GREATER_THAN.name : gt,
+                LESS_THAN.name : lt,
+                GREATER_OR_EQUALS.name : ge,
+                LESS_OR_EQUALS.name : le,
+                IN_RANGE.name : rng,
+                }
+
+    @classmethod
+    def convert(cls, seq):
+        crit = seq[0]
+        op_name = cls.__prepare_identifier(crit.operator)
+        if op_name.startswith("not_"):
+            op_name = op_name[4:]
+            negate = True
+        else:
+            negate = False
+        attr_name = cls.__prepare_identifier(crit.name)
+        attr_values = cls.__prepare_values(crit.value)
+        if attr_values == []:
+            raise ValueError('Criterion does not define a value.')
+        # For the CONTAINED spec, we treat all parsed values as one value.
+        if op_name == CONTAINED.name:
+            attr_values = [attr_values]
+        spec_gen = cls.spec_map[op_name]
+        return cls.__make_spec(spec_gen, attr_name, attr_values, negate)
+
+    @classmethod
+    def __make_spec(cls, spec_gen, attr_name, attr_values, negate):
+        spec = None
+        for attr_value in attr_values:
+            cur_spec = spec_gen(**{attr_name:attr_value})
+            if negate:
+                cur_spec = ~cur_spec
+            if spec is None:
+                spec = cur_spec
+            else:
+                spec = spec | cur_spec
+        return spec
+
+    @classmethod
+    def __prepare_identifier(cls, name):
+        return identifier_from_slug(name)
+
+    @classmethod
+    def __prepare_values(cls, values):
+        prepared = []
+        for val in values:
+            if cls.__is_empty_string(val):
+                continue
+            elif cls.__is_url(val):
+                # URLs - convert to resource.
+                val = url_to_resource(''.join(val))
+            if not val in prepared:
+                prepared.append(val)
+        return prepared
+
+    @classmethod
+    def __is_empty_string(cls, v):
+        return isinstance(v, basestring) and len(v) == 0
+
+    @classmethod
+    def __is_url(cls, v):
+        return isinstance(v, basestring) and v.startswith('http://')
+
+
+def convert_conjunction(seq):
+    left_spec = seq[0][0]
+    right_spec = seq[0][-1]
+    return left_spec & right_spec
+
+
+def convert_disjunction(seq):
+    left_spec = seq[0][0]
+    right_spec = seq[0][-1]
+    return left_spec | right_spec
+
+
 def convert_simple_criteria(seq):
-    toks = seq[0]
-    res = open_paren_parsed + toks + close_paren_parsed
-    return res
-
-
-def convert_op_criteria(seq):
-    res = seq[0]
-    return res
-
-
-def convert_query(seq):
-    return seq[0]
+    spec = None
+    for crit_spec in seq[0]:
+        if spec is None:
+            spec = crit_spec
+        else:
+            spec = spec & crit_spec
+    return spec
 
 
 # Numbers are converted to ints if possible.
@@ -156,53 +252,35 @@ cql_values = Group(
         )
     )
 
-logical_op = Group(and_('operator') | or_('operator'))
+logical_op = and_op('operator') | or_op('operator')
 
 criterion = Group(identifier('name') + colon.suppress() +
                   identifier('operator') + colon.suppress() +
                   cql_values('value')
                   )
+criterion.setParseAction(CriterionConverter.convert)
 
-tilde_op = Group(tilde('operator').setParseAction(replaceWith(AND_PAT)))
+junction_element = Forward()
+junction = operatorPrecedence(
+                    junction_element,
+                    [
+                     (and_op, BINARY, opAssoc.LEFT, convert_conjunction),
+                     (or_op, BINARY, opAssoc.LEFT, convert_disjunction),
+                     ])
+junction_element << (criterion | # pylint: disable=W0106
+                     open_paren.suppress() + junction + close_paren.suppress())
+# Safeguard against left-recursive grammars.
+junction.validate()
 
+simple_criteria = Group(criterion +
+                        OneOrMore(tilde.suppress() + criterion))
+simple_criteria.setParseAction(convert_simple_criteria)
 
-# Criteria group with arbitrary logical operator as separator.
-op_criteria = Group(criterion +
-                    ZeroOrMore(logical_op + criterion))
-
-# A simple criteria group not using parentheses.
-simple_op_criteria = op_criteria.copy()
-simple_op_criteria.setParseAction(convert_simple_criteria)
-
-# Simple criteria group using tilde character as separator (signifies AND).
-simple_tilde_criteria = Group(criterion +
-                            OneOrMore(tilde_op + criterion))
-simple_tilde_criteria.setParseAction(convert_simple_criteria)
-
-# Explicitly grouped criteria.
-grouped_criteria = Forward()
-grouped_op_criteria = op_criteria.copy()
-grouped_op_criteria.setParseAction(convert_op_criteria)
-grouped_criteria_item = grouped_op_criteria | grouped_criteria
-grouped_criteria << (Group(open_paren('operator')) + # pylint: disable=W0106
-                     grouped_criteria_item +
-                     ZeroOrMore(logical_op + grouped_criteria_item) +
-                     Group(close_paren('operator')))
-
-query_criteria = grouped_criteria | simple_op_criteria
-
-query = Group(simple_tilde_criteria |
-              (query_criteria + ZeroOrMore(logical_op + query_criteria)))
-query.setParseAction(convert_query)
-
-#criteria = \
-#    (Group(delimitedList(criterion, tilde)) |
-#     Group(delimitedList(criterion, logical_op))).setResultsName('criteria')
-
+query = simple_criteria | junction
 
 
 def parse_filter(query_string):
     """
     Parses the given filter criteria string.
     """
-    return query.parseString(query_string)
+    return query.parseString(query_string)[0]

@@ -7,20 +7,22 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 3, 2011.
 """
 from everest.interfaces import IRepositoryManager
+from everest.interfaces import IResourceUrlConverter
 from everest.repository import REPOSITORIES
 from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IService
 from everest.utils import get_repository_manager
 from pyramid.threadlocal import get_current_registry
+from pyramid.threadlocal import get_current_request
 from pyramid.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from everest.resources.interfaces import IRelation
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
@@ -34,6 +36,8 @@ __all__ = ['as_member',
            'provides_collection_resource',
            'provides_member_resource',
            'provides_resource',
+           'resource_to_url',
+           'url_to_resource',
            ]
 
 
@@ -226,4 +230,28 @@ def get_service():
     """
     reg = get_current_registry()
     return reg.getUtility(IService)
+
+
+def resource_to_url(resource, request=None):
+    """
+    Converts the given resource to a URL.
+    """
+    if request is None:
+        request = get_current_request()
+#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)
+    reg = get_current_registry()
+    cnv = reg.getAdapter(request, IResourceUrlConverter)
+    return cnv.resource_to_url(resource)
+
+
+def url_to_resource(url, request=None):
+    """
+    Converts the given URL to a resource.
+    """
+    if request is None:
+        request = get_current_request()
+#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)
+    reg = get_current_registry()
+    cnv = reg.getAdapter(request, IResourceUrlConverter)
+    return cnv.url_to_resource(url)
 

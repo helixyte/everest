@@ -143,7 +143,8 @@ class CsvRepresentationParser(RepresentationParser):
             if "id" in row_data.keys():
                 key = row_data['id']
             else:
-                key = tuple([val for (key, val) in sorted(row_data.items())
+                # FIXME: This needs testing.
+                key = tuple([val for (key, val) in sorted(row_data.items()) # pragma: no cover
                              if not key in self.__attribute_names])
             return key
 

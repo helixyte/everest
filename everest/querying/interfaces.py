@@ -10,9 +10,11 @@ from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['IFilterSpecificationVisitor',
-           'IFilterSpecificationFactory',
+__all__ = ['IFilterSpecificationFactory',
+           'IFilterSpecificationVisitor',
+           'IOrderSpecificationFactory',
            'IOrderSpecificationVisitor',
+           'ISpecification',
            ]
 
 
@@ -95,110 +97,6 @@ class IOrderSpecificationFactory(Interface):
     def create_descending(attr_name):
         "Create a descending order specification."
 
-
-
-class ISpecificationDirector(Interface):
-    """
-    A specification director coordinates an expression parser and a 
-    specification builder to generate a specification from an expression.
-    """
-
-    def construct(expression):
-        """
-        Constructs a specification (using a specification builder) from the 
-        result of parsing the given expression (using a parser for the given
-        expression).
-        """
-
-    def has_errors():
-        """
-        Checks if the director encountered errors during the last call to 
-        :meth:`construct`.
-        """
-
-    def get_errors():
-        """
-        Returns the errors that were encountered during the last call to
-        :meth:`construct`
-        """
-
-
-class IFilterSpecificationDirector(ISpecificationDirector):
-    "Interface for filter specification directors."
-
-
-class ISpecificationBuilder(Interface):
-    """
-    Specification builder interface.
-    """
-
-    specification = Attribute('The specification the builder built.')
-
-
-class IFilterSpecificationBuilder(ISpecificationBuilder):
-    """
-    Filter specification builder interface.
-    """
-
-    def build_equal_to(attr_name, attr_values):
-        "Build an equal-to specification."
-
-    def build_not_equal_to(attr_name, attr_values):
-        "Build a not-equal-to specification."
-
-    def build_starts_with(attr_name, attr_values):
-        "Build a starts-with specification."
-
-    def build_not_starts_with(attr_name, attr_values):
-        "Build a not-starts-with specification."
-
-    def build_ends_with(attr_name, attr_values):
-        "Build an ends-with specification."
-
-    def build_not_ends_with(attr_name, attr_values):
-        "Build a not-ends-with specification."
-
-    def build_contains(attr_name, attr_values):
-        "Build a contains specification."
-
-    def build_not_contains(attr_name, attr_values):
-        "Build a not-contains specification."
-
-    def build_less_than_or_equal_to(attr_name, attr_values):
-        "Build a less-than-or-equal-to specification."
-
-    def build_less_than(attr_name, attr_values):
-        "Build a less-than specification."
-
-    def build_greater_than_or_equal_to(attr_name, attr_values):
-        "Build a greater-than-or-equal-to specification."
-
-    def build_greater_than(attr_name, attr_values):
-        "Build a greater-than specification."
-
-    def build_in_range(attr_name, attr_values):
-        "Build an in-range specification."
-
-    def build_not_in_range(attr_name, attr_values):
-        "Build a not-in-range specification."
-
-
-class IOrderSpecificationDirector(ISpecificationDirector):
-    "Interface for order specification directors."
-
-
-class IOrderSpecificationBuilder(ISpecificationBuilder):
-    """
-    Abstract base class for all order specification builders.
-
-    Based on the Builder Design Pattern.
-    """
-
-    def build_asc(attr_name):
-        "Build an ascending order specification."
-
-    def build_desc(attr_name):
-        "Build an descending order specification."
 
 
 class ISpecificationVisitor(Interface):

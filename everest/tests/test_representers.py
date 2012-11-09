@@ -46,7 +46,7 @@ from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_collection
-from everest.url import url_to_resource
+from everest.resources.utils import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
 

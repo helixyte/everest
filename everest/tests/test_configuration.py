@@ -10,12 +10,8 @@ from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime
 from everest.querying.base import EXPRESSION_KINDS
-from everest.querying.interfaces import IFilterSpecificationBuilder
-from everest.querying.interfaces import IFilterSpecificationDirector
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IFilterSpecificationVisitor
-from everest.querying.interfaces import IOrderSpecificationBuilder
-from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.repository import REPOSITORIES
@@ -56,16 +52,12 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationFactory))
         self.assert_is_not_none(reg.queryUtility(IOrderSpecificationFactory))
         self.assert_is_not_none(reg.queryUtility(IService))
-        self.assert_is_not_none(reg.queryUtility(IFilterSpecificationBuilder))
-        self.assert_is_not_none(reg.queryUtility(IFilterSpecificationDirector))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationVisitor,
                                                  name=EXPRESSION_KINDS.CQL))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationVisitor,
                                                  name=EXPRESSION_KINDS.SQL))
         self.assert_is_not_none(reg.queryUtility(IFilterSpecificationVisitor,
                                                  name=EXPRESSION_KINDS.EVAL))
-        self.assert_is_not_none(reg.queryUtility(IOrderSpecificationBuilder))
-        self.assert_is_not_none(reg.queryUtility(IOrderSpecificationDirector))
         self.assert_is_not_none(reg.queryUtility(IOrderSpecificationVisitor,
                                                  name=EXPRESSION_KINDS.CQL))
         self.assert_is_not_none(reg.queryUtility(IOrderSpecificationVisitor,

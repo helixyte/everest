@@ -10,19 +10,12 @@ from cgi import parse_qsl
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
-from everest.querying.interfaces import IFilterSpecificationBuilder
-from everest.querying.interfaces import IFilterSpecificationDirector
-from everest.querying.interfaces import IOrderSpecificationBuilder
-from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.orderparser import parse_order
-from everest.querying.utils import get_filter_specification_factory
-from everest.querying.utils import get_order_specification_factory
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
-from pyramid.threadlocal import get_current_registry
-from pyramid.threadlocal import get_current_request
+from pyparsing import ParseException
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
 from pyramid.url import model_url
@@ -34,8 +27,6 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
            'UrlPartsConverter',
-           'resource_to_url',
-           'url_to_resource',
            ]
 
 
@@ -82,7 +73,7 @@ class ResourceUrlConverter(object):
             size_string = params.get('size')
             if not (start_string is None or size_string is None):
                 rc.slice = \
-                    UrlPartsConverter.make_slice_key(start_string, size_string)
+                  UrlPartsConverter.make_slice_key(start_string, size_string)
         elif not IMemberResource in provided_by(rc):
             raise ValueError('Traversal found non-resource object "%s".' % rc)
         return rc
@@ -115,24 +106,6 @@ class ResourceUrlConverter(object):
         return unquote(url)
 
 
-def resource_to_url(resource, request=None):
-    if request is None:
-        request = get_current_request()
-#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)
-    reg = get_current_registry()
-    cnv = reg.getAdapter(request, IResourceUrlConverter)
-    return cnv.resource_to_url(resource)
-
-
-def url_to_resource(url, request=None):
-    if request is None:
-        request = get_current_request()
-#    cnv = request.registry.getAdapter(request, IResourceUrlConverter)
-    reg = get_current_registry()
-    cnv = reg.getAdapter(request, IResourceUrlConverter)
-    return cnv.url_to_resource(url)
-
-
 class UrlPartsConverter(object):
 
     @classmethod
@@ -141,17 +114,10 @@ class UrlPartsConverter(object):
         Extracts the "query" parameter from the given request and converts
         the given query string into a filter specification.
         """
-        reg = get_current_registry()
-        spec_factory = get_filter_specification_factory()
-        builder_cls = reg.getUtility(IFilterSpecificationBuilder)
-        builder = builder_cls(spec_factory)
-        director_cls = reg.getUtility(IFilterSpecificationDirector)
-        director = director_cls(parse_filter, builder)
-        director.construct(unquote(filter_string))
-        if director.has_errors():
-            errors = '\n'.join(director.get_errors())
-            raise ValueError(errors)
-        return builder.specification
+        try:
+            return parse_filter(filter_string)
+        except ParseException, err:
+            raise ValueError('Expression parameters have errors. %s' % err)
 
     @classmethod
     def make_filter_string(cls, filter_specification):
@@ -162,17 +128,10 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_order_specification(cls, order_string):
-        reg = get_current_registry()
-        order_factory = get_order_specification_factory()
-        builder_cls = reg.getUtility(IOrderSpecificationBuilder)
-        builder = builder_cls(order_factory)
-        director_cls = reg.getUtility(IOrderSpecificationDirector)
-        director = director_cls(parse_order, builder)
-        director.construct(unquote(order_string))
-        if director.has_errors():
-            errors = '\n'.join(director.get_errors())
-            raise ValueError(errors)
-        return builder.specification
+        try:
+            return parse_order(order_string)
+        except ParseException, err:
+            raise ValueError('Expression parameters have errors. %s' % err)
 
     @classmethod
     def make_order_string(cls, order_specification):

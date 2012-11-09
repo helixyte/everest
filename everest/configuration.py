@@ -18,21 +18,13 @@ from everest.mime import get_registered_representer_names
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.filtering import EvalFilterSpecificationVisitor
-from everest.querying.filtering import FilterSpecificationBuilder
-from everest.querying.filtering import FilterSpecificationDirector
 from everest.querying.filtering import SqlFilterSpecificationVisitor
-from everest.querying.interfaces import IFilterSpecificationBuilder
-from everest.querying.interfaces import IFilterSpecificationDirector
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IFilterSpecificationVisitor
-from everest.querying.interfaces import IOrderSpecificationBuilder
-from everest.querying.interfaces import IOrderSpecificationDirector
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.ordering import EvalOrderSpecificationVisitor
-from everest.querying.ordering import OrderSpecificationBuilder
-from everest.querying.ordering import OrderSpecificationDirector
 from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
@@ -92,13 +84,9 @@ class Configurator(PyramidConfigurator):
                  order_specification_factory=None,
                  # Application level services.
                  service=None,
-                 filter_specification_builder=None,
-                 filter_specification_director=None,
                  cql_filter_specification_visitor=None,
                  sql_filter_specification_visitor=None,
                  eval_filter_specification_visitor=None,
-                 order_specification_builder=None,
-                 order_specification_director=None,
                  cql_order_specification_visitor=None,
                  sql_order_specification_visitor=None,
                  eval_order_specification_visitor=None,
@@ -127,16 +115,12 @@ class Configurator(PyramidConfigurator):
                filter_specification_factory=filter_specification_factory,
                order_specification_factory=order_specification_factory,
                service=service,
-               filter_specification_builder=filter_specification_builder,
-               filter_specification_director=filter_specification_director,
                cql_filter_specification_visitor=
                                     cql_filter_specification_visitor,
                sql_filter_specification_visitor=
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
-               order_specification_builder=order_specification_builder,
-               order_specification_director=order_specification_director,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
@@ -162,13 +146,9 @@ class Configurator(PyramidConfigurator):
                        filter_specification_factory=None,
                        order_specification_factory=None,
                        service=None,
-                       filter_specification_builder=None,
-                       filter_specification_director=None,
                        cql_filter_specification_visitor=None,
                        sql_filter_specification_visitor=None,
                        eval_filter_specification_visitor=None,
-                       order_specification_builder=None,
-                       order_specification_director=None,
                        cql_order_specification_visitor=None,
                        sql_order_specification_visitor=None,
                        eval_order_specification_visitor=None,
@@ -181,20 +161,12 @@ class Configurator(PyramidConfigurator):
             order_specification_factory = OrderSpecificationFactory()
         if service is None:
             service = Service()
-        if filter_specification_builder is None:
-            filter_specification_builder = FilterSpecificationBuilder
-        if filter_specification_director is None:
-            filter_specification_director = FilterSpecificationDirector
         if cql_filter_specification_visitor is None:
             cql_filter_specification_visitor = CqlFilterSpecificationVisitor
         if sql_filter_specification_visitor is None:
             sql_filter_specification_visitor = SqlFilterSpecificationVisitor
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = EvalFilterSpecificationVisitor
-        if order_specification_builder is None:
-            order_specification_builder = OrderSpecificationBuilder
-        if order_specification_director is None:
-            order_specification_director = OrderSpecificationDirector
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         if sql_order_specification_visitor is None:
@@ -208,16 +180,12 @@ class Configurator(PyramidConfigurator):
                filter_specification_factory=filter_specification_factory,
                order_specification_factory=order_specification_factory,
                service=service,
-               filter_specification_builder=filter_specification_builder,
-               filter_specification_director=filter_specification_director,
                cql_filter_specification_visitor=
                                     cql_filter_specification_visitor,
                sql_filter_specification_visitor=
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
-               order_specification_builder=order_specification_builder,
-               order_specification_director=order_specification_director,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
@@ -484,15 +452,6 @@ class Configurator(PyramidConfigurator):
     def _set_service(self, service):
         self._register_utility(service, IService)
 
-    def _set_filter_specification_builder(self, filter_specification_builder):
-        self._register_utility(filter_specification_builder,
-                               IFilterSpecificationBuilder)
-
-    def _set_filter_specification_director(self,
-                                           filter_specification_director):
-        self._register_utility(filter_specification_director,
-                               IFilterSpecificationDirector)
-
     def _set_cql_filter_specification_visitor(self,
                                            cql_filter_specification_visitor):
         self._register_utility(cql_filter_specification_visitor,
@@ -510,14 +469,6 @@ class Configurator(PyramidConfigurator):
         self._register_utility(eval_filter_specification_visitor,
                                IFilterSpecificationVisitor,
                                name=EXPRESSION_KINDS.EVAL)
-
-    def _set_order_specification_builder(self, order_specification_builder):
-        self._register_utility(order_specification_builder,
-                               IOrderSpecificationBuilder)
-
-    def _set_order_specification_director(self, order_specification_director):
-        self._register_utility(order_specification_director,
-                               IOrderSpecificationDirector)
 
     def _set_cql_order_specification_visitor(self,
                                              cql_order_specification_visitor):
@@ -545,13 +496,9 @@ class Configurator(PyramidConfigurator):
                 filter_specification_factory,
                 order_specification_factory,
                 service,
-                filter_specification_builder,
-                filter_specification_director,
                 cql_filter_specification_visitor,
                 sql_filter_specification_visitor,
                 eval_filter_specification_visitor,
-                order_specification_builder,
-                order_specification_director,
                 cql_order_specification_visitor,
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
@@ -587,12 +534,6 @@ class Configurator(PyramidConfigurator):
             self._set_order_specification_factory(order_specification_factory)
         if not service is None:
             self._set_service(service)
-        if not filter_specification_builder is None:
-            self._set_filter_specification_builder(
-                                                filter_specification_builder)
-        if not filter_specification_director is None:
-            self._set_filter_specification_director(
-                                                filter_specification_director)
         if not cql_filter_specification_visitor is None:
             self._set_cql_filter_specification_visitor(
                                             cql_filter_specification_visitor)
@@ -602,11 +543,6 @@ class Configurator(PyramidConfigurator):
         if not eval_filter_specification_visitor is None:
             self._set_eval_filter_specification_visitor(
                                             eval_filter_specification_visitor)
-        if not order_specification_builder is None:
-            self._set_order_specification_builder(order_specification_builder)
-        if not order_specification_director is None:
-            self._set_order_specification_director(
-                                                order_specification_director)
         if not cql_order_specification_visitor is None:
             self._set_cql_order_specification_visitor(
                                             cql_order_specification_visitor)

@@ -25,7 +25,7 @@ from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
-from everest.url import url_to_resource
+from everest.resources.utils import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'

@@ -26,7 +26,7 @@ from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
-from everest.url import resource_to_url
+from everest.resources.utils import resource_to_url
 from lxml import etree
 from lxml import objectify
 from pkg_resources import resource_filename # pylint: disable=E0611

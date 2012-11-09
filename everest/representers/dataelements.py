@@ -17,7 +17,7 @@ from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
-from everest.url import resource_to_url
+from everest.resources.utils import resource_to_url
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 

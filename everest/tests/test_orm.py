@@ -28,6 +28,7 @@ from sqlalchemy.sql.expression import Function
 from sqlalchemy.sql.expression import cast
 from zope.interface import implements # pylint: disable=E0611,F0401
 import os
+from everest.orm import hybrid_descriptor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmTestCase',
@@ -60,6 +61,7 @@ class OrmTestCase(Pep8CompliantTestCase):
     def test_mapper(self):
         class MyDerivedEntity(MyEntity):
             pass
+
         class MyEntityWithCustomId(object):
             implements(IEntity)
 
@@ -74,6 +76,10 @@ class OrmTestCase(Pep8CompliantTestCase):
             @property
             def slug(self):
                 return str(self.__id)
+
+        class MyPolymorphicEntity(MyEntityWithCustomId):
+            pass
+
         t1 = self._make_table(True)
         with self.assert_raises(ValueError) as cm:
             mpr = mapper(MyDerivedEntity, t1, id_attribute='my_id')
@@ -92,6 +98,16 @@ class OrmTestCase(Pep8CompliantTestCase):
                          is slug_expr)
         self.assert_true(isinstance(MyDerivedEntity.slug, Function))
         mpr.dispose()
+        # Test mapping polymorphic class with custom slug in the base class.
+        base_mpr = mapper(MyEntityWithCustomId, t2,
+                          polymorphic_on='my_type',
+                          polymorphic_identity='base')
+        mpr = mapper(MyPolymorphicEntity, inherits=base_mpr,
+                     polymorphic_identity='derived')
+        self.assert_true(isinstance(MyPolymorphicEntity.__dict__['slug'],
+                                    hybrid_descriptor))
+        base_mpr.dispose()
+        mpr.dispose()
 
     def test_commit_veto(self):
         self.assert_false(commit_veto(os.environ, '200', dict()))
@@ -100,7 +116,8 @@ class OrmTestCase(Pep8CompliantTestCase):
 
     def _make_table(self, with_id):
         md = MetaData()
-        cols = [Column('my_id', Integer, primary_key=True)]
+        cols = [Column('my_id', Integer, primary_key=True),
+                Column('my_type', String)]
         if with_id:
             cols.append(Column('id', Integer))
         return Table('my_table_with_id_col', md, *cols)

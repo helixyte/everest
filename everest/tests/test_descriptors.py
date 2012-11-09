@@ -39,7 +39,7 @@ from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_collection
 from everest.tests.testapp_db.testing import create_entity
-from everest.url import resource_to_url
+from everest.resources.utils import resource_to_url
 import datetime
 
 __docformat__ = 'reStructuredText en'

@@ -214,13 +214,38 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_raises(ValueError, self._session.commit)
 
 
-class FileSystemEntityStoreTestCase(ResourceTestCase):
+class _FileSystemEntityStoreTestCaseMixin(object):
+    _data_dir = None
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_fs.zcml'
 
-    def set_up(self):
-        self.__data_dir = os.path.join(os.path.dirname(__file__),
+    def _set_data_dir(self):
+        self._data_dir = os.path.join(os.path.dirname(__file__),
                                        'testapp_db', 'data')
+
+
+class FileSystemEmptyEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
+                                         ResourceTestCase):
+    def set_up(self):
+        self._set_data_dir()
+        ResourceTestCase.set_up(self)
+
+    def test_initialization_with_empty_data_dir(self):
+        colls = [
+                 get_root_collection(IMyEntityParent),
+                 get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntityChild),
+                 get_root_collection(IMyEntityGrandchild),
+                 ]
+        for coll in colls:
+            self.assert_equal(len(coll), 0)
+
+
+class FileSystemEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
+                                    ResourceTestCase):
+
+    def set_up(self):
+        self._set_data_dir()
         self.__copy_data_files()
         try:
             ResourceTestCase.set_up(self)
@@ -244,7 +269,7 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
 
     def test_get_read_collection_path(self):
         path = get_read_collection_path(get_collection_class(IMyEntity),
-                                        CsvMime, directory=self.__data_dir)
+                                        CsvMime, directory=self._data_dir)
         self.assert_false(path is None)
         tmp_dir = tempfile.mkdtemp()
         tmp_path = get_read_collection_path(get_collection_class(IMyEntity),
@@ -323,7 +348,7 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         TEXT = 'Changed.'
         mb.text = TEXT
         transaction.commit()
-        with open(os.path.join(self.__data_dir,
+        with open(os.path.join(self._data_dir,
                                "%s.csv" % get_collection_name(coll)),
                   'rU') as data_file:
             lines = data_file.readlines()
@@ -352,13 +377,13 @@ class FileSystemEntityStoreTestCase(ResourceTestCase):
         self.assert_raises(ValueError, repo.configure, foo='bar')
 
     def __copy_data_files(self):
-        orig_data_dir = os.path.join(self.__data_dir, 'original')
+        orig_data_dir = os.path.join(self._data_dir, 'original')
         for fn in glob.glob1(orig_data_dir, "*.csv"):
-            shutil.copy(os.path.join(orig_data_dir, fn), self.__data_dir)
+            shutil.copy(os.path.join(orig_data_dir, fn), self._data_dir)
 
     def __remove_data_files(self):
-        for fn in glob.glob1(self.__data_dir, '*.csv'):
-            os.unlink(os.path.join(self.__data_dir, fn))
+        for fn in glob.glob1(self._data_dir, '*.csv'):
+            os.unlink(os.path.join(self._data_dir, fn))
 
 
 class _MyEntity(Entity):

@@ -23,8 +23,8 @@ from everest.resources.interfaces import IResource
 from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
-from everest.url import resource_to_url
-from everest.url import url_to_resource
+from everest.resources.utils import resource_to_url
+from everest.resources.utils import url_to_resource
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path

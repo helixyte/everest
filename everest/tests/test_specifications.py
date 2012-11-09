@@ -11,9 +11,10 @@ from everest.querying.specifications import ConjunctionFilterSpecification
 from everest.querying.specifications import DisjunctionFilterSpecification
 from everest.querying.specifications import FilterSpecification
 from everest.querying.specifications import FilterSpecificationFactory
+from everest.querying.specifications import FilterSpecificationGenerator
 from everest.querying.specifications import NaturalOrderSpecification
+from everest.querying.specifications import NegationFilterSpecification
 from everest.querying.specifications import OrderSpecificationFactory
-from everest.querying.specifications import and_
 from everest.querying.specifications import asc
 from everest.querying.specifications import cntd
 from everest.querying.specifications import cnts
@@ -24,14 +25,12 @@ from everest.querying.specifications import ge
 from everest.querying.specifications import gt
 from everest.querying.specifications import le
 from everest.querying.specifications import lt
-from everest.querying.specifications import or_
 from everest.querying.specifications import rng
 from everest.querying.specifications import starts
+from everest.querying.utils import get_filter_specification_factory
 from everest.testing import TestCaseWithConfiguration
 from everest.testing import TestCaseWithIni
 from nose.tools import raises
-from everest.querying.specifications import not_
-from everest.querying.specifications import NegationFilterSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['TestConjunctionFilterSpecification',
@@ -663,83 +662,85 @@ class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
         self.candidate = Candidate(number_attr=0, text_attr='attr')
 
     def test_eq_generator(self):
-        gen = eq(number_attr=0).and_(eq(text_attr='attr'))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = eq(number_attr=0) & eq(text_attr='attr')
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_starts_generator(self):
-        gen = starts(text_attr='a')
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = starts(text_attr='a')
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_ends_generator(self):
-        gen = ends(text_attr='r')
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = ends(text_attr='r')
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_lt_generator(self):
-        gen = lt(number_attr=1)
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = lt(number_attr=1)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_le_generator(self):
-        gen = le(number_attr=0)
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = le(number_attr=0)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_gt_generator(self):
-        gen = gt(number_attr= -1)
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = gt(number_attr= -1)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_ge_generator(self):
-        gen = ge(number_attr=0)
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = ge(number_attr=0)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_cnts_generator(self):
-        gen = cnts(text_attr='tt')
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = cnts(text_attr='tt')
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_cntd_generator(self):
-        gen = cntd(text_attr=['attr'])
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = cntd(text_attr=['attr'])
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_rng_generator(self):
-        gen = rng(number_attr=(-1, 1))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = rng(number_attr=(-1, 1))
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_multiple_keywords(self):
-        gen = eq(number_attr=0, text_attr='attr')
-        self.assert_true(isinstance(gen.spec, ConjunctionFilterSpecification))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = eq(number_attr=0, text_attr='attr')
+        self.assert_true(isinstance(spec, ConjunctionFilterSpecification))
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_asc_generator(self):
         second_candidate = Candidate(number_attr=0, text_attr='b')
-        gen = asc('number_attr').and_(asc('text_attr'))
-        self.assert_true(gen.spec.lt(self.candidate, second_candidate))
+        spec = asc('number_attr') & asc('text_attr')
+        self.assert_true(spec.lt(self.candidate, second_candidate))
 
     def test_desc_generator(self):
         second_candidate = Candidate(number_attr=0, text_attr='b')
-        gen = desc('number_attr').and_(desc('text_attr'))
-        self.assert_true(gen.spec.lt(second_candidate, self.candidate))
+        spec = desc('number_attr') & desc('text_attr')
+        self.assert_true(spec.lt(second_candidate, self.candidate))
 
-    def test_chaining_generator(self):
-        gen = lt(number_attr=1).gt(number_attr= -1)
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+    def test_multiple_ordering_spec_generator(self):
+        second_candidate = Candidate(number_attr=0, text_attr='b')
+        spec = desc('number_attr', 'text_attr')
+        self.assert_true(spec.lt(second_candidate, self.candidate))
+
+    def test_instantiating_generator(self):
+        gen = FilterSpecificationGenerator(get_filter_specification_factory())
+        spec = gen.lt(number_attr=1) & gen.gt(number_attr= -1)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_generator_or(self):
-        gen = lt(number_attr=1).or_(gt(number_attr=1))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+        spec = lt(number_attr=1) | gt(number_attr=1)
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
-    def test_generator_not(self):
-        gen = lt(number_attr= -1).not_()
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+    def test_and(self):
+        spec = eq(number_attr=0) & eq(text_attr='attr')
+        self.assert_true(isinstance(spec, ConjunctionFilterSpecification))
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
-    def test_and_(self):
-        gen = and_(eq(number_attr=0), eq(text_attr='attr'))
-        self.assert_true(isinstance(gen.spec, ConjunctionFilterSpecification))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+    def test_or(self):
+        spec = eq(number_attr=1) | eq(text_attr='attr')
+        self.assert_true(isinstance(spec, DisjunctionFilterSpecification))
+        self.assert_true(spec.is_satisfied_by(self.candidate))
 
-    def test_or_(self):
-        gen = or_(eq(number_attr=1), eq(text_attr='attr'))
-        self.assert_true(isinstance(gen.spec, DisjunctionFilterSpecification))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
-
-    def test_not_(self):
-        gen = not_(eq(number_attr=1))
-        self.assert_true(isinstance(gen.spec, NegationFilterSpecification))
-        self.assert_true(gen.spec.is_satisfied_by(self.candidate))
+    def test_not(self):
+        spec = ~eq(number_attr=1)
+        self.assert_true(isinstance(spec, NegationFilterSpecification))
+        self.assert_true(spec.is_satisfied_by(self.candidate))
