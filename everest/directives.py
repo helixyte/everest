@@ -321,18 +321,18 @@ class IResourceViewDirective(IViewDirective):
                )
 
 
-def resource_view(_context, for_, default_context_type=None, **kw):
-    _resource_view(_context, for_, default_context_type,
+def resource_view(_context, for_, default_content_type=None, **kw):
+    _resource_view(_context, for_, default_content_type,
                    'add_resource_view', kw)
 
 
-def collection_view(_context, for_, default_context_type=None, **kw):
-    _resource_view(_context, for_, default_context_type,
+def collection_view(_context, for_, default_content_type=None, **kw):
+    _resource_view(_context, for_, default_content_type,
                    'add_collection_view', kw)
 
 
-def member_view(_context, for_, default_context_type=None, **kw):
-    _resource_view(_context, for_, default_context_type,
+def member_view(_context, for_, default_content_type=None, **kw):
+    _resource_view(_context, for_, default_content_type,
                    'add_member_view', kw)
 
 

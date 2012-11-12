@@ -244,7 +244,7 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     def test_default(self):
         # New style views return the default_content_type.
         res = self.app.get(self.path, status=200)
-        self.assert_true(res.body.startswith('"id"'))
+        self.assert_true(res.body.startswith('<?xml'))
 
     def test_custom_view(self):
         TXT = 'my custom response body'

@@ -46,7 +46,7 @@
     
     <resource_view
         for="everest.tests.testapp.interfaces.IFoo"
-        default_content_type="everest.mime.CsvMime"
+        default_content_type="everest.mime.XmlMime"
         request_method="GET" />
 
 </configure>
