@@ -71,8 +71,6 @@ ISO8601_REGEX = r'(?P<year>[0-9]{4})' \
 
 AND_PAT = 'and'
 OR_PAT = 'or'
-OPEN_PAREN_PAT = '('
-CLOSE_PAREN_PAT = ')'
 
 BINARY = 2
 
@@ -81,8 +79,8 @@ comma = Literal(',')
 dot = Literal('.')
 tilde = Literal('~')
 slash = Literal('/')
-open_paren = Literal(OPEN_PAREN_PAT)
-close_paren = Literal(CLOSE_PAREN_PAT)
+open_paren = Literal('(')
+close_paren = Literal(')')
 dbl_quote = Literal('"')
 nonzero_nums = srange('[1-9]')
 empty = Empty()
@@ -95,12 +93,8 @@ and_op = CaselessKeyword(AND_PAT).setParseAction(replaceWith(AND_PAT))
 or_op = CaselessKeyword(OR_PAT).setParseAction(replaceWith(OR_PAT))
 
 
-def convert_number(seq):
-    """
-    pyparsing action that converts the given 1-element number string 
-    sequence into a float or an integer.
-    """
-    str_val = seq[0]
+def convert_number(toks):
+    str_val = toks[0]
     if '.' in str_val or 'e' in str_val:
         val = float(str_val)
     else:
@@ -108,8 +102,8 @@ def convert_number(seq):
     return val
 
 
-def convert_date(seq):
-    date_val = seq[0][0]
+def convert_date(toks):
+    date_val = toks[0][0]
     try:
         res = parse_date(date_val)
     except ValueError:
@@ -117,8 +111,8 @@ def convert_date(seq):
     return res
 
 
-def convert_range(seq):
-    return (seq.range[0], seq.range[-1])
+def convert_range(toks):
+    return (toks.range[0], toks.range[-1])
 
 
 class CriterionConverter(object):
@@ -135,8 +129,8 @@ class CriterionConverter(object):
                 }
 
     @classmethod
-    def convert(cls, seq):
-        crit = seq[0]
+    def convert(cls, toks):
+        crit = toks[0]
         op_name = cls.__prepare_identifier(crit.operator)
         if op_name.startswith("not_"):
             op_name = op_name[4:]
@@ -192,21 +186,21 @@ class CriterionConverter(object):
         return isinstance(v, basestring) and v.startswith('http://')
 
 
-def convert_conjunction(seq):
-    left_spec = seq[0][0]
-    right_spec = seq[0][-1]
+def convert_conjunction(toks):
+    left_spec = toks[0][0]
+    right_spec = toks[0][-1]
     return left_spec & right_spec
 
 
-def convert_disjunction(seq):
-    left_spec = seq[0][0]
-    right_spec = seq[0][-1]
+def convert_disjunction(toks):
+    left_spec = toks[0][0]
+    right_spec = toks[0][-1]
     return left_spec | right_spec
 
 
-def convert_simple_criteria(seq):
+def convert_simple_criteria(toks):
     spec = None
-    for crit_spec in seq[0]:
+    for crit_spec in toks[0]:
         if spec is None:
             spec = crit_spec
         else:
@@ -260,23 +254,23 @@ criterion = Group(identifier('name') + colon.suppress() +
                   )
 criterion.setParseAction(CriterionConverter.convert)
 
-junction_element = Forward()
-junction = operatorPrecedence(
+# Recursive definition of "junction" (AND or OR) clauses.
+junctions = Forward()
+junction_element = (criterion |
+                    open_paren.suppress() + junctions +
+                    close_paren.suppress())
+junctions << operatorPrecedence(# pylint: disable=W0106
                     junction_element,
-                    [
-                     (and_op, BINARY, opAssoc.LEFT, convert_conjunction),
+                    [(and_op, BINARY, opAssoc.LEFT, convert_conjunction),
                      (or_op, BINARY, opAssoc.LEFT, convert_disjunction),
                      ])
-junction_element << (criterion | # pylint: disable=W0106
-                     open_paren.suppress() + junction + close_paren.suppress())
-# Safeguard against left-recursive grammars.
-junction.validate()
 
+# Old-style criteria separated by "~".
 simple_criteria = Group(criterion +
                         OneOrMore(tilde.suppress() + criterion))
 simple_criteria.setParseAction(convert_simple_criteria)
 
-query = simple_criteria | junction
+query = simple_criteria | junctions
 
 
 def parse_filter(query_string):
