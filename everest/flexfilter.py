@@ -1,30 +1,46 @@
 """
-WSGI filter to process result messages for flex clients.
+WSGI filter to help a Flex client interact with an everest server.
 
-This file is part of the everest project.
-See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-Background: the flash plugin is not able to properly handle response messages
- for which the status code is <> 200
- this makes it impossible to properly handle errors on the client side
- (e.g. distinguish a bad request form an internal server error)
+Background:
+
+The Flash browser plugin is not able to 
+
+ 1. Properly handle response messages for which the status code is <> 200. 
+    This makes it impossible to properly handle errors on the client side
+    (e.g. distinguish a bad request form an internal server error); and
+ 2. Set Accept headers for GET requests. This causes the default Flex 
+    Accept header to be sent ::
+        text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+    which prompts evererst to respond with XML, not with ATOM.
 
 Solution:
- this filter processes all response messages where the status code <> 200
- and the referer indicates that the request came from a flash/flex client
- the status code is then modified to 200 and the error is wrapped in the
- payload of this format:
+
+On ingress, the filter replaces for GET calls from a Flex client the 
+Accept header with 'application/atom+xml'.
+
+On egress, this filter processes all response messages for calls from a
+Flex client with status code <> 200 by a) setting the status code to
+'200 OK' and b) wrapping the error message n the payload like this ::
      <error>
       <code>400</code>
       <message>Bad request</message>
       <details>...</details>
     </error>
 
+This file is part of the everest project.
+See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
+
 Created on Sep 27, 2011.
 """
+from everest.mime import AtomMime
 from lxml import etree
 from paste.response import header_value # pylint: disable=F0401
 from paste.response import replace_header # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPMovedPermanently
+from pyramid.httpexceptions import HTTPOk
+from pyramid.httpexceptions import HTTPTemporaryRedirect
+from pyramid.httpexceptions import HTTPUnauthorized
 from wsgifilter import Filter
 from xml.sax.saxutils import escape
 
@@ -35,70 +51,37 @@ __all__ = ['FlexFilter',
 
 class FlexFilter(Filter):
 
+    def __call__(self, environ, start_response):
+        if self.__detect_flex(environ) \
+           and environ['REQUEST_METHOD'] == 'GET' and environ['HTTP_ACCEPT']:
+            # Override the Accept header.
+            environ['HTTP_ACCEPT'] = AtomMime.mime_type_string
+        return Filter.__call__(self, environ, start_response)
+
     def should_filter(self, status, headers, exc_info):
-        if status.startswith('2') or status.startswith('401') \
-           or status.startswith('301'):
-            return False
-        else:
-            return True
+        return not (status.startswith('2')
+                    or status == HTTPUnauthorized().status
+                    or status == HTTPMovedPermanently().status)
 
     def filter_output(self, environ, start_response,
                       status, headers, app_iter):
-        query_string = environ.get('QUERY_STRING')
-        referer = environ.get('HTTP_REFERER')
-        if ((referer and '.swf' in referer) or \
-            (query_string and 'flashfilter=true' in query_string)):
-            #all the fuzz is just for Flex/Flash clients
-            content_type = header_value(headers, 'content-type')
-            if ';' in content_type:
-                content_type = content_type.split(';', 1)[0]
-            if self.format_output:
-                import httpencode
-                out_fmt = httpencode.registry.find_format_match(
-                                            self.format_output, content_type)
-            else:
-                out_fmt = self.format
-            if out_fmt:
-                data = out_fmt.parse_wsgi_response(status, headers, app_iter)
-            else:
-                data = ''.join(app_iter)
-                if self.decode_unicode:
-                    # @@: Need to calculate encoding properly
-                    full_ct = header_value(headers, 'content-type') or ''
-                    match = self._charset_re.search(full_ct)
-                    if match:
-                        encoding = match.group(1)
-                    else:
-                        # @@: Obviously not a great guess
-                        encoding = 'utf8'
-                    data = data.decode(encoding, 'replace')
-            new_output = self.filter(
-                environ, headers, data, status)
-            if out_fmt:
-                app = out_fmt.responder(new_output, headers=headers)
-                app_iter = app(environ, start_response)
-                return app_iter
-            else:
-                enc_data = []
-                encoding = self.output_encoding
-                if not isinstance(new_output, basestring):
-                    for chunk in new_output:
-                        if isinstance(chunk, unicode):
-                            chunk = chunk.encode(encoding)
-                        enc_data.append(chunk)
-                elif isinstance(new_output, unicode):
-                    enc_data.append(new_output.encode(encoding))
-                else:
-                    enc_data.append(new_output)
-                start_response('200 OK', headers)
-                return enc_data
+        if self.__detect_flex(environ):
+            # All the fuzz is just for Flex/Flash clients.
+            # Wrap start response to pass HTTP OK back to Flash. Also, we
+            # need to have access to the status later.
+            environ['flexfilter.status'] = status
+            wrap_start_response = \
+              lambda status, headers: start_response(HTTPOk().status, headers)
+            return Filter.filter_output(self, environ, wrap_start_response,
+                                        status, headers, app_iter)
         else:
             #unfiltered response for non flash clients
             start_response(status, headers)
             return app_iter
 
-    def filter(self, environ, headers, data, status): # pylint: disable=W0221
-        if status.startswith('307'):
+    def filter(self, environ, headers, data):
+        status = environ.pop('flexfilter.status')
+        if status == HTTPTemporaryRedirect().status:
             response = '''
                         <error>
                           <code>%s</code>
@@ -108,7 +91,6 @@ class FlexFilter(Filter):
                         ''' % (status, header_value(headers, 'Location'),
                                header_value(headers, 'Warning'))
             replace_header(headers, 'Content-Length', len(response))
-            return response
         else:
             root = etree.HTML(data)
             message = escape(etree.tostring(root.find('.//body'),
@@ -119,8 +101,7 @@ class FlexFilter(Filter):
             code_node = root.find('.//code')
             if code_node  is not None and code_node.text  is not None:
                 details = escape(code_node.text)
-
-                #shorten a bit
+                # Shorten a bit.
                 pos = details.find(',')
                 if pos != -1:
                     details = details[:pos]
@@ -132,5 +113,10 @@ class FlexFilter(Filter):
                         </error>
                         ''' % (status, message, details)
             replace_header(headers, 'Content-Length', len(response))
-            return response
+        return response
 
+    def __detect_flex(self, environ):
+        query_string = environ.get('QUERY_STRING')
+        referer = environ.get('HTTP_REFERER')
+        return (referer and '.swf' in referer) \
+               or (query_string and 'flashfilter=true' in query_string)
