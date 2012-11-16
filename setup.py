@@ -31,7 +31,7 @@ install_requirements = [
     'pyramid_zcml',
     'python-graph-core',
     'rfc3339',
-    'sqlalchemy>=0.7.4,<=0.7.99',
+    'sqlalchemy>=0.7.9,<=0.7.99',
     'transaction>=1.2.0,<=1.2.99',
     'zope.sqlalchemy>=0.4,<=0.4.99',
     ]

@@ -35,6 +35,8 @@ load-plugins=
 # it should appear only once).
 # --- We use * and ** responsibly. ---
 disable=W0142
+# --- We use map and filter responsibly. ---
+disable=W0141
 
 
 [REPORTS]
