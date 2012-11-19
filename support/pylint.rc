@@ -34,9 +34,8 @@ load-plugins=
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once).
 # --- We use * and ** responsibly. ---
-disable=W0142
 # --- We use map and filter responsibly. ---
-disable=W0141
+disable=W0142,W0141
 
 
 [REPORTS]
