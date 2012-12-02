@@ -226,9 +226,10 @@ class CachingEntityStore(EntityStore):
     """
     An entity store that caches all entities in memory.
     """
-    _configurables = EntityStore._configurables
+    _configurables = EntityStore._configurables \
+                     + ['cache_loader']
 
-    def __init__(self, name, join_transaction=False, cache_loader=None):
+    def __init__(self, name, join_transaction=False):
         """
         Constructor.
         
@@ -247,8 +248,8 @@ class CachingEntityStore(EntityStore):
         self.__entity_cache_map = {}
         # Lock for cache operations.
         self._cache_lock = RLock()
-        # The cache loader.
-        self.__cache_loader = cache_loader
+        # By default, we do not use a cache loader.
+        self.configure(cache_loader=None)
 
     def lock(self):
         self._cache_lock.acquire()
@@ -330,9 +331,10 @@ class CachingEntityStore(EntityStore):
 
     def __initialize_cache(self, ent_cls):
         cache = self.__entity_cache_map[ent_cls] = EntityCache()
-        if not self.__cache_loader is None:
+        cache_loader = self._config['cache_loader']
+        if not cache_loader is None:
             max_id = -1
-            for ent in self.__cache_loader(ent_cls):
+            for ent in cache_loader(ent_cls):
                 if ent.id is None:
                     ent.id = self.new_id(ent_cls)
                 elif isinstance(ent.id, int) and ent.id >= max_id:
@@ -354,13 +356,14 @@ class FileSystemEntityStore(CachingEntityStore):
     files into the root repository. Each commit operation writes the specified
     resource back to file.
     """
-    _configurables = ['directory', 'content_type']
+    _configurables = CachingEntityStore._configurables \
+                     + ['directory', 'content_type']
 
     def __init__(self, name, join_transaction=True):
         CachingEntityStore.__init__(self, name,
-                                    join_transaction=join_transaction,
-                                    cache_loader=self.__load_entities)
-        self.configure(directory=os.getcwd(), content_type=CsvMime)
+                                    join_transaction=join_transaction)
+        self.configure(directory=os.getcwd(), content_type=CsvMime,
+                       cache_loader=self.__load_entities)
 
     def commit(self, session):
         """

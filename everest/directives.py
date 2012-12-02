@@ -86,14 +86,22 @@ def _repository(_context, name, make_default, agg_cls, ent_store_cls,
 
 
 class IMemoryRepositoryDirective(IRepositoryDirective):
-    pass
+    cache_loader = \
+        GlobalObject(title=u"A callable that accepts an entity class and "
+                            "returns a sequence of entity instances which "
+                            "will be used to populate the cache on startup.",
+                     required=False)
 
 
 def memory_repository(_context, name=None, make_default=False,
-                      aggregate_class=None, entity_store_class=None):
+                      aggregate_class=None, entity_store_class=None,
+                      cache_loader=None):
+    cnf = {}
+    if not cache_loader is None:
+        cnf['cache_loader'] = cache_loader
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
-                REPOSITORIES.MEMORY, 'add_memory_repository', {})
+                REPOSITORIES.MEMORY, 'add_memory_repository', cnf)
 
 
 class IFileSystemRepositoryDirective(IRepositoryDirective):

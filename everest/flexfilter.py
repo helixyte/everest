@@ -53,7 +53,8 @@ class FlexFilter(Filter):
 
     def __call__(self, environ, start_response):
         if self.__detect_flex(environ) \
-           and environ['REQUEST_METHOD'] == 'GET' and environ['HTTP_ACCEPT']:
+           and environ['REQUEST_METHOD'] == 'GET' \
+           and environ.get('HTTP_ACCEPT'):
             # Override the Accept header.
             environ['HTTP_ACCEPT'] = AtomMime.mime_type_string
         return Filter.__call__(self, environ, start_response)
