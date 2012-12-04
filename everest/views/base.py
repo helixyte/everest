@@ -17,6 +17,8 @@ from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
+from pyramid.httpexceptions import HTTPBadRequest
+from pyramid.httpexceptions import HTTPConflict
 from pyramid.httpexceptions import HTTPError
 from pyramid.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPNotAcceptable
@@ -24,8 +26,6 @@ from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPUnsupportedMediaType
 from pyramid.response import Response
 from pyramid.threadlocal import get_current_request
-from webob.exc import HTTPBadRequest
-from webob.exc import HTTPConflict
 from zope.interface import implements # pylint: disable=E0611,F0401
 import logging
 import re
