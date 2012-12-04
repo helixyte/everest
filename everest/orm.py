@@ -136,7 +136,7 @@ class OrderClauseList(ClauseList):
         return self
 
 
-def commit_veto(environ, status, headers): # unused pylint: disable=W0613
+def commit_veto(request, response): # unused request arg pylint: disable=W0613
     """
     Strict commit veto to use with the transaction manager.
     
@@ -145,7 +145,8 @@ def commit_veto(environ, status, headers): # unused pylint: disable=W0613
     a commit is explicitly requested by setting the "x-tm" response header to
     "commit".
     """
-    return not status.startswith('2') and not headers.get('x-tm') == 'commit'
+    return not response.status.startswith('2') \
+            and not response.headers.get('x-tm') == 'commit'
 
 
 def as_slug_expression(attr):
