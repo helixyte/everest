@@ -132,6 +132,10 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             mime_type = None
             acc = None
             for acc in self.request.accept:
+                if acc == '*/*':
+                    # The client does not care; use the default.
+                    mime_type = self._default_content_type
+                    break
                 try:
                     mime_type = \
                             get_registered_mime_type_for_string(acc.lower())
