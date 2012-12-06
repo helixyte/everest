@@ -31,17 +31,25 @@ import threading
 import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['FileSystemEntityStoreTestCase',
+__all__ = ['BasicEntityStoreTestCase',
+           'FileSystemEmptyEntityStoreTestCase',
+           'FileSystemEntityStoreTestCase',
            'InMemorySessionTestCase',
            ]
+
+
+class BasicEntityStoreTestCase(Pep8CompliantTestCase):
+    def test_args(self):
+        self.assert_raises(ValueError, CachingEntityStore, 'DUMMY',
+                           autocommit=True, join_transaction=True)
 
 
 class InMemorySessionTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)
-        ent_store = CachingEntityStore('DUMMY')
-        self._session = InMemorySession(ent_store)
+        self._entity_store = CachingEntityStore('DUMMY', autoflush=True)
+        self._session = InMemorySession(self._entity_store)
 
     def test_with_autoflush(self):
         ent = _MyEntity()
@@ -62,7 +70,7 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
 
     def test_without_autoflush(self):
         ent = _MyEntity()
-        self._session.autoflush = False
+        self._entity_store.autoflush = False
         self._session.add(_MyEntity, ent)
         self.assert_true(ent in self._session.get_all(_MyEntity))
         # no autoflush - ID & slug should still be none

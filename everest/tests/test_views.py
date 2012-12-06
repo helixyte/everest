@@ -260,6 +260,11 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
                      headers=dict(accept='application/foobar'),
                      status=406)
 
+    def test_star_star_accept_header(self):
+        self.app.get(self.path,
+                     headers=dict(accept='*/*'),
+                     status=200)
+
     def test_invalid_request_content_type(self):
         self.config.add_collection_view(IFoo, request_method='POST')
         self.app.post(self.path,
@@ -357,6 +362,10 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(self.config_file_name)
+        # We have to call this again to initialize the newly created SYSTEM
+        # repo.
+        repo_mgr = get_repository_manager()
+        repo_mgr.initialize_all()
         self.config.add_collection_view(FooCollection,
                                         view=UserMessagePostCollectionView,
                                         request_method='POST')
@@ -439,11 +448,6 @@ class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
 
 class WarningViewOrmTestCase(_WarningViewBaseTestCase):
     config_file_name = 'everest.tests.testapp:configure_messaging_orm.zcml'
-
-    def set_up(self):
-        _WarningViewBaseTestCase.set_up(self)
-        repo_mgr = get_repository_manager()
-        repo_mgr.initialize_all()
 
     @classmethod
     def tear_down_class(cls):

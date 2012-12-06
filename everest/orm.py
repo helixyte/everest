@@ -20,12 +20,14 @@ from sqlalchemy.orm import mapper as sa_mapper
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
+from sqlalchemy.orm.session import Session as SaSession
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderClauseList',
+__all__ = ['AutocommittingSession',
+           'OrderClauseList',
            'OrmTestCaseMixin',
            'Session',
            'as_slug_expression',
@@ -123,7 +125,7 @@ reset_metadata = _MetaDataManager.reset
 
 #: The scoped session maker. Instantiate this to obtain a thread local
 #: session instance.
-Session = scoped_session(sessionmaker()) # extension=ZopeTransactionExtension()))
+Session = scoped_session(sessionmaker())
 
 
 class OrderClauseList(ClauseList):
@@ -134,6 +136,26 @@ class OrderClauseList(ClauseList):
     """
     def self_group(self, against=None):
         return self
+
+
+class AutocommittingSession(SaSession):
+    """
+    A session in 'autocommit' mode that automatically commits on :method:`add`
+    and :method:`delete` operations.
+    """
+    def __init__(self, **kw):
+        kw['autocommit'] = True
+        SaSession.__init__(self, **kw)
+
+    def add(self, entity):
+        self.begin()
+        SaSession.add(self, entity)
+        self.commit()
+
+    def delete(self, entity):
+        self.begin()
+        SaSession.delete(self, entity)
+        self.commit()
 
 
 def commit_veto(request, response): # unused request arg pylint: disable=W0613

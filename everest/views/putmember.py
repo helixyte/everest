@@ -30,7 +30,7 @@ class PutMemberView(PutOrPostResourceView):
         self.context.update_from_data(data)
         current_name = self.context.__name__
         self.request.response.status = self._status(HTTPOk)
-        # FIXME: add conflict detection # pylint: disable=W0511
+        # FIXME: add conflict detection
         if initial_name != current_name:
             self.request.response.headerlist = \
                 [('Location',

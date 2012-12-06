@@ -17,6 +17,7 @@ from everest.resources.entitystores import OrmEntityStore
 from everest.resources.io import load_into_collection_from_url
 from everest.resources.utils import get_collection_class
 from everest.utils import id_generator
+from everest.repository import SYSTEM_REPOSITORY_NAME
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepositoryManager',
@@ -87,8 +88,6 @@ class RepositoryManager(object):
     def __init__(self):
         self.__repositories = {}
         self.__default_repo = None
-        self.__messaging_repo = None
-        self.__messaging_reset_on_start = None
 
     def get(self, name):
         return self.__repositories.get(name)
@@ -108,13 +107,16 @@ class RepositoryManager(object):
 
     def new(self, repo_type, name=None,
             entity_store_class=None, aggregate_class=None):
-        if name == repo_type:
-            # This is a root repository.
-            is_root_repository = True
+        if name == repo_type: # 
+            join_transaction = True
+            autocommit = False
         else:
-            is_root_repository = False
+            join_transaction = False
             if name is None:
                 name = "%s%d" % (repo_type, self.__repo_id_gen.next())
+            # The system repository is special in that its entity store
+            # should not joint the transaction but still commit all changes.
+            autocommit = name == SYSTEM_REPOSITORY_NAME
         if repo_type == REPOSITORIES.MEMORY:
             if entity_store_class is None:
                 entity_store_class = CachingEntityStore
@@ -133,11 +135,12 @@ class RepositoryManager(object):
         else:
             raise ValueError('Unknown repository type.')
         ent_store = entity_store_class(name,
-                                       join_transaction=is_root_repository)
+                                       join_transaction=join_transaction,
+                                       autocommit=autocommit)
         ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
         return ResourceRepository(ent_repo)
 
-    def setup_messaging(self, repository, reset_on_start):
+    def setup_system_repository(self, repository, reset_on_start):
         """
         Sets up messaging for the given repository.
         
@@ -146,8 +149,12 @@ class RepositoryManager(object):
         :param bool reset_on_start: Flag to indicate whether stored user 
           messsages should be discarded on startup.
         """
-        self.__messaging_repo = repository
-        self.__messaging_reset_on_start = reset_on_start
+        # Set up the system entity repository (this does not join the
+        # transaction and is in autocommit mode).
+        system_repo = self.new(repository, SYSTEM_REPOSITORY_NAME)
+        system_repo.configure(messaging_enable=True,
+                              messaging_reset_on_start=reset_on_start)
+        self.set(system_repo)
 
     def initialize_all(self):
         """
@@ -156,11 +163,6 @@ class RepositoryManager(object):
         """
         for repo in self.__repositories.itervalues():
             if not repo.is_initialized:
-                if repo.name == self.__messaging_repo:
-                    repo.configure(
-                            messaging_enable=True,
-                            messaging_reset_on_start=
-                                            self.__messaging_reset_on_start)
                 repo.initialize()
 
     def on_app_created(self, event): # pylint: disable=W0613

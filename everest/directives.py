@@ -183,7 +183,7 @@ def messaging(_context, repository, reset_on_start=False):
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     _context.action(discriminator=discriminator, # pylint: disable=E1101
-                    callable=config.setup_messaging,
+                    callable=config.setup_system_repository,
                     args=(repository,),
                     kw=dict(reset_on_start=reset_on_start))
 

@@ -9,6 +9,7 @@ from everest.orm import as_slug_expression
 from everest.orm import commit_veto
 from everest.orm import get_engine
 from everest.orm import get_metadata
+from everest.orm import hybrid_descriptor
 from everest.orm import is_engine_initialized
 from everest.orm import is_metadata_initialized
 from everest.orm import mapper
@@ -18,6 +19,8 @@ from everest.orm import set_engine
 from everest.orm import set_metadata
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp_db.entities import MyEntity
+from pyramid.httpexceptions import HTTPOk
+from pyramid.httpexceptions import HTTPRedirection
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -27,8 +30,6 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.sql.expression import Function
 from sqlalchemy.sql.expression import cast
 from zope.interface import implements # pylint: disable=E0611,F0401
-import os
-from everest.orm import hybrid_descriptor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmTestCase',
@@ -110,9 +111,12 @@ class OrmTestCase(Pep8CompliantTestCase):
         mpr.dispose()
 
     def test_commit_veto(self):
-        self.assert_false(commit_veto(os.environ, '200', dict()))
-        self.assert_true(commit_veto(os.environ, '300', dict()))
-        self.assert_false(commit_veto(os.environ, '300', {'x-tm':'commit'}))
+        rsp1 = DummyResponse(HTTPOk().status, dict())
+        self.assert_false(commit_veto(None, rsp1))
+        rsp2 = DummyResponse(HTTPRedirection().status, dict())
+        self.assert_true(commit_veto(None, rsp2))
+        rsp3 = DummyResponse(HTTPRedirection().status, {'x-tm':'commit'})
+        self.assert_false(commit_veto(None, rsp3))
 
     def _make_table(self, with_id):
         md = MetaData()
@@ -121,3 +125,9 @@ class OrmTestCase(Pep8CompliantTestCase):
         if with_id:
             cols.append(Column('id', Integer))
         return Table('my_table_with_id_col', md, *cols)
+
+
+class DummyResponse(object):
+    def __init__(self, status, headers):
+        self.status = status
+        self.headers = headers

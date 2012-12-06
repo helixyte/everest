@@ -157,9 +157,9 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
         entity = FooEntity(id=1)
         agg.add(entity)
         self.assert_true(agg.count() == 1)
-        self.assert_true(list(agg.iterator())[0] is entity)
-        self.assert_true(agg.get_by_id(1) is entity)
-        self.assert_true(agg.get_by_slug('1') is entity)
+        self.assert_equal(list(agg.iterator())[0].id, entity.id)
+        self.assert_equal(agg.get_by_id(1).id, entity.id)
+        self.assert_equal(agg.get_by_slug('1').slug, entity.slug)
         agg.remove(entity)
         self.assert_true(agg.count() == 0)
 

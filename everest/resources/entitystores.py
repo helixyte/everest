@@ -10,7 +10,8 @@ from collections import defaultdict
 from copy import deepcopy
 from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
-from everest.orm import Session as SaSessionFactory
+from everest.orm import AutocommittingSession
+from everest.orm import Session as DefaultSessionFactory
 from everest.orm import empty_metadata
 from everest.orm import get_engine
 from everest.orm import get_metadata
@@ -29,6 +30,7 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from threading import RLock
 from threading import local
@@ -39,6 +41,7 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 import os
 import transaction
 import weakref
+from sqlalchemy.orm import scoped_session
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CachingEntityStore',
@@ -62,11 +65,30 @@ class EntityStore(object):
 
     _configurables = ['messaging_enable', 'messaging_reset_on_start']
 
-    def __init__(self, name, join_transaction=False):
+    def __init__(self, name,
+                 autoflush=False, join_transaction=False, autocommit=False):
+        """
+        Constructor.
+        
+        :param name: name for this entity store (propagated to repository).
+        :param autoflush: indicates whether changes should be flushed
+            automatically.
+        :param join_transaction: indicates whether this store should 
+            participate in the Zope transaction.
+        :param autocommit: indicates whether changes should be committed
+            automatically.
+        """
         self.__name = name
+        if join_transaction and autocommit:
+            raise ValueError('The "join_transaction" flag and the '
+                             '"autocommit" flag can not both be set.')
+        #: Flag indicating that changes should be flushed immediately.
+        self.autoflush = autoflush
         #: Flag indicating that the sessions using this entity store should
-        #: join the zope transaction.
-        self._join_transaction = join_transaction
+        #: join the Zope transaction.
+        self.join_transaction = join_transaction
+        #: Flag indicating that changes should be committed immediately.
+        self.autocommit = autocommit
         self._config = {}
         self.__session_factory = None
         self.__is_initialized = False
@@ -130,19 +152,36 @@ class EntityStore(object):
 
 
 class SessionFactory(object):
-    def __init__(self, join_transaction):
-        self._join_transaction = join_transaction
+    def __init__(self, entity_store):
+        self._entity_store = entity_store
 
     def __call__(self):
         raise NotImplementedError('Abstract method.')
 
 
 class OrmSessionFactory(SessionFactory):
+    __AutoCommittingSessionFactory = \
+                    scoped_session(sessionmaker(class_=AutocommittingSession))
+    def __init__(self, entity_store):
+        SessionFactory.__init__(self, entity_store)
+        if self._entity_store.autocommit:
+            # Use an autocommitting Session class.
+            self.__fac = self.__AutoCommittingSessionFactory
+        else:
+            self.__fac = DefaultSessionFactory
+
+    def configure(self, **kw):
+        self.__fac.configure(**kw)
+
     def __call__(self):
-        if self._join_transaction and not SaSessionFactory.registry.has():
-            # Enable the transaction extension.
-            SaSessionFactory.configure(extension=ZopeTransactionExtension())
-        return SaSessionFactory()
+        if not self.__fac.registry.has():
+            self.__fac.configure(autoflush=self._entity_store.autoflush)
+            if not self._entity_store.autocommit \
+               and self._entity_store.join_transaction:
+                # Enable the Zope transaction extension with the standard
+                # sqlalchemy Session class.
+                self.__fac.configure(extension=ZopeTransactionExtension())
+        return self.__fac()
 
 
 class OrmEntityStore(EntityStore):
@@ -152,8 +191,11 @@ class OrmEntityStore(EntityStore):
     _configurables = EntityStore._configurables \
                      + ['db_string', 'metadata_factory']
 
-    def __init__(self, name, join_transaction=True):
-        EntityStore.__init__(self, name, join_transaction=join_transaction)
+    def __init__(self, name,
+                 autoflush=True, join_transaction=True, autocommit=False):
+        EntityStore.__init__(self, name, autoflush=autoflush,
+                             join_transaction=join_transaction,
+                             autocommit=autocommit)
         # Default to an in-memory sqlite DB.
         self.configure(db_string='sqlite://', metadata_factory=empty_metadata)
 
@@ -172,7 +214,7 @@ class OrmEntityStore(EntityStore):
                 kw = {} # pragma: no cover
             engine = create_engine(db_string, **kw)
             # Bind the session factory to the engine.
-            SaSessionFactory.configure(bind=engine)
+            self.session_factory.configure(bind=engine)
             set_engine(self.name, engine)
         else:
             engine = get_engine(self.name)
@@ -197,7 +239,7 @@ class OrmEntityStore(EntityStore):
             metadata.bind = engine
 
     def _make_session_factory(self):
-        return OrmSessionFactory(self._join_transaction)
+        return OrmSessionFactory(self)
 
 
 class InMemorySessionFactory(SessionFactory):
@@ -206,18 +248,14 @@ class InMemorySessionFactory(SessionFactory):
     
     The factory creates exactly one session per thread.
     """
-    def __init__(self, entity_store, autoflush=False, join_transaction=False):
-        SessionFactory.__init__(self, join_transaction)
-        self.__entity_store = entity_store
-        self.__autoflush = autoflush
+    def __init__(self, entity_store):
+        SessionFactory.__init__(self, entity_store)
         self.__session_registry = local()
 
     def __call__(self):
         session = getattr(self.__session_registry, 'session', None)
         if session is None:
-            session = InMemorySession(self.__entity_store,
-                                      autoflush=self.__autoflush,
-                                      join_transaction=self._join_transaction)
+            session = InMemorySession(self._entity_store)
             self.__session_registry.session = session
         return session
 
@@ -229,18 +267,11 @@ class CachingEntityStore(EntityStore):
     _configurables = EntityStore._configurables \
                      + ['cache_loader']
 
-    def __init__(self, name, join_transaction=False):
-        """
-        Constructor.
-        
-        :param name: name for this entity store (propagated to repository).
-        :param join_transaction: indicates whether this store should 
-            participate in the Zope transaction.
-        :param cache_loader: optional callable accepting an entity class
-            and returning a list of entities that will be used for initial
-            population of the cache upon first access.    
-        """
-        EntityStore.__init__(self, name, join_transaction=join_transaction)
+    def __init__(self, name,
+                 autoflush=False, join_transaction=False, autocommit=False):
+        EntityStore.__init__(self, name, autoflush=autoflush,
+                             join_transaction=join_transaction,
+                             autocommit=autocommit)
         # A map of (global) ID generators.
         self.__id_generators = {}
         self.__next_id_map = {}
@@ -306,8 +337,7 @@ class CachingEntityStore(EntityStore):
                                         for ent_cls in self.registered_types])
 
     def _make_session_factory(self):
-        return InMemorySessionFactory(self,
-                                      join_transaction=self._join_transaction)
+        return InMemorySessionFactory(self)
 
     def _get_cache(self, ent_cls):
         """
@@ -359,9 +389,11 @@ class FileSystemEntityStore(CachingEntityStore):
     _configurables = CachingEntityStore._configurables \
                      + ['directory', 'content_type']
 
-    def __init__(self, name, join_transaction=True):
-        CachingEntityStore.__init__(self, name,
-                                    join_transaction=join_transaction)
+    def __init__(self, name,
+                 autoflush=True, join_transaction=True, autocommit=False):
+        CachingEntityStore.__init__(self, name, autoflush=autoflush,
+                                    join_transaction=join_transaction,
+                                    autocommit=autocommit)
         self.configure(directory=os.getcwd(), content_type=CsvMime,
                        cache_loader=self.__load_entities)
 
@@ -377,9 +409,7 @@ class FileSystemEntityStore(CachingEntityStore):
                     self.__dump_entities(entity_cls)
 
     def _make_session_factory(self):
-        return InMemorySessionFactory(self,
-                                      autoflush=True,
-                                      join_transaction=self._join_transaction)
+        return InMemorySessionFactory(self)
 
     def __load_entities(self, entity_class):
         coll_cls = get_collection_class(entity_class)
@@ -595,14 +625,8 @@ class InMemorySession(object):
     Commit and rollback operations trigger the corresponding call on the
     underlying caching entity store.
     """
-    def __init__(self, entity_store, autoflush=True, join_transaction=False):
+    def __init__(self, entity_store):
         self.__entity_store = entity_store
-        #: Flag controlling if a flush should be performed automatically
-        #: at the time any of the get_* methods is executed.
-        self.autoflush = autoflush
-        #: Flag controlling if this session should join the zope transaction
-        #: 
-        self.join_transaction = join_transaction
         # Session state: (possibly) modified entities (by entity class)
         self.__dirty = defaultdict(weakref.WeakSet)
         # Session state: added entities (by entity class)
@@ -651,6 +675,9 @@ class InMemorySession(object):
         self.__dirty[entity_cls].discard(entity)
         # Mark for flush.
         self.__needs_flush = True
+        if self.__entity_store.autocommit:
+            # If we do not join the transaction, we commit immediately.
+            self.commit()
 
     def remove(self, entity_cls, entity):
         if self.__store_needs_locking:
@@ -667,11 +694,14 @@ class InMemorySession(object):
         cache.remove(entity)
         # If the removed entity was marked as dirty, discard. 
         self.__dirty[entity_cls].discard(entity)
+        if self.__entity_store.autocommit:
+            # If we do not join the transaction, we commit immediately.
+            self.commit()
 
     def get_by_id(self, entity_cls, entity_id):
         if self.__store_needs_locking:
             self.__lock_store()
-        if self.__needs_flush and self.autoflush:
+        if self.__needs_flush and self.__entity_store.autoflush:
             self.flush()
         entity = self.__get_cache(entity_cls).get_by_id(entity_id)
         if not entity is None:
@@ -681,7 +711,7 @@ class InMemorySession(object):
     def get_by_slug(self, entity_cls, entity_slug):
         if self.__store_needs_locking:
             self.__lock_store()
-        if self.__needs_flush and self.autoflush:
+        if self.__needs_flush and self.__entity_store.autoflush:
             self.flush()
         entity = self.__get_cache(entity_cls).get_by_slug(entity_slug)
         if not entity is None:
@@ -691,7 +721,7 @@ class InMemorySession(object):
     def get_all(self, entity_cls):
         if self.__store_needs_locking:
             self.__lock_store()
-        if self.__needs_flush and self.autoflush:
+        if self.__needs_flush and self.__entity_store.autoflush:
             self.flush()
         entities = self.__get_cache(entity_cls).get_all()
         self.__dirty[entity_cls].update(entities)
@@ -734,7 +764,7 @@ class InMemorySession(object):
         self.__unlock_store()
 
     def __lock_store(self):
-        if self.join_transaction:
+        if self.__entity_store.join_transaction:
             # If we have not already done so, create a data manager and join 
             # the zope transaction.
             trx = transaction.get()

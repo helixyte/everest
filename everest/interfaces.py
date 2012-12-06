@@ -218,10 +218,4 @@ class IRepositoryManager(Interface):
     Marker interface for the repository manager.
     """
 
-
-class IMessage(Interface):
-    """
-    Marker interface for messages.
-    """
-
 # pylint: enable=E0213,W0232,E0211

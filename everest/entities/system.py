@@ -18,6 +18,7 @@ __all__ = ['UserMessage',
 
 
 class UserMessage(Entity):
+    # This is required for the user message checker to work.
     implements(IUserMessage)
     def __init__(self, text, guid=None, time_stamp=None, **kw):
         Entity.__init__(self, **kw)

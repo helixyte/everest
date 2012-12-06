@@ -227,10 +227,11 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
         # Load config file.
         self.config.begin(request=self._request)
         self.config.load_zcml(self._get_config_file_name())
+        self._load_custom_zcml()
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
         self._request.root = srvc
-        # Initialize all root repositories.
+        # Initialize all registered repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
         # Start the service.
@@ -244,6 +245,12 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
             del self._request
         except AttributeError:
             pass
+
+    def _load_custom_zcml(self):
+        # This is meant as a hook for subclasses to slip in custom ZCML 
+        # after the Zope machinery has been set up but before the service
+        # is started.
+        pass
 
     def _get_member(self, icollection, key=None):
         if key is None:

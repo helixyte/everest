@@ -6,6 +6,9 @@ Created on Jun 1, 2012.
 """
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.repository import EntityRepository
+from everest.entities.system import UserMessage
+from everest.entities.utils import get_root_aggregate
+from everest.interfaces import IUserMessage
 from everest.repository import REPOSITORIES
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.utils import get_root_collection
@@ -55,7 +58,7 @@ class EntityRepositoryTestCase(EntityTestCase, _RepositoryBaseTestCaseMixin):
     package_name = 'everest.tests.testapp'
 
     def test_basics(self):
-        ent_store = CachingEntityStore('test', join_transaction=False)
+        ent_store = CachingEntityStore('test')
         ent_repo = EntityRepository(ent_store, MemoryAggregate)
         ent_repo.initialize()
         self._test_repo(ent_repo, IFoo, IBar)
@@ -91,3 +94,24 @@ class ResourceRepositoryTestCase(ResourceTestCase,
         repo.load_representation(IMyEntityParent, 'file://%s' % data_path)
         self.assert_equal(len(coll), 1)
 
+
+class _SystemRepositoryBaseTestCase(ResourceTestCase):
+    package_name = 'everest.tests.testapp'
+
+    def test_add_delete(self):
+        agg = get_root_aggregate(IUserMessage)
+        msg = UserMessage('user message.')
+        agg.add(msg)
+        self.assert_is_not_none(msg.id)
+        agg.remove(msg)
+        self.assert_equal(len(list(agg.iterator())), 0)
+
+
+class MemorySystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
+    def _load_custom_zcml(self):
+        self.config.setup_system_repository(REPOSITORIES.MEMORY)
+
+
+class OrmSystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
+    def _load_custom_zcml(self):
+        self.config.setup_system_repository(REPOSITORIES.ORM)

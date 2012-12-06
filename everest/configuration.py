@@ -8,10 +8,10 @@ Created on Jun 22, 2011.
 """
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
-from everest.interfaces import IMessage
 from everest.interfaces import IRepository
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
+from everest.interfaces import IUserMessage
 from everest.interfaces import IUserMessageNotifier
 from everest.messaging import UserMessageNotifier
 from everest.mime import get_registered_representer_names
@@ -30,6 +30,7 @@ from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.renderers import RendererFactory
 from everest.repository import REPOSITORIES
+from everest.repository import SYSTEM_REPOSITORY_NAME
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
@@ -55,6 +56,7 @@ from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
 from pyramid.configuration import Configurator as PyramidConfigurator
 from pyramid.interfaces import IApplicationCreated
+from pyramid.interfaces import IRendererFactory
 from pyramid.interfaces import IRequest
 from pyramid.path import DottedNameResolver
 from pyramid.path import caller_package
@@ -64,7 +66,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
-from pyramid.interfaces import IRendererFactory
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -226,11 +227,11 @@ class Configurator(PyramidConfigurator):
         self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
                               aggregate_class, make_default, configuration)
 
-    def setup_messaging(self, repository, reset_on_start=False):
+    def setup_system_repository(self, repository_type, reset_on_start=False):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
-        repo_mgr.setup_messaging(repository, reset_on_start)
-        self.add_resource(IMessage, UserMessageMember, UserMessage,
-                          repository=repository,
+        repo_mgr.setup_system_repository(repository_type, reset_on_start)
+        self.add_resource(IUserMessage, UserMessageMember, UserMessage,
+                          repository=SYSTEM_REPOSITORY_NAME,
                           collection_root_name='_messages')
         self.registry.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
                                       IUserMessageNotifier)

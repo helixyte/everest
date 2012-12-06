@@ -15,9 +15,12 @@ from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 __docformat__ = 'reStructuredText en'
 __all__ = ['REPOSITORIES',
            'Repository',
+           'SYSTEM_REPOSITORY_NAME',
            'as_repository',
            ]
 
+
+SYSTEM_REPOSITORY_NAME = 'SYSTEM'
 
 class REPOSITORIES(object):
     MEMORY = 'MEMORY'
