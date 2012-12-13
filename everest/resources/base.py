@@ -177,6 +177,14 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         self.__parent__.remove(self)
 
+    def update_from_entity(self, new_entity):
+        """
+        Updates this member from the given new entity.
+        
+        See :method:`Collection.update_from_entity`.
+        """
+        self.__parent__.update_from_entity(self, new_entity)
+
     def update_from_data(self, data_element):
         """
         Updates this member from the given data element.
