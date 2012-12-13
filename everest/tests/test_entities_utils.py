@@ -7,7 +7,6 @@ Created on Jun 1, 2012.
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
-from everest.entities.utils import get_stage_aggregate
 from everest.entities.utils import identifier_from_slug
 from everest.entities.utils import slug_from_identifier
 from everest.entities.utils import slug_from_integer
@@ -26,10 +25,6 @@ class EntitiesUtilsTestCase(EntityTestCase):
 
     def test_get_root_aggregate(self):
         agg = get_root_aggregate(IFoo)
-        self.assert_true(isinstance(agg, MemoryAggregate))
-
-    def test_get_stage_aggregate(self):
-        agg = get_stage_aggregate(IFoo)
         self.assert_true(isinstance(agg, MemoryAggregate))
 
     def test_get_entity_class(self):

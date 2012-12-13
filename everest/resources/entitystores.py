@@ -11,7 +11,7 @@ from copy import deepcopy
 from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
 from everest.orm import AutocommittingSession
-from everest.orm import Session as DefaultSessionFactory
+from everest.orm import Session
 from everest.orm import empty_metadata
 from everest.orm import get_engine
 from everest.orm import get_metadata
@@ -30,6 +30,7 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
 from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from threading import RLock
@@ -41,7 +42,6 @@ from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F04
 import os
 import transaction
 import weakref
-from sqlalchemy.orm import scoped_session
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CachingEntityStore',
@@ -160,15 +160,15 @@ class SessionFactory(object):
 
 
 class OrmSessionFactory(SessionFactory):
-    __AutoCommittingSessionFactory = \
-                    scoped_session(sessionmaker(class_=AutocommittingSession))
     def __init__(self, entity_store):
         SessionFactory.__init__(self, entity_store)
         if self._entity_store.autocommit:
-            # Use an autocommitting Session class.
-            self.__fac = self.__AutoCommittingSessionFactory
+            # Use an autocommitting Session class with our session factory.
+            self.__fac = scoped_session(
+                                sessionmaker(class_=AutocommittingSession))
         else:
-            self.__fac = DefaultSessionFactory
+            # Use the default Session factory.
+            self.__fac = Session
 
     def configure(self, **kw):
         self.__fac.configure(**kw)
@@ -202,33 +202,24 @@ class OrmEntityStore(EntityStore):
     def _initialize(self):
         # Manages an ORM engine and a metadata instance for this entity store.
         # Both are global objects that should only be created once per process
-        # (for each ORM entity store), hence we use a global object manager. 
+        # (for each ORM entity store), hence we use a global object manager.
         if not is_engine_initialized(self.name):
-            db_string = self._config['db_string']
-            if db_string.startswith('sqlite://'):
-                # Enable connection sharing across threads for pysqlite. 
-                kw = {'poolclass':StaticPool,
-                      'connect_args':{'check_same_thread':False}
-                      }
-            else:
-                kw = {} # pragma: no cover
-            engine = create_engine(db_string, **kw)
-            # Bind the session factory to the engine.
-            self.session_factory.configure(bind=engine)
+            engine = self.__make_engine()
             set_engine(self.name, engine)
+            # Bind the engine to the session factory and the metadata.
+            self.session_factory.configure(bind=engine)
         else:
             engine = get_engine(self.name)
         if not is_metadata_initialized(self.name):
             md_fac = self._config['metadata_factory']
             if self._config.get('messaging_enable', False):
-                # Wrap the metadata callback to also call the mapping function
-                # for system entities.
-                reset_on_start = self._config.get('messaging_reset_on_start',
-                                                  False)
-                def wrapper(engine,
-                            reset_on_start=reset_on_start):
+                # Wrap the metadata callback to also call the mapping 
+                # function for system entities.
+                reset_on_start = \
+                    self._config.get('messaging_reset_on_start', False)
+                def wrapper(engine, reset_on_start=reset_on_start):
                     metadata = md_fac(engine)
-                    map_system_entities(engine, reset_on_start)
+                    map_system_entities(engine, metadata, reset_on_start)
                     return metadata
                 metadata = wrapper(engine)
             else:
@@ -236,10 +227,22 @@ class OrmEntityStore(EntityStore):
             set_metadata(self.name, metadata)
         else:
             metadata = get_metadata(self.name)
-            metadata.bind = engine
+        metadata.bind = engine
 
     def _make_session_factory(self):
         return OrmSessionFactory(self)
+
+    def __make_engine(self):
+        db_string = self._config['db_string']
+        if db_string.startswith('sqlite://'):
+            # Enable connection sharing across threads for pysqlite. 
+            kw = {'poolclass':StaticPool,
+                  'connect_args':{'check_same_thread':False}
+                  }
+        else:
+            kw = {} # pragma: no cover
+        return create_engine(db_string, **kw)
+
 
 
 class InMemorySessionFactory(SessionFactory):

@@ -9,7 +9,7 @@ from everest.entities.repository import EntityRepository
 from everest.entities.system import UserMessage
 from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IUserMessage
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.utils import get_root_collection
 from everest.testing import EntityTestCase
@@ -71,12 +71,12 @@ class ResourceRepositoryTestCase(ResourceTestCase,
 
     def test_basics(self):
         repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORIES.MEMORY)
+        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         self._test_repo(repo, IMyEntity, IMyEntityParent)
 
     def test_manager(self):
         repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORIES.MEMORY)
+        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         self.assert_raises(ValueError, repo_mgr.set, repo)
         with self.assert_raises(ValueError) as cm:
             repo_mgr.new('foo', 'bar')
@@ -85,7 +85,7 @@ class ResourceRepositoryTestCase(ResourceTestCase,
 
     def test_load_representation(self):
         repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORIES.MEMORY)
+        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         data_path = resource_filename(
                             'everest.tests.testapp_db',
                             'data/original/myentity-parent-collection.csv')
@@ -109,9 +109,9 @@ class _SystemRepositoryBaseTestCase(ResourceTestCase):
 
 class MemorySystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
     def _load_custom_zcml(self):
-        self.config.setup_system_repository(REPOSITORIES.MEMORY)
+        self.config.setup_system_repository(REPOSITORY_TYPES.MEMORY)
 
 
 class OrmSystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
     def _load_custom_zcml(self):
-        self.config.setup_system_repository(REPOSITORIES.ORM)
+        self.config.setup_system_repository(REPOSITORY_TYPES.ORM)

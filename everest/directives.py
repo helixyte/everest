@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
@@ -79,8 +79,6 @@ def _repository(_context, name, make_default, agg_cls, ent_store_cls,
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     method = getattr(config, config_method)
-    if name is None: # re-configure builtin repository.
-        name = repo_type
     method(name, aggregate_class=agg_cls, entity_store_class=ent_store_cls,
            configuration=cnf, make_default=make_default)
 
@@ -101,7 +99,7 @@ def memory_repository(_context, name=None, make_default=False,
         cnf['cache_loader'] = cache_loader
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
-                REPOSITORIES.MEMORY, 'add_memory_repository', cnf)
+                REPOSITORY_TYPES.MEMORY, 'add_memory_repository', cnf)
 
 
 class IFileSystemRepositoryDirective(IRepositoryDirective):
@@ -130,7 +128,7 @@ def filesystem_repository(_context, name=None, make_default=False,
         cnf['content_type'] = content_type
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
-                REPOSITORIES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
+                REPOSITORY_TYPES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
 
 
 class IOrmRepositoryDirective(IRepositoryDirective):
@@ -157,16 +155,16 @@ def orm_repository(_context, name=None, make_default=False,
         cnf['metadata_factory'] = metadata_factory
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
-                REPOSITORIES.ORM, 'add_orm_repository', cnf)
+                REPOSITORY_TYPES.ORM, 'add_orm_repository', cnf)
 
 
 class IMessagingDirective(Interface):
     repository = \
-        TextLine(title=u"Repository to use for the messaging system.",
+        TextLine(title=u"Repository type to use for the system repository.",
                  required=True,
                  )
     reset_on_start = \
-        Bool(title=u"Erase all stored user messages on startup. This only "
+        Bool(title=u"Erase all stored system resources on startup. This only "
                     "has an effect in persistent repositories.",
              required=False)
 

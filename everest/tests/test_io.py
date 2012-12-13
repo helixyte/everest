@@ -152,9 +152,10 @@ class _ResourceIoTestCaseBase(ResourceTestCase):
         # We need to switch off non-standard resource attributes manually.
         self.config.add_resource_representer(
                     IMyEntity, CsvMime,
-                    attribute_options={('nested_parent',):{IGNORE_OPTION:True},
-                                     ('children',):{IGNORE_OPTION:True}
-                                     })
+                    attribute_options=
+                            {('nested_parent',):{IGNORE_OPTION:True},
+                             ('children',):{IGNORE_OPTION:True}
+                             })
 
 
 class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):

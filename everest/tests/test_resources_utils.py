@@ -7,7 +7,6 @@ Created on Jun 14, 2012.
 from everest.resources.utils import get_registered_collection_resources
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import get_resource_url
-from everest.resources.utils import get_stage_collection
 from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
@@ -56,12 +55,10 @@ class ResourcesUtilsTestCase(ResourceTestCase):
         self.assert_equal(get_resource_class_for_relation(rel),
                           MyEntityMember)
 
-    def test_stage_collection(self):
+    def test_new_stage_collection(self):
         ent = create_entity(entity_id=2, entity_text='too2')
         mb = MyEntityMember.create_from_entity(ent)
-        scoll = get_stage_collection(IMyEntity)
-        scoll.add(mb)
-        self.assert_equal(len(scoll), 1)
-        self.assert_equal(len(get_stage_collection(IMyEntity)), 1)
         nscoll = new_stage_collection(IMyEntity)
         self.assert_equal(len(nscoll), 0)
+        nscoll.add(mb)
+        self.assert_equal(len(nscoll), 1)

@@ -77,6 +77,13 @@ class MemoryAggregate(Aggregate):
         else:
             self._relationship.children.remove(entity)
 
+    def update(self, entity, source_entity):
+        # FIXME: We need a proper __getstate__ method here.
+        entity.__dict__.update(
+                    dict([(k, v)
+                          for (k, v) in source_entity.__dict__.iteritems()
+                          if not k.startswith('_')]))
+
     def _apply_filter(self):
         pass
 
@@ -198,6 +205,10 @@ class OrmAggregate(Aggregate):
             self._session.delete(entity)
         else:
             self._relationship.children.remove(entity)
+
+    def update(self, entity, source_entity):
+        source_entity.id = entity.id
+        self._session.merge(source_entity)
 
     def _apply_filter(self):
         pass

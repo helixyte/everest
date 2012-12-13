@@ -8,7 +8,7 @@ from everest.interfaces import IRepositoryManager
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
 from everest.relationship import Relationship
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.testing import EntityTestCase
 from everest.tests.testapp_db.entities import MyEntityChild
 from everest.tests.testapp_db.interfaces import IMyEntity
@@ -123,7 +123,7 @@ class MemoryAggregateTestCase(_AggregateTestCase):
 
     def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        return repo_mgr.get(REPOSITORIES.MEMORY)
+        return repo_mgr.get(REPOSITORY_TYPES.MEMORY)
 
     def test_add(self):
         ent, agg_children = self._make_one()
@@ -162,7 +162,7 @@ class OrmAggregateTestCase(_AggregateTestCase):
 
     def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        return repo_mgr.get(REPOSITORIES.ORM)
+        return repo_mgr.get(REPOSITORY_TYPES.ORM)
 
     def test_defaults_empty(self):
         agg_children = self._make_one()[1]

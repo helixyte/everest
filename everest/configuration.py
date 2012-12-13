@@ -29,8 +29,8 @@ from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.renderers import RendererFactory
-from everest.repository import REPOSITORIES
-from everest.repository import SYSTEM_REPOSITORY_NAME
+from everest.repository import REPOSITORY_DOMAINS
+from everest.repository import REPOSITORY_TYPES
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
@@ -202,7 +202,7 @@ class Configurator(PyramidConfigurator):
             configuration = {}
         setting_info = [('db_string', 'db_string')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORIES.ORM, entity_store_class,
+        self.__add_repository(name, REPOSITORY_TYPES.ORM, entity_store_class,
                               aggregate_class, make_default, configuration)
 
     def add_filesystem_repository(self, name=None, entity_store_class=None,
@@ -214,7 +214,7 @@ class Configurator(PyramidConfigurator):
         setting_info = [('directory', 'fs_directory'),
                         ('content_type', 'fs_contenttype')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORIES.FILE_SYSTEM,
+        self.__add_repository(name, REPOSITORY_TYPES.FILE_SYSTEM,
                               entity_store_class, aggregate_class,
                               make_default, configuration)
 
@@ -224,14 +224,14 @@ class Configurator(PyramidConfigurator):
                               _info=u''):
         if configuration is None:
             configuration = {}
-        self.__add_repository(name, REPOSITORIES.MEMORY, entity_store_class,
+        self.__add_repository(name, REPOSITORY_TYPES.MEMORY, entity_store_class,
                               aggregate_class, make_default, configuration)
 
     def setup_system_repository(self, repository_type, reset_on_start=False):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
         repo_mgr.setup_system_repository(repository_type, reset_on_start)
         self.add_resource(IUserMessage, UserMessageMember, UserMessage,
-                          repository=SYSTEM_REPOSITORY_NAME,
+                          repository=REPOSITORY_DOMAINS.SYSTEM,
                           collection_root_name='_messages')
         self.registry.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
                                       IUserMessageNotifier)
@@ -271,15 +271,15 @@ class Configurator(PyramidConfigurator):
             if repo is None:
                 # Add a root repository with default configuration on
                 # the fly. 
-                repo_type = getattr(REPOSITORIES, repository, None)
+                repo_type = getattr(REPOSITORY_TYPES, repository, None)
                 if repo_type is None:
                     raise ValueError('Unknown repository type "%s".'
                                      % repository)
-                if repo_type == REPOSITORIES.ORM:
-                    self.add_orm_repository(name=REPOSITORIES.ORM)
-                elif repo_type == REPOSITORIES.FILE_SYSTEM:
+                if repo_type == REPOSITORY_TYPES.ORM:
+                    self.add_orm_repository(name=REPOSITORY_TYPES.ORM)
+                elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
                     self.add_filesystem_repository(
-                                            name=REPOSITORIES.FILE_SYSTEM)
+                                            name=REPOSITORY_TYPES.FILE_SYSTEM)
                 else:
                     raise NotImplementedError()
                 repo = repo_mgr.get(repository)
@@ -512,9 +512,9 @@ class Configurator(PyramidConfigurator):
             self.add_subscriber(repo_mgr.on_app_created, IApplicationCreated)
             # Set up the root MEMORY repository and set it as the default
             # for all resources that do not specify a repository.
-            mem_repo = repo_mgr.new(REPOSITORIES.MEMORY,
-                                    name=REPOSITORIES.MEMORY)
-            repo_mgr.set(mem_repo, make_default=True)
+            self.__add_repository(REPOSITORY_DOMAINS.ROOT,
+                                  REPOSITORY_TYPES.MEMORY,
+                                  None, None, True, None)
             # Create representer registry and register builtin representer classes.
             rpr_reg = RepresenterRegistry()
             rpr_reg.register_representer_class(CsvResourceRepresenter)
@@ -559,11 +559,16 @@ class Configurator(PyramidConfigurator):
     def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
                          make_default, cnf):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
+        if name is None:
+            # If no name was given, this is assumed to be the ROOT repository
+            # for the given repository type.
+            name = REPOSITORY_DOMAINS.ROOT
         repo = repo_mgr.new(repo_type, name=name,
+                            make_default=make_default,
                             entity_store_class=ent_store_cls,
-                            aggregate_class=agg_cls)
-        repo.configure(**cnf)
-        repo_mgr.set(repo, make_default=make_default)
+                            aggregate_class=agg_cls,
+                            configuration=cnf)
+        repo_mgr.set(repo)
 
     def __cnf_from_settings(self, setting_info):
         settings = self.get_settings()

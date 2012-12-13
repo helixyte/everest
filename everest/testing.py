@@ -13,10 +13,10 @@ from everest.ini import EverestIni
 from everest.interfaces import IRepositoryManager
 from everest.orm import Session
 from everest.orm import get_engine
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import get_stage_collection
+from everest.resources.utils import new_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
@@ -269,7 +269,7 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
         return coll
 
     def _create_member(self, member_cls, entity):
-        coll = get_stage_collection(member_cls)
+        coll = new_stage_collection(member_cls)
         return coll.create_member(entity)
 
 
@@ -400,7 +400,7 @@ class OrmContextManager(object):
         self.__autoflush = autoflush
         if engine_name is None:
             # Use the name of the default ORM repository for engine lookup.
-            engine_name = REPOSITORIES.ORM
+            engine_name = REPOSITORY_TYPES.ORM
         self.__engine_name = engine_name
         self.__connection = None
         self.__transaction = None
@@ -415,9 +415,8 @@ class OrmContextManager(object):
         self.__transaction = self.__connection.begin()
         # Configure the autoflush behavior of the session.
         self.__old_autoflush_flag = orm.Session.autoflush #pylint:disable=E1101
-        orm.Session.configure(autoflush=self.__autoflush)
-        # Make sure we start with a clean session.
         orm.Session.remove()
+        orm.Session.configure(autoflush=self.__autoflush)
         # Throw out the Zope transaction manager for testing.
         orm.Session.configure(extension=None)
         # Create a new session for the tests.
@@ -459,7 +458,10 @@ def check_attributes(test_object, attribute_map):
             and value = expected value for this attribute
     """
     for attr_name, exp_val in attribute_map.iteritems():
-        assert getattr(test_object, attr_name) == exp_val
+        obj_val = getattr(test_object, attr_name)
+        if obj_val != exp_val:
+            raise AssertionError('Values for attribute %s differ!'
+                                 % attr_name)
 
 
 def persist(session, entity_class, attribute_map,
@@ -481,7 +483,7 @@ def persist(session, entity_class, attribute_map,
     session.commit()
     session.refresh(entity)
     entity_id = entity.id
-    # Assure a new object is loaded to test if storing worked.
+    # Assure a new object is loaded to test if persisting worked.
     session.expunge(entity)
     del entity
     query = session.query(entity_class)

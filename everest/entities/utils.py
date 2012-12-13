@@ -7,9 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 3, 2011.
 """
 from everest.entities.interfaces import IEntity
-from everest.repository import REPOSITORIES
 from everest.repository import as_repository
-from everest.utils import get_repository_manager
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
@@ -17,7 +15,6 @@ from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_entity_class',
            'get_root_aggregate',
-           'get_stage_aggregate',
            'identifier_from_slug',
            'slug_from_identifier',
            'slug_from_integer',
@@ -31,17 +28,6 @@ def get_root_aggregate(rc):
     registered resource.
     """
     repo = as_repository(rc)
-    coll = repo.get(rc)
-    return coll.get_aggregate()
-
-
-def get_stage_aggregate(rc):
-    """
-    Returns an aggregate from the stage entity repository for the given 
-    registered resource.
-    """
-    repo_mgr = get_repository_manager()
-    repo = repo_mgr.get(REPOSITORIES.MEMORY)
     coll = repo.get(rc)
     return coll.get_aggregate()
 

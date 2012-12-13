@@ -6,7 +6,7 @@ Created on Feb 13, 2012.
 """
 from everest.entities.base import Entity
 from everest.mime import CsvMime
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.entitystores import InMemorySession
 from everest.resources.io import get_collection_name
@@ -381,7 +381,7 @@ class FileSystemEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
 
     def test_configure(self):
         repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORIES.FILE_SYSTEM)
+        repo = repo_mgr.get(REPOSITORY_TYPES.FILE_SYSTEM)
         self.assert_raises(ValueError, repo.configure, foo='bar')
 
     def __copy_data_files(self):

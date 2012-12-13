@@ -9,7 +9,8 @@ Created on Jan 13, 2012.
 from everest.entities.aggregates import MemoryAggregate
 from everest.entities.aggregates import OrmAggregate
 from everest.entities.repository import EntityRepository
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_DOMAINS
+from everest.repository import REPOSITORY_TYPES
 from everest.repository import Repository
 from everest.resources.entitystores import CachingEntityStore
 from everest.resources.entitystores import FileSystemEntityStore
@@ -17,7 +18,6 @@ from everest.resources.entitystores import OrmEntityStore
 from everest.resources.io import load_into_collection_from_url
 from everest.resources.utils import get_collection_class
 from everest.utils import id_generator
-from everest.repository import SYSTEM_REPOSITORY_NAME
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepositoryManager',
@@ -92,42 +92,44 @@ class RepositoryManager(object):
     def get(self, name):
         return self.__repositories.get(name)
 
-    def set(self, repo, make_default=False):
+    def set(self, repo):
         name = repo.name
         if name in self.__repositories \
            and self.__repositories[name].is_initialized:
             raise ValueError('Can not replace repositories that have been '
                              'initialized.')
         self.__repositories[name] = repo
-        if make_default:
-            self.__default_repo = repo
 
     def get_default(self):
         return self.__default_repo
 
-    def new(self, repo_type, name=None,
-            entity_store_class=None, aggregate_class=None):
-        if name == repo_type: # 
+    def new(self, repo_type, name=None, make_default=False,
+            entity_store_class=None, aggregate_class=None,
+            configuration=None):
+        if name == REPOSITORY_DOMAINS.ROOT:
+            # Unless explicitly configured differently, all root repositories
+            # join the transaction.
             join_transaction = True
             autocommit = False
+            name = repo_type
         else:
             join_transaction = False
             if name is None:
                 name = "%s%d" % (repo_type, self.__repo_id_gen.next())
             # The system repository is special in that its entity store
-            # should not joint the transaction but still commit all changes.
-            autocommit = name == SYSTEM_REPOSITORY_NAME
-        if repo_type == REPOSITORIES.MEMORY:
+            # should not join the transaction but still commit all changes.
+            autocommit = name == REPOSITORY_DOMAINS.SYSTEM
+        if repo_type == REPOSITORY_TYPES.MEMORY:
             if entity_store_class is None:
                 entity_store_class = CachingEntityStore
             if aggregate_class is None:
                 aggregate_class = MemoryAggregate
-        elif repo_type == REPOSITORIES.ORM:
+        elif repo_type == REPOSITORY_TYPES.ORM:
             if entity_store_class is None:
                 entity_store_class = OrmEntityStore
             if aggregate_class is None:
                 aggregate_class = OrmAggregate
-        elif repo_type == REPOSITORIES.FILE_SYSTEM:
+        elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
             if entity_store_class is None:
                 entity_store_class = FileSystemEntityStore
             if aggregate_class is None:
@@ -137,23 +139,31 @@ class RepositoryManager(object):
         ent_store = entity_store_class(name,
                                        join_transaction=join_transaction,
                                        autocommit=autocommit)
-        ent_repo = EntityRepository(ent_store, aggregate_class=aggregate_class)
-        return ResourceRepository(ent_repo)
+        ent_repo = EntityRepository(ent_store,
+                                    aggregate_class=aggregate_class)
+        rc_repo = ResourceRepository(ent_repo)
+        if not configuration is None:
+            rc_repo.configure(**configuration)
+        if make_default:
+            self.__default_repo = rc_repo
+        return rc_repo
 
-    def setup_system_repository(self, repository, reset_on_start):
+    def setup_system_repository(self, repository_type, reset_on_start):
         """
-        Sets up messaging for the given repository.
+        Sets up the system repository with the given repository type.
         
-        :param str repository: Name of the repository to use to store user
-          messages. 
-        :param bool reset_on_start: Flag to indicate whether stored user 
-          messsages should be discarded on startup.
+        :param str repository: Repository type to use for the SYSTEM 
+          repository.
+        :param bool reset_on_start: Flag to indicate whether stored system
+          resources should be discarded on startup.
         """
         # Set up the system entity repository (this does not join the
         # transaction and is in autocommit mode).
-        system_repo = self.new(repository, SYSTEM_REPOSITORY_NAME)
-        system_repo.configure(messaging_enable=True,
-                              messaging_reset_on_start=reset_on_start)
+        cnf = dict(messaging_enable=True,
+                   messaging_reset_on_start=reset_on_start)
+        system_repo = self.new(repository_type,
+                               name=REPOSITORY_DOMAINS.SYSTEM,
+                               configuration=cnf)
         self.set(system_repo)
 
     def initialize_all(self):

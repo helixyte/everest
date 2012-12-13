@@ -140,8 +140,8 @@ class OrderClauseList(ClauseList):
 
 class AutocommittingSession(SaSession):
     """
-    A session in 'autocommit' mode that automatically commits on :method:`add`
-    and :method:`delete` operations.
+    A session in 'autocommit' mode that automatically commits on 
+    :method:`add`, :method:`delete` and :method:`merge` operations.
     """
     def __init__(self, **kw):
         kw['autocommit'] = True
@@ -155,6 +155,11 @@ class AutocommittingSession(SaSession):
     def delete(self, entity):
         self.begin()
         SaSession.delete(self, entity)
+        self.commit()
+
+    def merge(self, entity, load=True):
+        self.begin()
+        SaSession.merge(self, entity, load=load)
         self.commit()
 
 
@@ -279,10 +284,9 @@ def clear_mappers():
     sa_clear_mappers()
 
 
-def map_system_entities(engine, reset):
+def map_system_entities(engine, metadata, reset):
     # Map the user message system entity.
-    md = MetaData()
-    msg_tbl = Table('_user_messages', md,
+    msg_tbl = Table('_user_messages', metadata,
                     Column('guid', String, nullable=False, primary_key=True),
                     Column('text', String, nullable=False),
                     Column('time_stamp', DateTime(timezone=True),
@@ -290,8 +294,8 @@ def map_system_entities(engine, reset):
                     )
     mapper(UserMessage, msg_tbl, id_attribute='guid')
     if reset:
-        md.drop_all(bind=engine, tables=[msg_tbl])
-    md.create_all(bind=engine, tables=[msg_tbl])
+        metadata.drop_all(bind=engine, tables=[msg_tbl])
+    metadata.create_all(bind=engine, tables=[msg_tbl])
 
 
 def empty_metadata(engine):

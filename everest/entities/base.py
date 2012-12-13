@@ -182,10 +182,27 @@ class Aggregate(object):
         """
         Removes an entity from the aggregate.
 
-        :param entity: entity (domain object) to remove
+        :param entity: entity (domain object) to remove.
         :type entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: entity was not found
+        """
+        raise NotImplementedError('Abstract method')
+
+    def update(self, entity, source_entity):
+        """
+        Updates the state of the given entity such that it reflects the state
+        of the given source entity.
+        
+        Relies on the underlying entity store for the implementation of the
+        state update.
+        
+        :param entity: entity (domain object) to transfer state to.
+        :type entity: object implementing
+          :class:`everest.entities.interfaces.IEntity`
+        :param source_entity: source entity to transfer state from. 
+        :type source_entity: object implementing
+          :class:`everest.entities.interfaces.IEntity`
         """
         raise NotImplementedError('Abstract method')
 

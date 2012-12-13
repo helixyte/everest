@@ -469,6 +469,19 @@ class Collection(Resource):
             new_member = mb_cls.create_from_data(new_member_el)
             self.add(new_member)
 
+    def update_from_entity(self, member, source_entity):
+        """
+        Updates the given member from the given entity.
+        
+        Unlike :method:`update_from_data`, this completely disregards all
+        resource attribute declarations and relies on the entity store to
+        perform the state update.
+        
+        :param member: Member resource to update.
+        :param source_entity: Entity (domain object) to use
+        """
+        self.__aggregate.update(member.get_entity(), source_entity)
+
     def _get_filter(self):
         if self.__relationship is None:
             filter_spec = self._filter_spec

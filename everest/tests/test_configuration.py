@@ -14,7 +14,7 @@ from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.resources.interfaces import ICollectionResource
@@ -100,22 +100,22 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
 
     def test_add_resource_with_orm_repo(self):
         self._config.add_resource(IFoo, FooMember, FooEntity, expose=False,
-                                  repository=REPOSITORIES.ORM)
+                                  repository=REPOSITORY_TYPES.ORM)
         reg = self._registry
         repo_mgr = reg.queryUtility(IRepositoryManager)
-        self.assert_is_not_none(repo_mgr.get(REPOSITORIES.ORM))
+        self.assert_is_not_none(repo_mgr.get(REPOSITORY_TYPES.ORM))
 
     def test_have_memory_repo(self):
         reg = self._registry
         repo_mgr = reg.queryUtility(IRepositoryManager)
-        self.assert_is_not_none(repo_mgr.get(REPOSITORIES.MEMORY))
+        self.assert_is_not_none(repo_mgr.get(REPOSITORY_TYPES.MEMORY))
 
     def test_add_resource_with_filesystem_repo(self):
         self._config.add_resource(IFoo, FooMember, FooEntity, expose=False,
-                                  repository=REPOSITORIES.FILE_SYSTEM)
+                                  repository=REPOSITORY_TYPES.FILE_SYSTEM)
         reg = self._registry
         repo_mgr = reg.queryUtility(IRepositoryManager)
-        self.assert_is_not_none(repo_mgr.get(REPOSITORIES.FILE_SYSTEM))
+        self.assert_is_not_none(repo_mgr.get(REPOSITORY_TYPES.FILE_SYSTEM))
 
     def test_add_representer(self):
         self.assert_raises(ValueError, self._config.add_representer)

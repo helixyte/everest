@@ -260,7 +260,7 @@ class collection_attribute(_relation_attribute):
             rc_repo = resource.__parent__.__repository__
             coll = rc_repo.get(self.attr_type)
         else:
-            # This is a floating member, assume stage repository.
+            # This is a floating member.
             coll = new_stage_collection(self.attr_type)
         # Set up entity access in the new collection.
         agg_relationship = Relationship(parent, children,

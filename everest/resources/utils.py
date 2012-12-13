@@ -8,7 +8,7 @@ Created on Nov 3, 2011.
 """
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
-from everest.repository import REPOSITORIES
+from everest.repository import REPOSITORY_TYPES
 from everest.repository import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -31,7 +31,6 @@ __all__ = ['as_member',
            'get_resource_class_for_relation',
            'get_resource_url',
            'get_root_collection',
-           'get_stage_collection',
            'is_resource_url',
            'provides_collection_resource',
            'provides_member_resource',
@@ -54,21 +53,6 @@ def get_root_collection(rc):
     return repo.get(rc)
 
 
-def get_stage_collection(rc):
-    """
-    Returns a clone of the collection in the stage repository matching the 
-    given registered resource.
-
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
-        a registered resource interface.
-    """
-    repo_mgr = get_repository_manager()
-    repo = repo_mgr.get(REPOSITORIES.MEMORY)
-    repo.register_resource(rc)
-    return repo.get(rc)
-
-
 def new_stage_collection(rc):
     """
     Returns a new, empty collection matching the given registered resource.
@@ -78,7 +62,7 @@ def new_stage_collection(rc):
         a registered resource interface.
     """
     repo_mgr = get_repository_manager()
-    new_repo = repo_mgr.new(REPOSITORIES.MEMORY)
+    new_repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
     new_repo.register_resource(rc)
     new_repo.initialize()
     return new_repo.get(rc)
