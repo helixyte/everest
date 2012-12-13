@@ -17,24 +17,7 @@ README = open(os.path.join(here, 'README.rst')).read()
 
 setup_requirements = []
 
-install_requirements = [
-    'Paste',
-    'PasteDeploy',
-    'PasteScript',
-    'WSGIFilter',
-    'iso8601',
-    'lxml>=2.3,<=2.3.99',
-    'pyOpenSSL==0.10',
-    'pyparsing>=1.5.5,<=1.5.99',
-    'pyramid>=1.3b2,<=1.3.99',
-    'pyramid_tm',
-    'pyramid_zcml',
-    'python-graph-core',
-    'rfc3339',
-    'sqlalchemy>=0.7.9,<=0.7.99',
-    'transaction>=1.2.0,<=1.2.99',
-    'zope.sqlalchemy>=0.4,<=0.4.99',
-    ]
+install_requirements = open('requirements.txt', 'rU').readlines()
 
 tests_requirements = install_requirements + [
     'coverage',
@@ -62,7 +45,7 @@ setup(name='everest',
       author_email='fogathmann at gmail.com',
       license="MIT",
       url='https://github.com/cenix/everest',
-      keywords='web wsgi pyramid',
+      keywords='REST web wsgi pyramid',
       packages=find_packages(),
       package_data={'': ["*.zcml", "*.xsd"]},
       include_package_data=True,
