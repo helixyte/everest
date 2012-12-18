@@ -85,7 +85,7 @@ class Repository(object):
         If this is the first request, an instance is created on the fly using 
         the :meth:`new` method and cached. The method always returns a clone
         of the cached accessor; this clone can later be used to look up
-        the repository it was obtained from using the :meth:`get_repository`
+        the repository it was obtained from using the :meth:`as_repository`
         class method.
         """
         key = self._make_key(rc)

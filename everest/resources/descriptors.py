@@ -13,6 +13,7 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
+from pyramid.location import lineage
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
@@ -255,9 +256,14 @@ class collection_attribute(_relation_attribute):
     def __make_collection(self, resource, parent, children):
         # Create a new collection.
         if not resource.__parent__ is None:
-            # Use the resource repository that created this resource's parent
-            # (collection) to create a new collection.
-            rc_repo = resource.__parent__.__repository__
+            # Use the resource repository that created this resource's 
+            # root collection to create the new collection.
+            rc_repo = getattr(resource.__parent__, '__repository__', None)
+            if rc_repo is None:
+                for rc in lineage(resource.__parent__):
+                    rc_repo = getattr(rc, '__repository__', None)
+                    if not rc_repo is None:
+                        break
             coll = rc_repo.get(self.attr_type)
         else:
             # This is a floating member.
