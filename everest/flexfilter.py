@@ -55,8 +55,10 @@ class FlexFilter(Filter):
         if self.__detect_flex(environ) \
            and environ['REQUEST_METHOD'] == 'GET' \
            and environ.get('HTTP_ACCEPT'):
-            # Override the Accept header.
-            environ['HTTP_ACCEPT'] = AtomMime.mime_type_string
+            # Override the Accept header. We prefer ATOM, but also allow
+            # the server to decide if ATOM is not available.
+            environ['HTTP_ACCEPT'] = \
+                 "%s;q=0.9,*/*;q=0.8" % AtomMime.mime_type_string
         return Filter.__call__(self, environ, start_response)
 
     def should_filter(self, status, headers, exc_info):
