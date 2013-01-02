@@ -1,0 +1,8 @@
+/everest.egg-info
+/htmlcov
+/coverage.xml
+*.pyc
+.settings
+.coverage
+.project
+.pydevproject
