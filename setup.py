@@ -20,9 +20,7 @@ setup_requirements = []
 install_requirements = open('requirements.txt', 'rU').readlines()
 
 tests_requirements = install_requirements + [
-    'coverage',
-    'nose',
-    'nosexcover',
+    'nose-cov',
     'pytz',
     'webtest',
     ]
