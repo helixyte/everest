@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 18, 2012.
 """
 from everest.configuration import Configurator
-from everest.entities.aggregates import MemoryAggregate
+from everest.datastores.memory import MemoryAggregate
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime

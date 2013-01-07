@@ -4,13 +4,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.entities.aggregates import MemoryAggregate
+from everest.datastores.memory import InMemoryDataStore
+from everest.datastores.memory import MemoryAggregate
 from everest.entities.repository import EntityRepository
 from everest.entities.system import UserMessage
 from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IUserMessage
 from everest.repository import REPOSITORY_TYPES
-from everest.resources.entitystores import CachingEntityStore
 from everest.resources.utils import get_root_collection
 from everest.testing import EntityTestCase
 from everest.testing import ResourceTestCase
@@ -19,7 +19,7 @@ from everest.tests.testapp.interfaces import IFoo
 from everest.tests.testapp_db.interfaces import IMyEntity
 from everest.tests.testapp_db.interfaces import IMyEntityParent
 from everest.utils import get_repository_manager
-from pkg_resources import resource_filename # pylint: disable=E0611
+from pkg_resources import resource_filename  # pylint: disable=E0611
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityRepositoryTestCase',
@@ -42,7 +42,7 @@ class _RepositoryBaseTestCaseMixin(object):
         acc2 = repo.new(ifc2)
         acc2.slice = slice(1, 2)
         repo.set(ifc2, acc2)
-        # After clearing the cached accessor, .get(ifc1) creates a new 
+        # After clearing the cached accessor, .get(ifc1) creates a new
         # accessor for ifc1 with the default slice.
         repo.clear(ifc1)
         acc1_new = repo.get(ifc1)
@@ -58,7 +58,7 @@ class EntityRepositoryTestCase(EntityTestCase, _RepositoryBaseTestCaseMixin):
     package_name = 'everest.tests.testapp'
 
     def test_basics(self):
-        ent_store = CachingEntityStore('test')
+        ent_store = InMemoryDataStore('test')
         ent_repo = EntityRepository(ent_store, MemoryAggregate)
         ent_repo.initialize()
         self._test_repo(ent_repo, IFoo, IBar)

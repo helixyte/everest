@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-from everest.querying.filtering import SqlFilterSpecificationVisitor
+from everest.datastores.orm import SqlFilterSpecificationVisitor
 from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp.entities import FooEntity

@@ -6,8 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
-from zope.interface import Attribute # pylint: disable=E0611,F0401
-from zope.interface import Interface # pylint: disable=E0611,F0401
+from zope.interface import Attribute  # pylint: disable=E0611,F0401
+from zope.interface import Interface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ICollectionResource',
@@ -77,16 +77,16 @@ class IResource(ILocationAware, ITraversable):
     business logic through atomic resource interactions.
     """
 
-    #: The title of the resource.
+    # : The title of the resource.
     title = Attribute('Title of the resource.')
 
-    #: A description of the resource.
+    # : A description of the resource.
     description = Attribute('Description of the resource.')
 
-    #: The (URL) path for the resource.
+    # : The (URL) path for the resource.
     path = Attribute('The (URL) path for the resource.')
 
-    #: The URN for the resource.
+    # : The URN for the resource.
     urn = Attribute('The URN for the resource.')
 
     def get_url(request, **kwargs):
@@ -157,10 +157,10 @@ class IMemberResource(IResource):
     Interface for member resources.
     """
 
-    #: The entity class (subclass of :class:`everest.entities.base.Entity`)
-    #: associated with this member attribute. The entity class must
-    #: implement an interface inheriting from
-    #: :class:`everest.entities.interface.IEntity`.
+    # : The entity class (subclass of :class:`everest.entities.base.Entity`)
+    # : associated with this member attribute. The entity class must
+    # : implement an interface inheriting from
+    # : :class:`everest.entities.interface.IEntity`.
     entity_class = Attribute('The entity class associated with this member '
                              'resource. Instances implement an interface '
                              'derived from '
@@ -212,27 +212,27 @@ class IService(IResource):
         """
 
 
-class IEntityStore(Interface):
+class IDataStore(Interface):
     """
     """
 
     def configure(**config):
         """
-        Sets configuration options for this entity store which can then be used
+        Sets configuration options for this data store which can then be used
         during initialization.
         """
 
     def initialize():
         """
-        Initializes the entity store.
+        Initializes the data store.
         """
 
-    session_factory = Attribute('The session factory provided by this entity '
+    session_factory = Attribute('The session factory provided by this data '
                                 'store.')
 
-    name = Attribute('Unique name for this entity store.')
+    name = Attribute('Unique name for this data store.')
 
-    is_initialized = Attribute('Flag indicating if this entity store has been '
+    is_initialized = Attribute('Flag indicating if this data store has been '
                                'initialized.')
 
 

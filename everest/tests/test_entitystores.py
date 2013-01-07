@@ -4,11 +4,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
 """
+from everest.datastores.memory import InMemoryDataStore
+from everest.datastores.memory import InMemorySession
 from everest.entities.base import Entity
 from everest.mime import CsvMime
 from everest.repository import REPOSITORY_TYPES
-from everest.resources.entitystores import CachingEntityStore
-from everest.resources.entitystores import InMemorySession
 from everest.resources.io import get_collection_name
 from everest.resources.io import get_read_collection_path
 from everest.resources.utils import get_collection_class
@@ -31,16 +31,16 @@ import threading
 import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BasicEntityStoreTestCase',
-           'FileSystemEmptyEntityStoreTestCase',
-           'FileSystemEntityStoreTestCase',
+__all__ = ['BasicDataStoreTestCase',
+           'FileSystemEmptyDataStoreTestCase',
+           'FileSystemDataStoreTestCase',
            'InMemorySessionTestCase',
            ]
 
 
-class BasicEntityStoreTestCase(Pep8CompliantTestCase):
+class BasicDataStoreTestCase(Pep8CompliantTestCase):
     def test_args(self):
-        self.assert_raises(ValueError, CachingEntityStore, 'DUMMY',
+        self.assert_raises(ValueError, InMemoryDataStore, 'DUMMY',
                            autocommit=True, join_transaction=True)
 
 
@@ -48,7 +48,7 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)
-        self._entity_store = CachingEntityStore('DUMMY', autoflush=True)
+        self._entity_store = InMemoryDataStore('DUMMY', autoflush=True)
         self._session = InMemorySession(self._entity_store)
 
     def test_with_autoflush(self):
@@ -222,7 +222,7 @@ class InMemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_raises(ValueError, self._session.commit)
 
 
-class _FileSystemEntityStoreTestCaseMixin(object):
+class _FileSystemDataStoreTestCaseMixin(object):
     _data_dir = None
     package_name = 'everest.tests.testapp_db'
     config_file_name = 'configure_fs.zcml'
@@ -232,7 +232,7 @@ class _FileSystemEntityStoreTestCaseMixin(object):
                                        'testapp_db', 'data')
 
 
-class FileSystemEmptyEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
+class FileSystemEmptyDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
                                          ResourceTestCase):
     def set_up(self):
         self._set_data_dir()
@@ -249,7 +249,7 @@ class FileSystemEmptyEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
             self.assert_equal(len(coll), 0)
 
 
-class FileSystemEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
+class FileSystemDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
                                     ResourceTestCase):
 
     def set_up(self):
@@ -258,7 +258,7 @@ class FileSystemEntityStoreTestCase(_FileSystemEntityStoreTestCaseMixin,
         try:
             ResourceTestCase.set_up(self)
         except Exception:
-            self.__remove_data_files() # Always remove the copied files.
+            self.__remove_data_files()  # Always remove the copied files.
             raise
 
     def tear_down(self):

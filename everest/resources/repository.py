@@ -6,15 +6,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 13, 2012.
 """
-from everest.entities.aggregates import MemoryAggregate
-from everest.entities.aggregates import OrmAggregate
+from everest.datastores.filesystem import FileSystemDataStore
+from everest.datastores.memory import InMemoryDataStore
+from everest.datastores.orm import OrmDataStore
+from everest.datastores.memory import MemoryAggregate
+from everest.datastores.orm import OrmAggregate
 from everest.entities.repository import EntityRepository
 from everest.repository import REPOSITORY_DOMAINS
 from everest.repository import REPOSITORY_TYPES
 from everest.repository import Repository
-from everest.resources.entitystores import CachingEntityStore
-from everest.resources.entitystores import FileSystemEntityStore
-from everest.resources.entitystores import OrmEntityStore
 from everest.resources.io import load_into_collection_from_url
 from everest.resources.utils import get_collection_class
 from everest.utils import id_generator
@@ -121,17 +121,17 @@ class RepositoryManager(object):
             autocommit = name == REPOSITORY_DOMAINS.SYSTEM
         if repo_type == REPOSITORY_TYPES.MEMORY:
             if entity_store_class is None:
-                entity_store_class = CachingEntityStore
+                entity_store_class = InMemoryDataStore
             if aggregate_class is None:
                 aggregate_class = MemoryAggregate
         elif repo_type == REPOSITORY_TYPES.ORM:
             if entity_store_class is None:
-                entity_store_class = OrmEntityStore
+                entity_store_class = OrmDataStore
             if aggregate_class is None:
                 aggregate_class = OrmAggregate
         elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
             if entity_store_class is None:
-                entity_store_class = FileSystemEntityStore
+                entity_store_class = FileSystemDataStore
             if aggregate_class is None:
                 aggregate_class = MemoryAggregate
         else:
@@ -175,6 +175,6 @@ class RepositoryManager(object):
             if not repo.is_initialized:
                 repo.initialize()
 
-    def on_app_created(self, event): # pylint: disable=W0613
+    def on_app_created(self, event):  # pylint: disable=W0613
         self.initialize_all()
 

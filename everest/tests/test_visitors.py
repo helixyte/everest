@@ -4,13 +4,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
 """
+from everest.datastores.orm import SqlFilterSpecificationVisitor
+from everest.datastores.orm import SqlOrderSpecificationVisitor
 from everest.orm import OrderClauseList
 from everest.orm import Session
 from everest.orm import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
-from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
-from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.testing import Pep8CompliantTestCase
@@ -19,15 +19,10 @@ import sqlalchemy as sa
 import sqlalchemy.orm as orm
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CompositeCqlFilterSpecificationVisitorTestCase',
-           'CompositeSqlFilterSpecificationVisitorTestCase',
-           'ManyValueBoundSqlFilterSpecificationVisitorTestCase',
-           'NegationCqlFilterSpecificationVisitorTestCase',
-           'NegationSqlFilterSpecificationVisitorTestCase',
-           'SqlOrderSpecificationSpecificationVisitorTestCase',
-           'OrderSpecificationCqlFilterSpecificationVisitorTestCase',
-           'ValueBoundCqlFilterSpecificationVisitorTestCase',
-           'ValueBoundSqlFilterSpecificationVisitorTestCase',
+__all__ = ['CqlFilterSpecificationVisitorTestCase',
+           'CqlOrderSpecificationVisitorTestCase',
+           'SqlFilterSpecificationVisitorTestCase',
+           'SqlOrderSpecificationVisitorTestCase',
            ]
 
 
@@ -483,7 +478,7 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         finally:
             Person.name.asc = old_asc
         # Make sure the correct ORDER BY clause is generated.
-        q = Session.query(Person).order_by(expr) # pylint: disable=E1101
+        q = Session.query(Person).order_by(expr)  # pylint: disable=E1101
         q_str = str(q.statement)
         self.assert_not_equal(q_str.find("ORDER BY %s" % expr), -1)
 

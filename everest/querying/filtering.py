@@ -6,7 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-from everest.entities.attributes import EntityAttributeKinds
 from everest.entities.utils import slug_from_identifier
 from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationVisitor
@@ -21,22 +20,15 @@ from everest.querying.operators import IN_RANGE
 from everest.querying.operators import LESS_OR_EQUALS
 from everest.querying.operators import LESS_THAN
 from everest.querying.operators import STARTS_WITH
-from everest.querying.utils import OrmAttributeInspector
 from everest.resources.interfaces import IResource
 from everest.resources.utils import resource_to_url
-from functools import partial
 from operator import and_ as operator_and
 from operator import or_ as operator_or
-from sqlalchemy import and_ as sqlalchemy_and
-from sqlalchemy import not_ as sqlalchemy_not
-from sqlalchemy import or_ as sqlalchemy_or
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implements  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CqlFilterSpecificationVisitor',
-           'EvalFilterSpecificationVisitor',
            'FilterSpecificationVisitor',
-           'SqlFilterSpecificationVisitor',
            ]
 
 
@@ -212,152 +204,8 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
     def __preprocess_value(self, value):
         if isinstance(value, basestring):
             result = '"%s"' % value
-        elif IResource.providedBy(value): # pylint: disable=E1101
+        elif IResource.providedBy(value):  # pylint: disable=E1101
             result = resource_to_url(value)
         else:
             result = str(value)
         return result
-
-
-class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
-    """
-    Filter specification visitor building a SQL expression.
-    """
-
-    implements(IFilterSpecificationVisitor)
-
-    def __init__(self, entity_class, custom_clause_factories=None):
-        """
-        Constructs a SqlFilterSpecificationVisitor
-
-        :param entity_class: an entity class that is mapped with SQLAlchemy
-        :param custom_clause_factories: a map containing custom clause factory 
-          functions for selected (attribute name, operator) combinations.
-        """
-        FilterSpecificationVisitor.__init__(self)
-        self.__entity_class = entity_class
-        if custom_clause_factories is None:
-            custom_clause_factories = {}
-        self.__custom_clause_factories = custom_clause_factories
-
-    def visit_nullary(self, spec):
-        key = (spec.attr_name, spec.operator.name)
-        if key in self.__custom_clause_factories:
-            self._push(self.__custom_clause_factories[key](spec.attr_value))
-        else:
-            FilterSpecificationVisitor.visit_nullary(self, spec)
-
-    def _starts_with_op(self, spec):
-        return self.__build(spec.attr_name, 'startswith', spec.attr_value)
-
-    def _ends_with_op(self, spec):
-        return self.__build(spec.attr_name, 'endswith', spec.attr_value)
-
-    def _contains_op(self, spec):
-        return self.__build(spec.attr_name, 'contains', spec.attr_value)
-
-    def _contained_op(self, spec):
-        return self.__build(spec.attr_name, 'in_', spec.attr_value)
-
-    def _equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__eq__', spec.attr_value)
-
-    def _less_than_op(self, spec):
-        return self.__build(spec.attr_name, '__lt__', spec.attr_value)
-
-    def _less_than_or_equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__le__', spec.attr_value)
-
-    def _greater_than_op(self, spec):
-        return self.__build(spec.attr_name, '__gt__', spec.attr_value)
-
-    def _greater_than_or_equal_to_op(self, spec):
-        return self.__build(spec.attr_name, '__ge__', spec.attr_value)
-
-    def _in_range_op(self, spec):
-        from_value, to_value = spec.attr_value
-        return self.__build(spec.attr_name, 'between', from_value, to_value)
-
-    def _conjunction_op(self, spec, *expressions):
-        return sqlalchemy_and(*expressions)
-
-    def _disjunction_op(self, spec, *expressions):
-        return sqlalchemy_or(*expressions)
-
-    def _negation_op(self, spec, expression):
-        return sqlalchemy_not(expression)
-
-    def __build(self, attribute_name, sql_op, *values):
-        # Builds an SQL expression from the given (possibly dotted) 
-        # attribute name, SQL operation name, and values.
-        exprs = []
-        infos = OrmAttributeInspector.inspect(self.__entity_class,
-                                              attribute_name)
-        count = len(infos)
-        for idx, info in enumerate(infos):
-            kind, entity_attr = info
-            if idx == count - 1:
-                #
-                args = \
-                    [val.get_entity() if IResource.providedBy(val) else val # pylint: disable=E1101
-                     for val in values]
-                expr = getattr(entity_attr, sql_op)(*args)
-            elif kind == EntityAttributeKinds.ENTITY:
-                expr = entity_attr.has
-                exprs.insert(0, expr)
-            elif kind == EntityAttributeKinds.AGGREGATE:
-                expr = entity_attr.any
-                exprs.insert(0, expr)
-        return reduce(lambda g, h: h(g), exprs, expr)
-
-
-class EvalFilterSpecificationVisitor(FilterSpecificationVisitor):
-    """
-    Filter specification visitor building an evaluator for in-memory 
-    filtering.
-    """
-
-    implements(IFilterSpecificationVisitor)
-
-    @staticmethod
-    def __evaluator(spec, entities):
-        return [ent for ent in entities if spec.is_satisfied_by(ent)]
-
-    def _conjunction_op(self, spec, *expressions):
-        return partial(self.__evaluator, spec)
-
-    def _disjunction_op(self, spec, *expressions):
-        return partial(self.__evaluator, spec)
-
-    def _negation_op(self, spec, expression):
-        return partial(self.__evaluator, spec)
-
-    def _starts_with_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _ends_with_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _contains_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _contained_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _equal_to_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _less_than_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _less_than_or_equal_to_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _greater_than_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _greater_than_or_equal_to_op(self, spec):
-        return partial(self.__evaluator, spec)
-
-    def _in_range_op(self, spec):
-        return partial(self.__evaluator, spec)

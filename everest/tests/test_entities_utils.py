@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.entities.aggregates import MemoryAggregate
+from everest.datastores.memory import MemoryAggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
 from everest.entities.utils import identifier_from_slug

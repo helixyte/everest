@@ -8,7 +8,7 @@ Created on May 12, 2011.
 """
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implements  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -27,7 +27,7 @@ class Entity(object):
 
     id = None
 
-    def __init__(self, id=None): # redefining id pylint: disable=W0622
+    def __init__(self, id=None):  # redefining id pylint: disable=W0622
         if self.__class__ is Entity:
             raise NotImplementedError('Abstract class.')
         if not id is None:
@@ -80,21 +80,21 @@ class Aggregate(object):
         """
         if self.__class__ is Aggregate:
             raise NotImplementedError('Abstract class.')
-        #: Entity class (type) of the entities in this aggregate.
+        # : Entity class (type) of the entities in this aggregate.
         self.entity_class = entity_class
-        #: The session factory.
+        # : The session factory.
         self._session_factory = session_factory
-        #: Relationship of entities in this aggregate to a parent entity.
+        # : Relationship of entities in this aggregate to a parent entity.
         self._relationship = None
-        #: Specification for filtering
-        #: (:class:`everest.querying.specifications.FilterSpecification`).
-        #: Attribute names in this specification are relative to the entity. 
+        # : Specification for filtering
+        # : (:class:`everest.querying.specifications.FilterSpecification`).
+        # : Attribute names in this specification are relative to the entity.
         self._filter_spec = None
-        #: Specification for ordering
-        #: (:class:`everest.querying.specifications.OrderSpecification`).
-        #: Attribute names in this specification are relative to the entity. 
+        # : Specification for ordering
+        # : (:class:`everest.querying.specifications.OrderSpecification`).
+        # : Attribute names in this specification are relative to the entity.
         self._order_spec = None
-        #: Key for slicing. (:type:`slice`).
+        # : Key for slicing. (:type:`slice`).
         self._slice_key = None
 
     @classmethod
@@ -109,10 +109,12 @@ class Aggregate(object):
         Returns a clone of this aggregate.
         """
         clone = self.__class__.create(self.entity_class, self._session_factory)
+        # access protected member pylint: disable=W0212
         clone._relationship = self._relationship
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
+        # pylint: enable=W0212
         return clone
 
     def count(self):
@@ -220,48 +222,48 @@ class Aggregate(object):
         return self._session_factory()
 
     def _get_filter(self):
-        #: Returns the filter specification for this aggregate.
+        # : Returns the filter specification for this aggregate.
         return self._filter_spec
 
     def _set_filter(self, filter_spec):
-        #: Sets the filter specification for this aggregate.
+        # : Sets the filter specification for this aggregate.
         self._filter_spec = filter_spec
         self._apply_filter()
 
     filter = property(_get_filter, _set_filter)
 
     def _get_order(self):
-        #: Returns the order specification for this aggregate.
+        # : Returns the order specification for this aggregate.
         return self._order_spec
 
     def _set_order(self, order_spec):
-        #: Sets the order specification for this aggregate.
+        # : Sets the order specification for this aggregate.
         self._order_spec = order_spec
         self._apply_order()
 
     order = property(_get_order, _set_order)
 
     def _get_slice(self):
-        #: Returns the slice key for this aggregate.
+        # : Returns the slice key for this aggregate.
         return self._slice_key
 
     def _set_slice(self, slice_key):
-        #: Sets the slice key for this aggregate. Filter and order specs
-        #: are applied before the slicing operation is performed.
+        # : Sets the slice key for this aggregate. Filter and order specs
+        # : are applied before the slicing operation is performed.
         self._slice_key = slice_key
         self._apply_slice()
 
     slice = property(_get_slice, _set_slice)
 
     def _apply_filter(self):
-        #: Called when the filter specification has changed.
+        # : Called when the filter specification has changed.
         raise NotImplementedError('Abstract method')
 
     def _apply_order(self):
-        #: Called when the order specification has changed.
+        # : Called when the order specification has changed.
         raise NotImplementedError('Abstract method')
 
     def _apply_slice(self):
-        #: Called when the slice key has changed.
+        # : Called when the slice key has changed.
         raise NotImplementedError('Abstract method')
 

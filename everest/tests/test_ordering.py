@@ -5,12 +5,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 from everest.querying.ordering import BubbleSorter
-from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp.entities import FooEntity
 import random
+from everest.datastores.orm import SqlOrderSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderSpecificationTestCase',

@@ -6,6 +6,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2011.
 """
+from everest.datastores.memory import ObjectFilterSpecificationVisitor
+from everest.datastores.memory import ObjectOrderSpecificationVisitor
+from everest.datastores.orm import SqlFilterSpecificationVisitor
+from everest.datastores.orm import SqlOrderSpecificationVisitor
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
 from everest.interfaces import IRepository
@@ -17,15 +21,11 @@ from everest.messaging import UserMessageNotifier
 from everest.mime import get_registered_representer_names
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
-from everest.querying.filtering import EvalFilterSpecificationVisitor
-from everest.querying.filtering import SqlFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
-from everest.querying.ordering import EvalOrderSpecificationVisitor
-from everest.querying.ordering import SqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.renderers import RendererFactory
@@ -62,9 +62,9 @@ from pyramid.path import DottedNameResolver
 from pyramid.path import caller_package
 from pyramid.registry import Registry
 from pyramid_zcml import load_zcml
-from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
-from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface import alsoProvides as also_provides  # pylint: disable=E0611,F0401
+from zope.interface import classImplements as class_implements  # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by  # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -98,7 +98,7 @@ class Configurator(PyramidConfigurator):
             package = caller_package()
         call_setup = registry is None
         if call_setup:
-            # Need to initialize our registry here to call our setup_registry 
+            # Need to initialize our registry here to call our setup_registry
             # with the given custom option values rather than from the base
             # class constructor.
             # FIXME: There is some code duplication with Pyramid here.
@@ -135,13 +135,13 @@ class Configurator(PyramidConfigurator):
         """
         Convenience method for obtaining a utility from the registry.
         """
-        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
+        return self.registry.getUtility(*args, **kw)  # pylint: disable=E1103
 
     def query_registered_utilities(self, *args, **kw):
         """
         Convenience method for querying a utility from the registry.
         """
-        return self.registry.queryUtility(*args, **kw) # pylint: disable=E1103
+        return self.registry.queryUtility(*args, **kw)  # pylint: disable=E1103
 
     def setup_registry(self,
                        filter_specification_factory=None,
@@ -167,13 +167,14 @@ class Configurator(PyramidConfigurator):
         if sql_filter_specification_visitor is None:
             sql_filter_specification_visitor = SqlFilterSpecificationVisitor
         if eval_filter_specification_visitor is None:
-            eval_filter_specification_visitor = EvalFilterSpecificationVisitor
+            eval_filter_specification_visitor = \
+                                    ObjectFilterSpecificationVisitor
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         if sql_order_specification_visitor is None:
             sql_order_specification_visitor = SqlOrderSpecificationVisitor
         if eval_order_specification_visitor is None:
-            eval_order_specification_visitor = EvalOrderSpecificationVisitor
+            eval_order_specification_visitor = ObjectOrderSpecificationVisitor
         if url_converter is None:
             url_converter = ResourceUrlConverter
         PyramidConfigurator.setup_registry(self, **kw)
@@ -233,7 +234,7 @@ class Configurator(PyramidConfigurator):
         self.add_resource(IUserMessage, UserMessageMember, UserMessage,
                           repository=REPOSITORY_DOMAINS.SYSTEM,
                           collection_root_name='_messages')
-        self.registry.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
+        self.registry.registerUtility(UserMessageNotifier(),  # pylint:disable=E1103
                                       IUserMessageNotifier)
 
     def add_resource(self, interface, member, entity,
@@ -270,7 +271,7 @@ class Configurator(PyramidConfigurator):
             repo = repo_mgr.get(repository)
             if repo is None:
                 # Add a root repository with default configuration on
-                # the fly. 
+                # the fly.
                 repo_type = getattr(REPOSITORY_TYPES, repository, None)
                 if repo_type is None:
                     raise ValueError('Unknown repository type "%s".'
@@ -434,13 +435,13 @@ class Configurator(PyramidConfigurator):
         self.add_resource_view(resource, **kw)
 
     def _get_utility(self, *args, **kw):
-        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
+        return self.registry.getUtility(*args, **kw)  # pylint: disable=E1103
 
     def _register_utility(self, *args, **kw):
-        return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
+        return self.registry.registerUtility(*args, **kw)  # pylint: disable=E1103
 
     def _register_adapter(self, *args, **kw):
-        return self.registry.registerAdapter(*args, **kw) # pylint: disable=E1103
+        return self.registry.registerAdapter(*args, **kw)  # pylint: disable=E1103
 
     def _set_filter_specification_factory(self, filter_specification_factory):
         self._register_utility(filter_specification_factory,
@@ -596,7 +597,7 @@ class Configurator(PyramidConfigurator):
                         elif request_method == 'PUT':
                             vw = self.__make_view_factory(PutMemberView, kw)
                         elif request_method == 'DELETE':
-                            # The DELETE view is special as it does not have 
+                            # The DELETE view is special as it does not have
                             # to deal with representations.
                             vw = DeleteMemberView
                             register_sub_views = False
