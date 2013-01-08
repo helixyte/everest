@@ -6,9 +6,9 @@ Created on Jul 10, 2011.
 """
 from everest.datastores.orm import SqlFilterSpecificationVisitor
 from everest.datastores.orm import SqlOrderSpecificationVisitor
-from everest.orm import OrderClauseList
-from everest.orm import Session
-from everest.orm import reset_metadata
+from everest.datastores.orm.utils import OrderClauseList
+from everest.datastores.orm.utils import Session
+from everest.datastores.orm.utils import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory

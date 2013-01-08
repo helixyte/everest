@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 1, 2011.
 """
-from everest.orm import mapper
+from everest.datastores.orm.utils import mapper
 from everest.tests.testapp_db.entities import MyEntity
 from everest.tests.testapp_db.entities import MyEntityChild
 from everest.tests.testapp_db.entities import MyEntityGrandchild

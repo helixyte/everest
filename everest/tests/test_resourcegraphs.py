@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
-from everest.orm import OrmTestCaseMixin
+from everest.datastores.orm.utils import OrmTestCaseMixin
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
 from everest.testing import TestCaseWithConfiguration

@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 18, 2012.
 """
 from everest.configuration import Configurator
-from everest.datastores.memory import MemoryAggregate
+from everest.datastores.memory import Aggregate
 from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime
@@ -134,7 +134,7 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
                            NotAMember, CsvMime)
 
     def test_custom_repository(self):
-        class MyMemoryAggregate(MemoryAggregate):
+        class MyMemoryAggregate(Aggregate):
             pass
         reg = self._registry
         config = Configurator(registry=reg)

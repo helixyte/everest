@@ -4,8 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
 """
-from everest.datastores.memory import InMemoryDataStore
-from everest.datastores.memory import InMemorySession
+from everest.datastores.memory import DataStore
+from everest.datastores.memory import Session
 from everest.entities.base import Entity
 from everest.mime import CsvMime
 from everest.repository import REPOSITORY_TYPES
@@ -34,22 +34,22 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BasicDataStoreTestCase',
            'FileSystemEmptyDataStoreTestCase',
            'FileSystemDataStoreTestCase',
-           'InMemorySessionTestCase',
+           'MemorySessionTestCase',
            ]
 
 
 class BasicDataStoreTestCase(Pep8CompliantTestCase):
     def test_args(self):
-        self.assert_raises(ValueError, InMemoryDataStore, 'DUMMY',
+        self.assert_raises(ValueError, DataStore, 'DUMMY',
                            autocommit=True, join_transaction=True)
 
 
-class InMemorySessionTestCase(Pep8CompliantTestCase):
+class MemorySessionTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)
-        self._entity_store = InMemoryDataStore('DUMMY', autoflush=True)
-        self._session = InMemorySession(self._entity_store)
+        self._entity_store = DataStore('DUMMY', autoflush=True)
+        self._session = Session(self._entity_store)
 
     def test_with_autoflush(self):
         ent = _MyEntity()

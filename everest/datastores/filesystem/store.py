@@ -1,13 +1,12 @@
 """
-File system data store.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-Created on Jan 5, 2013.
+Created on Jan 7, 2013.
 """
-from everest.datastores.memory import InMemoryDataStore
-from everest.datastores.memory import InMemorySessionFactory
+from everest.datastores.memory.store import MemoryDataStore
+from everest.datastores.memory.store import MemorySessionFactory
 from everest.mime import CsvMime
 from everest.resources.io import dump_resource
 from everest.resources.io import get_read_collection_path
@@ -18,12 +17,11 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import new_stage_collection
 import os
 
-__docformat__ = 'reStructuredText en'
 __all__ = ['FileSystemDataStore',
            ]
 
 
-class FileSystemDataStore(InMemoryDataStore):
+class FileSystemDataStore(MemoryDataStore):
     """
     Data store using the file system as storage.
     
@@ -31,12 +29,12 @@ class FileSystemDataStore(InMemoryDataStore):
     files into the root repository. Each commit operation writes the specified
     resource back to file.
     """
-    _configurables = InMemoryDataStore._configurables \
+    _configurables = MemoryDataStore._configurables \
                      + ['directory', 'content_type']
 
     def __init__(self, name,
                  autoflush=True, join_transaction=True, autocommit=False):
-        InMemoryDataStore.__init__(self, name, autoflush=autoflush,
+        MemoryDataStore.__init__(self, name, autoflush=autoflush,
                                     join_transaction=join_transaction,
                                     autocommit=autocommit)
         self.configure(directory=os.getcwd(), content_type=CsvMime,
@@ -48,13 +46,13 @@ class FileSystemDataStore(InMemoryDataStore):
         the store.
         """
         with self._cache_lock:
-            InMemoryDataStore.commit(self, session)
+            MemoryDataStore.commit(self, session)
             if self.is_initialized:
                 for entity_cls in session.dirty.keys():
                     self.__dump_entities(entity_cls)
 
     def _make_session_factory(self):
-        return InMemorySessionFactory(self)
+        return MemorySessionFactory(self)
 
     def __load_entities(self, entity_class):
         coll_cls = get_collection_class(entity_class)

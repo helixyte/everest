@@ -5,18 +5,18 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 1, 2012.
 """
 from everest.entities.interfaces import IEntity
-from everest.orm import as_slug_expression
-from everest.orm import commit_veto
-from everest.orm import get_engine
-from everest.orm import get_metadata
-from everest.orm import hybrid_descriptor
-from everest.orm import is_engine_initialized
-from everest.orm import is_metadata_initialized
-from everest.orm import mapper
-from everest.orm import reset_engines
-from everest.orm import reset_metadata
-from everest.orm import set_engine
-from everest.orm import set_metadata
+from everest.datastores.orm.utils import as_slug_expression
+from everest.datastores.orm.utils import commit_veto
+from everest.datastores.orm.utils import get_engine
+from everest.datastores.orm.utils import get_metadata
+from everest.datastores.orm.utils import hybrid_descriptor
+from everest.datastores.orm.utils import is_engine_initialized
+from everest.datastores.orm.utils import is_metadata_initialized
+from everest.datastores.orm.utils import mapper
+from everest.datastores.orm.utils import reset_engines
+from everest.datastores.orm.utils import reset_metadata
+from everest.datastores.orm.utils import set_engine
+from everest.datastores.orm.utils import set_metadata
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.testapp_db.entities import MyEntity
 from pyramid.httpexceptions import HTTPOk

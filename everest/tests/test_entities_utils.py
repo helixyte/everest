@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.datastores.memory import MemoryAggregate
+from everest.datastores.memory import Aggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
 from everest.entities.utils import identifier_from_slug
@@ -25,7 +25,7 @@ class EntitiesUtilsTestCase(EntityTestCase):
 
     def test_get_root_aggregate(self):
         agg = get_root_aggregate(IFoo)
-        self.assert_true(isinstance(agg, MemoryAggregate))
+        self.assert_true(isinstance(agg, Aggregate))
 
     def test_get_entity_class(self):
         self.assert_true(get_entity_class(IFoo), FooEntity)

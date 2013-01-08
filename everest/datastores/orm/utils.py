@@ -1,11 +1,12 @@
 """
-ORM related services.
+Utilities for the RDBMS backend.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-Created on Oct 7, 2011.
+Created on Jan 7, 2013.
 """
+from everest.datastores.orm import Session
 from everest.entities.system import UserMessage
 from inspect import isdatadescriptor
 from sqlalchemy import Column
@@ -17,19 +18,14 @@ from sqlalchemy import func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import clear_mappers as sa_clear_mappers
 from sqlalchemy.orm import mapper as sa_mapper
-from sqlalchemy.orm import scoped_session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
-from sqlalchemy.orm.session import Session as SaSession
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AutocommittingSession',
-           'OrderClauseList',
+__all__ = ['OrderClauseList',
            'OrmTestCaseMixin',
-           'Session',
            'as_slug_expression',
            'clear_mappers',
            'commit_veto',
@@ -123,11 +119,6 @@ is_metadata_initialized = _MetaDataManager.is_initialized
 reset_metadata = _MetaDataManager.reset
 
 
-#: The scoped session maker. Instantiate this to obtain a thread local
-#: session instance.
-Session = scoped_session(sessionmaker())
-
-
 class OrderClauseList(ClauseList):
     """
     Custom clause list for ORDER BY clauses.
@@ -136,31 +127,6 @@ class OrderClauseList(ClauseList):
     """
     def self_group(self, against=None):
         return self
-
-
-class AutocommittingSession(SaSession):
-    """
-    A session in 'autocommit' mode that automatically commits on 
-    :method:`add`, :method:`delete` and :method:`merge` operations.
-    """
-    def __init__(self, **kw):
-        kw['autocommit'] = True
-        SaSession.__init__(self, **kw)
-
-    def add(self, entity):
-        self.begin()
-        SaSession.add(self, entity)
-        self.commit()
-
-    def delete(self, entity):
-        self.begin()
-        SaSession.delete(self, entity)
-        self.commit()
-
-    def merge(self, entity, load=True):
-        self.begin()
-        SaSession.merge(self, entity, load=load)
-        self.commit()
 
 
 def commit_veto(request, response): # unused request arg pylint: disable=W0613
@@ -243,7 +209,7 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
     else:
         cls_expr = slug_expression
-    # If this is a polymorphic class, a base class may already have a 
+    # If this is a polymorphic class, a base class may already have a
     # hybrid descriptor set as slug attribute.
     slug_descr = None
     for base_cls in class_.__mro__:

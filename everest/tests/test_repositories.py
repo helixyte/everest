@@ -4,8 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.datastores.memory import InMemoryDataStore
-from everest.datastores.memory import MemoryAggregate
+from everest.datastores.memory import Aggregate
+from everest.datastores.memory import DataStore
 from everest.entities.repository import EntityRepository
 from everest.entities.system import UserMessage
 from everest.entities.utils import get_root_aggregate
@@ -58,8 +58,8 @@ class EntityRepositoryTestCase(EntityTestCase, _RepositoryBaseTestCaseMixin):
     package_name = 'everest.tests.testapp'
 
     def test_basics(self):
-        ent_store = InMemoryDataStore('test')
-        ent_repo = EntityRepository(ent_store, MemoryAggregate)
+        ent_store = DataStore('test')
+        ent_repo = EntityRepository(ent_store, Aggregate)
         ent_repo.initialize()
         self._test_repo(ent_repo, IFoo, IBar)
 

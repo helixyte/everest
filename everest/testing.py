@@ -6,20 +6,19 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 2, 2011.
 """
-from everest import orm
 from everest.configuration import Configurator
+from everest.datastores.orm.utils import Session
+from everest.datastores.orm.utils import get_engine
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
 from everest.interfaces import IRepositoryManager
-from everest.orm import Session
-from everest.orm import get_engine
 from everest.repository import REPOSITORY_TYPES
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
-from paste.deploy import loadapp # pylint: disable=E0611,F0401
+from paste.deploy import loadapp  # pylint: disable=E0611,F0401
 from pyramid.registry import Registry
 from pyramid.testing import DummyRequest
 from webtest import TestApp
@@ -93,14 +92,14 @@ class TestCaseWithIni(Pep8CompliantTestCase):
         `ini_file_path` and `ini_section_name` class variables were set up 
         sensibly.  
     """
-    #: The name of the package where the tests reside. May be overridden in
-    #: derived classes.
+    # : The name of the package where the tests reside. May be overridden in
+    # : derived classes.
     package_name = 'everest'
-    #: The path to the application initialization (ini) file name. Override
-    #: as needed in derived classes.
+    # : The path to the application initialization (ini) file name. Override
+    # : as needed in derived classes.
     ini_file_path = None
-    #: The section name in the ini file to look for settings. Override as 
-    #: needed in derived classes.
+    # : The section name in the ini file to look for settings. Override as
+    # : needed in derived classes.
     ini_section_name = None
 
     def set_up(self):
@@ -121,7 +120,7 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
 
     :ivar config: The registry configurator. This is set in the set_up method.
     """
-    #: The name of a ZCML configuration file to use.
+    # : The name of a ZCML configuration file to use.
     config_file_name = 'configure.zcml'
 
     def set_up(self):
@@ -247,7 +246,7 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
             pass
 
     def _load_custom_zcml(self):
-        # This is meant as a hook for subclasses to slip in custom ZCML 
+        # This is meant as a hook for subclasses to slip in custom ZCML
         # after the Zope machinery has been set up but before the service
         # is started.
         pass
@@ -279,7 +278,7 @@ class FunctionalTestCase(TestCaseWithIni):
     
     :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test. 
     """
-    #: The name of the application to test.
+    # : The name of the application to test.
     app_name = None
 
     def set_up(self):
@@ -332,8 +331,8 @@ class DummyContext:
         self.resolved = resolved
         self.package = None
 
-    def action(self, discriminator, callable=None, # pylint: disable=W0622
-               args=None, kw=None, order=0): # pylint: disable=W0613
+    def action(self, discriminator, callable=None,  # pylint: disable=W0622
+               args=None, kw=None, order=0):  # pylint: disable=W0613
         if args is None:
             args = ()
         if kw is None:
@@ -348,7 +347,7 @@ class DummyContext:
     def path(self, path):
         return path
 
-    def resolve(self, dottedname): # dottedname not used pylint: disable=W0613
+    def resolve(self, dottedname):  # dottedname not used pylint: disable=W0613
         return self.resolved
 
 
@@ -414,13 +413,13 @@ class OrmContextManager(object):
         self.__connection = engine.connect()
         self.__transaction = self.__connection.begin()
         # Configure the autoflush behavior of the session.
-        self.__old_autoflush_flag = orm.Session.autoflush #pylint:disable=E1101
-        orm.Session.remove()
-        orm.Session.configure(autoflush=self.__autoflush)
+        self.__old_autoflush_flag = Session.autoflush  # pylint:disable=E1101
+        Session.remove()
+        Session.configure(autoflush=self.__autoflush)
         # Throw out the Zope transaction manager for testing.
-        orm.Session.configure(extension=None)
+        Session.configure(extension=None)
         # Create a new session for the tests.
-        self.__session = orm.Session(bind=self.__connection)
+        self.__session = Session(bind=self.__connection)
         return self.__session
 
     def __exit__(self, ext_type, value, tb):
@@ -429,9 +428,9 @@ class OrmContextManager(object):
         self.__transaction.rollback()
         self.__connection.close()
         # Remove the session we created.
-        orm.Session.remove()
+        Session.remove()
         # Restore autoflush flag.
-        orm.Session.configure(autoflush=self.__old_autoflush_flag)
+        Session.configure(autoflush=self.__old_autoflush_flag)
 
 
 def with_orm(autoflush=True, init_callback=None):

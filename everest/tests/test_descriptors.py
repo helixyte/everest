@@ -4,9 +4,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-from everest.orm import OrmTestCaseMixin
+from everest.datastores.orm import SqlFilterSpecificationVisitor
+from everest.datastores.orm.querying import OrmAttributeInspector
+from everest.datastores.orm.utils import OrmTestCaseMixin
 from everest.querying.specifications import FilterSpecificationFactory
-from everest.querying.utils import OrmAttributeInspector
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -26,6 +27,7 @@ from everest.resources.descriptors import terminal_attribute
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
+from everest.resources.utils import resource_to_url
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.testapp_db.entities import MyEntity
@@ -38,9 +40,7 @@ from everest.tests.testapp_db.resources import MyEntityMember
 from everest.tests.testapp_db.resources import MyEntityParentMember
 from everest.tests.testapp_db.testing import create_collection
 from everest.tests.testapp_db.testing import create_entity
-from everest.resources.utils import resource_to_url
 import datetime
-from everest.datastores.orm import SqlFilterSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
@@ -48,7 +48,7 @@ __all__ = ['AttributesTestCase',
            ]
 
 ATTRIBUTE_NAMES = ['id', 'parent', 'nested_parent', 'children', 'text',
-                     'text_rc', 'number', 'date_time', 'parent_text']
+                   'text_rc', 'number', 'date_time', 'parent_text']
 
 
 class AttributesTestCase(Pep8CompliantTestCase):

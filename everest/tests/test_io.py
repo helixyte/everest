@@ -6,8 +6,8 @@ Created on Feb 21, 2012.
 """
 from StringIO import StringIO
 from everest.mime import CsvMime
-from everest.orm import OrmTestCaseMixin
-from everest.orm import reset_metadata
+from everest.datastores.orm.utils import OrmTestCaseMixin
+from everest.datastores.orm.utils import reset_metadata
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph

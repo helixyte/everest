@@ -6,7 +6,7 @@ Created on Nov 17, 2011.
 """
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
-from everest.orm import reset_metadata
+from everest.datastores.orm.utils import reset_metadata
 from everest.renderers import RendererFactory
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class

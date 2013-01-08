@@ -6,11 +6,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 13, 2012.
 """
-from everest.datastores.filesystem import FileSystemDataStore
-from everest.datastores.memory import InMemoryDataStore
-from everest.datastores.orm import OrmDataStore
-from everest.datastores.memory import MemoryAggregate
-from everest.datastores.orm import OrmAggregate
+from everest.datastores.filesystem import DataStore as FileSystemDataStore
+from everest.datastores.memory import DataStore as MemoryDataStore
+from everest.datastores.orm import DataStore as OrmDataStore
+from everest.datastores.memory import Aggregate as MemoryAggregate
+from everest.datastores.orm import Aggregate as OrmAggregate
 from everest.entities.repository import EntityRepository
 from everest.repository import REPOSITORY_DOMAINS
 from everest.repository import REPOSITORY_TYPES
@@ -121,7 +121,7 @@ class RepositoryManager(object):
             autocommit = name == REPOSITORY_DOMAINS.SYSTEM
         if repo_type == REPOSITORY_TYPES.MEMORY:
             if entity_store_class is None:
-                entity_store_class = InMemoryDataStore
+                entity_store_class = MemoryDataStore
             if aggregate_class is None:
                 aggregate_class = MemoryAggregate
         elif repo_type == REPOSITORY_TYPES.ORM:
