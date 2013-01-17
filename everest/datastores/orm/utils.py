@@ -22,6 +22,7 @@ from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import cast
 from threading import Lock
+from everest.datastores.utils import GlobalObjectManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderClauseList',
@@ -30,79 +31,16 @@ __all__ = ['OrderClauseList',
            'clear_mappers',
            'commit_veto',
            'empty_metadata',
-           'get_engine',
            'get_metadata',
-           'is_engine_initialized',
            'is_metadata_initialized',
            'map_system_entities',
            'mapper',
-           'reset_engines',
            'reset_metadata',
-           'set_engine',
            'set_metadata',
            ]
 
 
-class _GlobalObjectManager(object):
-    _globs = None
-    _lock = None
-
-    @classmethod
-    def set(cls, key, obj):
-        """
-        Sets the given object as global object for the given key.
-        """
-        with cls._lock:
-            if not cls._globs.get(key) is None:
-                raise ValueError('Duplicate key "%s".' % key)
-            cls._globs[key] = obj
-        return cls._globs[key]
-
-    @classmethod
-    def get(cls, key):
-        """
-        Returns the global object for the given key.
-        
-        :raises KeyError: if no global object was initialized for the given 
-          key.
-        """
-        with cls._lock:
-            return cls._globs[key]
-
-    @classmethod
-    def is_initialized(cls, key):
-        """
-        Checks if a global object with the given key has been initialized.
-        """
-        with cls._lock:
-            return not cls._globs.get(key) is None
-
-    @classmethod
-    def reset(cls):
-        """
-        Discards all global objects held by this manager.
-        """
-        with cls._lock:
-            cls._globs.clear()
-
-
-class _DbEngineManager(_GlobalObjectManager):
-    _globs = {}
-    _lock = Lock()
-
-    @classmethod
-    def reset(cls):
-        for engine in cls._globs.values():
-            engine.dispose()
-        super(_DbEngineManager, cls).reset()
-
-get_engine = _DbEngineManager.get
-set_engine = _DbEngineManager.set
-is_engine_initialized = _DbEngineManager.is_initialized
-reset_engines = _DbEngineManager.reset
-
-
-class _MetaDataManager(_GlobalObjectManager):
+class _MetaDataManager(GlobalObjectManager):
     _globs = {}
     _lock = Lock()
 

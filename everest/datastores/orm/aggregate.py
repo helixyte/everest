@@ -1,4 +1,5 @@
 """
+Aggregate for the ORM backend.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -43,7 +44,7 @@ class OrmAggregate(Aggregate):
             ent = query.filter_by(id=id_key).one()
         except NoResultFound:
             ent = None
-        except MultipleResultsFound:  # pragma: no cover
+        except MultipleResultsFound: # pragma: no cover
             raise DuplicateException('Duplicates found for ID "%s".' % id_key)
         return ent
 
@@ -53,7 +54,7 @@ class OrmAggregate(Aggregate):
             ent = query.filter_by(slug=slug).one()
         except NoResultFound:
             ent = None
-        except MultipleResultsFound:  # pragma: no cover
+        except MultipleResultsFound: # pragma: no cover
             raise DuplicateException('Duplicates found for slug "%s".' % slug)
         return ent
 
@@ -95,7 +96,7 @@ class OrmAggregate(Aggregate):
     def _apply_slice(self):
         pass
 
-    def _query_generator(self, query, key):  # unused pylint: disable=W0613
+    def _query_generator(self, query, key): # unused pylint: disable=W0613
         return query
 
     def _filter_visitor_factory(self):

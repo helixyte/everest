@@ -9,12 +9,12 @@ Created on Jan 7, 2013.
 from everest.datastores.base import DataStore
 from everest.datastores.orm.session import OrmSessionFactory
 from everest.datastores.orm.utils import empty_metadata
-from everest.datastores.orm.utils import get_engine
+from everest.datastores.utils import get_engine
 from everest.datastores.orm.utils import get_metadata
-from everest.datastores.orm.utils import is_engine_initialized
+from everest.datastores.utils import is_engine_initialized
 from everest.datastores.orm.utils import is_metadata_initialized
 from everest.datastores.orm.utils import map_system_entities
-from everest.datastores.orm.utils import set_engine
+from everest.datastores.utils import set_engine
 from everest.datastores.orm.utils import set_metadata
 from sqlalchemy.engine import create_engine
 from sqlalchemy.pool import StaticPool

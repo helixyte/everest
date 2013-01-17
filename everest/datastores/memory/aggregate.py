@@ -13,7 +13,8 @@ from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['MemoryAggregate',
+           ]
 
 
 class MemoryAggregate(Aggregate):
@@ -132,6 +133,6 @@ class MemoryAggregate(Aggregate):
         elif len(matching_ents) == 0:
             ent = None
         else:
-            raise DuplicateException('Duplicates found for "%s" value of '  # pragma: no cover
+            raise DuplicateException('Duplicates found for "%s" value of ' # pragma: no cover
                                      '"%s" attribue.' % (value, attr))
         return ent

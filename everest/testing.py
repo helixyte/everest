@@ -8,7 +8,7 @@ Created on Nov 2, 2011.
 """
 from everest.configuration import Configurator
 from everest.datastores.orm.utils import Session
-from everest.datastores.orm.utils import get_engine
+from everest.datastores.utils import get_engine
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
 from everest.interfaces import IRepositoryManager
