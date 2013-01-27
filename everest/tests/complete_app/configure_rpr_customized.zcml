@@ -1,0 +1,218 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+
+    <!-- Include special directives. -->
+
+    <include package="everest.includes" />
+
+    <!-- Utilities -->
+
+    <!-- Repositories. -->
+
+    <!-- Representers. -->
+
+    <representer content_type='everest.mime.XmlMime'>
+        <option
+            name="xml_schema"
+            value="everest:tests/complete_app/MyEntity.xsd" />
+        <option
+            name="xml_ns"
+            value="http://xml.test.org/tests" />
+        <option
+            name="xml_prefix"
+            value="ent" />
+    </representer>
+
+    <!-- Resources. -->
+
+    <resource
+        interface='.interfaces.IMyEntityParent'
+        member=".resources.MyEntityParentMember"
+        entity=".entities.MyEntityParent"
+        collection_root_name="my-entity-parents"
+    >
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="member"
+        >
+            <option
+                name="xml_tag"
+                value="myentityparent" />
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="collection"
+        >
+            <option
+                name="xml_tag"
+                value="myentityparents" />
+        </representer>
+    </resource>
+    <resource
+        interface='.interfaces.IMyEntity'
+        member=".resources.MyEntityMember"
+        entity=".entities.MyEntity"
+        collection_root_name="my-entities"
+    >
+        <representer content_type='everest.mime.CsvMime'>
+            <attribute name="children">
+                <option
+                    name="ignore"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+                <option
+                    name="write_as_link"
+                    value="true"
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+        </representer>
+        <representer content_type="everest.mime.XmlMime">
+            <attribute name="nested_parent">
+                <option 
+                    name="ignore"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="text_rc">
+                <option 
+                    name="ignore"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="parent_text">
+                <option 
+                    name="ignore"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="children">
+                <option
+                    name="repr_name"
+                    value="myentitychildren" />
+                <option 
+                    name="ignore"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+                <option 
+                    name="write_as_link"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="children.children">
+                <option 
+                    name="ignore"
+                    value="false" 
+                    type="zope.configuration.fields.Bool" />
+                <option 
+                    name="write_as_link"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="parent">
+                <option
+                    name="repr_name"
+                    value="myentityparent" />
+            </attribute>
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="member"
+        >
+            <option
+                name="xml_tag"
+                value="myentity" />
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="collection"
+        >
+            <option
+                name="xml_tag"
+                value="myentities" />
+        </representer>
+    </resource>
+
+    <resource
+        interface='.interfaces.IMyEntityChild'
+        member=".resources.MyEntityChildMember"
+        entity=".entities.MyEntityChild"
+        collection_root_name="my-entity-children"
+    >
+        <representer content_type="everest.mime.XmlMime">
+            <attribute name="parent">
+                <option
+                    name="repr_name"
+                    value="myentity" />
+            </attribute>
+            <attribute name="children">
+                <option
+                    name="repr_name"
+                    value="myentitygrandchildren" />
+            </attribute>
+            <attribute name="no_backref_children">
+                <option 
+                    name="ignore"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+            <attribute name="text_rc">
+                <option 
+                    name="ignore"
+                    value="true" 
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="member"
+        >
+            <option
+                name="xml_tag"
+                value="myentitychild" />
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="collection"
+        >
+            <option
+                name="xml_tag"
+                value="myentitychildren" />
+        </representer>
+    </resource>
+    <resource
+        interface='.interfaces.IMyEntityGrandchild'
+        member=".resources.MyEntityGrandchildMember"
+        entity=".entities.MyEntityGrandchild"
+        collection_root_name="my-entity-grandchildren"
+    >
+        <representer content_type="everest.mime.XmlMime">
+            <attribute name="parent">
+                <option
+                    name="repr_name"
+                    value="myentitychild" />
+            </attribute>
+            <attribute name="text_rc">
+                <option
+                    name="ignore"
+                    value="true"
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="member"
+        >
+            <option
+                name="xml_tag"
+                value="myentitygrandchild" />
+        </representer>
+        <representer
+            content_type="everest.mime.XmlMime"
+            kind="collection"
+        >
+            <option
+                name="xml_tag"
+                value="myentitygrandchildren" />
+        </representer>
+    </resource>
+
+</configure>

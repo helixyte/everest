@@ -4,23 +4,24 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
 """
-from everest.datastores.memory import DataStore
-from everest.datastores.memory import Session
+from everest.entities.base import Aggregate
 from everest.entities.base import Entity
 from everest.mime import CsvMime
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.memory import Repository
+from everest.repositories.memory import Session
 from everest.resources.io import get_collection_name
 from everest.resources.io import get_read_collection_path
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.entities import MyEntity
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityChild
-from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
-from everest.tests.testapp_db.interfaces import IMyEntityParent
-from everest.tests.testapp_db.resources import MyEntityMember
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityGrandchild
+from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.resources import MyEntityMember
 from everest.utils import get_repository_manager
 import gc
 import glob
@@ -31,16 +32,16 @@ import threading
 import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BasicDataStoreTestCase',
-           'FileSystemEmptyDataStoreTestCase',
-           'FileSystemDataStoreTestCase',
+__all__ = ['BasicRepositoryTestCase',
+           'FileSystemEmptyRepositoryTestCase',
+           'FileSystemRepositoryTestCase',
            'MemorySessionTestCase',
            ]
 
 
-class BasicDataStoreTestCase(Pep8CompliantTestCase):
+class BasicRepositoryTestCase(Pep8CompliantTestCase):
     def test_args(self):
-        self.assert_raises(ValueError, DataStore, 'DUMMY',
+        self.assert_raises(ValueError, Repository, 'DUMMY', Aggregate,
                            autocommit=True, join_transaction=True)
 
 
@@ -48,7 +49,7 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)
-        self._entity_store = DataStore('DUMMY', autoflush=True)
+        self._entity_store = Repository('DUMMY', Aggregate, autoflush=True)
         self._session = Session(self._entity_store)
 
     def test_with_autoflush(self):
@@ -222,18 +223,18 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_raises(ValueError, self._session.commit)
 
 
-class _FileSystemDataStoreTestCaseMixin(object):
+class _FileSystemRepositoryTestCaseMixin(object):
     _data_dir = None
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_fs.zcml'
 
     def _set_data_dir(self):
         self._data_dir = os.path.join(os.path.dirname(__file__),
-                                       'testapp_db', 'data')
+                                       'complete_app', 'data')
 
 
-class FileSystemEmptyDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
-                                         ResourceTestCase):
+class FileSystemEmptyRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
+                                        ResourceTestCase):
     def set_up(self):
         self._set_data_dir()
         ResourceTestCase.set_up(self)
@@ -249,7 +250,7 @@ class FileSystemEmptyDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
             self.assert_equal(len(coll), 0)
 
 
-class FileSystemDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
+class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
                                     ResourceTestCase):
 
     def set_up(self):
@@ -258,7 +259,7 @@ class FileSystemDataStoreTestCase(_FileSystemDataStoreTestCaseMixin,
         try:
             ResourceTestCase.set_up(self)
         except Exception:
-            self.__remove_data_files()  # Always remove the copied files.
+            self.__remove_data_files() # Always remove the copied files.
             raise
 
     def tear_down(self):

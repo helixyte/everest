@@ -4,25 +4,25 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 31, 2012.
 """
-from everest.interfaces import IRepositoryManager
+from everest.repositories.interfaces import IRepositoryManager
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
 from everest.relationship import Relationship
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_TYPES
 from everest.testing import EntityTestCase
-from everest.tests.testapp_db.entities import MyEntityChild
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityChild
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.complete_app.entities import MyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.testing import create_entity
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregateTestCase',
-           'OrmAggregateTestCase',
+           'RdbAggregateTestCase',
            ]
 
 
 class _AggregateTestCase(EntityTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
 
     def _test_get_by_id_and_slug(self, ent, agg_children):
         self.assert_true(agg_children.get_by_id(ent.children[0].id)
@@ -110,16 +110,16 @@ class _AggregateTestCase(EntityTestCase):
     def _make_one(self):
         rc_repo = self._get_repo()
         ent = create_entity()
-        agg = rc_repo.get(IMyEntity).get_aggregate()
+        agg = rc_repo.get_aggregate(IMyEntity)
         agg.add(ent)
-        agg_children = rc_repo.get(IMyEntityChild).get_aggregate()
+        agg_children = rc_repo.get_aggregate(IMyEntityChild)
         for child in ent.children:
             agg_children.add(child)
         return ent, agg_children
 
 
 class MemoryAggregateTestCase(_AggregateTestCase):
-    config_file_name = 'configure_no_orm.zcml'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
@@ -154,18 +154,18 @@ class MemoryAggregateTestCase(_AggregateTestCase):
         self.assert_equal(len(ent.children), 3)
 
 
-# FIXME: This should inherit from OrmTestCaseMixin. However, for some reason
-#        doing so breaks subsequent ORM test cases with an OperationalError
-#        "ambiguous column" from SA.
-class OrmAggregateTestCase(_AggregateTestCase):
+# FIXME: This should inherit from RdbTestCaseMixin. However, for some reason
+#        doing so breaks subsequent RDB test cases with an OperationalError
+#        "ambiguous column" from SqlAlchemy.
+class RdbAggregateTestCase(_AggregateTestCase):
     config_file_name = 'configure.zcml'
 
     def _get_repo(self):
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
-        return repo_mgr.get(REPOSITORY_TYPES.ORM)
+        return repo_mgr.get(REPOSITORY_TYPES.RDB)
 
     def test_defaults_empty(self):
         agg_children = self._make_one()[1]
-        agg_children._search_mode = True
+        agg_children._search_mode = True # pylint: disable=W0212
         self.assert_equal(agg_children.count(), 0)
         self.assert_equal(len(list(agg_children.iterator())), 0)

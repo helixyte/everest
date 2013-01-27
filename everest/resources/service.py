@@ -6,7 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 27, 2011.
 """
-from everest.repository import as_repository
+from everest.repositories.utils import as_repository
 from everest.resources.base import Resource
 from everest.resources.interfaces import IService
 from zope.interface import implements # pylint: disable=E0611,F0401
@@ -69,7 +69,9 @@ class Service(Resource):
         """
         irc = self.__collections[key]
         repo = as_repository(irc)
-        return repo.get(irc)
+        coll = repo.get_collection(irc)
+        coll.__parent__ = self
+        return coll
 
     def __len__(self):
         return len(self.__collections)
@@ -84,20 +86,19 @@ class Service(Resource):
 
     def add(self, irc):
         repo = as_repository(irc)
-        coll = repo.get(irc)
+        coll = repo.get_collection(irc)
         if coll.__name__ in self.__collections:
             raise ValueError('Root collection for collection name %s '
                              ' already exists.' % coll.__name__)
-        # We replace the repository collection with a clone that has the
-        # service as the parent so that URL generation works.
-        coll.__parent__ = self
-        repo.set(irc, coll)
-        # 
+        # We need to tell the repository that the service object should be
+        # set as the parent for the newly created collection.
+        repo.set_collection_parent(irc, self)
+        # Update the collection name -> registered resource mapping.
         self.__collections[coll.__name__] = irc
 
     def remove(self, irc):
         repo = as_repository(irc)
-        coll = repo.get(irc)
+        coll = repo.get_collection(irc)
         del self.__collections[coll.__name__]
 
     def get(self, name, default=None):

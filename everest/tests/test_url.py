@@ -7,9 +7,9 @@ Created on Jun 1, 2012.
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.testing import create_collection
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.testing import create_collection
+from everest.tests.complete_app.testing import create_entity
 from everest.resources.utils import resource_to_url
 from everest.resources.utils import url_to_resource
 from urlparse import urlparse
@@ -20,8 +20,8 @@ __all__ = ['UrlTestCase',
 
 
 class UrlTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def set_up(self):
         ResourceTestCase.set_up(self)

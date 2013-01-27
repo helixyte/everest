@@ -15,9 +15,9 @@ from everest.representers.xml import XML_NAMESPACE_OPTION
 from everest.representers.xml import XML_TAG_OPTION
 from everest.resources.utils import get_collection_class
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.testing import create_entity
 from everest.tests.test_entities import MyEntity
 from everest.representers.dataelements import LinkedDataElement
 
@@ -27,7 +27,7 @@ __all__ = ['MappingTestCase',
 
 
 class MappingTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_rpr.zcml'
 
     def test_defaults(self):

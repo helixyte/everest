@@ -8,9 +8,9 @@ from everest.querying.ordering import BubbleSorter
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
 from everest.testing import Pep8CompliantTestCase
-from everest.tests.testapp.entities import FooEntity
+from everest.tests.simple_app.entities import FooEntity
 import random
-from everest.datastores.orm import SqlOrderSpecificationVisitor
+from everest.repositories.rdb import SqlOrderSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrderSpecificationTestCase',

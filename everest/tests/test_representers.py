@@ -39,13 +39,13 @@ from everest.resources.utils import new_stage_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.testing import TestCaseWithConfiguration
-from everest.tests.testapp_db.entities import MyEntity
-from everest.tests.testapp_db.entities import MyEntityParent
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityParent
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.resources import MyEntityParentMember
-from everest.tests.testapp_db.testing import create_collection
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.resources import MyEntityParentMember
+from everest.tests.complete_app.testing import create_collection
 from everest.resources.utils import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
@@ -63,8 +63,8 @@ __all__ = ['AttributesTestCase',
 
 
 class RepresenterRegistryTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_register_representer_class(self):
         rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
@@ -103,8 +103,8 @@ class RepresenterRegistryTestCase(ResourceTestCase):
 
 
 class AttributesTestCase(Pep8CompliantTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_defaults(self):
         rc_attr = MyEntityMember.get_attributes()['number']
@@ -133,8 +133,8 @@ class AttributesTestCase(Pep8CompliantTestCase):
 
 
 class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_lazy_loading_cornercases(self):
         # Passing no _loader map to constructor raises ValueError.
@@ -270,8 +270,8 @@ class _RepresenterTestCase(ResourceTestCase):
 
 
 class JsonRepresenterTestCase(_RepresenterTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
     content_type = JsonMime
 
     def test_json_with_defaults(self):
@@ -311,8 +311,8 @@ class JsonRepresenterTestCase(_RepresenterTestCase):
 
 
 class CsvRepresenterTestCase(_RepresenterTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
     content_type = CsvMime
 
     def test_csv_with_defaults(self):
@@ -494,7 +494,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
 
 
 class XmlRepresenterTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_rpr.zcml'
 
     def test_xml_with_defaults(self):
@@ -634,7 +634,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
     def test_no_xml_string_as_schema(self):
         mp, rpr = self.__get_collection_mapping_and_representer()
         mp.configuration.set_option(XML_SCHEMA_OPTION,
-                                    'everest:tests/testapp_db/NoXml.xsd')
+                                    'everest:tests/complete_app/NoXml.xsd')
         with self.assert_raises(SyntaxError) as cm:
             rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
         exc_msg = 'Could not parse XML schema'
@@ -643,7 +643,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
     def test_no_schema_xml_string_as_schema(self):
         mp, rpr = self.__get_collection_mapping_and_representer()
         mp.configuration.set_option(XML_SCHEMA_OPTION,
-                                    'everest:tests/testapp_db/NoSchema.xsd')
+                                    'everest:tests/complete_app/NoSchema.xsd')
         with self.assert_raises(SyntaxError) as cm:
             rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
         exc_msg = 'Invalid XML schema'
@@ -665,7 +665,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
 
 
 class AtomRepresentationTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_rpr.zcml'
 
     def test_atom_collection(self):
@@ -694,7 +694,7 @@ class AtomRepresentationTestCase(ResourceTestCase):
 
 
 class _RepresenterConfigurationTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
 
     def test_configure_rpr_with_zcml(self):
         coll = create_collection()
@@ -785,8 +785,8 @@ class RepresenterConfigurationTestCase(_RepresenterConfigurationTestCase):
 
 
 class UpdateResourceFromDataTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_update_collection_from_data_with_id_raises_error(self):
         coll = create_collection()

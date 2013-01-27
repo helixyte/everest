@@ -8,7 +8,7 @@ from everest.resources.base import Collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_service
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntity
 from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -17,8 +17,8 @@ __all__ = ['ServiceTestCase',
 
 
 class ServiceTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def set_up(self):
         ResourceTestCase.set_up(self)

@@ -4,10 +4,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-from everest.datastores.orm import SqlFilterSpecificationVisitor
-from everest.datastores.orm.querying import OrmAttributeInspector
-from everest.datastores.orm.utils import OrmTestCaseMixin
 from everest.querying.specifications import FilterSpecificationFactory
+from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb.querying import OrmAttributeInspector
+from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -30,16 +30,16 @@ from everest.resources.utils import new_stage_collection
 from everest.resources.utils import resource_to_url
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.entities import MyEntity
-from everest.tests.testapp_db.entities import MyEntityChild
-from everest.tests.testapp_db.entities import MyEntityParent
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityChild
-from everest.tests.testapp_db.interfaces import IMyEntityParent
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.resources import MyEntityParentMember
-from everest.tests.testapp_db.testing import create_collection
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityChild
+from everest.tests.complete_app.entities import MyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.resources import MyEntityParentMember
+from everest.tests.complete_app.testing import create_collection
+from everest.tests.complete_app.testing import create_entity
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -112,8 +112,8 @@ class AttributesTestCase(Pep8CompliantTestCase):
                            member_attribute, 'not-a-resource', 'foo')
 
 
-class DescriptorsTestCase(OrmTestCaseMixin, ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
 
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
@@ -300,7 +300,7 @@ class DescriptorsTestCase(OrmTestCaseMixin, ResourceTestCase):
         context.update_from_data(data_el)
         self.assert_equal(len(context.children), 2)
 
-    def test_orm_attribute_inspector(self):
+    def test_rdb_attribute_inspector(self):
         with self.assert_raises(ValueError) as cm:
             OrmAttributeInspector.inspect(MyEntity, 'text.something')
         self.assert_true(cm.exception.message.endswith(

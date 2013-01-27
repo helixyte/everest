@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 3, 2011.
 """
 from everest.entities.interfaces import IEntity
-from everest.repository import as_repository
+from everest.repositories.utils import as_repository
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
@@ -22,31 +22,32 @@ __all__ = ['get_entity_class',
            ]
 
 
-def get_root_aggregate(rc):
+def get_root_aggregate(resource):
     """
     Returns an aggregate from the root entity repository for the given 
     registered resource.
+
+    :param resource: registered resource
     """
-    repo = as_repository(rc)
-    coll = repo.get(rc)
-    return coll.get_aggregate()
+    repo = as_repository(resource)
+    return repo.get_aggregate(resource)
 
 
-def get_entity_class(rc):
+def get_entity_class(resource):
     """
     Returns the entity class registered for the given registered resource.
 
-    :param member: registered resource
+    :param resource: registered resource
     :type collection: class implementing or instance providing a registered
         resource interface.
     :return: entity class
         (class implementing `everest.entities.interfaces.IEntity`)
     """
     reg = get_current_registry()
-    if IInterface in provided_by(rc):
-        ent_cls = reg.getUtility(rc, name='entity-class')
+    if IInterface in provided_by(resource):
+        ent_cls = reg.getUtility(resource, name='entity-class')
     else:
-        ent_cls = reg.getAdapter(rc, IEntity, name='entity-class')
+        ent_cls = reg.getAdapter(resource, IEntity, name='entity-class')
     return ent_cls
 
 

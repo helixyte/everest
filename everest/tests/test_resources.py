@@ -10,11 +10,11 @@ from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
-from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp.resources import FooCollection
-from everest.tests.testapp.resources import FooMember
-from everest.tests.testapp_db.testing import create_collection
+from everest.tests.simple_app.entities import FooEntity
+from everest.tests.simple_app.interfaces import IFoo
+from everest.tests.simple_app.resources import FooCollection
+from everest.tests.simple_app.resources import FooMember
+from everest.tests.complete_app.testing import create_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourcesFilteringTestCase',
@@ -23,7 +23,7 @@ __all__ = ['ResourcesFilteringTestCase',
 
 
 class ResourcesTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp'
+    package_name = 'everest.tests.simple_app'
     config_file_name = 'configure.zcml'
 
     def test_no_relation_raises_error(self):
@@ -63,8 +63,8 @@ class ResourcesTestCase(ResourceTestCase):
 
 
 class ResourcesFilteringTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_filter_nested(self):
         coll = create_collection()

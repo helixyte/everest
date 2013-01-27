@@ -23,13 +23,13 @@ db_user = my_db_user
 db_password = pwd123
 db_name = my_db_name
 
-[app:mytestapp]
+[app:mysimple_app]
 db_string = postgresql://%(db_user)s:%(db_password)s@%(db_server)s:%(db_port)s/%(db_name)s
 db_echo = false
 """
 
 class TestingTestCase(Pep8CompliantTestCase):
-    ini_section_name = 'app:mytestapp'
+    ini_section_name = 'app:mysimple_app'
 
     def set_up(self):
         self.__testdir = mkdtemp()
