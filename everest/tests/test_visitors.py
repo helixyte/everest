@@ -4,11 +4,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
 """
-from everest.datastores.orm import SqlFilterSpecificationVisitor
-from everest.datastores.orm import SqlOrderSpecificationVisitor
-from everest.datastores.orm.utils import OrderClauseList
-from everest.datastores.orm.utils import Session
-from everest.datastores.orm.utils import reset_metadata
+from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb import SqlOrderSpecificationVisitor
+from everest.repositories.rdb.utils import OrderClauseList
+from everest.repositories.rdb.utils import Session
+from everest.repositories.rdb.utils import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory

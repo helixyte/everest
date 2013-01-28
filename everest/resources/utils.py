@@ -6,10 +6,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
-from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
-from everest.repository import REPOSITORY_TYPES
-from everest.repository import as_repository
+from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.utils import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IRelation
@@ -22,7 +22,7 @@ from pyramid.traversal import model_path
 from urlparse import urlparse
 from urlparse import urlunparse
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
@@ -40,51 +40,52 @@ __all__ = ['as_member',
            ]
 
 
-def get_root_collection(rc):
+def get_root_collection(resource):
     """
     Returns a clone of the collection from the repository registered for the
     given registered resource.
 
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
+    :param resource: registered resource
+    :type resource: class implementing or instance providing or subclass of
         a registered resource interface.
     """
-    repo = as_repository(rc)
-    return repo.get(rc)
+    repo = as_repository(resource)
+    return repo.get_collection(resource)
 
 
-def new_stage_collection(rc):
+def new_stage_collection(resource):
     """
     Returns a new, empty collection matching the given registered resource.
 
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
+    :param resource: registered resource
+    :type resource: class implementing or instance providing or subclass of
         a registered resource interface.
     """
     repo_mgr = get_repository_manager()
     new_repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
-    new_repo.register_resource(rc)
+    new_repo.register_resource(resource)
     new_repo.initialize()
-    return new_repo.get(rc)
+    return new_repo.get_collection(resource)
 
 
-def get_member_class(rc):
+def get_member_class(resource):
     """
     Returns the registered member class for the given resource.
 
-    :param rc: registered resource
-    :type rc: class implementing or instance providing or subclass of
+    :param resource: registered resource
+    :type resource: class implementing or instance providing or subclass of
         a registered resource interface.
     """
     reg = get_current_registry()
-    if IInterface in provided_by(rc):
-        member_class = reg.getUtility(rc, name='member-class')
+    if IInterface in provided_by(resource):
+        member_class = reg.getUtility(resource, name='member-class')
     else:
-        member_class = reg.getAdapter(rc, IMemberResource, name='member-class')
+        member_class = reg.getAdapter(resource, IMemberResource,
+                                      name='member-class')
     return member_class
 
 
-def get_collection_class(rc):
+def get_collection_class(resource):
     """
     Returns the registered collection resource class for the given marker
     interface or member resource class or instance.
@@ -94,10 +95,10 @@ def get_collection_class(rc):
         a registered resource interface.
     """
     reg = get_current_registry()
-    if IInterface in provided_by(rc):
-        coll_class = reg.getUtility(rc, name='collection-class')
+    if IInterface in provided_by(resource):
+        coll_class = reg.getUtility(resource, name='collection-class')
     else:
-        coll_class = reg.getAdapter(rc, ICollectionResource,
+        coll_class = reg.getAdapter(resource, ICollectionResource,
                                     name='collection-class')
     return coll_class
 

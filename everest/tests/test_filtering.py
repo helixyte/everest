@@ -4,10 +4,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-from everest.datastores.orm import SqlFilterSpecificationVisitor
+from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.testing import Pep8CompliantTestCase
-from everest.tests.testapp.entities import FooEntity
+from everest.tests.simple_app.entities import FooEntity
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['SqlFilterSpecificationVisitorTestCase',

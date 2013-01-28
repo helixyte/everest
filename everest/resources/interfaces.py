@@ -6,8 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
-from zope.interface import Attribute  # pylint: disable=E0611,F0401
-from zope.interface import Interface  # pylint: disable=E0611,F0401
+from zope.interface import Attribute # pylint: disable=E0611,F0401
+from zope.interface import Interface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ICollectionResource',
@@ -212,33 +212,9 @@ class IService(IResource):
         """
 
 
-class IDataStore(Interface):
-    """
-    """
-
-    def configure(**config):
-        """
-        Sets configuration options for this data store which can then be used
-        during initialization.
-        """
-
-    def initialize():
-        """
-        Initializes the data store.
-        """
-
-    session_factory = Attribute('The session factory provided by this data '
-                                'store.')
-
-    name = Attribute('Unique name for this data store.')
-
-    is_initialized = Attribute('Flag indicating if this data store has been '
-                               'initialized.')
-
-
 class IRelation(Interface):
     """
     Marker interface for relations.
     """
 
-# pylint: enable=W0232,E0213
+# pylint: enable=W0232,E0213,E0211

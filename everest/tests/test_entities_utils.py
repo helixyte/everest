@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.datastores.memory import Aggregate
+from everest.repositories.memory import Aggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
 from everest.entities.utils import identifier_from_slug
@@ -12,8 +12,8 @@ from everest.entities.utils import slug_from_identifier
 from everest.entities.utils import slug_from_integer
 from everest.entities.utils import slug_from_string
 from everest.testing import EntityTestCase
-from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.interfaces import IFoo
+from everest.tests.simple_app.entities import FooEntity
+from everest.tests.simple_app.interfaces import IFoo
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntitiesUtilsTestCase',
@@ -21,7 +21,7 @@ __all__ = ['EntitiesUtilsTestCase',
 
 
 class EntitiesUtilsTestCase(EntityTestCase):
-    package_name = 'everest.tests.testapp'
+    package_name = 'everest.tests.simple_app'
 
     def test_get_root_aggregate(self):
         agg = get_root_aggregate(IFoo)

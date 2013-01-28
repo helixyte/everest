@@ -7,18 +7,18 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 2, 2011.
 """
 from everest.configuration import Configurator
-from everest.datastores.orm.utils import Session
-from everest.datastores.orm.utils import get_engine
+from everest.repositories.rdb.utils import Session
+from everest.repositories.utils import get_engine
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
-from everest.interfaces import IRepositoryManager
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.constants import REPOSITORY_TYPES
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
-from paste.deploy import loadapp  # pylint: disable=E0611,F0401
+from paste.deploy import loadapp # pylint: disable=E0611,F0401
 from pyramid.registry import Registry
 from pyramid.testing import DummyRequest
 from webtest import TestApp
@@ -32,7 +32,7 @@ __all__ = ['DummyContext',
            'DummyModule',
            'EntityTestCase',
            'FunctionalTestCase',
-           'OrmContextManager',
+           'RdbContextManager',
            'Pep8CompliantTestCase',
            'ResourceTestCase',
            'TestCaseWithConfiguration',
@@ -41,7 +41,7 @@ __all__ = ['DummyContext',
            'elapsed',
            'no_autoflush',
            'persist',
-           'with_orm',
+           'with_rdb',
            ]
 
 
@@ -331,8 +331,8 @@ class DummyContext:
         self.resolved = resolved
         self.package = None
 
-    def action(self, discriminator, callable=None,  # pylint: disable=W0622
-               args=None, kw=None, order=0):  # pylint: disable=W0613
+    def action(self, discriminator, callable=None, # pylint: disable=W0622
+               args=None, kw=None, order=0): # pylint: disable=W0613
         if args is None:
             args = ()
         if kw is None:
@@ -347,7 +347,7 @@ class DummyContext:
     def path(self, path):
         return path
 
-    def resolve(self, dottedname):  # dottedname not used pylint: disable=W0613
+    def resolve(self, dottedname): # dottedname not used pylint: disable=W0613
         return self.resolved
 
 
@@ -387,19 +387,19 @@ def no_autoflush(scoped_session=None):
     return decorate
 
 
-class OrmContextManager(object):
+class RdbContextManager(object):
     """
-    Context manager for ORM tests.
+    Context manager for RDB tests.
     
-    Configures the entity repository to use the ORM implementation as
+    Configures the entity repository to use the RDB implementation as
     a default, sets up an outer transaction before the test is run and rolls
     this transaction back after the test has finished.
     """
     def __init__(self, autoflush=True, engine_name=None):
         self.__autoflush = autoflush
         if engine_name is None:
-            # Use the name of the default ORM repository for engine lookup.
-            engine_name = REPOSITORY_TYPES.ORM
+            # Use the name of the default RDB repository for engine lookup.
+            engine_name = REPOSITORY_TYPES.RDB
         self.__engine_name = engine_name
         self.__connection = None
         self.__transaction = None
@@ -413,7 +413,7 @@ class OrmContextManager(object):
         self.__connection = engine.connect()
         self.__transaction = self.__connection.begin()
         # Configure the autoflush behavior of the session.
-        self.__old_autoflush_flag = Session.autoflush  # pylint:disable=E1101
+        self.__old_autoflush_flag = Session.autoflush # pylint:disable=E1101
         Session.remove()
         Session.configure(autoflush=self.__autoflush)
         # Throw out the Zope transaction manager for testing.
@@ -433,14 +433,14 @@ class OrmContextManager(object):
         Session.configure(autoflush=self.__old_autoflush_flag)
 
 
-def with_orm(autoflush=True, init_callback=None):
+def with_rdb(autoflush=True, init_callback=None):
     """
-    Decorator for ORM tests which uses a :class:`OrmContextManager` for the
+    Decorator for tests which uses a :class:`RdbContextManager` for the
     call to the decorated test function.
     """
     def decorate(func):
         def wrap(*args, **kw):
-            with OrmContextManager(autoflush=autoflush,
+            with RdbContextManager(autoflush=autoflush,
                                    init_callback=init_callback):
                 func(*args, **kw)
         return update_wrapper(wrap, func)

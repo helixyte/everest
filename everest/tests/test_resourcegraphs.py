@@ -5,22 +5,22 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
-from everest.datastores.orm.utils import OrmTestCaseMixin
+from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
 from everest.testing import TestCaseWithConfiguration
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityChild
-from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
-from everest.tests.testapp_db.interfaces import IMyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityGrandchild
+from everest.tests.complete_app.interfaces import IMyEntityParent
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceGraphTestCase',
            ]
 
 
-class ResourceGraphTestCase(OrmTestCaseMixin, TestCaseWithConfiguration):
-    package_name = 'everest.tests.testapp_db'
+class ResourceGraphTestCase(RdbTestCaseMixin, TestCaseWithConfiguration):
+    package_name = 'everest.tests.complete_app'
 
     def set_up(self):
         TestCaseWithConfiguration.set_up(self)

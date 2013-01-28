@@ -8,7 +8,7 @@ Created on Jun 17, 2011.
 """
 from everest.configuration import Configurator
 from everest.entities.interfaces import IEntity
-from everest.interfaces import IRepositoryManager
+from everest.repositories.interfaces import IRepositoryManager
 from everest.mime import CsvMime
 from everest.representers.base import Representer
 from everest.representers.interfaces import IRepresenter
@@ -18,12 +18,12 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IService
 from everest.testing import Pep8CompliantTestCase
-from everest.tests import testapp as package
-from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.interfaces import IBar
-from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp.resources import FooCollection
-from everest.tests.testapp.resources import FooMember
+from everest.tests import simple_app as package
+from everest.tests.simple_app.entities import FooEntity
+from everest.tests.simple_app.interfaces import IBar
+from everest.tests.simple_app.interfaces import IFoo
+from everest.tests.simple_app.resources import FooCollection
+from everest.tests.simple_app.resources import FooMember
 from pyramid.testing import setUp as testing_set_up
 from pyramid.testing import tearDown as testing_tear_down
 from pyramid.threadlocal import get_current_registry
@@ -48,7 +48,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
 
     def test_configure_with_simple_zcml(self):
         # Load the configuration.
-        self._config.load_zcml('everest.tests.testapp:configure_simple.zcml')
+        self._config.load_zcml('everest.tests.simple_app:configure_simple.zcml')
         reg = self._registry
         # Check adapters.
         ent = FooEntity()
@@ -85,7 +85,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
                                           name=CsvMime.mime_type_string))
         # Load the configuration.
         config = Configurator(registry=reg, package=package)
-        config.load_zcml('everest.tests.testapp:configure.zcml')
+        config.load_zcml('everest.tests.simple_app:configure.zcml')
         self.__check(reg, member, ent, coll)
         rpr = as_representer(coll, CsvMime)
         self.assert_true(isinstance(rpr, Representer))
@@ -94,11 +94,11 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         repo_mgr = self._registry.queryUtility(IRepositoryManager)
         self.assert_is_none(repo_mgr.get('CUSTOM_MEMORY'))
         self.assert_is_none(repo_mgr.get('CUSTOM_FILESYSTEM'))
-        self.assert_is_none(repo_mgr.get('CUSTOM_ORM'))
-        self._config.load_zcml('everest.tests.testapp:configure_repos.zcml')
+        self.assert_is_none(repo_mgr.get('CUSTOM_RDB'))
+        self._config.load_zcml('everest.tests.simple_app:configure_repos.zcml')
         self.assert_is_not_none(repo_mgr.get('CUSTOM_MEMORY'))
         self.assert_is_not_none(repo_mgr.get('CUSTOM_FILESYSTEM'))
-        self.assert_is_not_none(repo_mgr.get('CUSTOM_ORM'))
+        self.assert_is_not_none(repo_mgr.get('CUSTOM_RDB'))
 
     def __check(self, reg, member, ent, coll):
         for idx, obj in enumerate((member, coll, ent)):

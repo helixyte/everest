@@ -8,7 +8,7 @@ from everest.mime import CsvMime
 from everest.renderers import RendererFactory
 from everest.renderers import ResourceRenderer
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.testing import create_collection
+from everest.tests.complete_app.testing import create_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RendererTestCase',
@@ -16,7 +16,7 @@ __all__ = ['RendererTestCase',
 
 
 class RendererTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_rpr.zcml'
     class _Info(object):
         def __init__(self, name):

@@ -5,8 +5,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 18, 2012.
 """
 from everest.configuration import Configurator
-from everest.datastores.memory import Aggregate
-from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.mime import CsvMime
 from everest.querying.base import EXPRESSION_KINDS
@@ -14,18 +12,18 @@ from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.memory import Aggregate
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
-from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_repository
 from everest.testing import Pep8CompliantTestCase
-from everest.tests import testapp as package
-from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp.resources import FooMember
+from everest.tests import simple_app as package
+from everest.tests.simple_app.entities import FooEntity
+from everest.tests.simple_app.interfaces import IFoo
+from everest.tests.simple_app.resources import FooMember
 from pyramid.testing import DummyRequest
 from pyramid.testing import setUp as testing_set_up
 from pyramid.testing import tearDown as testing_tear_down
@@ -98,12 +96,12 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
                                   collection_root_name=root_name)
         self.assert_equal(get_collection_class(IFoo).root_name, root_name)
 
-    def test_add_resource_with_orm_repo(self):
+    def test_add_resource_with_rdb_repo(self):
         self._config.add_resource(IFoo, FooMember, FooEntity, expose=False,
-                                  repository=REPOSITORY_TYPES.ORM)
+                                  repository=REPOSITORY_TYPES.RDB)
         reg = self._registry
         repo_mgr = reg.queryUtility(IRepositoryManager)
-        self.assert_is_not_none(repo_mgr.get(REPOSITORY_TYPES.ORM))
+        self.assert_is_not_none(repo_mgr.get(REPOSITORY_TYPES.RDB))
 
     def test_have_memory_repo(self):
         reg = self._registry
@@ -145,13 +143,10 @@ class ConfiguratorTestCase(Pep8CompliantTestCase):
         config.add_resource(IFoo, FooMember, FooEntity,
                             collection_root_name="foos",
                             repository='test')
-        member = object.__new__(FooMember)
-        coll_cls = reg.queryAdapter(member, ICollectionResource,
-                                    name='collection-class')
-        self.assert_raises(RuntimeError, repo.new, coll_cls)
+        self.assert_raises(RuntimeError, repo.get_collection, IFoo)
+        self.assert_raises(RuntimeError, repo.get_aggregate, IFoo)
         repo.initialize()
-        repo = get_repository('test')
-        coll = repo.new(coll_cls)
+        coll = repo.get_collection(IFoo)
         agg = coll.get_aggregate()
         self.assert_true(isinstance(agg, MyMemoryAggregate))
         entity = FooEntity(id=1)

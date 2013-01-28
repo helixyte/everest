@@ -1,0 +1,90 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Renderers. -->
+
+    <renderer
+        name="csv"
+        factory="everest.renderers.RendererFactory" />
+
+    <!-- Representers. -->
+
+    <!-- Resource declarations. -->
+
+    <resource
+        interface='.interfaces.IFoo'
+        collection=".resources.FooCollection"
+        member=".resources.FooMember"
+        entity=".entities.FooEntity"
+        collection_root_name="foos">
+        
+        <representer
+            kind="member"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foo" />
+        </representer>
+        <representer
+            kind="collection"
+            content_type="everest.mime.XmlMime"
+        >
+            <option
+                name="xml_tag"
+                value="foos" />
+        </representer>
+    </resource>
+        
+    <!-- Views. -->
+    
+    <member_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        name="csv"
+        renderer="csv"
+        request_method="GET" />
+
+    <collection_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="csv"
+        renderer="csv"
+        request_method="GET" />
+
+    <member_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <collection_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="json"
+        renderer="json"
+        request_method="GET" />
+
+    <member_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getmember.GetMemberView"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
+    <collection_view
+        for="everest.tests.simple_app.interfaces.IFoo"
+        view="everest.views.getcollection.GetCollectionView"
+        name="xml"
+        renderer="xml"
+        request_method="GET" />
+
+
+</configure>

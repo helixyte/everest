@@ -1,0 +1,24 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Repositories. -->
+
+    <memory_repository
+        name="CUSTOM_MEMORY" />
+
+    <filesystem_repository
+        name="CUSTOM_FILESYSTEM"
+        directory="repo" 
+        content_type="everest.mime.XmlMime" />
+        
+    <orm_repository
+        name="CUSTOM_RDB"
+        db_string="memory:" />
+
+</configure>

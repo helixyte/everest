@@ -9,7 +9,7 @@ from everest.representers.attributes import AttributeKey
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.resources import MyEntityMember
+from everest.tests.complete_app.resources import MyEntityMember
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingTestCase',
@@ -17,7 +17,7 @@ __all__ = ['MappingTestCase',
 
 
 class MappingTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_rpr.zcml'
 
     def set_up(self):

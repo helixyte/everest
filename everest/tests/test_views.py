@@ -6,24 +6,24 @@ Created on Nov 17, 2011.
 """
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
-from everest.datastores.orm.utils import reset_metadata
+from everest.repositories.rdb.utils import reset_metadata
 from everest.renderers import RendererFactory
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
 from everest.testing import FunctionalTestCase
-from everest.tests.testapp.entities import FooEntity
-from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp.resources import FooCollection
-from everest.tests.testapp.resources import FooMember
-from everest.tests.testapp.views import ExceptionPostCollectionView
-from everest.tests.testapp.views import ExceptionPutMemberView
-from everest.tests.testapp.views import UserMessagePostCollectionView
-from everest.tests.testapp.views import UserMessagePutMemberView
-from everest.tests.testapp_db.entities import MyEntity
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.testing import create_collection
+from everest.tests.simple_app.entities import FooEntity
+from everest.tests.simple_app.interfaces import IFoo
+from everest.tests.simple_app.resources import FooCollection
+from everest.tests.simple_app.resources import FooMember
+from everest.tests.simple_app.views import ExceptionPostCollectionView
+from everest.tests.simple_app.views import ExceptionPutMemberView
+from everest.tests.simple_app.views import UserMessagePostCollectionView
+from everest.tests.simple_app.views import UserMessagePutMemberView
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.testing import create_collection
 from everest.traversal import SuffixResourceTraverser
 from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
@@ -33,21 +33,28 @@ from pkg_resources import resource_filename # pylint: disable=E0611
 import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BasicViewsTestCase',
-           'WarningViewsTestCase',
+__all__ = ['BasicViewTestCase',
+           'ClassicStyleConfiguredViewsTestCase',
+           'ExceptionViewTestCase',
+           'NewStyleConfiguredViewsTestCase',
+           'PredicatedViewTestCase',
+           'StaticViewTestCase',
+           'WarningViewMemoryTestCase',
+           'WarningViewRdbTestCase',
+           'WarningWithExceptionViewTestCase',
            ]
 
 
 class BasicViewTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    app_name = 'testapp_db'
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
     path = '/my-entities'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
+        self.config.load_zcml('everest.tests.complete_app:configure_rpr.zcml')
         self.config.add_resource_view(IMyEntity,
                                       renderer='csv',
                                       request_method='GET')
@@ -165,14 +172,14 @@ class BasicViewTestCase(FunctionalTestCase):
 
 
 class PredicatedViewTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    app_name = 'testapp_db'
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
     path = '/my-entities'
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.testapp_db:configure_rpr.zcml')
+        self.config.load_zcml('everest.tests.complete_app:configure_rpr.zcml')
         self.config.add_renderer('csv', RendererFactory)
         self.config.add_view(context=get_collection_class(IMyEntity),
                              view=GetCollectionView,
@@ -189,10 +196,10 @@ class PredicatedViewTestCase(FunctionalTestCase):
 class _ConfiguredViewsTestCase(FunctionalTestCase):
     views_config_file_name = None
 
-    package_name = 'everest.tests.testapp'
-    ini_file_path = resource_filename('everest.tests.testapp',
-                                      'testapp_views.ini')
-    app_name = 'testapp'
+    package_name = 'everest.tests.simple_app'
+    ini_file_path = resource_filename('everest.tests.simple_app',
+                                      'simple_app_views.ini')
+    app_name = 'simple_app'
     path = '/foos'
 
     def set_up(self):
@@ -230,7 +237,7 @@ class _ConfiguredViewsTestCase(FunctionalTestCase):
 
 class ClassicStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     views_config_file_name = \
-                    'everest.tests.testapp:configure_views_classic.zcml'
+                    'everest.tests.simple_app:configure_views_classic.zcml'
 
     def test_default(self):
         # No default - triggers a 404.
@@ -239,7 +246,7 @@ class ClassicStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
 
 class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     views_config_file_name = \
-                'everest.tests.testapp:configure_views.zcml'
+                'everest.tests.simple_app:configure_views.zcml'
 
     def test_default(self):
         # New style views return the default_content_type.
@@ -299,18 +306,18 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
 
 
 class StaticViewTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    app_name = 'testapp_db'
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.testapp_db:configure_no_orm.zcml')
+        self.config.load_zcml('everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_view(context=IService,
                              view=public_view,
                              name='public',
                              request_method='GET')
-        fn = resource_filename('everest.tests.testapp_db', 'data/original')
+        fn = resource_filename('everest.tests.complete_app', 'data/original')
         self.config.registry.settings['public_dir'] = fn
 
     def test_access_public_dir(self):
@@ -318,16 +325,16 @@ class StaticViewTestCase(FunctionalTestCase):
 
 
 class ExceptionViewTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    app_name = 'testapp_db'
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
     path = '/my-entities'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(
-                        'everest.tests.testapp_db:configure_no_orm.zcml')
+                        'everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_member_view(IMyEntity,
                                     view=ExceptionPutMemberView,
                                     request_method='PUT')
@@ -352,10 +359,10 @@ class ExceptionViewTestCase(FunctionalTestCase):
 
 
 class _WarningViewBaseTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp'
-    ini_file_path = resource_filename('everest.tests.testapp',
-                                      'testapp_views.ini')
-    app_name = 'testapp'
+    package_name = 'everest.tests.simple_app'
+    ini_file_path = resource_filename('everest.tests.simple_app',
+                                      'simple_app_views.ini')
+    app_name = 'simple_app'
     path = '/foos'
     config_file_name = None
 
@@ -421,7 +428,7 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
 
     def test_put_member_warning_exception(self):
         root = get_service()
-        # Need to start the service manually - no request root has been set 
+        # Need to start the service manually - no request root has been set
         # yet.
         root.start()
         coll = root['foos']
@@ -443,11 +450,11 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
 
 
 class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
-    config_file_name = 'everest.tests.testapp:configure_messaging_memory.zcml'
+    config_file_name = 'everest.tests.simple_app:configure_messaging_memory.zcml'
 
 
-class WarningViewOrmTestCase(_WarningViewBaseTestCase):
-    config_file_name = 'everest.tests.testapp:configure_messaging_orm.zcml'
+class WarningViewRdbTestCase(_WarningViewBaseTestCase):
+    config_file_name = 'everest.tests.simple_app:configure_messaging_rdb.zcml'
 
     @classmethod
     def tear_down_class(cls):
@@ -455,16 +462,16 @@ class WarningViewOrmTestCase(_WarningViewBaseTestCase):
 
 
 class WarningWithExceptionViewTestCase(FunctionalTestCase):
-    package_name = 'everest.tests.testapp_db'
-    ini_file_path = resource_filename('everest.tests.testapp_db',
-                                      'testapp.ini')
-    app_name = 'testapp_db'
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
     path = '/my-entities'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
         self.config.load_zcml(
-                        'everest.tests.testapp_db:configure_no_orm.zcml')
+                        'everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_view(context=get_collection_class(IMyEntity),
                              view=ExceptionPostCollectionView,
                              request_method='POST')

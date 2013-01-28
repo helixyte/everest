@@ -12,10 +12,10 @@ from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.testing import create_collection
-from everest.tests.testapp_db.testing import create_entity
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.testing import create_collection
+from everest.tests.complete_app.testing import create_entity
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourcesUtilsTestCase',
@@ -23,8 +23,8 @@ __all__ = ['ResourcesUtilsTestCase',
 
 
 class ResourcesUtilsTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_get_resource_url(self):
         coll = create_collection()

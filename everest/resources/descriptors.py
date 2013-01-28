@@ -256,7 +256,7 @@ class collection_attribute(_relation_attribute):
     def __make_collection(self, resource, parent, children):
         # Create a new collection.
         if not resource.__parent__ is None:
-            # Use the resource repository that created this resource's 
+            # Use the resource repository that created this resource's
             # root collection to create the new collection.
             rc_repo = getattr(resource.__parent__, '__repository__', None)
             if rc_repo is None:
@@ -264,7 +264,7 @@ class collection_attribute(_relation_attribute):
                     rc_repo = getattr(rc, '__repository__', None)
                     if not rc_repo is None:
                         break
-            coll = rc_repo.get(self.attr_type)
+            coll = rc_repo.get_collection(self.attr_type)
         else:
             # This is a floating member.
             coll = new_stage_collection(self.attr_type)

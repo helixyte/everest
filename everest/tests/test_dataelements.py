@@ -12,8 +12,8 @@ from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.resources.kinds import ResourceKinds
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.resources import MyEntityMember
-from everest.tests.testapp_db.testing import create_collection
+from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.testing import create_collection
 from pytz import timezone
 import datetime
 
@@ -23,8 +23,8 @@ __all__ = ['DataElementsTestCase',
 
 
 class DataElementsTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_member_data_element(self):
         data_el = SimpleMemberDataElement.create()

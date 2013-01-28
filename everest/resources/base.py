@@ -494,7 +494,7 @@ class Collection(Resource):
         if self.__relationship is None:
             filter_spec = self._filter_spec
         else:
-            # Prepend the relationship specification to the current filter 
+            # Prepend the relationship specification to the current filter
             # specification.
             if self._filter_spec is None:
                 filter_spec = self.__relationship.specification
@@ -554,8 +554,8 @@ class Collection(Resource):
         clone.set_relationship(self.__relationship)
         # Pass filter and order specs explicitly (may differ from the ones
         # at the aggregate level).
-        clone._filter_spec = self._filter_spec
-        clone._order_spec = self._order_spec
+        clone._filter_spec = self._filter_spec # pylint: disable=W0212
+        clone._order_spec = self._order_spec # pylint: disable=W0212
         return clone
 
 

@@ -4,75 +4,39 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.datastores.memory import Aggregate
-from everest.datastores.memory import DataStore
-from everest.entities.repository import EntityRepository
 from everest.entities.system import UserMessage
 from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IUserMessage
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_TYPES
 from everest.resources.utils import get_root_collection
-from everest.testing import EntityTestCase
 from everest.testing import ResourceTestCase
-from everest.tests.testapp.interfaces import IBar
-from everest.tests.testapp.interfaces import IFoo
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.utils import get_repository_manager
-from pkg_resources import resource_filename  # pylint: disable=E0611
+from pkg_resources import resource_filename # pylint: disable=E0611
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['EntityRepositoryTestCase',
-           'ResourceRepositoryTestCase',
+__all__ = ['MemorySystemRepositoryTestCase',
+           'RdbSystemRepositoryTestCase',
+           'RepositoryTestCase',
            ]
 
 
-class _RepositoryBaseTestCaseMixin(object):
-    def _test_repo(self, repo, ifc1, ifc2):
+class RepositoryTestCase(ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
+
+    def test_repo(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         # Access configuration
         repo.configure(messaging_enable=False)
         self.assert_false(repo.configuration['messaging_enable'])
-        #  Create a clone and check if slice is the same, but ID is different.
-        acc1 = repo.new(ifc1)
-        acc1.slice = slice(0, 1)
-        repo.set(ifc1, acc1)
-        acc1_clone = repo.get(ifc1)
-        self.assert_equal(acc1.slice, acc1_clone.slice)
-        self.assert_not_equal(id(acc1), id(acc1_clone))
-        acc2 = repo.new(ifc2)
-        acc2.slice = slice(1, 2)
-        repo.set(ifc2, acc2)
-        # After clearing the cached accessor, .get(ifc1) creates a new
-        # accessor for ifc1 with the default slice.
-        repo.clear(ifc1)
-        acc1_new = repo.get(ifc1)
-        self.assert_not_equal(acc1_new.slice, acc1.slice)
-        # After clearing all cached accessors, .get(ifc2) also returns a new
-        # accessor.
-        repo.clear_all()
-        acc2_new = repo.get(ifc2)
-        self.assert_not_equal(acc2_new.slice, acc2.slice)
-
-
-class EntityRepositoryTestCase(EntityTestCase, _RepositoryBaseTestCaseMixin):
-    package_name = 'everest.tests.testapp'
-
-    def test_basics(self):
-        ent_store = DataStore('test')
-        ent_repo = EntityRepository(ent_store, Aggregate)
-        ent_repo.initialize()
-        self._test_repo(ent_repo, IFoo, IBar)
-
-
-class ResourceRepositoryTestCase(ResourceTestCase,
-                                 _RepositoryBaseTestCaseMixin):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
-
-    def test_basics(self):
-        repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
-        self._test_repo(repo, IMyEntity, IMyEntityParent)
+        # Create a clone and check if slice is the same, but ID is different.
+        for meth in (repo.get_collection, repo.get_aggregate):
+            acc1 = meth(IMyEntity)
+            acc2 = meth(IMyEntity)
+            self.assert_not_equal(id(acc1), id(acc2))
 
     def test_manager(self):
         repo_mgr = get_repository_manager()
@@ -87,7 +51,7 @@ class ResourceRepositoryTestCase(ResourceTestCase,
         repo_mgr = get_repository_manager()
         repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         data_path = resource_filename(
-                            'everest.tests.testapp_db',
+                            'everest.tests.complete_app',
                             'data/original/myentity-parent-collection.csv')
         coll = get_root_collection(IMyEntityParent)
         self.assert_equal(len(coll), 0)
@@ -96,7 +60,7 @@ class ResourceRepositoryTestCase(ResourceTestCase,
 
 
 class _SystemRepositoryBaseTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp'
+    package_name = 'everest.tests.simple_app'
 
     def test_add_delete(self):
         agg = get_root_aggregate(IUserMessage)
@@ -112,6 +76,6 @@ class MemorySystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
         self.config.setup_system_repository(REPOSITORY_TYPES.MEMORY)
 
 
-class OrmSystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
+class RdbSystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
     def _load_custom_zcml(self):
-        self.config.setup_system_repository(REPOSITORY_TYPES.ORM)
+        self.config.setup_system_repository(REPOSITORY_TYPES.RDB)

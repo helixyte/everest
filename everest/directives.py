@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_TYPES
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
@@ -39,7 +39,7 @@ __all__ = ['RESOURCE_KINDS',
            'memory_repository',
            'messaging',
            'option',
-           'orm_repository',
+           'rdb_repository',
            'resource_view',
            ]
 
@@ -72,7 +72,7 @@ class IRepositoryDirective(Interface):
 
 def _repository(_context, name, make_default, agg_cls, ent_store_cls,
                 repo_type, config_method, cnf):
-    # Repository directives are applied eagerly. Note that custom repositories 
+    # Repository directives are applied eagerly. Note that custom repositories
     # must be declared *before* they can be referenced in resource directives.
     discriminator = (repo_type, name)
     _context.action(discriminator=discriminator)
@@ -131,22 +131,22 @@ def filesystem_repository(_context, name=None, make_default=False,
                 REPOSITORY_TYPES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
 
 
-class IOrmRepositoryDirective(IRepositoryDirective):
+class IRdbRepositoryDirective(IRepositoryDirective):
     db_string = \
         TextLine(title=u"String to use to connect to the DB server. Defaults "
                         "to an in-memory sqlite DB.",
                  required=False)
     metadata_factory = \
         GlobalObject(title=u"Callback that initializes and returns the "
-                            "metadata for the ORM.",
+                            "metadata for the DB.",
                      required=False)
 
 
-def orm_repository(_context, name=None, make_default=False,
+def rdb_repository(_context, name=None, make_default=False,
                    aggregate_class=None, entity_store_class=None,
                    db_string=None, metadata_factory=None):
     """
-    Directive for registering an ORM based repository.
+    Directive for registering a RDBM based repository.
     """
     cnf = {}
     if not db_string is None:
@@ -155,7 +155,7 @@ def orm_repository(_context, name=None, make_default=False,
         cnf['metadata_factory'] = metadata_factory
     _repository(_context, name, make_default,
                 aggregate_class, entity_store_class,
-                REPOSITORY_TYPES.ORM, 'add_orm_repository', cnf)
+                REPOSITORY_TYPES.RDB, 'add_rdb_repository', cnf)
 
 
 class IMessagingDirective(Interface):

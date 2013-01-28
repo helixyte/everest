@@ -6,14 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2011.
 """
-from everest.datastores.memory import ObjectFilterSpecificationVisitor
-from everest.datastores.memory import ObjectOrderSpecificationVisitor
-from everest.datastores.orm import SqlFilterSpecificationVisitor
-from everest.datastores.orm import SqlOrderSpecificationVisitor
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
-from everest.interfaces import IRepository
-from everest.interfaces import IRepositoryManager
 from everest.interfaces import IResourceUrlConverter
 from everest.interfaces import IUserMessage
 from everest.interfaces import IUserMessageNotifier
@@ -29,8 +23,15 @@ from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.renderers import RendererFactory
-from everest.repository import REPOSITORY_DOMAINS
-from everest.repository import REPOSITORY_TYPES
+from everest.repositories.constants import REPOSITORY_DOMAINS
+from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepository
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.manager import RepositoryManager
+from everest.repositories.memory import ObjectFilterSpecificationVisitor
+from everest.repositories.memory import ObjectOrderSpecificationVisitor
+from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
@@ -43,7 +44,6 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IService
-from everest.resources.repository import RepositoryManager
 from everest.resources.service import Service
 from everest.resources.system import UserMessageMember
 from everest.resources.utils import provides_member_resource
@@ -62,10 +62,10 @@ from pyramid.path import DottedNameResolver
 from pyramid.path import caller_package
 from pyramid.registry import Registry
 from pyramid_zcml import load_zcml
-from zope.interface import alsoProvides as also_provides  # pylint: disable=E0611,F0401
-from zope.interface import classImplements as class_implements  # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by  # pylint: disable=E0611,F0401
-from zope.interface.interfaces import IInterface  # pylint: disable=E0611,F0401
+from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
+from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -135,13 +135,13 @@ class Configurator(PyramidConfigurator):
         """
         Convenience method for obtaining a utility from the registry.
         """
-        return self.registry.getUtility(*args, **kw)  # pylint: disable=E1103
+        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
 
     def query_registered_utilities(self, *args, **kw):
         """
         Convenience method for querying a utility from the registry.
         """
-        return self.registry.queryUtility(*args, **kw)  # pylint: disable=E1103
+        return self.registry.queryUtility(*args, **kw) # pylint: disable=E1103
 
     def setup_registry(self,
                        filter_specification_factory=None,
@@ -196,14 +196,14 @@ class Configurator(PyramidConfigurator):
                                     eval_order_specification_visitor,
                url_converter=url_converter)
 
-    def add_orm_repository(self, name=None, entity_store_class=None,
+    def add_rdb_repository(self, name=None, entity_store_class=None,
                            aggregate_class=None,
                            make_default=False, configuration=None, _info=u''):
         if configuration is None:
             configuration = {}
         setting_info = [('db_string', 'db_string')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORY_TYPES.ORM, entity_store_class,
+        self.__add_repository(name, REPOSITORY_TYPES.RDB, entity_store_class,
                               aggregate_class, make_default, configuration)
 
     def add_filesystem_repository(self, name=None, entity_store_class=None,
@@ -234,7 +234,7 @@ class Configurator(PyramidConfigurator):
         self.add_resource(IUserMessage, UserMessageMember, UserMessage,
                           repository=REPOSITORY_DOMAINS.SYSTEM,
                           collection_root_name='_messages')
-        self.registry.registerUtility(UserMessageNotifier(),  # pylint:disable=E1103
+        self.registry.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
                                       IUserMessageNotifier)
 
     def add_resource(self, interface, member, entity,
@@ -276,8 +276,8 @@ class Configurator(PyramidConfigurator):
                 if repo_type is None:
                     raise ValueError('Unknown repository type "%s".'
                                      % repository)
-                if repo_type == REPOSITORY_TYPES.ORM:
-                    self.add_orm_repository(name=REPOSITORY_TYPES.ORM)
+                if repo_type == REPOSITORY_TYPES.RDB:
+                    self.add_rdb_repository(name=REPOSITORY_TYPES.RDB)
                 elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
                     self.add_filesystem_repository(
                                             name=REPOSITORY_TYPES.FILE_SYSTEM)
@@ -300,19 +300,19 @@ class Configurator(PyramidConfigurator):
         mb_factory = member.create_from_entity
         self._register_adapter(mb_factory, (interface,), IMemberResource,
                                info=_info)
-        # Register adapter object implementing interface -> member class
+        # Register adapter object implementing instance -> member class
         self._register_adapter(lambda obj: member,
                                required=(interface,),
                                provided=IMemberResource,
                                name='member-class',
                                info=_info)
-        # Register adapter object implementing interface -> collection class
+        # Register adapter object implementing instance -> collection class
         self._register_adapter(lambda obj: collection,
                                required=(interface,),
                                provided=ICollectionResource,
                                name='collection-class',
                                info=_info)
-        # Register adapter object implementing interface -> member class
+        # Register adapter object implementing instance -> entity class
         self._register_adapter(lambda obj: entity,
                                required=(interface,),
                                provided=IEntity,
@@ -346,8 +346,7 @@ class Configurator(PyramidConfigurator):
         # Register utility collection relation -> collection class
         self._register_utility(collection, IRelation,
                                name=collection.relation)
-        # Register the resource with the repository (and ultimately with the
-        # entity store).
+        # Register the resource with the repository.
         repo.register_resource(interface)
         # Register adapter implementing interface -> repository.
         self._register_adapter(lambda obj: repo,
@@ -435,13 +434,13 @@ class Configurator(PyramidConfigurator):
         self.add_resource_view(resource, **kw)
 
     def _get_utility(self, *args, **kw):
-        return self.registry.getUtility(*args, **kw)  # pylint: disable=E1103
+        return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
 
     def _register_utility(self, *args, **kw):
-        return self.registry.registerUtility(*args, **kw)  # pylint: disable=E1103
+        return self.registry.registerUtility(*args, **kw) # pylint: disable=E1103
 
     def _register_adapter(self, *args, **kw):
-        return self.registry.registerAdapter(*args, **kw)  # pylint: disable=E1103
+        return self.registry.registerAdapter(*args, **kw) # pylint: disable=E1103
 
     def _set_filter_specification_factory(self, filter_specification_factory):
         self._register_utility(filter_specification_factory,
@@ -557,7 +556,7 @@ class Configurator(PyramidConfigurator):
         if not url_converter is None:
             self._set_url_converter(url_converter)
 
-    def __add_repository(self, name, repo_type, ent_store_cls, agg_cls,
+    def __add_repository(self, name, repo_type, repo_cls, agg_cls,
                          make_default, cnf):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
         if name is None:
@@ -566,7 +565,7 @@ class Configurator(PyramidConfigurator):
             name = REPOSITORY_DOMAINS.ROOT
         repo = repo_mgr.new(repo_type, name=name,
                             make_default=make_default,
-                            entity_store_class=ent_store_cls,
+                            repository_class=repo_cls,
                             aggregate_class=agg_cls,
                             configuration=cnf)
         repo_mgr.set(repo)

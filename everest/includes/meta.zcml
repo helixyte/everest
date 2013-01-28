@@ -21,8 +21,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             handler="everest.directives.filesystem_repository" />
         <meta:directive
             name="orm_repository"
-            schema="everest.directives.IOrmRepositoryDirective"
-            handler="everest.directives.orm_repository" />
+            schema="everest.directives.IRdbRepositoryDirective"
+            handler="everest.directives.rdb_repository" />
         <meta:directive
             name="messaging"
             schema="everest.directives.IMessagingDirective"

@@ -6,8 +6,8 @@ Created on Feb 21, 2012.
 """
 from StringIO import StringIO
 from everest.mime import CsvMime
-from everest.datastores.orm.utils import OrmTestCaseMixin
-from everest.datastores.orm.utils import reset_metadata
+from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.utils import reset_metadata
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph
@@ -25,16 +25,16 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import new_stage_collection
 from everest.testing import ResourceTestCase
-from everest.tests.testapp_db.entities import MyEntity
-from everest.tests.testapp_db.entities import MyEntityChild
-from everest.tests.testapp_db.entities import MyEntityGrandchild
-from everest.tests.testapp_db.entities import MyEntityParent
-from everest.tests.testapp_db.interfaces import IMyEntity
-from everest.tests.testapp_db.interfaces import IMyEntityChild
-from everest.tests.testapp_db.interfaces import IMyEntityGrandchild
-from everest.tests.testapp_db.interfaces import IMyEntityParent
-from everest.tests.testapp_db.resources import MyEntityChildMember
-from everest.tests.testapp_db.resources import MyEntityGrandchildMember
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityChild
+from everest.tests.complete_app.entities import MyEntityGrandchild
+from everest.tests.complete_app.entities import MyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityGrandchild
+from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.resources import MyEntityChildMember
+from everest.tests.complete_app.resources import MyEntityGrandchildMember
 import glob
 import os
 import shutil
@@ -62,8 +62,8 @@ def _make_test_entity_member():
 
 
 class ResourceGraphTestCase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
-    config_file_name = 'configure_no_orm.zcml'
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
     _interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,
                    IMyEntityGrandchild]
 
@@ -145,7 +145,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
 
 
 class _ResourceIoTestCaseBase(ResourceTestCase):
-    package_name = 'everest.tests.testapp_db'
+    package_name = 'everest.tests.complete_app'
 
     def set_up(self):
         ResourceTestCase.set_up(self)
@@ -177,8 +177,8 @@ class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
         self.assert_equal(len(colls[3]), 1)
 
 
-class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
-    config_file_name = 'configure_no_orm.zcml'
+class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_load_from_zipfile_invalid_extension(self):
         strm = StringIO('w')
@@ -202,7 +202,7 @@ class ZipResourceIoTestCaseNoOrm(_ZipResourceIoTestCaseBase):
         self.assert_equal(len(colls[0]), 0)
 
 
-class ZipResourceIoTestCaseOrm(OrmTestCaseMixin, _ZipResourceIoTestCaseBase):
+class ZipResourceIoTestCaseRdb(RdbTestCaseMixin, _ZipResourceIoTestCaseBase):
     config_file_name = 'configure.zcml'
 
     @classmethod
@@ -211,7 +211,7 @@ class ZipResourceIoTestCaseOrm(OrmTestCaseMixin, _ZipResourceIoTestCaseBase):
 
 
 class StreamResourceIoTestCase(_ResourceIoTestCaseBase):
-    config_file_name = 'configure_no_orm.zcml'
+    config_file_name = 'configure_no_rdb.zcml'
     def test_dump_no_content_type(self):
         member = _make_test_entity_member()
         strm = StringIO()
@@ -220,7 +220,7 @@ class StreamResourceIoTestCase(_ResourceIoTestCaseBase):
 
 
 class FileResourceIoTestCase(_ResourceIoTestCaseBase):
-    config_file_name = 'configure_no_orm.zcml'
+    config_file_name = 'configure_no_rdb.zcml'
     def _test_load(self, load_func, fn_func, is_into):
         member = _make_test_entity_member()
         tmp_dir = tempfile.mkdtemp()
