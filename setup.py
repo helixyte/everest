@@ -26,7 +26,7 @@ tests_requirements = install_requirements + [
     ]
 
 setup(name='everest',
-      version='1.0b1',
+      version='1.0b2',
       description='everest',
       long_description=README,
       classifiers=[
