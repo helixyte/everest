@@ -20,7 +20,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             schema="everest.directives.IFileSystemRepositoryDirective"
             handler="everest.directives.filesystem_repository" />
         <meta:directive
-            name="orm_repository"
+            name="rdb_repository"
             schema="everest.directives.IRdbRepositoryDirective"
             handler="everest.directives.rdb_repository" />
         <meta:directive

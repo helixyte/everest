@@ -8,7 +8,7 @@
 
     <!-- Repositories. -->
 
-    <orm_repository
+    <rdb_repository
         make_default="true"
         metadata_factory="everest.tests.complete_app.rdb.create_metadata" />
 

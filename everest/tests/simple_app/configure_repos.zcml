@@ -17,7 +17,7 @@
         directory="repo" 
         content_type="everest.mime.XmlMime" />
         
-    <orm_repository
+    <rdb_repository
         name="CUSTOM_RDB"
         db_string="memory:" />
 
