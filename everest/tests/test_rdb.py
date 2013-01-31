@@ -6,21 +6,18 @@ Created on Jun 1, 2012.
 """
 from everest.entities.interfaces import IEntity
 from everest.repositories.rdb.utils import as_slug_expression
-from everest.repositories.rdb.utils import commit_veto
-from everest.repositories.utils import get_engine
 from everest.repositories.rdb.utils import get_metadata
 from everest.repositories.rdb.utils import hybrid_descriptor
-from everest.repositories.utils import is_engine_initialized
 from everest.repositories.rdb.utils import is_metadata_initialized
 from everest.repositories.rdb.utils import mapper
-from everest.repositories.utils import reset_engines
 from everest.repositories.rdb.utils import reset_metadata
-from everest.repositories.utils import set_engine
 from everest.repositories.rdb.utils import set_metadata
+from everest.repositories.utils import get_engine
+from everest.repositories.utils import is_engine_initialized
+from everest.repositories.utils import reset_engines
+from everest.repositories.utils import set_engine
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.complete_app.entities import MyEntity
-from pyramid.httpexceptions import HTTPOk
-from pyramid.httpexceptions import HTTPRedirection
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -37,7 +34,7 @@ __all__ = ['RdbTestCase',
 
 
 class RdbTestCase(Pep8CompliantTestCase):
-    def test_db_engine_manager(self):
+    def test_rdb_engine_manager(self):
         key = 'test'
         self.assert_false(is_engine_initialized(key))
         eng = create_engine('sqlite://')
@@ -110,14 +107,6 @@ class RdbTestCase(Pep8CompliantTestCase):
         base_mpr.dispose()
         mpr.dispose()
 
-    def test_commit_veto(self):
-        rsp1 = DummyResponse(HTTPOk().status, dict())
-        self.assert_false(commit_veto(None, rsp1))
-        rsp2 = DummyResponse(HTTPRedirection().status, dict())
-        self.assert_true(commit_veto(None, rsp2))
-        rsp3 = DummyResponse(HTTPRedirection().status, {'x-tm':'commit'})
-        self.assert_false(commit_veto(None, rsp3))
-
     def _make_table(self, with_id):
         md = MetaData()
         cols = [Column('my_id', Integer, primary_key=True),
@@ -125,9 +114,3 @@ class RdbTestCase(Pep8CompliantTestCase):
         if with_id:
             cols.append(Column('id', Integer))
         return Table('my_table_with_id_col', md, *cols)
-
-
-class DummyResponse(object):
-    def __init__(self, status, headers):
-        self.status = status
-        self.headers = headers

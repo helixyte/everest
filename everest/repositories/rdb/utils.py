@@ -29,7 +29,6 @@ __all__ = ['OrderClauseList',
            'RdbTestCaseMixin',
            'as_slug_expression',
            'clear_mappers',
-           'commit_veto',
            'empty_metadata',
            'get_metadata',
            'is_metadata_initialized',
@@ -65,19 +64,6 @@ class OrderClauseList(ClauseList):
     """
     def self_group(self, against=None):
         return self
-
-
-def commit_veto(request, response): # unused request arg pylint: disable=W0613
-    """
-    Strict commit veto to use with the transaction manager.
-    
-    Unlike the default commit veto supplied with the transaction manager,
-    this will veto all commits for HTTP status codes other than 2xx unless
-    a commit is explicitly requested by setting the "x-tm" response header to
-    "commit".
-    """
-    return not response.status.startswith('2') \
-            and not response.headers.get('x-tm') == 'commit'
 
 
 def as_slug_expression(attr):
