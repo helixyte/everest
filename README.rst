@@ -48,9 +48,8 @@ to issue the command
 Documentation
 =============
 
-``everest`` comes complete with
- * `API documentation <http://cenix.github.com/everest/api.html>`_ and
- * A `demo application <http://cenix.github.com/everest-demo>`_.
+* `API documentation <http://cenix.github.com/everest/api.html>`_
+* A `demo application <http://cenix.github.com/everest-demo>`_.
 
 
 Development
