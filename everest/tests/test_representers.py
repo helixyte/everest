@@ -51,14 +51,16 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AttributesTestCase',
+__all__ = ['AtomRepresentationTestCase',
            'AttributesTestCase',
-           'CsvRepresentationTestCase',
-           'LazyAttribteLoaderProxyTestCase',
+           'CsvRepresenterTestCase',
+           'JsonRepresenterTestCase',
+           'LazyAttributeLoaderProxyTestCase',
+           'RepresenterConfigurationNoTypesTestCase',
            'RepresenterConfigurationTestCase',
            'RepresenterRegistryTestCase',
            'UpdateResourceFromDataTestCase',
-           'XmlRepresentationTestCase',
+           'XmlRepresenterTestCase',
            ]
 
 
@@ -491,6 +493,21 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
           data_el.members[0].data['children'].members[1].data['children.id'],
           1)
 
+    def test_csv_none_attribute_value(self):
+        ent = iter(self._collection).next().get_entity()
+        ent.text = None
+        def check_string(rpr_str):
+            lines = rpr_str.split(os.linesep)
+            self.assert_true(len(lines), 3)
+            # Make sure the header is correct.
+            self.assert_equal(lines[0],
+                              '"id","parent","nested_parent","text",'
+                              '"text_rc","number","date_time",'
+                              '"parent_text"')
+            # None value represented as the empty string.
+            self.assert_equal(lines[1].split(',')[3], '""')
+            self.assert_equal(lines[2].split(',')[3], '"too1"')
+        self._test_with_defaults(check_string)
 
 
 class XmlRepresenterTestCase(ResourceTestCase):

@@ -30,7 +30,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DataElementBuilderResourceTreeVisitor',
-           'DataElementTreeTraverserMixin',
+           'DataElementTreeTraverser',
            'DataTreeTraverser',
            'DataElementTreeTraverser',
            'ResourceDataTreeTraverser',
@@ -45,10 +45,10 @@ class PROCESSING_DIRECTIONS(object):
     """
     Constants specifying the direction resource data are processed.
     """
-    #: Resource data are being read (i.e., a representation is converted 
+    #: Resource data are being read (i.e., a representation is converted
     #: to a resource.
     READ = 'READ'
-    #: Resource data are being written (i.e., a resource is converted 
+    #: Resource data are being written (i.e., a resource is converted
     #: to a representation.
     WRITE = 'WRITE'
 
@@ -359,9 +359,6 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
                     # Terminal attribute - extract.
                     value = self._get_node_terminal(member_node, mb_attr)
-                    if value is None:
-                        # None values are ignored.
-                        continue
                     member_data[mb_attr] = value
                 else:
                     # Nested attribute - traverse.
@@ -369,13 +366,13 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                                                         mb_attr)
                     if nested_node is None:
                         # Stop condition - the given data element does not
-                        # contain a nested attribute of the given mapped 
+                        # contain a nested attribute of the given mapped
                         # name.
                         continue
                     nested_attr_key = attr_key + (mb_attr.name,)
                     if ignore_opt is False:
-                        # The offset in the attribute key ensures that 
-                        # the defaults for ignoring attributes of the 
+                        # The offset in the attribute key ensures that
+                        # the defaults for ignoring attributes of the
                         # nested attribute can be retrieved correctly.
                         nested_attr_key.offset = len(nested_attr_key)
                     self._dispatch(nested_attr_key, mb_attr, nested_node,
@@ -403,7 +400,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         #    key is > 0 or the cardinality is not MANYTOONE (this avoids
         #    traversing circular attribute definitions such as parent ->
         #    children -> parent);
-        #  * also ignore collection attributes when the cardinality is 
+        #  * also ignore collection attributes when the cardinality is
         #    not MANYTOMANY.
         do_ignore = ignore_opt
         if ignore_opt is None:

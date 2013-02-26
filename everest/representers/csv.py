@@ -173,7 +173,7 @@ class CsvRepresentationParser(RepresentationParser):
                 self.__first_row_field_names = set(csv_reader.fieldnames)
                 self.__first_row_data = row_data.copy()
             if not self.__coll_data is None:
-                # We need to generate the row data key now because we 
+                # We need to generate the row data key now because we
                 # get attribute values destructively from the row_data.
                 self.__row_data_key = self.__coll_data.make_key(row_data)
             mb_data_el = self.__process_row(row_data, self._resource_class,
@@ -187,7 +187,7 @@ class CsvRepresentationParser(RepresentationParser):
                 raise ValueError('Invalid row length.')
             if not coll_data_el is None:
                 # The member data element will be None for all but the first
-                # member of nested collection resources. 
+                # member of nested collection resources.
                 if not mb_data_el is None:
                     coll_data_el.add_member(mb_data_el)
         if is_member_rpr:
@@ -253,11 +253,11 @@ class CsvRepresentationParser(RepresentationParser):
                     data_el.set_nested(attribute, link_data_el)
                 else:
                     nested_attr_key = attribute_key + (attribute.name,)
-                    # We recursively look for nested resource attributes in 
+                    # We recursively look for nested resource attributes in
                     # other fields.
                     if attribute.kind == ResourceAttributeKinds.MEMBER:
-                        # For polymorphic classes, this lookup will only work 
-                        # if a representer (and a mapping) was initialized 
+                        # For polymorphic classes, this lookup will only work
+                        # if a representer (and a mapping) was initialized
                         # for each derived class.
                         nested_rc_cls = get_member_class(attribute.value_type)
                     else: # collection attribute.
@@ -313,8 +313,8 @@ class CsvRepresentationParser(RepresentationParser):
 #class CsvRepresentationParser(RepresentationParser):
 #    """
 #    Parser converting CSV representations of resources into a data element.
-#    
-#    :note: Nested resources have to be provided as links (i.e., there is no 
+#
+#    :note: Nested resources have to be provided as links (i.e., there is no
 #           support for recursive data element tree building).
 #    """
 #
@@ -468,7 +468,10 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
 class CsvRepresentationGenerator(RepresentationGenerator):
     """
     A generator converting data elements into CSV representations.
-
+    
+    :note: ``None`` values in terminal attributes are represented as the empty
+           string (this is the default behavior of the CSV writer from the
+           standard library).
     :note: Nested member and collection resources are handled by adding 
            more columns (member attributes) and rows (collection members)
            dynamically. By default, column names for nested member attributes
