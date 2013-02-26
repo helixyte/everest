@@ -187,7 +187,7 @@ specifications.</p>
 <dt id="everest.querying.specifications.ConjunctionFilterSpecification">
 <em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">ConjunctionFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#ConjunctionFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CompositeFilterSpecification" title="everest.querying.specifications.CompositeFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CompositeFilterSpecification</span></tt></a></p>
-<p>Concrete conjuction specification.</p>
+<p>Concrete Conjunction specification.</p>
 </dd></dl>
 
 <dl class="class">
@@ -217,8 +217,8 @@ specifications.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="everest.querying.specifications.DisjuctionFilterSpecification">
-<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">DisjuctionFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#DisjuctionFilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="Permalink to this definition">¶</a></dt>
+<dt id="everest.querying.specifications.DisjunctionFilterSpecification">
+<em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">DisjunctionFilterSpecification</tt><big>(</big><em>left_spec</em>, <em>right_spec</em><big>)</big><a class="headerlink" href="#everest.querying.specifications.DisjunctionFilterSpecification" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#everest.querying.specifications.CompositeFilterSpecification" title="everest.querying.specifications.CompositeFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.specifications.CompositeFilterSpecification</span></tt></a></p>
 <p>Concrete disjuction specification.</p>
 </dd></dl>
@@ -228,24 +228,6 @@ specifications.</p>
 <em class="property">class </em><tt class="descclassname">everest.querying.specifications.</tt><tt class="descname">FilterSpecification</tt><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.Specification" title="everest.querying.base.Specification"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.Specification</span></tt></a></p>
 <p>Abstract base class for all filter specifications.</p>
-<dl class="method">
-<dt id="everest.querying.specifications.FilterSpecification.and_">
-<tt class="descname">and_</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.and_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.and_" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="everest.querying.specifications.ConjunctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">ConjunctionFilterSpecification</span></tt></a>.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the other specification</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a new conjuction specification</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.ConjunctionFilterSpecification" title="everest.querying.specifications.ConjunctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">ConjunctionFilterSpecification</span></tt></a></td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 <dl class="method">
 <dt id="everest.querying.specifications.FilterSpecification.is_satisfied_by">
 <tt class="descname">is_satisfied_by</tt><big>(</big><em>candidate</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.is_satisfied_by"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.is_satisfied_by" title="Permalink to this definition">¶</a></dt>
@@ -259,40 +241,6 @@ specifications.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if the specification is met by the candidate.</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.querying.specifications.FilterSpecification.not_">
-<tt class="descname">not_</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.not_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.not_" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.NegationFilterSpecification" title="everest.querying.specifications.NegationFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">NegationFilterSpecification</span></tt></a></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a new negation specification</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.NegationFilterSpecification" title="everest.querying.specifications.NegationFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">NegationFilterSpecification</span></tt></a></td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.querying.specifications.FilterSpecification.or_">
-<tt class="descname">or_</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/specifications.html#FilterSpecification.or_"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.specifications.FilterSpecification.or_" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generative method to create a <a class="reference internal" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="everest.querying.specifications.DisjuctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">DisjuctionFilterSpecification</span></tt></a></p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> (<a class="reference internal" href="#everest.querying.specifications.FilterSpecification" title="everest.querying.specifications.FilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">FilterSpecification</span></tt></a>) &#8211; the other specification</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a new disjuction specification</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#everest.querying.specifications.DisjuctionFilterSpecification" title="everest.querying.specifications.DisjuctionFilterSpecification"><tt class="xref py py-class docutils literal"><span class="pre">DisjuctionFilterSpecification</span></tt></a></td>
 </tr>
 </tbody>
 </table>

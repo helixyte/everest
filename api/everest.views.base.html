@@ -155,22 +155,23 @@
 <p>View base classes.</p>
 <dl class="class">
 <dt id="everest.views.base.GetResourceView">
-<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">GetResourceView</tt><big>(</big><em>resource</em>, <em>request</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#GetResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.GetResourceView" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#everest.views.base.ResourceView" title="everest.views.base.ResourceView"><tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.ResourceView</span></tt></a></p>
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">GetResourceView</tt><big>(</big><em>resource</em>, <em>request</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#GetResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.GetResourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.RepresentingResourceView</span></tt></p>
 <p>Abstract base class for all collection views</p>
 </dd></dl>
 
 <dl class="exception">
 <dt id="everest.views.base.HttpWarningResubmit">
-<em class="property">exception </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">HttpWarningResubmit</tt><big>(</big><em>detail=None</em>, <em>headers=None</em>, <em>comment=None</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#HttpWarningResubmit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.HttpWarningResubmit" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">paste.httpexceptions.HTTPTemporaryRedirect</span></tt></p>
-<p>Special 307 HTTP Temporary Redirect exception which transports</p>
+<em class="property">exception </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">HttpWarningResubmit</tt><big>(</big><em>location=''</em>, <em>detail=None</em>, <em>headers=None</em>, <em>comment=None</em>, <em>body_template=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#HttpWarningResubmit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.HttpWarningResubmit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">pyramid.httpexceptions.HTTPTemporaryRedirect</span></tt></p>
+<p>Special 307 HTTP Temporary Redirect exception which transports a URL
+at which the user may resubmit the request with the warning suppressed.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="everest.views.base.PutOrPostResourceView">
-<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">PutOrPostResourceView</tt><big>(</big><em>resource</em>, <em>request</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#PutOrPostResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.PutOrPostResourceView" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#everest.views.base.ResourceView" title="everest.views.base.ResourceView"><tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.ResourceView</span></tt></a></p>
+<em class="property">class </em><tt class="descclassname">everest.views.base.</tt><tt class="descname">PutOrPostResourceView</tt><big>(</big><em>resource</em>, <em>request</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/views/base.html#PutOrPostResourceView"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.views.base.PutOrPostResourceView" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.views.base.RepresentingResourceView</span></tt></p>
 <p>Abstract base class for all member views</p>
 </dd></dl>
 

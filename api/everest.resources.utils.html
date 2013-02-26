@@ -181,7 +181,7 @@ a child of</li>
 
 <dl class="function">
 <dt id="everest.resources.utils.get_collection_class">
-<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_collection_class</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_collection_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_collection_class" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_collection_class</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_collection_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_collection_class" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the registered collection resource class for the given marker
 interface or member resource class or instance.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -197,13 +197,13 @@ a registered resource interface.</em>) &#8211; registered resource</td>
 
 <dl class="function">
 <dt id="everest.resources.utils.get_member_class">
-<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_member_class</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_member_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_member_class" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_member_class</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_member_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_member_class" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the registered member class for the given resource.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resource</strong> (<em>class implementing or instance providing or subclass of
 a registered resource interface.</em>) &#8211; registered resource</td>
 </tr>
 </tbody>
@@ -233,30 +233,14 @@ relation.</p>
 
 <dl class="function">
 <dt id="everest.resources.utils.get_root_collection">
-<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_root_collection</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_root_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_root_collection" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_root_collection</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_root_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_root_collection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a clone of the collection from the repository registered for the
 given registered resource.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
-a registered resource interface.</em>) &#8211; registered resource</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.resources.utils.get_stage_collection">
-<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">get_stage_collection</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#get_stage_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.get_stage_collection" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a clone of the collection in the stage repository matching the 
-given registered resource.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rc</strong> (<em>class implementing or instance providing or subclass of
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resource</strong> (<em>class implementing or instance providing or subclass of
 a registered resource interface.</em>) &#8211; registered resource</td>
 </tr>
 </tbody>
@@ -290,6 +274,18 @@ a registered resource interface.</em>) &#8211; registered resource</td>
 <tt class="descclassname">everest.resources.utils.</tt><tt class="descname">provides_resource</tt><big>(</big><em>obj</em><big>)</big><a class="reference internal" href="../_modules/everest/resources/utils.html#provides_resource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.resources.utils.provides_resource" title="Permalink to this definition">¶</a></dt>
 <dd><p>Checks if the given type or instance provides the
 <tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IResource</span></tt> interface.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.resource_to_url">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">resource_to_url</tt><big>(</big><em>resource</em>, <em>request=None</em><big>)</big><a class="headerlink" href="#everest.resources.utils.resource_to_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the given resource to a URL.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="everest.resources.utils.url_to_resource">
+<tt class="descclassname">everest.resources.utils.</tt><tt class="descname">url_to_resource</tt><big>(</big><em>url</em>, <em>request=None</em><big>)</big><a class="headerlink" href="#everest.resources.utils.url_to_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the given URL to a resource.</p>
 </dd></dl>
 
 </div>

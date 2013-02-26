@@ -150,20 +150,28 @@
 
 <div class="container">
    
-  <div class="section" id="everest-representers-traversal">
-<h1>everest.representers.traversal<a class="headerlink" href="#everest-representers-traversal" title="Permalink to this headline">¶</a></h1>
-<span class="target" id="module-everest.representers.traversal"></span><p>Resource data tree traversal.</p>
+  <div class="section" id="module-everest.representers.traversal">
+<span id="everest-representers-traversal"></span><h1>everest.representers.traversal<a class="headerlink" href="#module-everest.representers.traversal" title="Permalink to this headline">¶</a></h1>
+<p>Resource data tree traversal.</p>
 <dl class="class">
-<dt id="everest.representers.traversal.AttributeKey">
-<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">AttributeKey</tt><big>(</big><em>data</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#AttributeKey"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.AttributeKey" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>Value object used as a key during resource data tree traversal.</p>
-<p>Each key consists of a tuple of attribute strings that uniquely 
-determine a node&#8217;s position in the resource data tree.</p>
-<dl class="attribute">
-<dt id="everest.representers.traversal.AttributeKey.__weakref__">
-<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.traversal.AttributeKey.__weakref__" title="Permalink to this definition">¶</a></dt>
-<dd><p>list of weak references to the object (if defined)</p>
+<dt id="everest.representers.traversal.DataElementTreeTraverser">
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">DataElementTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#everest.representers.traversal.ResourceDataTreeTraverser" title="everest.representers.traversal.ResourceDataTreeTraverser"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.traversal.ResourceDataTreeTraverser</span></tt></a></p>
+<p>Traverser for data element trees.</p>
+<p>This traverser can be used both inbound during reading (data element 
+-&gt; resource) and outbound during writing (resource -&gt; data element).</p>
+<dl class="method">
+<dt id="everest.representers.traversal.DataElementTreeTraverser.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>direction</strong> &#8211; processing direction (read or write). One of the</td>
+</tr>
+</tbody>
+</table>
+<p><a class="reference internal" href="#everest.representers.traversal.PROCESSING_DIRECTIONS" title="everest.representers.traversal.PROCESSING_DIRECTIONS"><tt class="xref py py-class docutils literal"><span class="pre">PROCESSING_DIRECTIONS</span></tt></a> constant attributes.</p>
 </dd></dl>
 
 </dd></dl>
@@ -188,15 +196,15 @@ determine a node&#8217;s position in the resource data tree.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="everest.representers.traversal.DataElementTreeTraverser">
-<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">DataElementTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser" title="Permalink to this definition">¶</a></dt>
+<dt>
+<em class="property">class </em><tt class="descclassname">everest.representers.traversal.</tt><tt class="descname">DataElementTreeTraverser</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser"><span class="viewcode-link">[source]</span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#everest.representers.traversal.ResourceDataTreeTraverser" title="everest.representers.traversal.ResourceDataTreeTraverser"><tt class="xref py py-class docutils literal"><span class="pre">everest.representers.traversal.ResourceDataTreeTraverser</span></tt></a></p>
 <p>Traverser for data element trees.</p>
 <p>This traverser can be used both inbound during reading (data element 
 -&gt; resource) and outbound during writing (resource -&gt; data element).</p>
 <dl class="method">
-<dt id="everest.representers.traversal.DataElementTreeTraverser.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.traversal.DataElementTreeTraverser.__init__" title="Permalink to this definition">¶</a></dt>
+<dt>
+<tt class="descname">__init__</tt><big>(</big><em>root</em>, <em>mapping</em>, <em>direction</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/traversal.html#DataElementTreeTraverser.__init__"><span class="viewcode-link">[source]</span></a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />

@@ -150,83 +150,8 @@
 
 <div class="container">
    
-  <div class="section" id="module-everest.orm">
-<span id="everest-orm"></span><h1>everest.orm<a class="headerlink" href="#module-everest.orm" title="Permalink to this headline">¶</a></h1>
-<p>ORM related services.</p>
-<dl class="class">
-<dt id="everest.orm.OrderClauseList">
-<em class="property">class </em><tt class="descclassname">everest.orm.</tt><tt class="descname">OrderClauseList</tt><big>(</big><em>*clauses</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#OrderClauseList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.OrderClauseList" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">sqlalchemy.sql.expression.ClauseList</span></tt></p>
-<p>Custom clause list for ORDER BY clauses.</p>
-<p>Suppresses the grouping parentheses which would trigger a syntax error.</p>
-</dd></dl>
-
-<dl class="data">
-<dt id="everest.orm.Session">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">Session</tt><em class="property"> = &lt;sqlalchemy.orm.scoping.ScopedSession object at 0x21e9dd0&gt;</em><a class="headerlink" href="#everest.orm.Session" title="Permalink to this definition">¶</a></dt>
-<dd><p>The scoped session maker. Instantiate this to obtain a thread local
-session instance.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.orm.as_slug_expression">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">as_slug_expression</tt><big>(</big><em>attr</em><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#as_slug_expression"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.as_slug_expression" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts the given instrumented string attribute into an SQL expression
-that can be used as a slug.</p>
-<p>Slugs are identifiers for members in a collection that can be used in an
-URL. We create slug columns by replacing non-URL characters with dashes
-and lower casing the result. We need this at the ORM level so that we can
-use the slug in a query expression.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.orm.clear_mappers">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">clear_mappers</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#clear_mappers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.clear_mappers" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clears all mappers set up by SA and also clears all custom &#8220;id&#8221; and
-&#8220;slug&#8221; attributes inserted by the <a class="reference internal" href="#everest.orm.mapper" title="everest.orm.mapper"><tt class="xref py py-func docutils literal"><span class="pre">mapper()</span></tt></a> function in this module.</p>
-<p>This should only ever be needed in a testing context.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.orm.commit_veto">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">commit_veto</tt><big>(</big><em>environ</em>, <em>status</em>, <em>headers</em><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#commit_veto"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.commit_veto" title="Permalink to this definition">¶</a></dt>
-<dd><p>Strict commit veto to use with the transaction manager.</p>
-<p>Unlike the default commit veto supplied with the transaction manager,
-this will veto all commits for HTTP status codes other than 2xx unless
-a commit is explicitly requested by setting the &#8220;x-tm&#8221; response header to
-&#8220;commit&#8221;.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.orm.empty_metadata">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">empty_metadata</tt><big>(</big><em>engine</em><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#empty_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.empty_metadata" title="Permalink to this definition">¶</a></dt>
-<dd><p>The default metadata factory.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.orm.mapper">
-<tt class="descclassname">everest.orm.</tt><tt class="descname">mapper</tt><big>(</big><em>class_</em>, <em>local_table=None</em>, <em>id_attribute='id'</em>, <em>slug_expression=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/everest/orm.html#mapper"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.orm.mapper" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convenience wrapper around the SA mapper which will set up the hybrid
-&#8220;id&#8221; and &#8220;slug&#8221; attributes required by everest after calling the SA
-mapper.</p>
-<p>If you (e.g., for testing purposes) want to clear mappers created with
-this function, use the <a class="reference internal" href="#everest.orm.clear_mappers" title="everest.orm.clear_mappers"><tt class="xref py py-func docutils literal"><span class="pre">clear_mappers()</span></tt></a> function in this module.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>id_attribute</strong> (<em>str</em>) &#8211; the name of the column in the table to use as
-ID column (will be aliased to a new &#8220;id&#8221; attribute in the mapped class)</li>
-<li><strong>slug_expression</strong> &#8211; function to generate a slug SQL expression given
-the mapped class as argument.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+  <div class="section" id="everest-orm">
+<h1>everest.orm<a class="headerlink" href="#everest-orm" title="Permalink to this headline">¶</a></h1>
 </div>
 
 

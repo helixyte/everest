@@ -150,34 +150,8 @@
 
 <div class="container">
    
-  <div class="section" id="module-everest.entities.aggregates">
-<span id="everest-entities-aggregates"></span><h1>everest.entities.aggregates<a class="headerlink" href="#module-everest.entities.aggregates" title="Permalink to this headline">¶</a></h1>
-<p>Aggregate implementations.</p>
-<dl class="class">
-<dt id="everest.entities.aggregates.MemoryAggregate">
-<em class="property">class </em><tt class="descclassname">everest.entities.aggregates.</tt><tt class="descname">MemoryAggregate</tt><big>(</big><em>entity_class</em>, <em>session_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/aggregates.html#MemoryAggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.aggregates.MemoryAggregate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="everest.entities.base.html#everest.entities.base.Aggregate" title="everest.entities.base.Aggregate"><tt class="xref py py-class docutils literal"><span class="pre">everest.entities.base.Aggregate</span></tt></a></p>
-<p>In-memory implementation for aggregates.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body">When &#8220;blank&#8221; entities without an ID and a slug are added to a
-memory aggregate, they can not be retrieved using the
-<tt class="xref py py-meth docutils literal"><span class="pre">get_by_id()</span></tt> or <tt class="xref py py-meth docutils literal"><span class="pre">get_by_slug()</span></tt> methods since there 
-is no mechanism to autogenerate IDs or slugs.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="class">
-<dt id="everest.entities.aggregates.OrmAggregate">
-<em class="property">class </em><tt class="descclassname">everest.entities.aggregates.</tt><tt class="descname">OrmAggregate</tt><big>(</big><em>entity_class</em>, <em>session_factory</em>, <em>search_mode=False</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/aggregates.html#OrmAggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.aggregates.OrmAggregate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="everest.entities.base.html#everest.entities.base.Aggregate" title="everest.entities.base.Aggregate"><tt class="xref py py-class docutils literal"><span class="pre">everest.entities.base.Aggregate</span></tt></a></p>
-<p>ORM implementation for aggregates.</p>
-</dd></dl>
-
+  <div class="section" id="everest-entities-aggregates">
+<h1>everest.entities.aggregates<a class="headerlink" href="#everest-entities-aggregates" title="Permalink to this headline">¶</a></h1>
 </div>
 
 

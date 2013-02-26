@@ -164,49 +164,56 @@
    
   <div class="section" id="everest-rest-applications-for-python">
 <h1>everest - REST applications for python<a class="headerlink" href="#everest-rest-applications-for-python" title="Permalink to this headline">¶</a></h1>
-<p><cite>everest</cite> is an extension of the popular <cite>Pyramid</cite> framework aimed at
-simplifying the development of REST applications.</p>
-<p><cite>everest</cite> features in a nutshell:</p>
-<blockquote>
-<div><ul class="simple">
+<p><tt class="docutils literal"><span class="pre">everest</span></tt> is an extension of the popular
+<a class="reference external" href="http://www.pylonsproject.org/">Pyramid</a> framework aimed at simplifying the
+development of REST applications in <a class="reference external" href="http://www.python.org">Python</a>.</p>
+<p><tt class="docutils literal"><span class="pre">everest</span></tt> features in a nutshell:</p>
+<ul class="simple">
 <li>A resource declaration framework that allows you to expose an entity domain
 model through a REST application;</li>
 <li>Extensible views for performing standard CRUD operations on resources in
 response to REST requests;</li>
-<li>Representers that convert resources to string representations and vice
-versa for a number of MIME types (XML, ATOM, CSV, JSON);</li>
+<li>Representers that convert resources to string representations and vice versa
+for a number of MIME types (XML, ATOM, CSV, JSON);</li>
 <li>A repository layer permitting per-resource configuration of the storage
 backend to use (memory for testing, file system for small data volumes,
 relational database for large data volumes);</li>
-<li>A query language for expressing complex hierarchical queries on the
-resource object tree through URLs;</li>
+<li>A query language for expressing complex hierarchical queries on the resource
+object tree through URLs;</li>
 <li>A Flex client
-(<a class="reference external" href="https://github.com/cenix/everest-flex">distributed separately</a>).</li>
+(<a class="reference external" href="https://github.com/cenix/everest-flex">distributed separately</a>);</li>
 </ul>
-</div></blockquote>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>Installing <cite>everest</cite> is simple:</p>
+<p>Installing <tt class="docutils literal"><span class="pre">everest</span></tt> is simple. You need</p>
+<ul>
+<li><p class="first">A recent version of Python (2.7.x). See
+<a class="reference external" href="http://www.python.org/download/releases/2.7.3/">here</a> for instructions;</p>
+</li>
+<li><p class="first">The pip Python package installer. Install in a shell with the command</p>
+<div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> easy_install pip
+</pre></div>
+</div>
+</li>
+</ul>
+<p>With these requirements in place, all you need to do to install <tt class="docutils literal"><span class="pre">everest</span></tt> is
+to issue the command</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> pip install everest
 </pre></div>
 </div>
 </div>
 <div class="section" id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt><cite>everest</cite> comes complete with</dt>
-<dd><ul class="first last simple">
-<li><a class="reference external" href="http://cenix.github.com/everest/api.html">API documentation</a> and</li>
-<li>a <a class="reference external" href="http://cenix.github.com/everest-demo">demo application</a>.</li>
+<ul class="simple">
+<li><a class="reference external" href="http://cenix.github.com/everest/api.html">API documentation</a></li>
+<li>A <a class="reference external" href="http://cenix.github.com/everest-demo">demo application</a>.</li>
 </ul>
-</dd>
-</dl>
 </div>
 <div class="section" id="development">
 <h2>Development<a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h2>
-<p><cite>everest</cite> is hosted on <a class="reference external" href="https://github.com/cenix/everest">github</a>. To
-contribute, please fork the project and submit a pull request. Please adhere
-to PEP8 in your code and ensure 100% test coverage. We recommend configuring
+<p><tt class="docutils literal"><span class="pre">everest</span></tt> is hosted on <a class="reference external" href="https://github.com/cenix/everest">github</a>. To
+contribute, please fork the project and submit a pull request. Please adhere to
+PEP8 in your code and ensure 100% test coverage. We recommend configuring
 pylint with the configuration file supplied in the <cite>support</cite> directory.</p>
 </div>
 <div class="section" id="indices">

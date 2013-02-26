@@ -238,12 +238,6 @@ ignored.</p>
 <dd><p>Factory class method to create a new aggregate.</p>
 </dd></dl>
 
-<dl class="attribute">
-<dt id="everest.entities.base.Aggregate.entity_class">
-<tt class="descname">entity_class</tt><em class="property"> = None</em><a class="headerlink" href="#everest.entities.base.Aggregate.entity_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>Entity class (type) of the entities in this aggregate.</p>
-</dd></dl>
-
 <dl class="method">
 <dt id="everest.entities.base.Aggregate.get_by_id">
 <tt class="descname">get_by_id</tt><big>(</big><em>id_key</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/base.html#Aggregate.get_by_id"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.base.Aggregate.get_by_id" title="Permalink to this definition">¶</a></dt>
@@ -312,7 +306,7 @@ aggregate.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>entity</strong> (object implementing
-<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; entity (domain object) to remove</td>
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; entity (domain object) to remove.</td>
 </tr>
 <tr class="field-even field"><th class="field-name" colspan="2">Raises ValueError:</th></tr>
 <tr class="field-even field"><td>&nbsp;</td><td class="field-body">entity was not found</td>
@@ -330,6 +324,29 @@ aggregate.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>relationship</strong> &#8211; instance of <a class="reference internal" href="everest.relationship.html#everest.relationship.Relationship" title="everest.relationship.Relationship"><tt class="xref py py-class docutils literal"><span class="pre">everest.relationship.Relationship</span></tt></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.entities.base.Aggregate.update">
+<tt class="descname">update</tt><big>(</big><em>entity</em>, <em>source_entity</em><big>)</big><a class="headerlink" href="#everest.entities.base.Aggregate.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates the state of the given entity such that it reflects the state
+of the given source entity.</p>
+<p>Relies on the underlying entity store for the implementation of the
+state update.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>entity</strong> (object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; entity (domain object) to transfer state to.</li>
+<li><strong>source_entity</strong> (object implementing
+<tt class="xref py py-class docutils literal"><span class="pre">everest.entities.interfaces.IEntity</span></tt>) &#8211; source entity to transfer state from.</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>

@@ -169,7 +169,11 @@
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body">Nested member and collection resources are handled by adding 
+<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body"><tt class="docutils literal"><span class="pre">None</span></tt> values in terminal attributes are represented as the empty
+string (this is the default behavior of the CSV writer from the
+standard library).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Note :</th><td class="field-body">Nested member and collection resources are handled by adding 
 more columns (member attributes) and rows (collection members)
 dynamically. By default, column names for nested member attributes
 are built as dot-concatenation of the corresponding attribute key.</td>
@@ -182,13 +186,30 @@ are built as dot-concatenation of the corresponding attribute key.</td>
 <dt id="everest.representers.csv.CsvRepresentationParser">
 <em class="property">class </em><tt class="descclassname">everest.representers.csv.</tt><tt class="descname">CsvRepresentationParser</tt><big>(</big><em>stream</em>, <em>resource_class</em>, <em>mapping</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/csv.html#CsvRepresentationParser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.csv.CsvRepresentationParser" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">everest.representers.base.RepresentationParser</span></tt></p>
-<p>Parser converting CSV representations of resources into a data element.</p>
+<p>Parser for CSV representations.</p>
+<p>The tabular structure of the CSV format makes it difficult to transport
+nested (tree-like) data structures with it. The simplest way to solve 
+this problem is to resort to links (URLs) for specifying nested resources
+which implies that the referenced resources have to be created in 
+advance.</p>
+<p>Since it is quite a common use case to create a resource and its 
+immediate children from one representation (i.e., in a single REST call),
+the CSV parser also supports explicit specification of nested member 
+attributes through separate CSV fields and specification of nested 
+collection member attributes through separate
+CSV fields and multiple rows (i.e., each row is specifying a member in
+the nested collection while all other field values remain unchanged).
+Nested collection members are allocated to their enclosing member either
+by the member ID (if specified in a column named &#8220;id&#8221;) or by the 
+combined values of all remaining fields (sorted by field name).</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body">Nested resources have to be provided as links (i.e., there is no 
-support for recursive data element tree building).</td>
+<tr class="field-odd field"><th class="field-name">Note :</th><td class="field-body">The CSV column (field) names have to be mapped uniquely to 
+(nested) attribute representation names.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Note :</th><td class="field-body">Polymorphic nested resources may not be mapped correctly.</td>
 </tr>
 </tbody>
 </table>

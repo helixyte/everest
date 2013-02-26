@@ -150,87 +150,8 @@
 
 <div class="container">
    
-  <div class="section" id="module-everest.repository">
-<span id="everest-repository"></span><h1>everest.repository<a class="headerlink" href="#module-everest.repository" title="Permalink to this headline">¶</a></h1>
-<p>Repository base class.</p>
-<dl class="class">
-<dt id="everest.repository.Repository">
-<em class="property">class </em><tt class="descclassname">everest.repository.</tt><tt class="descname">Repository</tt><a class="reference internal" href="../_modules/everest/repository.html#Repository"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>Abstract base class for repositories.</p>
-<p>The repository creates accessors on the fly, caches them, and returns
-a clone.</p>
-<dl class="attribute">
-<dt id="everest.repository.Repository.__weakref__">
-<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.repository.Repository.__weakref__" title="Permalink to this definition">¶</a></dt>
-<dd><p>list of weak references to the object (if defined)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.clear">
-<tt class="descname">clear</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.clear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.clear" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clears the accessor for the given registered resource.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.clear_all">
-<tt class="descname">clear_all</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.clear_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.clear_all" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clears all accessors.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.configure">
-<tt class="descname">configure</tt><big>(</big><em>**config</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.configure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.configure" title="Permalink to this definition">¶</a></dt>
-<dd><p>Configures this repository.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.get">
-<tt class="descname">get</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.get" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns an accessor for the given registered resource.</p>
-<p>If this is the first request, an instance is created on the fly using 
-the <a class="reference internal" href="#everest.repository.Repository.new" title="everest.repository.Repository.new"><tt class="xref py py-meth docutils literal"><span class="pre">new()</span></tt></a> method and cached. The method always returns a clone
-of the cached accessor; this clone can later be used to look up
-the repository it was obtained from using the <tt class="xref py py-meth docutils literal"><span class="pre">get_repository()</span></tt>
-class method.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.initialize">
-<tt class="descname">initialize</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.initialize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initializes this repository.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.new">
-<tt class="descname">new</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.new" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new accessor for the given registered resource.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.repository.Repository.set">
-<tt class="descname">set</tt><big>(</big><em>rc</em>, <em>obj</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#Repository.set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.Repository.set" title="Permalink to this definition">¶</a></dt>
-<dd><p>Makes the given accessor the one to use for the given registered
-resource.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.repository.as_repository">
-<tt class="descclassname">everest.repository.</tt><tt class="descname">as_repository</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/repository.html#as_repository"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.repository.as_repository" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adapts the given registered resource to its configured repository.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">object implementing 
-<tt class="xref py py-class docutils literal"><span class="pre">everest.resources.interfaces.IRepository</span></tt>.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+  <div class="section" id="everest-repository">
+<h1>everest.repository<a class="headerlink" href="#everest-repository" title="Permalink to this headline">¶</a></h1>
 </div>
 
 

@@ -154,6 +154,21 @@
 <span id="everest-representers-attributes"></span><h1>everest.representers.attributes<a class="headerlink" href="#module-everest.representers.attributes" title="Permalink to this headline">¶</a></h1>
 <p>Mapped resource attributes.</p>
 <dl class="class">
+<dt id="everest.representers.attributes.AttributeKey">
+<em class="property">class </em><tt class="descclassname">everest.representers.attributes.</tt><tt class="descname">AttributeKey</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#everest.representers.attributes.AttributeKey" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Value object used as a key during resource data tree traversal.</p>
+<p>Each key consists of a tuple of attribute strings that uniquely 
+determine a node&#8217;s position in the resource data tree.</p>
+<dl class="attribute">
+<dt id="everest.representers.attributes.AttributeKey.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.attributes.AttributeKey.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="everest.representers.attributes.MappedAttribute">
 <em class="property">class </em><tt class="descclassname">everest.representers.attributes.</tt><tt class="descname">MappedAttribute</tt><big>(</big><em>attr</em>, <em>options=None</em><big>)</big><a class="reference internal" href="../_modules/everest/representers/attributes.html#MappedAttribute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.representers.attributes.MappedAttribute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
@@ -177,6 +192,39 @@ configured dynamically.</p>
 <dt id="everest.representers.attributes.MappedAttribute.__weakref__">
 <tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.representers.attributes.MappedAttribute.__weakref__" title="Permalink to this definition">¶</a></dt>
 <dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="everest.representers.attributes.MappedAttribute.should_ignore">
+<tt class="descname">should_ignore</tt><big>(</big><em>ignore_option_name</em>, <em>attribute_key</em><big>)</big><a class="headerlink" href="#everest.representers.attributes.MappedAttribute.should_ignore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks if the given attribute key should be ignored for the given
+ignore option name.</p>
+<dl class="docutils">
+<dt>Rules for ignoring attributes:</dt>
+<dd><ul class="first last simple">
+<li>always ignore when IGNORE_ON_XXX_OPTION is set to True;</li>
+<li>always include when IGNORE_ON_XXX_OPTION is set to False;</li>
+<li>also ignore member attributes when the length of the attribute
+key is &gt; 0 or the cardinality is not MANYTOONE (this avoids
+traversing circular attribute definitions such as parent -&gt;
+children -&gt; parent);</li>
+<li>also ignore collection attributes when the cardinality is 
+not MANYTOMANY.</li>
+</ul>
+</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Ignore_option_name :</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">configuration option name (IGNORE_ON_READ_OPTION
+or IGNORE_ON_WRITE_OPTION).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Parameters:</th><td class="field-body"><strong>attribute_key</strong> &#8211; <a class="reference internal" href="#everest.representers.attributes.AttributeKey" title="everest.representers.attributes.AttributeKey"><tt class="xref py py-class docutils literal"><span class="pre">AttributeKey</span></tt></a> instance.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

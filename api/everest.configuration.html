@@ -155,20 +155,13 @@
 <p>Configurator for everest.</p>
 <dl class="class">
 <dt id="everest.configuration.Configurator">
-<em class="property">class </em><tt class="descclassname">everest.configuration.</tt><tt class="descname">Configurator</tt><big>(</big><em>registry=None</em>, <em>package=None</em>, <em>filter_specification_factory=None</em>, <em>order_specification_factory=None</em>, <em>service=None</em>, <em>filter_builder=None</em>, <em>filter_director=None</em>, <em>cql_filter_specification_visitor=None</em>, <em>sql_filter_specification_visitor=None</em>, <em>eval_filter_specification_visitor=None</em>, <em>order_builder=None</em>, <em>order_director=None</em>, <em>cql_order_specification_visitor=None</em>, <em>sql_order_specification_visitor=None</em>, <em>eval_order_specification_visitor=None</em>, <em>url_converter=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/configuration.html#Configurator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.configuration.Configurator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">everest.configuration.</tt><tt class="descname">Configurator</tt><big>(</big><em>registry=None</em>, <em>package=None</em>, <em>filter_specification_factory=None</em>, <em>order_specification_factory=None</em>, <em>service=None</em>, <em>cql_filter_specification_visitor=None</em>, <em>sql_filter_specification_visitor=None</em>, <em>eval_filter_specification_visitor=None</em>, <em>cql_order_specification_visitor=None</em>, <em>sql_order_specification_visitor=None</em>, <em>eval_order_specification_visitor=None</em>, <em>url_converter=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/configuration.html#Configurator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.configuration.Configurator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">pyramid.configuration.Configurator</span></tt></p>
 <p>Configurator for everest.</p>
 <dl class="method">
 <dt id="everest.configuration.Configurator.get_registered_utility">
 <tt class="descname">get_registered_utility</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/everest/configuration.html#Configurator.get_registered_utility"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.configuration.Configurator.get_registered_utility" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convenience method for obtaining a utility from the registry.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="everest.configuration.Configurator.make_wsgi_app">
-<tt class="descname">make_wsgi_app</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/everest/configuration.html#Configurator.make_wsgi_app"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.configuration.Configurator.make_wsgi_app" title="Permalink to this definition">¶</a></dt>
-<dd><p>Extended such that the repository manager initializes all repositories
-before the wsgi app is created.</p>
 </dd></dl>
 
 <dl class="method">

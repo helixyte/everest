@@ -155,13 +155,13 @@
 <p>Entity related utilities.</p>
 <dl class="function">
 <dt id="everest.entities.utils.get_entity_class">
-<tt class="descclassname">everest.entities.utils.</tt><tt class="descname">get_entity_class</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/utils.html#get_entity_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.utils.get_entity_class" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">everest.entities.utils.</tt><tt class="descname">get_entity_class</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/utils.html#get_entity_class"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.utils.get_entity_class" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the entity class registered for the given registered resource.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>member</strong> &#8211; registered resource</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resource</strong> &#8211; registered resource</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">entity class
 (class implementing <cite>everest.entities.interfaces.IEntity</cite>)</td>
@@ -172,16 +172,17 @@
 
 <dl class="function">
 <dt id="everest.entities.utils.get_root_aggregate">
-<tt class="descclassname">everest.entities.utils.</tt><tt class="descname">get_root_aggregate</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/utils.html#get_root_aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.utils.get_root_aggregate" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">everest.entities.utils.</tt><tt class="descname">get_root_aggregate</tt><big>(</big><em>resource</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/utils.html#get_root_aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.utils.get_root_aggregate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns an aggregate from the root entity repository for the given 
 registered resource.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="everest.entities.utils.get_stage_aggregate">
-<tt class="descclassname">everest.entities.utils.</tt><tt class="descname">get_stage_aggregate</tt><big>(</big><em>rc</em><big>)</big><a class="reference internal" href="../_modules/everest/entities/utils.html#get_stage_aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.entities.utils.get_stage_aggregate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns an aggregate from the stage entity repository for the given 
-registered resource.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>resource</strong> &#8211; registered resource</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">

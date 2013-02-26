@@ -161,63 +161,10 @@
 </dd></dl>
 
 <dl class="class">
-<dt id="everest.querying.filtering.EvalFilterSpecificationVisitor">
-<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">EvalFilterSpecificationVisitor</tt><a class="reference internal" href="../_modules/everest/querying/filtering.html#EvalFilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.EvalFilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#everest.querying.filtering.FilterSpecificationVisitor" title="everest.querying.filtering.FilterSpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.filtering.FilterSpecificationVisitor</span></tt></a></p>
-<p>Filter specification visitor building an evaluator for in-memory 
-filtering.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="everest.querying.filtering.FilterSpecificationBuilder">
-<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationBuilder</tt><big>(</big><em>spec_factory</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationBuilder"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationBuilder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationBuilder" title="everest.querying.base.SpecificationBuilder"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationBuilder</span></tt></a></p>
-<p>Filter specification builder.</p>
-<p>The filter specification builder is responsible for building concrete
-specs with build methods dispatched by the director and for forming 
-disjunction specs when a) multiple values are given in a single criterion;
-or b) the same combination of attribute name and operator is encountered
-multiple times.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="everest.querying.filtering.FilterSpecificationDirector">
-<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationDirector</tt><big>(</big><em>parser</em>, <em>builder</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationDirector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationDirector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationDirector" title="everest.querying.base.SpecificationDirector"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationDirector</span></tt></a></p>
-<p>Director for filter specifications.</p>
-</dd></dl>
-
-<dl class="class">
 <dt id="everest.querying.filtering.FilterSpecificationVisitor">
 <em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">FilterSpecificationVisitor</tt><a class="reference internal" href="../_modules/everest/querying/filtering.html#FilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.FilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="everest.querying.base.html#everest.querying.base.SpecificationVisitor" title="everest.querying.base.SpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.base.SpecificationVisitor</span></tt></a></p>
 <p>Base class for filter specification visitors.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="everest.querying.filtering.SqlFilterSpecificationVisitor">
-<em class="property">class </em><tt class="descclassname">everest.querying.filtering.</tt><tt class="descname">SqlFilterSpecificationVisitor</tt><big>(</big><em>entity_class</em>, <em>custom_clause_factories=None</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#SqlFilterSpecificationVisitor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.SqlFilterSpecificationVisitor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#everest.querying.filtering.FilterSpecificationVisitor" title="everest.querying.filtering.FilterSpecificationVisitor"><tt class="xref py py-class docutils literal"><span class="pre">everest.querying.filtering.FilterSpecificationVisitor</span></tt></a></p>
-<p>Filter specification visitor building a SQL expression.</p>
-<dl class="method">
-<dt id="everest.querying.filtering.SqlFilterSpecificationVisitor.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>entity_class</em>, <em>custom_clause_factories=None</em><big>)</big><a class="reference internal" href="../_modules/everest/querying/filtering.html#SqlFilterSpecificationVisitor.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.querying.filtering.SqlFilterSpecificationVisitor.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructs a SqlFilterSpecificationVisitor</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>entity_class</strong> &#8211; an entity class that is mapped with SQLAlchemy</li>
-<li><strong>custom_clause_factories</strong> &#8211; a map containing custom clause factory 
-functions for selected (attribute name, operator) combinations.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 </dd></dl>
 
 </div>

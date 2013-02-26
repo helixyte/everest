@@ -192,25 +192,19 @@
 </tr>
 </tbody>
 </table>
-<dl class="attribute">
-<dt id="everest.testing.FunctionalTestCase.app_name">
-<tt class="descname">app_name</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.FunctionalTestCase.app_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>The name of the application to test.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="class">
-<dt id="everest.testing.OrmContextManager">
-<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">OrmContextManager</tt><big>(</big><em>autoflush=True</em>, <em>engine_name=None</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#OrmContextManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.OrmContextManager" title="Permalink to this definition">¶</a></dt>
+<dt id="everest.testing.RdbContextManager">
+<em class="property">class </em><tt class="descclassname">everest.testing.</tt><tt class="descname">RdbContextManager</tt><big>(</big><em>autoflush=True</em>, <em>engine_name=None</em><big>)</big><a class="headerlink" href="#everest.testing.RdbContextManager" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>Context manager for ORM tests.</p>
-<p>Configures the entity repository to use the ORM implementation as
+<p>Context manager for RDB tests.</p>
+<p>Configures the entity repository to use the RDB implementation as
 a default, sets up an outer transaction before the test is run and rolls
 this transaction back after the test has finished.</p>
 <dl class="attribute">
-<dt id="everest.testing.OrmContextManager.__weakref__">
-<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.testing.OrmContextManager.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dt id="everest.testing.RdbContextManager.__weakref__">
+<tt class="descname">__weakref__</tt><a class="headerlink" href="#everest.testing.RdbContextManager.__weakref__" title="Permalink to this definition">¶</a></dt>
 <dd><p>list of weak references to the object (if defined)</p>
 </dd></dl>
 
@@ -351,27 +345,6 @@ sensibly.</td>
 </tr>
 </tbody>
 </table>
-<dl class="attribute">
-<dt id="everest.testing.TestCaseWithIni.ini_file_path">
-<tt class="descname">ini_file_path</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.ini_file_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>The path to the application initialization (ini) file name. Override
-as needed in derived classes.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="everest.testing.TestCaseWithIni.ini_section_name">
-<tt class="descname">ini_section_name</tt><em class="property"> = None</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.ini_section_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>The section name in the ini file to look for settings. Override as
-needed in derived classes.</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="everest.testing.TestCaseWithIni.package_name">
-<tt class="descname">package_name</tt><em class="property"> = 'everest'</em><a class="headerlink" href="#everest.testing.TestCaseWithIni.package_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>The name of the package where the tests reside. May be overridden in
-derived classes.</p>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="function">
@@ -434,9 +407,9 @@ contain all mandatory attributes required for instantiation.</li>
 </dd></dl>
 
 <dl class="function">
-<dt id="everest.testing.with_orm">
-<tt class="descclassname">everest.testing.</tt><tt class="descname">with_orm</tt><big>(</big><em>autoflush=True</em>, <em>init_callback=None</em><big>)</big><a class="reference internal" href="../_modules/everest/testing.html#with_orm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#everest.testing.with_orm" title="Permalink to this definition">¶</a></dt>
-<dd><p>Decorator for ORM tests which uses a <a class="reference internal" href="#everest.testing.OrmContextManager" title="everest.testing.OrmContextManager"><tt class="xref py py-class docutils literal"><span class="pre">OrmContextManager</span></tt></a> for the
+<dt id="everest.testing.with_rdb">
+<tt class="descclassname">everest.testing.</tt><tt class="descname">with_rdb</tt><big>(</big><em>autoflush=True</em>, <em>init_callback=None</em><big>)</big><a class="headerlink" href="#everest.testing.with_rdb" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator for tests which uses a <a class="reference internal" href="#everest.testing.RdbContextManager" title="everest.testing.RdbContextManager"><tt class="xref py py-class docutils literal"><span class="pre">RdbContextManager</span></tt></a> for the
 call to the decorated test function.</p>
 </dd></dl>
 
