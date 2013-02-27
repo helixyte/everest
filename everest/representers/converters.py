@@ -72,7 +72,7 @@ class ConverterRegistry(object):
             cls.__converters = {}
         cnv = cls.__converters.get(value_type)
         representation_value = value
-        if not cnv is None:
+        if not cnv is None and not value is None:
             representation_value = cnv.to_representation(value)
         elif not isinstance(value, basestring) and not value is None:
             representation_value = str(value) # FIXME: use unicode?
