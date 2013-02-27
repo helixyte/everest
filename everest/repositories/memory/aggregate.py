@@ -60,18 +60,15 @@ class MemoryAggregate(Aggregate):
         if not isinstance(entity, self.entity_class):
             raise ValueError('Can only add entities of type "%s" to this '
                              'aggregate.' % self.entity_class)
-        if self._relationship is None:
-            self._session.add(self.entity_class, entity)
-        else:
-            if not entity.id is None \
-               and self.__check_existing(self._relationship.children, entity):
-                raise ValueError('Duplicate ID or slug.')
+        self._session.add(self.entity_class, entity)
+        if not self._relationship is None \
+           and not self._relationship.children is None:
             self._relationship.children.append(entity)
 
     def remove(self, entity):
-        if self._relationship is None:
-            self._session.remove(self.entity_class, entity)
-        else:
+        self._session.remove(self.entity_class, entity)
+        if not self._relationship is None \
+           and not self._relationship.children is None:
             self._relationship.children.remove(entity)
 
     def update(self, entity, source_entity):

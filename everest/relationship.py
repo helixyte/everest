@@ -27,6 +27,10 @@ class Relationship(object):
         each child object.
     """
     def __init__(self, parent, children=None, backref=None):
+        if children is None and backref is None:
+            raise ValueError('Do not know how to create a relationship '
+                             'if neither a children container nor a back '
+                             'referencing attribute are given.')
         self.parent = parent
         self.children = children
         self.backref = backref
@@ -37,7 +41,7 @@ class Relationship(object):
         if not self.backref is None:
             # Simple case: We have an attribute in the child that references
             # the parent and we can identify all elements of the child
-            # collection with an "equal_to" specification. 
+            # collection with an "equal_to" specification.
             rel_spec = spec_fac.create_equal_to(self.backref,
                                                 self.parent)
         else:

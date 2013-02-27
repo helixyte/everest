@@ -4,53 +4,25 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
 """
-from everest.entities.base import Aggregate
 from everest.entities.base import Entity
-from everest.mime import CsvMime
-from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
 from everest.repositories.memory import Session
-from everest.resources.io import get_collection_name
-from everest.resources.io import get_read_collection_path
-from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_root_collection
 from everest.testing import Pep8CompliantTestCase
-from everest.testing import ResourceTestCase
-from everest.tests.complete_app.entities import MyEntity
-from everest.tests.complete_app.interfaces import IMyEntity
-from everest.tests.complete_app.interfaces import IMyEntityChild
-from everest.tests.complete_app.interfaces import IMyEntityGrandchild
-from everest.tests.complete_app.interfaces import IMyEntityParent
-from everest.tests.complete_app.resources import MyEntityMember
-from everest.utils import get_repository_manager
 import gc
-import glob
-import os
-import shutil
-import tempfile
 import threading
-import transaction
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BasicRepositoryTestCase',
-           'FileSystemEmptyRepositoryTestCase',
-           'FileSystemRepositoryTestCase',
-           'MemorySessionTestCase',
+__all__ = ['MemorySessionTestCase',
            ]
-
-
-class BasicRepositoryTestCase(Pep8CompliantTestCase):
-    def test_args(self):
-        self.assert_raises(ValueError, Repository, 'DUMMY', Aggregate,
-                           autocommit=True, join_transaction=True)
 
 
 class MemorySessionTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
         Pep8CompliantTestCase.set_up(self)
-        self._entity_store = Repository('DUMMY', Aggregate, autoflush=True)
-        self._session = Session(self._entity_store)
+        self._repository = Repository('DUMMY', Aggregate, autoflush=True)
+        self._session = Session(self._repository)
 
     def test_with_autoflush(self):
         ent = _MyEntity()
@@ -71,7 +43,7 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
 
     def test_without_autoflush(self):
         ent = _MyEntity()
-        self._entity_store.autoflush = False
+        self._repository.autoflush = False
         self._session.add(_MyEntity, ent)
         self.assert_true(ent in self._session.get_all(_MyEntity))
         # no autoflush - ID & slug should still be none
@@ -221,178 +193,6 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self._session.add(_MyEntity, ent2)
         ent2.slug = 'slug'
         self.assert_raises(ValueError, self._session.commit)
-
-
-class _FileSystemRepositoryTestCaseMixin(object):
-    _data_dir = None
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_fs.zcml'
-
-    def _set_data_dir(self):
-        self._data_dir = os.path.join(os.path.dirname(__file__),
-                                       'complete_app', 'data')
-
-
-class FileSystemEmptyRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
-                                        ResourceTestCase):
-    def set_up(self):
-        self._set_data_dir()
-        ResourceTestCase.set_up(self)
-
-    def test_initialization_with_empty_data_dir(self):
-        colls = [
-                 get_root_collection(IMyEntityParent),
-                 get_root_collection(IMyEntity),
-                 get_root_collection(IMyEntityChild),
-                 get_root_collection(IMyEntityGrandchild),
-                 ]
-        for coll in colls:
-            self.assert_equal(len(coll), 0)
-
-
-class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
-                                    ResourceTestCase):
-
-    def set_up(self):
-        self._set_data_dir()
-        self.__copy_data_files()
-        try:
-            ResourceTestCase.set_up(self)
-        except Exception:
-            self.__remove_data_files() # Always remove the copied files.
-            raise
-
-    def tear_down(self):
-        self.__remove_data_files()
-        transaction.abort()
-
-    def test_initialization(self):
-        colls = [
-                 get_root_collection(IMyEntityParent),
-                 get_root_collection(IMyEntity),
-                 get_root_collection(IMyEntityChild),
-                 get_root_collection(IMyEntityGrandchild),
-                 ]
-        for coll in colls:
-            self.assert_equal(len(coll), 1)
-
-    def test_get_read_collection_path(self):
-        path = get_read_collection_path(get_collection_class(IMyEntity),
-                                        CsvMime, directory=self._data_dir)
-        self.assert_false(path is None)
-        tmp_dir = tempfile.mkdtemp()
-        tmp_path = get_read_collection_path(get_collection_class(IMyEntity),
-                                            CsvMime, directory=tmp_dir)
-        self.assert_true(tmp_path is None)
-
-    def test_add(self):
-        coll = get_root_collection(IMyEntity)
-        ent = MyEntity(id=2)
-        mb_add = MyEntityMember.create_from_entity(ent)
-        coll.add(mb_add)
-        transaction.commit()
-        self.assert_equal(len(coll), 2)
-
-    def test_add_no_id(self):
-        coll = get_root_collection(IMyEntity)
-        ent = MyEntity()
-        mb_add = MyEntityMember.create_from_entity(ent)
-        coll.add(mb_add)
-        transaction.commit()
-        self.assert_is_not_none(ent.id)
-        self.assert_equal(len(coll), 2)
-
-    def test_add_remove(self):
-        coll = get_root_collection(IMyEntity)
-        mb_rm = iter(coll).next()
-        coll.remove(mb_rm)
-        ent = MyEntity(id=1)
-        mb_add = MyEntityMember.create_from_entity(ent)
-        coll.add(mb_add)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-
-    def test_add_remove_same_member(self):
-        coll = get_root_collection(IMyEntity)
-        ent = MyEntity(id=1)
-        mb = MyEntityMember.create_from_entity(ent)
-        coll.add(mb)
-        transaction.commit()
-        coll.remove(mb)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-
-    def test_repeated_add_remove_same_member_no_id(self):
-        coll = get_root_collection(IMyEntity)
-        ent1 = MyEntity()
-        mb1 = MyEntityMember.create_from_entity(ent1)
-        coll.add(mb1)
-        transaction.commit()
-        self.assert_equal(len(coll), 2)
-        coll.remove(mb1)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-        ent2 = MyEntity()
-        mb2 = MyEntityMember.create_from_entity(ent2)
-        coll.add(mb2)
-        transaction.commit()
-        self.assert_equal(len(coll), 2)
-        coll.remove(mb2)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-        self.assert_not_equal(mb1.id, mb2.id)
-
-    def test_remove_add_same_member(self):
-        coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
-        coll.remove(mb)
-        transaction.commit()
-        coll.add(mb)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-
-    def test_commit(self):
-        coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
-        TEXT = 'Changed.'
-        mb.text = TEXT
-        transaction.commit()
-        with open(os.path.join(self._data_dir,
-                               "%s.csv" % get_collection_name(coll)),
-                  'rU') as data_file:
-            lines = data_file.readlines()
-        data = lines[1].split(',')
-        self.assert_equal(data[3], '"%s"' % TEXT)
-
-    def test_abort(self):
-        coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
-        OLD_TEXT = mb.text
-        TEXT = 'Changed.'
-        mb.text = TEXT
-        transaction.abort()
-        old_mb = iter(coll).next()
-        self.assert_equal(old_mb.text, OLD_TEXT)
-
-    def test_failing_commit(self):
-        coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
-        mb.id = None
-        self.assert_raises(ValueError, transaction.commit)
-
-    def test_configure(self):
-        repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORY_TYPES.FILE_SYSTEM)
-        self.assert_raises(ValueError, repo.configure, foo='bar')
-
-    def __copy_data_files(self):
-        orig_data_dir = os.path.join(self._data_dir, 'original')
-        for fn in glob.glob1(orig_data_dir, "*.csv"):
-            shutil.copy(os.path.join(orig_data_dir, fn), self._data_dir)
-
-    def __remove_data_files(self):
-        for fn in glob.glob1(self._data_dir, '*.csv'):
-            os.unlink(os.path.join(self._data_dir, fn))
 
 
 class _MyEntity(Entity):

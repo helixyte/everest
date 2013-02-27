@@ -40,6 +40,12 @@ class _AggregateTestCase(EntityTestCase):
         agg_children.set_relationship(rel)
         self._test_get_by_id_and_slug(ent, agg_children)
 
+    def test_relationship_fails(self):
+        ent = self._make_one()[0]
+        with self.assert_raises(ValueError) as cm:
+            Relationship(ent)
+        self.assert_true(cm.exception.message.startswith('Do not know'))
+
     def _test_with_filter(self, agg_children):
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('id', 0)
