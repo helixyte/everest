@@ -5,4 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 11, 2013.
 """
 from .aggregate import NoSqlAggregate as Aggregate
-from .repository import NoSqlRepository as Repository
+try:
+    from .repository import NoSqlRepository as Repository
+except ImportError:
+    # We do not have support for MongoDB.
+    pass

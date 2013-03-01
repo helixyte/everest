@@ -21,8 +21,8 @@ class SessionFactory(object):
     """
     Base class for session factories.
     """
-    def __init__(self, entity_store):
-        self._entity_store = entity_store
+    def __init__(self, repository):
+        self._repository = repository
 
     def __call__(self):
         raise NotImplementedError('Abstract method.')
@@ -50,7 +50,7 @@ class Repository(object):
         """
         Constructor.
         
-        :param name: Name for this entity store (propagated to repository).
+        :param name: Name for this repository (propagated to repository).
         :param aggregate_class: The aggregate class to use when creating new
           aggregates in this repository.
         :param autoflush: Indicates whether changes should be flushed
@@ -66,7 +66,7 @@ class Repository(object):
                              '"autocommit" flag can not both be set.')
         # : Flag indicating that changes should be flushed immediately.
         self.autoflush = autoflush
-        # : Flag indicating that the sessions using this entity store should
+        # : Flag indicating that the sessions using this repository should
         # : join the Zope transaction.
         self.join_transaction = join_transaction
         # : Flag indicating that changes should be committed immediately.
@@ -192,18 +192,18 @@ class Repository(object):
     @property
     def configuration(self):
         """
-        Returns a copy of the configuration for this entity store.
+        Returns a copy of the configuration for this repository.
         """
         return self._config.copy()
 
     def _initialize(self):
         """
-        Performs initialization of the entity store.
+        Performs initialization of the repository.
         """
         raise NotImplementedError('Abstract method.')
 
     def _make_session_factory(self):
         """
-        Create the session factory for this entity store.
+        Create the session factory for this repository.
         """
         raise NotImplementedError('Abstract method.')

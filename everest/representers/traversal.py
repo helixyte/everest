@@ -22,9 +22,9 @@ from everest.resources.descriptors import CARDINALITY
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.kinds import ResourceKinds
+from everest.resources.utils import new_stage_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import new_stage_collection
 from everest.resources.utils import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
@@ -45,10 +45,10 @@ class PROCESSING_DIRECTIONS(object):
     """
     Constants specifying the direction resource data are processed.
     """
-    #: Resource data are being read (i.e., a representation is converted 
+    #: Resource data are being read (i.e., a representation is converted
     #: to a resource.
     READ = 'READ'
-    #: Resource data are being written (i.e., a resource is converted 
+    #: Resource data are being written (i.e., a resource is converted
     #: to a representation.
     WRITE = 'WRITE'
 
@@ -369,13 +369,13 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                                                         mb_attr)
                     if nested_node is None:
                         # Stop condition - the given data element does not
-                        # contain a nested attribute of the given mapped 
+                        # contain a nested attribute of the given mapped
                         # name.
                         continue
                     nested_attr_key = attr_key + (mb_attr.name,)
                     if ignore_opt is False:
-                        # The offset in the attribute key ensures that 
-                        # the defaults for ignoring attributes of the 
+                        # The offset in the attribute key ensures that
+                        # the defaults for ignoring attributes of the
                         # nested attribute can be retrieved correctly.
                         nested_attr_key.offset = len(nested_attr_key)
                     self._dispatch(nested_attr_key, mb_attr, nested_node,
@@ -403,7 +403,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         #    key is > 0 or the cardinality is not MANYTOONE (this avoids
         #    traversing circular attribute definitions such as parent ->
         #    children -> parent);
-        #  * also ignore collection attributes when the cardinality is 
+        #  * also ignore collection attributes when the cardinality is
         #    not MANYTOMANY.
         do_ignore = ignore_opt
         if ignore_opt is None:

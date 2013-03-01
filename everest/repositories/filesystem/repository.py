@@ -44,16 +44,18 @@ class FileSystemRepository(MemoryRepository):
         self.configure(directory=os.getcwd(), content_type=CsvMime,
                        cache_loader=self.__load_entities)
 
-    def commit(self, session):
+    def commit(self, unit_of_work):
         """
         Dump all resources that were modified by the given session back into
         the store.
         """
-        with self._cache_lock:
-            MemoryRepository.commit(self, session)
-            if self.is_initialized:
-                for entity_cls in session.dirty.keys():
-                    self.__dump_entities(entity_cls)
+        MemoryRepository.commit(self, unit_of_work)
+        if self.is_initialized:
+            entity_classes_to_dump = set()
+            for info in unit_of_work.iterator():
+                entity_classes_to_dump.add(info[0])
+            for entity_cls in entity_classes_to_dump:
+                self.__dump_entities(entity_cls)
 
     def _make_session_factory(self):
         return MemorySessionFactory(self)
@@ -82,7 +84,7 @@ class FileSystemRepository(MemoryRepository):
                                        directory=self._config['directory'])
         # Wrap the entities in a temporary collection.
         coll = new_stage_collection(coll_cls)
-        for ent in cache.get_all():
+        for ent in cache.iterator():
             coll.add(mb_cls.create_from_entity(ent))
         # Open stream for writing and dump the collection.
         stream = file(fn, 'w')

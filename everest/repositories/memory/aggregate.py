@@ -28,7 +28,7 @@ class MemoryAggregate(Aggregate):
     """
 
     def count(self):
-        return len(self.__get_entities())
+        return self.__get_entities()[1]
 
     def get_by_id(self, id_key):
         if self._relationship is None or self._relationship.children is None:
@@ -53,7 +53,7 @@ class MemoryAggregate(Aggregate):
         return ent
 
     def iterator(self):
-        for ent in self.__get_entities():
+        for ent in self.__get_entities()[0]:
             yield ent
 
     def add(self, entity):
@@ -92,10 +92,10 @@ class MemoryAggregate(Aggregate):
 
     def __get_entities(self):
         if self._relationship is None:
-            ents = self._session.get_all(self.entity_class)
+            ents = list(self._session.iterator(self.entity_class))
         else:
             if self._relationship.children is None:
-                ents = self._session.get_all(self.entity_class)
+                ents = list(self._session.iterator(self.entity_class))
                 visitor = \
                     get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
                 self._relationship.specification.accept(visitor)
@@ -106,13 +106,15 @@ class MemoryAggregate(Aggregate):
             visitor = get_filter_specification_visitor(EXPRESSION_KINDS.EVAL)()
             self._filter_spec.accept(visitor)
             ents = visitor.expression(ents)
+        # Record the total count of matching entities.
+        count = len(ents)
         if not self._order_spec is None:
             visitor = get_order_specification_visitor(EXPRESSION_KINDS.EVAL)()
             self._order_spec.accept(visitor)
             ents = visitor.expression(ents)
         if not self._slice_key is None:
             ents = ents[self._slice_key]
-        return ents
+        return ents, count
 
     def __check_existing(self, ents, entity):
         found = [ent for ent in ents

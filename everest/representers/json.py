@@ -26,7 +26,7 @@ from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataTreeTraverser
 from everest.representers.traversal import ResourceDataVisitor
 from everest.representers.traversal import \
-                                        DataElementBuilderRepresentationDataVisitor
+                                DataElementBuilderRepresentationDataVisitor
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
@@ -81,7 +81,7 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
         if not relation is None:
             tpe = get_resource_class_for_relation(relation)
         else:
-            # In the absence of class hinting, the best we can do is to 
+            # In the absence of class hinting, the best we can do is to
             # look up the member class for the mapped class. For polymorphic
             # types, this will only work if a representer was initialized
             # for every derived class separately.

@@ -53,7 +53,7 @@ class RdbSessionFactory(SessionFactory):
     """
     def __init__(self, entity_store):
         SessionFactory.__init__(self, entity_store)
-        if self._entity_store.autocommit:
+        if self._repository.autocommit:
             # Use an autocommitting Session class with our session factory.
             self.__fac = scoped_session(
                                 sessionmaker(class_=SaAutocommittingSession))
@@ -66,9 +66,9 @@ class RdbSessionFactory(SessionFactory):
 
     def __call__(self):
         if not self.__fac.registry.has():
-            self.__fac.configure(autoflush=self._entity_store.autoflush)
-            if not self._entity_store.autocommit \
-               and self._entity_store.join_transaction:
+            self.__fac.configure(autoflush=self._repository.autoflush)
+            if not self._repository.autocommit \
+               and self._repository.join_transaction:
                 # Enable the Zope transaction extension with the standard
                 # sqlalchemy Session class.
                 self.__fac.configure(extension=ZopeTransactionExtension())
