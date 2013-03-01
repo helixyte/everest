@@ -30,7 +30,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DataElementBuilderResourceTreeVisitor',
-           'DataElementTreeTraverserMixin',
+           'DataElementTreeTraverser',
            'DataTreeTraverser',
            'DataElementTreeTraverser',
            'ResourceDataTreeTraverser',
@@ -359,9 +359,6 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
                     # Terminal attribute - extract.
                     value = self._get_node_terminal(member_node, mb_attr)
-                    if value is None:
-                        # None values are ignored.
-                        continue
                     member_data[mb_attr] = value
                 else:
                     # Nested attribute - traverse.

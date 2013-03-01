@@ -6,7 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 7, 2013.
 """
 from everest.mime import CsvMime
-from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.memory.repository import MemoryRepository
 from everest.repositories.memory.repository import MemorySessionFactory
 from everest.resources.io import dump_resource
@@ -35,9 +34,8 @@ class FileSystemRepository(MemoryRepository):
 
     def __init__(self, name, aggregate_class=None,
                  autoflush=True, join_transaction=True, autocommit=False):
-        if aggregate_class is None:
-            aggregate_class = MemoryAggregate
-        MemoryRepository.__init__(self, name, aggregate_class,
+        MemoryRepository.__init__(self, name,
+                                  aggregate_class=aggregate_class,
                                   autoflush=autoflush,
                                   join_transaction=join_transaction,
                                   autocommit=autocommit)
