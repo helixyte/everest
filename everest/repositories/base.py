@@ -17,6 +17,13 @@ __all__ = ['Repository',
            ]
 
 
+class Session(object):
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
 class SessionFactory(object):
     """
     Base class for session factories.
@@ -55,7 +62,7 @@ class Repository(object):
           aggregates in this repository.
         :param autoflush: Indicates whether changes should be flushed
           automatically.
-        :param join_transaction: Indicates whether this store should 
+        :param join_transaction: Indicates whether this repository should 
           participate in the Zope transaction.
         :param autocommit: Indicates whether changes should be committed
           automatically.
@@ -64,12 +71,12 @@ class Repository(object):
         if join_transaction and autocommit:
             raise ValueError('The "join_transaction" flag and the '
                              '"autocommit" flag can not both be set.')
-        # : Flag indicating that changes should be flushed immediately.
+        #: Flag indicating that changes should be flushed immediately.
         self.autoflush = autoflush
-        # : Flag indicating that the sessions using this repository should
-        # : join the Zope transaction.
+        #: Flag indicating that the sessions using this repository should
+        #: join the Zope transaction.
         self.join_transaction = join_transaction
-        # : Flag indicating that changes should be committed immediately.
+        #: Flag indicating that changes should be committed immediately.
         self.autocommit = autocommit
         self._config = {}
         self.__is_initializing = False
@@ -77,8 +84,8 @@ class Repository(object):
         self.__cache = {}
         self.__agg_cls = aggregate_class
         self.__session_factory = None
-        # : The set of resources (collection classes) managed by this entity
-        # : store.
+        #: The set of resources (collection classes) managed by this
+        #: repository.
         self.__registered_resources = set()
 
     def get_aggregate(self, resource):

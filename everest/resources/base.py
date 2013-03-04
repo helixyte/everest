@@ -482,7 +482,7 @@ class Collection(Resource):
         Updates the given member from the given entity.
         
         Unlike :method:`update_from_data`, this completely disregards all
-        resource attribute declarations and relies on the entity store to
+        resource attribute declarations and relies on the repository to
         perform the state update.
         
         :param member: Member resource to update.

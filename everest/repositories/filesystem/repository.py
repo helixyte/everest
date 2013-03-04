@@ -23,9 +23,9 @@ __all__ = ['FileSystemRepository',
 
 class FileSystemRepository(MemoryRepository):
     """
-    Data store using the file system as storage.
+    Repository using the file system as storage.
     
-    On initialization, this entity store loads resource representations from
+    On initialization, this repository loads resource representations from
     files into the root repository. Each commit operation writes the specified
     resource back to file.
     """
@@ -45,7 +45,7 @@ class FileSystemRepository(MemoryRepository):
     def commit(self, unit_of_work):
         """
         Dump all resources that were modified by the given session back into
-        the store.
+        the repository.
         """
         MemoryRepository.commit(self, unit_of_work)
         if self.is_initialized:

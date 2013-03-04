@@ -51,36 +51,56 @@ class EntityStateManager(object):
         self.__state = None
         self.__last_state_hash = hash(self.__get_state_string())
 
-    def reset_state(self):
-        self.state = OBJECT_STATES.CLEAN
-        self.__last_state_hash = hash(self.__get_state_string())
-
     @classmethod
     def clone(cls, entity):
         clone = object.__new__(entity.__class__)
-        data = EntityStateManager.get_state_data(entity)
-        EntityStateManager.set_state_data(clone, data)
+        data = cls._get_state_data(entity)
+        cls._set_state_data(clone, data)
         return clone
 
     @classmethod
-    def track(cls, entity, state):
-        entity.__everest__ = EntityStateManager(entity)
+    def manage(cls, entity, state):
+        if hasattr(entity, '__everest__'):
+            raise ValueError('Trying to register a %s entity that has '
+                             'already been registered!' % state)
+        entity.__everest__ = cls(entity)
+        cls.set_state(entity, state)
+
+    @classmethod
+    def release(cls, entity):
+        if not hasattr(entity, '__everest__'):
+            raise ValueError('Trying to unregister an entity that has not '
+                             'been registered yet!')
+        delattr(entity, '__everest__')
+
+    @classmethod
+    def set_state(cls, entity, state):
+        if not hasattr(entity, '__everest__'):
+            raise ValueError('Trying to mark an unregistered entity as '
+                             '%s!' % state)
         entity.__everest__.state = state
 
-    @staticmethod
-    def get_state_data(entity):
+    @classmethod
+    def get_state(cls, entity):
+        if not hasattr(entity, '__everest__'):
+            raise ValueError('Trying to get the state of an unregistered '
+                             'entity!')
+        return entity.__everest__.state
+
+    @classmethod
+    def _get_state_data(cls, entity):
         return dict([(attr_name, attr_value)
                      for attr_name, attr_value in entity.__dict__.iteritems()
                      if not attr_name.startswith('_')])
 
-    @staticmethod
-    def set_state_data(entity, data):
+    @classmethod
+    def _set_state_data(cls, entity, data):
         for attr_name, attr_value in data.iteritems():
             setattr(entity, attr_name, attr_value)
 
     def __get_state_string(self):
         # Concatenate all public attribute name:value pairs.
-        data = EntityStateManager.get_state_data(self)
+        data = self._get_state_data(self)
         tokens = ['%s:%s' % (k, v)
                   for (k, v) in data.iteritems()]
         return ','.join(tokens)
@@ -98,6 +118,8 @@ class EntityStateManager(object):
             raise ValueError('Invalid state transition %s -> %s.'
                              % (self.__state, state))
         self.__state = state
+        if state == OBJECT_STATES.CLEAN:
+            self.__last_state_hash = hash(self.__get_state_string())
 
     state = property(__get_state, __set_state)
 
@@ -120,10 +142,7 @@ class UnitOfWork(object):
         
         :raises ValueError: If the given entity already holds state.
         """
-        if hasattr(entity, '__everest__'):
-            raise ValueError('Trying to register a NEW entity that has '
-                             'already been registered!')
-        EntityStateManager.track(entity, OBJECT_STATES.NEW)
+        EntityStateManager.manage(entity, OBJECT_STATES.NEW)
         self.__entity_set_map[entity_class].add(entity)
 
     def register_clean(self, entity_class, entity):
@@ -133,7 +152,7 @@ class UnitOfWork(object):
         :returns: Cloned entity.
         """
         clone = EntityStateManager.clone(entity)
-        EntityStateManager.track(clone, OBJECT_STATES.CLEAN)
+        EntityStateManager.manage(clone, OBJECT_STATES.CLEAN)
         self.__entity_set_map[entity_class].add(entity)
         return clone
 
@@ -142,11 +161,8 @@ class UnitOfWork(object):
         Unregisters the given entity for the given class and discards its
         state information.
         """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to unregister an entity that has not '
-                             'been registered yet!')
         self.__entity_set_map[entity_class].remove(entity)
-        delattr(entity, '__everest__')
+        EntityStateManager.release(entity)
 
     def mark_clean(self, entity_class, entity):
         """
@@ -155,10 +171,7 @@ class UnitOfWork(object):
         This is done when an entity is loaded fresh from the repository or
         after a commit.
         """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to mark an unregistered entity as '
-                             'CLEAN!')
-        entity.__everest__.reset_state()
+        EntityStateManager.set_state(entity, OBJECT_STATES.CLEAN)
         self.__entity_set_map[entity_class].add(entity)
 
     def mark_deleted(self, entity_class, entity):
@@ -167,10 +180,7 @@ class UnitOfWork(object):
         
         :raises ValueError: If the given entity does not hold state.
         """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to mark an unregistered entity as '
-                             'DELETED!')
-        entity.__everest__.state = OBJECT_STATES.DELETED
+        EntityStateManager.set_state(entity, OBJECT_STATES.DELETED)
         self.__entity_set_map[entity_class].add(entity)
 
     def mark_dirty(self, entity_class, entity):
@@ -179,10 +189,7 @@ class UnitOfWork(object):
         
         :raises ValueError: If the given entity does not hold state.
         """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to mark an unregistered entity as '
-                             'DIRTY!')
-        entity.__everest__.state = OBJECT_STATES.DIRTY
+        EntityStateManager.set_state(entity, OBJECT_STATES.DIRTY)
         self.__entity_set_map[entity_class].add(entity)
 
     def get_clean(self, entity_class=None):
@@ -216,7 +223,7 @@ class UnitOfWork(object):
     def iterator(self):
         for ent_cls in self.__entity_set_map.keys():
             for ent in self.__entity_set_map[ent_cls]:
-                yield ent_cls, ent, ent.__everest__.state
+                yield ent_cls, ent, EntityStateManager.get_state(ent)
 
     def reset(self):
         self.__entity_set_map.clear()
@@ -228,5 +235,5 @@ class UnitOfWork(object):
             keys = [ent_cls]
         for key in keys:
             for ent in self.__entity_set_map[key]:
-                if ent.__everest__.state == state:
+                if EntityStateManager.get_state(ent) == state:
                     yield ent

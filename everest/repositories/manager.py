@@ -57,7 +57,7 @@ class RepositoryManager(object):
             join_transaction = False
             if name is None:
                 name = "%s%d" % (repo_type, self.__repo_id_gen.next())
-            # The system repository is special in that its entity store
+            # The system repository is special in that its repository
             # should not join the transaction but still commit all changes.
             autocommit = name == REPOSITORY_DOMAINS.SYSTEM
         if repo_type == REPOSITORY_TYPES.MEMORY:

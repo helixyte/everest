@@ -1,5 +1,5 @@
 """
-Data store for the NoSQL backend.
+Repository for the NoSQL backend.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -19,7 +19,7 @@ __all__ = ['NoSqlRepository',
 
 class NoSqlRepository(Repository):
     """
-    Data store connected to a NoSQL backend.
+    Repository connected to a NoSQL backend.
     """
     def __init__(self, name, aggregate_class=None,
                  autoflush=True, join_transaction=True, autocommit=False):

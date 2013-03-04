@@ -22,9 +22,10 @@ from everest.resources.descriptors import CARDINALITY
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.kinds import ResourceKinds
-from everest.resources.utils import new_stage_collection
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
+from everest.resources.utils import new_stage_collection
 from everest.resources.utils import url_to_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
@@ -283,7 +284,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                 entities.append(item[1])
         if len(attribute_key) == 0: # Top level.
             mapped_cls = collection_node.mapping.mapped_class
-            self.__resource = new_stage_collection(mapped_cls)
+            self.__resource = create_staging_collection(mapped_cls)
             for ent in entities:
                 self.__resource.create_member(ent)
         else:

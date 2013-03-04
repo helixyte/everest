@@ -22,9 +22,15 @@ class IRepository(Interface):
     """
     """
 
-    def get(rc):
+    def get_aggregate(rc):
         """
-        Returns a queryable accessor for the registered resource. If necessary,
+        Returns the root agregate for the registered resource. If necessary,
+        a new instance is created on the fly.
+        """
+
+    def get_collection(rc):
+        """
+        Returns the root collection for the registered resource. If necessary,
         a new instance is created on the fly.
         """
 
@@ -45,16 +51,23 @@ class IRepository(Interface):
         Initializes the repository.
         """
 
-    is_initialized = Bool(title=u'Checks if this repository has been '
-                                 'initialized.')
-
-    session_factory = Attribute('The session factory provided by this data '
-                                'store.')
+    session_factory = Attribute('The session factory provided by this '
+                                'repository.')
 
     name = Attribute('Unique name for this repository.')
 
-    is_initialized = Attribute('Flag indicating if this repository has been '
-                               'initialized.')
+    is_initialized = Bool('Flag indicating if this repository has been '
+                          'initialized.')
+
+    join_transaction = Bool('Flag indicating if this repository should '
+                            'participate in the Zope transaction '
+                            '(mutually exclusive with "autocommit")')
+
+    autocommit = Bool('Flag indicating that changes should be committed '
+                      'automatically (mutually exclusive with '
+                      '"join_transaction").')
+
+    configuration = Attribute('Copy of the map of configuration options.')
 
 
 class IRepositoryManager(Interface):

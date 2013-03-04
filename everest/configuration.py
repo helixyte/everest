@@ -196,17 +196,17 @@ class Configurator(PyramidConfigurator):
                                     eval_order_specification_visitor,
                url_converter=url_converter)
 
-    def add_rdb_repository(self, name=None, entity_store_class=None,
+    def add_rdb_repository(self, name=None, repository_class=None,
                            aggregate_class=None,
                            make_default=False, configuration=None, _info=u''):
         if configuration is None:
             configuration = {}
         setting_info = [('db_string', 'db_string')]
         configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORY_TYPES.RDB, entity_store_class,
+        self.__add_repository(name, REPOSITORY_TYPES.RDB, repository_class,
                               aggregate_class, make_default, configuration)
 
-    def add_filesystem_repository(self, name=None, entity_store_class=None,
+    def add_filesystem_repository(self, name=None, repository_class=None,
                                   aggregate_class=None,
                                   make_default=False, configuration=None,
                                   _info=u''):
@@ -216,16 +216,16 @@ class Configurator(PyramidConfigurator):
                         ('content_type', 'fs_contenttype')]
         configuration.update(self.__cnf_from_settings(setting_info))
         self.__add_repository(name, REPOSITORY_TYPES.FILE_SYSTEM,
-                              entity_store_class, aggregate_class,
+                              repository_class, aggregate_class,
                               make_default, configuration)
 
-    def add_memory_repository(self, name=None, entity_store_class=None,
+    def add_memory_repository(self, name=None, repository_class=None,
                               aggregate_class=None,
                               make_default=False, configuration=None,
                               _info=u''):
         if configuration is None:
             configuration = {}
-        self.__add_repository(name, REPOSITORY_TYPES.MEMORY, entity_store_class,
+        self.__add_repository(name, REPOSITORY_TYPES.MEMORY, repository_class,
                               aggregate_class, make_default, configuration)
 
     def setup_system_repository(self, repository_type, reset_on_start=False):

@@ -27,7 +27,7 @@ __all__ = ['RdbRepository',
 
 class RdbRepository(Repository):
     """
-    Data store connected to a relational database backend (through an ORM).
+    Repository connected to a relational database backend (through an ORM).
     """
     _configurables = Repository._configurables \
                      + ['db_string', 'metadata_factory']
@@ -44,7 +44,7 @@ class RdbRepository(Repository):
         self.configure(db_string='sqlite://', metadata_factory=empty_metadata)
 
     def _initialize(self):
-        # Manages a RDB engine and a metadata instance for this entity store.
+        # Manages a RDB engine and a metadata instance for this repository.
         # Both are global objects that should only be created once per process
         # (for each RDB repository), hence we use a global object manager.
         if not is_engine_initialized(self.name):

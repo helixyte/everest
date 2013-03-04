@@ -8,6 +8,10 @@ Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.representers.config import IGNORE_ON_READ_OPTION
+from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
@@ -22,10 +26,6 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
-from everest.representers.config import IGNORE_OPTION
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
-from everest.representers.config import WRITE_AS_LINK_OPTION
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RESOURCE_KINDS',
@@ -58,9 +58,9 @@ class IRepositoryDirective(Interface):
         GlobalObject(title=u"A class to use as the default aggregate "
                             "implementation for this repository.",
                      required=False)
-    entity_store_class = \
-        GlobalObject(title=u"A class to use as the entity store "
-                            "implementation for this repository.",
+    repository_class = \
+        GlobalObject(title=u"A class to use as the implementation for this "
+                            "repository.",
                      required=False)
     make_default = \
         Bool(title=u"Indicates if this repository should be made the default "
@@ -70,7 +70,7 @@ class IRepositoryDirective(Interface):
              )
 
 
-def _repository(_context, name, make_default, agg_cls, ent_store_cls,
+def _repository(_context, name, make_default, agg_cls, repo_cls,
                 repo_type, config_method, cnf):
     # Repository directives are applied eagerly. Note that custom repositories
     # must be declared *before* they can be referenced in resource directives.
@@ -79,7 +79,7 @@ def _repository(_context, name, make_default, agg_cls, ent_store_cls,
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     method = getattr(config, config_method)
-    method(name, aggregate_class=agg_cls, entity_store_class=ent_store_cls,
+    method(name, aggregate_class=agg_cls, repository_class=repo_cls,
            configuration=cnf, make_default=make_default)
 
 
@@ -92,13 +92,13 @@ class IMemoryRepositoryDirective(IRepositoryDirective):
 
 
 def memory_repository(_context, name=None, make_default=False,
-                      aggregate_class=None, entity_store_class=None,
+                      aggregate_class=None, repository_class=None,
                       cache_loader=None):
     cnf = {}
     if not cache_loader is None:
         cnf['cache_loader'] = cache_loader
     _repository(_context, name, make_default,
-                aggregate_class, entity_store_class,
+                aggregate_class, repository_class,
                 REPOSITORY_TYPES.MEMORY, 'add_memory_repository', cnf)
 
 
@@ -116,7 +116,7 @@ class IFileSystemRepositoryDirective(IRepositoryDirective):
 
 
 def filesystem_repository(_context, name=None, make_default=False,
-                          aggregate_class=None, entity_store_class=None,
+                          aggregate_class=None, repository_class=None,
                           directory=None, content_type=None):
     """
     Directive for registering a file-system based repository.
@@ -127,7 +127,7 @@ def filesystem_repository(_context, name=None, make_default=False,
     if not content_type is None:
         cnf['content_type'] = content_type
     _repository(_context, name, make_default,
-                aggregate_class, entity_store_class,
+                aggregate_class, repository_class,
                 REPOSITORY_TYPES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
 
 
@@ -143,7 +143,7 @@ class IRdbRepositoryDirective(IRepositoryDirective):
 
 
 def rdb_repository(_context, name=None, make_default=False,
-                   aggregate_class=None, entity_store_class=None,
+                   aggregate_class=None, repository_class=None,
                    db_string=None, metadata_factory=None):
     """
     Directive for registering a RDBM based repository.
@@ -154,7 +154,7 @@ def rdb_repository(_context, name=None, make_default=False,
     if not metadata_factory is None:
         cnf['metadata_factory'] = metadata_factory
     _repository(_context, name, make_default,
-                aggregate_class, entity_store_class,
+                aggregate_class, repository_class,
                 REPOSITORY_TYPES.RDB, 'add_rdb_repository', cnf)
 
 

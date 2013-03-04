@@ -8,7 +8,7 @@ Created on May 12, 2011.
 """
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from zope.interface import implements  # pylint: disable=E0611,F0401
+from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -27,7 +27,7 @@ class Entity(object):
 
     id = None
 
-    def __init__(self, id=None):  # redefining id pylint: disable=W0622
+    def __init__(self, id=None): # redefining id pylint: disable=W0622
         if self.__class__ is Entity:
             raise NotImplementedError('Abstract class.')
         if not id is None:
@@ -196,7 +196,7 @@ class Aggregate(object):
         Updates the state of the given entity such that it reflects the state
         of the given source entity.
         
-        Relies on the underlying entity store for the implementation of the
+        Relies on the underlying repository for the implementation of the
         state update.
         
         :param entity: entity (domain object) to transfer state to.

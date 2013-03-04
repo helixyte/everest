@@ -8,6 +8,7 @@ Created on Apr 19, 2011.
 """
 from everest.entities.utils import slug_from_identifier
 from everest.relationship import Relationship
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
@@ -255,19 +256,28 @@ class collection_attribute(_relation_attribute):
 
     def __make_collection(self, resource, parent, children):
         # Create a new collection.
-        if not resource.__parent__ is None:
-            # Use the resource repository that created this resource's
-            # root collection to create the new collection.
-            rc_repo = getattr(resource.__parent__, '__repository__', None)
-            if rc_repo is None:
-                for rc in lineage(resource.__parent__):
-                    rc_repo = getattr(rc, '__repository__', None)
-                    if not rc_repo is None:
-                        break
+        rc_parent = resource.__parent__
+        while not rc_parent is None:
+            rc_repo = getattr(rc_parent, '__repository__', None)
+            if not rc_repo is None:
+                break
+            else:
+                rc_parent = rc_parent.__parent__
+        # Create a new collection.
+#        if not resource.__parent__ is None:
+#            # Use the resource repository that created this resource's
+#            # root collection to create the new collection.
+#            rc_repo = getattr(resource.__parent__, '__repository__', None)
+#            if rc_repo is None:
+#                for rc in lineage(resource.__parent__):
+#                    rc_repo = getattr(rc, '__repository__', None)
+#                    if not rc_repo is None:
+#                        break
+        if not rc_repo is None:
             coll = rc_repo.get_collection(self.attr_type)
         else:
             # This is a floating member.
-            coll = new_stage_collection(self.attr_type)
+            coll = create_staging_collection(self.attr_type)
         # Set up entity access in the new collection.
         agg_relationship = Relationship(parent, children,
                                         backref=self.__entity_backref)

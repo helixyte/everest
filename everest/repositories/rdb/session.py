@@ -51,8 +51,8 @@ class RdbSessionFactory(SessionFactory):
     """
     Factory for RDB repository sessions.
     """
-    def __init__(self, entity_store):
-        SessionFactory.__init__(self, entity_store)
+    def __init__(self, repository):
+        SessionFactory.__init__(self, repository)
         if self._repository.autocommit:
             # Use an autocommitting Session class with our session factory.
             self.__fac = scoped_session(
