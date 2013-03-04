@@ -11,7 +11,6 @@ from everest.mime import JsonMime
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
 from everest.representers.base import ResourceRepresenter
-from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -29,11 +28,11 @@ from everest.representers.traversal import \
                                 DataElementBuilderRepresentationDataVisitor
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
+from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import is_resource_url
 from json import dumps
 from json import loads
 import datetime
-from everest.resources.utils import get_resource_class_for_relation
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['JsonCollectionDataElement',
@@ -60,6 +59,10 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
     """
     Specialized traverser that extracts resource data from a tree of JSON data.
     """
+    def __init__(self, root, mapping,
+                 direction=PROCESSING_DIRECTIONS.READ):
+        ResourceDataTreeTraverser.__init__(self, root, mapping, direction)
+
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         if isinstance(node, dict):
             traverse_fn = self._traverse_member
@@ -101,9 +104,6 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
                     raise ValueError('Expected data for %s, got %s.'
                                      % (rel, json_class))
         return nested_data
-
-    def _get_ignore_option(self, attr):
-        return attr.options.get(IGNORE_ON_READ_OPTION)
 
     def _get_node_members(self, node):
         return node
@@ -172,7 +172,7 @@ class JsonRepresentationGenerator(RepresentationGenerator):
 
     def run(self, data_element):
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       PROCESSING_DIRECTIONS.WRITE)
+                                       direction=PROCESSING_DIRECTIONS.WRITE)
         vst = JsonDataElementTreeVisitor()
         trv.run(vst)
         rpr_string = dumps(vst.json_data)

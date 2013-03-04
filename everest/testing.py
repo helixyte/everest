@@ -112,6 +112,18 @@ class TestCaseWithIni(Pep8CompliantTestCase):
         except AttributeError:
             pass
 
+    def _get_app_url(self):
+        section = 'server:main'
+        if self.ini.has_setting(section, 'host'):
+            host = self.ini.get_setting(section, 'host')
+        else:
+            host = '0.0.0.0'
+        if self.ini.has_setting(section, 'port'):
+            port = int(self.ini.get_setting(section, 'port'))
+        else:
+            port = 6543
+        return 'http://%s:%d' % (host, port)
+
 
 class BaseTestCaseWithConfiguration(TestCaseWithIni):
     """
@@ -208,16 +220,7 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
     def set_up(self):
         super(ResourceTestCase, self).set_up()
         # Build a dummy request.
-        section = 'server:main'
-        if self.ini.has_setting(section, 'host'):
-            host = self.ini.get_setting(section, 'host')
-        else:
-            host = '0.0.0.0'
-        if self.ini.has_setting(section, 'port'):
-            port = int(self.ini.get_setting(section, 'port'))
-        else:
-            port = 6543
-        base_url = app_url = 'http://%s:%d' % (host, port)
+        base_url = app_url = self._get_app_url()
         self._request = DummyRequest(application_url=app_url,
                                      host_url=base_url,
                                      path_url=app_url,

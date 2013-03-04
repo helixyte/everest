@@ -231,7 +231,13 @@ class CsvRepresentationParser(RepresentationParser):
         return new_data_el
 
     def __process_attr(self, attribute, attribute_key, data_el, row_data):
-        attribute_value = row_data.pop(attribute.repr_name, None)
+        try:
+            attribute_value = row_data.pop(attribute.repr_name)
+        except KeyError:
+            attribute_value = None
+            has_attribute = False
+        else:
+            has_attribute = True
         # In the first row, we check for extra field names by removing all
         # fields we found from the set of all field names.
         if self.__is_first_row:
@@ -247,11 +253,14 @@ class CsvRepresentationParser(RepresentationParser):
                 if not attribute_value is None:
                     data_el.set_terminal_converted(attribute, attribute_value)
             else:
+                # FIXME: It is peculiar to treat the empty string as None
+                #        here. However, this seems to be the way the csv
+                #        module does it.
                 if not attribute_value in (None, ''):
                     link_data_el = \
                             self.__process_link(attribute_value, attribute)
                     data_el.set_nested(attribute, link_data_el)
-                else:
+                elif not has_attribute and len(row_data) > 0:
                     nested_attr_key = attribute_key + (attribute.name,)
                     # We recursively look for nested resource attributes in
                     # other fields.
@@ -479,11 +488,11 @@ class CsvRepresentationGenerator(RepresentationGenerator):
     """
 
     def run(self, data_element):
-        # We do not want the traverser to emit converted terminals since the
-        # CSV writer will take care of that.
+        # We also emit None values to make sure every data row has the same
+        # number of fields.
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       PROCESSING_DIRECTIONS.WRITE)
-#                                       convert_terminals=False)
+                                       direction=PROCESSING_DIRECTIONS.WRITE,
+                                       ignore_none_values=False)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)
         csv_data = vst.csv_data

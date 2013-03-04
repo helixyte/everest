@@ -338,9 +338,15 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     """
     Abstract base class for resource data tree traversers.
     """
-    def __init__(self, root, mapping):
+    def __init__(self, root, mapping, direction, ignore_none_values=True):
+        """
+        :param direction: processing direction (read or write). One of the
+            :class:`PROCESSING_DIRECTIONS` constant attributes.
+        """
         DataTreeTraverser.__init__(self, root)
         self._mapping = mapping
+        self._direction = direction
+        self.__ignore_none_values = ignore_none_values
 
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
                          visitor, index=None):
@@ -360,6 +366,10 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
                     # Terminal attribute - extract.
                     value = self._get_node_terminal(member_node, mb_attr)
+                    if value is None and self.__ignore_none_values:
+                        # We ignore None attribute values when reading
+                        # representations.
+                        continue
                     member_data[mb_attr] = value
                 else:
                     # Nested attribute - traverse.
@@ -391,7 +401,11 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         raise NotImplementedError('Abstract method.')
 
     def _get_ignore_option(self, attr):
-        raise NotImplementedError('Abstract method.')
+        if self._direction == PROCESSING_DIRECTIONS.READ:
+            opt = attr.options.get(IGNORE_ON_READ_OPTION)
+        else:
+            opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
+        return opt
 
     def __ignore_attribute(self, ignore_opt, attr, attr_key):
         # Rules for ignoring attributes:
@@ -421,13 +435,12 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     This traverser can be used both inbound during reading (data element 
     -> resource) and outbound during writing (resource -> data element).
     """
-    def __init__(self, root, mapping, direction):
-        """
-        :param direction: processing direction (read or write). One of the
-            :class:`PROCESSING_DIRECTIONS` constant attributes.
-        """
-        ResourceDataTreeTraverser.__init__(self, root, mapping)
-        self.__direction = direction
+    def __init__(self, root, mapping,
+                 direction=PROCESSING_DIRECTIONS.READ,
+                 ignore_none_values=True):
+        ResourceDataTreeTraverser.__init__(
+                                    self, root, mapping, direction,
+                                    ignore_none_values=ignore_none_values)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
@@ -456,7 +469,7 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
         return node.mapping.mapped_class
 
     def _get_node_terminal(self, node, attr):
-        if self.__direction == PROCESSING_DIRECTIONS.READ:
+        if self._direction == PROCESSING_DIRECTIONS.READ:
             value = node.get_terminal(attr)
         else:
             value = node.get_terminal_converted(attr)
@@ -465,18 +478,18 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     def _get_node_nested(self, node, attr):
         return node.get_nested(attr)
 
-    def _get_ignore_option(self, attr):
-        if self.__direction == PROCESSING_DIRECTIONS.READ:
-            opt = attr.options.get(IGNORE_ON_READ_OPTION)
-        else:
-            opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
-        return opt
-
 
 class ResourceTreeTraverser(ResourceDataTreeTraverser):
     """
     Mapping traverser for resource trees.
     """
+    def __init__(self, root, mapping,
+                 direction=PROCESSING_DIRECTIONS.WRITE,
+                 ignore_none_values=True):
+        ResourceDataTreeTraverser.__init__(
+                                    self, root, mapping, direction,
+                                    ignore_none_values=ignore_none_values)
+
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
         if IMemberResource in ifcs:
@@ -502,6 +515,3 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
     def _is_link_node(self, node, attr):
         return not attr is None and \
                not attr.options.get(WRITE_AS_LINK_OPTION) is False
-
-    def _get_ignore_option(self, attr):
-        return attr.options.get(IGNORE_ON_WRITE_OPTION)
