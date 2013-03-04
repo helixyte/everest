@@ -31,6 +31,7 @@ from pyramid.traversal import model_path
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
+from everest.resources.utils import get_service
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -347,6 +348,10 @@ class Collection(Resource):
         member = as_member(entity)
         self.add(member)
         return member
+
+    @property
+    def is_nested(self):
+        return not self.__parent__ is get_service()
 
     def __len__(self):
         """

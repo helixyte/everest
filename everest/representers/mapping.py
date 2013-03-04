@@ -136,13 +136,14 @@ class Mapping(object):
 
     def map_to_resource(self, data_element, resolve_urls=True):
         trv = DataElementTreeTraverser(data_element, self,
-                                       PROCESSING_DIRECTIONS.READ)
+                                       direction=PROCESSING_DIRECTIONS.READ)
         visitor = ResourceBuilderDataElementTreeVisitor(resolve_urls)
         trv.run(visitor)
         return visitor.resource
 
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(resource, self)
+        trv = ResourceTreeTraverser(resource, self,
+                                    direction=PROCESSING_DIRECTIONS.WRITE)
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
