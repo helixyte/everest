@@ -6,13 +6,18 @@ Created on Nov 17, 2011.
 """
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
-from everest.repositories.rdb.utils import reset_metadata
 from everest.renderers import RendererFactory
+from everest.repositories.rdb.utils import reset_metadata
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
+from everest.resources.utils import resource_to_url
 from everest.testing import FunctionalTestCase
+from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.testing import create_collection
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooCollection
@@ -21,15 +26,13 @@ from everest.tests.simple_app.views import ExceptionPostCollectionView
 from everest.tests.simple_app.views import ExceptionPutMemberView
 from everest.tests.simple_app.views import UserMessagePostCollectionView
 from everest.tests.simple_app.views import UserMessagePutMemberView
-from everest.tests.complete_app.entities import MyEntity
-from everest.tests.complete_app.interfaces import IMyEntity
-from everest.tests.complete_app.testing import create_collection
 from everest.traversal import SuffixResourceTraverser
 from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
 from pkg_resources import resource_filename # pylint: disable=E0611
+from pyramid.testing import DummyRequest
 import transaction
 
 __docformat__ = 'reStructuredText en'
@@ -62,6 +65,9 @@ class BasicViewTestCase(FunctionalTestCase):
                                     renderer='csv',
                                     request_method='PUT')
         self.config.add_collection_view(IMyEntity,
+                                        renderer='csv',
+                                        request_method='POST')
+        self.config.add_collection_view(IMyEntityChild,
                                         renderer='csv',
                                         request_method='POST')
         self.config.add_member_view(IMyEntity,
@@ -145,6 +151,32 @@ class BasicViewTestCase(FunctionalTestCase):
         mb = coll['0']
         self.assert_equal(mb.text, 'abc')
 
+    def test_post_nested_collection(self):
+        mb, mb_url = self.__make_parent_and_link()
+        child_coll = get_root_collection(IMyEntityChild)
+        req_body = '"id","text","parent"\n0,"child","%s"\n' % mb_url
+        res = self.app.post("%schildren" % mb_url,
+                            params=req_body,
+                            content_type=CsvMime.mime_type_string,
+                            status=201)
+        self.assert_is_not_none(res)
+        child_mb = child_coll['0']
+        self.assert_equal(child_mb.text, 'child')
+        self.assert_equal(child_mb.parent.id, mb.id)
+
+    def test_post_nested_collection_no_parent(self):
+        mb, mb_url = self.__make_parent_and_link()
+        child_coll = get_root_collection(IMyEntityChild)
+        req_body = '"id","text"\n0,"child"\n'
+        res = self.app.post("%schildren" % mb_url,
+                            params=req_body,
+                            content_type=CsvMime.mime_type_string,
+                            status=201)
+        self.assert_is_not_none(res)
+        child_mb = child_coll['0']
+        self.assert_equal(child_mb.text, 'child')
+        self.assert_equal(child_mb.parent.id, mb.id)
+
     def test_delete_member(self):
         coll = create_collection()
         self.assert_equal(len(coll), 2)
@@ -169,6 +201,23 @@ class BasicViewTestCase(FunctionalTestCase):
         finally:
             if not old_remove is None:
                 coll_cls.remove = old_remove
+
+    def __make_parent_and_link(self):
+        # FIXME: This is more elaborate than it should be - to make URL
+        #        generation work, we have to manually set the parent of the
+        #        root collection and create a dummy request.
+        coll = get_root_collection(IMyEntity)
+        svc = get_service()
+        coll.__parent__ = svc
+        ent = MyEntity(id=0)
+        mb = coll.create_member(ent)
+        # Make a dummy request.
+        url = self._get_app_url()
+        req = DummyRequest(application_url=url, host_url=url,
+                           path_url=url, url=url,
+                           registry=self.config.registry)
+        mb_url = resource_to_url(mb, request=req)
+        return mb, mb_url
 
 
 class PredicatedViewTestCase(FunctionalTestCase):
