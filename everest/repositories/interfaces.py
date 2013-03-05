@@ -56,16 +56,17 @@ class IRepository(Interface):
 
     name = Attribute('Unique name for this repository.')
 
-    is_initialized = Bool('Flag indicating if this repository has been '
-                          'initialized.')
+    is_initialized = Bool(title=u'Flag indicating if this repository has '
+                                 'been initialized.')
 
-    join_transaction = Bool('Flag indicating if this repository should '
-                            'participate in the Zope transaction '
-                            '(mutually exclusive with "autocommit")')
+    join_transaction = Bool(title=u'Flag indicating if this repository '
+                                   'should participate in the Zope '
+                                   'transaction (mutually exclusive with '
+                                   '"autocommit")')
 
-    autocommit = Bool('Flag indicating that changes should be committed '
-                      'automatically (mutually exclusive with '
-                      '"join_transaction").')
+    autocommit = Bool(title=u'Flag indicating that changes should be '
+                             'committed automatically (mutually exclusive '
+                             'with "join_transaction").')
 
     configuration = Attribute('Copy of the map of configuration options.')
 
