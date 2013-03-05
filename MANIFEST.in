@@ -1,0 +1,7 @@
+include *.py *.txt *.rst *.in *.cfg
+recursive-include everest *.py *.zcml *.xsd *.ini *.csv
+recursive-include support *.*
+recursive-include docs *.*
+exclude docs/.gitignore
+prune docs/_build
+prune docs/_static
