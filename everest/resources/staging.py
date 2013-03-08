@@ -5,10 +5,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 27, 2013.
 """
+from collections import defaultdict
 from everest.entities.utils import get_entity_class
 from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.memory.cache import EntityCache
 from everest.resources.utils import get_collection_class
+from everest.entities.utils import new_entity_id
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['create_staging_collection',
@@ -17,9 +19,11 @@ __all__ = ['create_staging_collection',
 
 class StagingSession(object):
     def __init__(self):
-        self.__cache_map = {}
+        self.__cache_map = defaultdict(EntityCache)
 
     def add(self, entity_class, entity):
+        if entity.id is None:
+            entity.id = new_entity_id()
         self.__cache_map[entity_class].add(entity)
 
     def remove(self, entity_class, entity):
@@ -35,10 +39,7 @@ class StagingSession(object):
         return self.__cache_map[entity_class].iterator()
 
     def __getitem__(self, entity_class):
-        cache = self.__cache_map.get(entity_class)
-        if cache is None:
-            cache = self.__cache_map[entity_class] = EntityCache()
-        return cache
+        return self.__cache_map[entity_class]
 
 
 def create_staging_collection(resource):

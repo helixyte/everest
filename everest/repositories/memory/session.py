@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from everest.entities.utils import new_entity_id
 from everest.repositories.base import SessionFactory
 from everest.repositories.memory.cache import EntityCacheManager
 from everest.repositories.memory.uow import UnitOfWork
@@ -39,9 +40,16 @@ class MemorySession(object):
     def commit(self):
         with self.__repository.lock:
             self.__repository.commit(self.__unit_of_work)
+        self.__unit_of_work.reset()
+        self.__cache_mgr.reset()
 
     def rollback(self):
+#        for ent_cls, ent, state in self.__unit_of_work.iterator():
+#            if state == OBJECT_STATES.DIRTY:
+#                cache = self.__cache_mgr[ent_cls]
+#                cache.replace(self.__repository.get_by_id(ent_cls, ent.id))
         self.__unit_of_work.reset()
+        self.__cache_mgr.reset()
 
     def add(self, entity_class, entity):
         """
@@ -53,14 +61,13 @@ class MemorySession(object):
         """
         cache = self.__cache_mgr[entity_class]
         if not entity.id is None and cache.has_id(entity.id):
-            raise ValueError('Duplicate entity key "%s".' % entity.id)
+            raise ValueError('Duplicate entity ID "%s".' % entity.id)
         if not entity.slug is None and cache.has_slug(entity.slug):
             raise ValueError('Duplicate entity slug "%s".' % entity.slug)
         if self.__need_datamanager_setup:
             self.__setup_datamanager()
         if entity.id is None:
-            with self.__repository.lock:
-                entity.id = self.__repository.new_id()
+            entity.id = new_entity_id()
         self.__unit_of_work.register_new(entity_class, entity)
         cache.add(entity)
 
@@ -106,8 +113,7 @@ class MemorySession(object):
         Retrieves the entity for the specified entity class and slug.
         
         When the entity is not found in the cache, it is looked up in the
-        list of pending NEW entities. If it is not found there either, it is 
-        fetched from the repository and registered as CLEAN.
+        list of pending NEW entities.
         """
         if self.__need_datamanager_setup:
             self.__setup_datamanager()
@@ -128,6 +134,12 @@ class MemorySession(object):
             self.__setup_datamanager()
         cache = self.__cache_mgr[entity_class]
         return cache.iterator()
+
+    def get_all(self, entity_class):
+        """
+        Returns a list of all entities of the given class in the repository.
+        """
+        return list(self.iterator(entity_class))
 
     def __setup_datamanager(self):
         dm = DataManager(self)

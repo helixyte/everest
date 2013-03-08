@@ -46,8 +46,9 @@ class EntityStateManager(object):
                              (OBJECT_STATES.DIRTY, OBJECT_STATES.DELETED),
                              )
 
-    def __init__(self, entity):
+    def __init__(self, entity, unit_of_work):
         self.__obj_ref = ref(entity)
+        self.__uow_ref = ref(unit_of_work)
         self.__state = None
         self.__last_state_hash = hash(self.__get_state_string())
 
@@ -59,18 +60,21 @@ class EntityStateManager(object):
         return clone
 
     @classmethod
-    def manage(cls, entity, state):
-        if hasattr(entity, '__everest__'):
-            raise ValueError('Trying to register a %s entity that has '
-                             'already been registered!' % state)
-        entity.__everest__ = cls(entity)
-        cls.set_state(entity, state)
+    def manage(cls, entity, unit_of_work):
+        if hasattr(entity, '__everest__') \
+           and not unit_of_work is entity.__everest__.unit_of_work:
+            raise ValueError('Trying to register an entity that has already '
+                             'been registered with another session!')
+        entity.__everest__ = cls(entity, unit_of_work)
 
     @classmethod
-    def release(cls, entity):
+    def release(cls, entity, unit_of_work):
         if not hasattr(entity, '__everest__'):
             raise ValueError('Trying to unregister an entity that has not '
                              'been registered yet!')
+        elif not unit_of_work is entity.__everest__.unit_of_work:
+            raise ValueError('Trying to unregister an entity that has not '
+                             'been registered with this session!')
         delattr(entity, '__everest__')
 
     @classmethod
@@ -100,7 +104,7 @@ class EntityStateManager(object):
 
     def __get_state_string(self):
         # Concatenate all public attribute name:value pairs.
-        data = self._get_state_data(self)
+        data = self._get_state_data(self.__obj_ref())
         tokens = ['%s:%s' % (k, v)
                   for (k, v) in data.iteritems()]
         return ','.join(tokens)
@@ -123,6 +127,10 @@ class EntityStateManager(object):
 
     state = property(__get_state, __set_state)
 
+    @property
+    def unit_of_work(self):
+        return self.__uow_ref()
+
 
 class UnitOfWork(object):
     """
@@ -142,7 +150,8 @@ class UnitOfWork(object):
         
         :raises ValueError: If the given entity already holds state.
         """
-        EntityStateManager.manage(entity, OBJECT_STATES.NEW)
+        EntityStateManager.manage(entity, self)
+        EntityStateManager.set_state(entity, OBJECT_STATES.NEW)
         self.__entity_set_map[entity_class].add(entity)
 
     def register_clean(self, entity_class, entity):
@@ -152,8 +161,9 @@ class UnitOfWork(object):
         :returns: Cloned entity.
         """
         clone = EntityStateManager.clone(entity)
-        EntityStateManager.manage(clone, OBJECT_STATES.CLEAN)
-        self.__entity_set_map[entity_class].add(entity)
+        EntityStateManager.manage(clone, self)
+        EntityStateManager.set_state(clone, OBJECT_STATES.CLEAN)
+        self.__entity_set_map[entity_class].add(clone)
         return clone
 
     def unregister(self, entity_class, entity):
@@ -162,7 +172,7 @@ class UnitOfWork(object):
         state information.
         """
         self.__entity_set_map[entity_class].remove(entity)
-        EntityStateManager.release(entity)
+        EntityStateManager.release(entity, self)
 
     def mark_clean(self, entity_class, entity):
         """

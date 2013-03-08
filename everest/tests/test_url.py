@@ -128,7 +128,10 @@ class UrlTestCase(ResourceTestCase):
 
     def test_url_to_resource_with_slice(self):
         coll_from_url = url_to_resource(self.base_url + '?size=1&start=0')
-        self.assert_equal(len(coll_from_url), 1)
+        # The length is not affected by the slice...
+        self.assert_equal(len(coll_from_url), 2)
+        # ... the actual number of members in the collection is.
+        self.assert_equal(len(list(coll_from_url)), 1)
 
     def test_url_to_resource_with_filter(self):
         def _test(criterion, attr, value):

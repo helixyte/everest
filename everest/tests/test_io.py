@@ -19,11 +19,12 @@ from everest.resources.io import get_collection_filename
 from everest.resources.io import get_collection_name
 from everest.resources.io import load_collection_from_file
 from everest.resources.io import load_collection_from_url
+from everest.resources.io import load_into_collection_from_url
 from everest.resources.io import load_into_collections_from_zipfile
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import new_stage_collection
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
@@ -40,12 +41,15 @@ import os
 import shutil
 import tempfile
 import zipfile
-from everest.resources.io import load_into_collection_from_url
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConnectedResourcesTestCase',
+           'FileResourceIoTestCase',
            'ResourceDependencyGraphTestCase',
-           'ResourceLoadingTestCase',
+           'ResourceGraphTestCase',
+           'StreamResourceIoTestCase',
+           'ZipResourceIoTestCaseNoRdb',
+           'ZipResourceIoTestCaseRdb',
            ]
 
 
@@ -57,7 +61,7 @@ def _make_test_entity_member():
     entity.children.append(child)
     grandchild = MyEntityGrandchild(id=0, parent=child)
     child.children.append(grandchild)
-    coll = new_stage_collection(IMyEntity)
+    coll = create_staging_collection(IMyEntity)
     return coll.create_member(entity)
 
 

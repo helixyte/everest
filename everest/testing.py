@@ -7,15 +7,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 2, 2011.
 """
 from everest.configuration import Configurator
-from everest.repositories.rdb.utils import Session
-from everest.repositories.utils import get_engine
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
-from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.rdb.utils import Session
+from everest.repositories.utils import get_engine
 from everest.resources.interfaces import IService
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import new_stage_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
@@ -271,7 +271,7 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
         return coll
 
     def _create_member(self, member_cls, entity):
-        coll = new_stage_collection(member_cls)
+        coll = create_staging_collection(member_cls)
         return coll.create_member(entity)
 
 

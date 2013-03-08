@@ -32,10 +32,11 @@ from everest.representers.xml import XML_SCHEMA_OPTION
 from everest.representers.xml import XML_TAG_OPTION
 from everest.resources.kinds import ResourceKinds
 from everest.resources.link import Link
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import new_stage_collection
+from everest.resources.utils import url_to_resource
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.testing import TestCaseWithConfiguration
@@ -46,7 +47,6 @@ from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.resources import MyEntityParentMember
 from everest.tests.complete_app.testing import create_collection
-from everest.resources.utils import url_to_resource
 from zope.interface import Interface # pylint: disable=E0611,F0401
 import os
 
@@ -808,7 +808,7 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
     def test_update_collection_from_data_with_id_raises_error(self):
         coll = create_collection()
         rpr = as_representer(coll, CsvMime)
-        upd_coll = new_stage_collection(IMyEntity)
+        upd_coll = create_staging_collection(IMyEntity)
         ent = MyEntity(id=2)
         upd_coll.create_member(ent)
         de = rpr.data_from_resource(upd_coll)

@@ -11,6 +11,7 @@ from everest.repositories.utils import as_repository
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+import uuid
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_entity_class',
@@ -87,3 +88,16 @@ def identifier_from_slug(slug):
     :param str slug: slug string
     """
     return slug.replace('-', '_')
+
+def new_entity_id():
+    """
+    Generates a new (global) ID.
+    
+    Uses the :func:`uuid.uuid1` function to generate unique string IDs 
+    which are sortable by creation time.
+    
+    :return: UUID string.
+    """
+    return str(uuid.uuid1())
+
+

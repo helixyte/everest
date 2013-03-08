@@ -12,9 +12,8 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import as_member
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import new_stage_collection
 from everest.utils import id_generator
-from pyramid.location import lineage
+#from pyramid.location import lineage
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
@@ -257,6 +256,7 @@ class collection_attribute(_relation_attribute):
     def __make_collection(self, resource, parent, children):
         # Create a new collection.
         rc_parent = resource.__parent__
+        rc_repo = None
         while not rc_parent is None:
             rc_repo = getattr(rc_parent, '__repository__', None)
             if not rc_repo is None:

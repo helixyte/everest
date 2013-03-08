@@ -24,9 +24,9 @@ from everest.resources.descriptors import attribute_alias
 from everest.resources.descriptors import collection_attribute
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
-from everest.resources.utils import new_stage_collection
 from everest.resources.utils import resource_to_url
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
@@ -155,7 +155,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
 
     def test_update_terminal(self):
         my_entity = create_entity()
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         member.text = self.UPDATED_TEXT
         mp = self._make_mapping()
@@ -172,7 +172,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
     def test_update_terminal_in_parent(self):
         my_entity = create_entity()
         my_entity.parent.text = self.UPDATED_TEXT
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         data_el = mp.map_to_data_element(member)
@@ -188,7 +188,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
     def test_update_terminal_in_child(self):
         my_entity = create_entity()
         my_entity.children[0].text = self.UPDATED_TEXT
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         data_el = mp.map_to_data_element(member)
@@ -209,7 +209,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         new_parent.text = self.UPDATED_TEXT
         new_parent.id = 2
         my_entity.parent = new_parent
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         data_el = mp.map_to_data_element(member)
@@ -228,7 +228,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         new_parent.text = self.UPDATED_TEXT
         new_parent.id = 2
         my_entity.parent = new_parent
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         attribute_options = {('parent',):{WRITE_AS_LINK_OPTION:True},
@@ -251,7 +251,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
     def test_delete_child(self):
         my_entity = create_entity()
         del my_entity.children[0]
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         data_el = mp.map_to_data_element(member)
@@ -267,7 +267,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
     def test_delete_grandchild(self):
         my_entity = create_entity()
         del my_entity.children[0].children[0]
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         mp = self._make_mapping()
         data_el = mp.map_to_data_element(member)
@@ -286,7 +286,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         my_entity = create_entity()
         new_child = MyEntityChild()
         my_entity.children.append(new_child)
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(len(member.children), 2)
         mp = self._make_mapping()
@@ -359,7 +359,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
 
     def test_nested_get(self):
         my_entity = create_entity()
-        coll = new_stage_collection(IMyEntity)
+        coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(member.parent_text, MyEntityParent.DEFAULT_TEXT)
 

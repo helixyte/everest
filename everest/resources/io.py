@@ -11,8 +11,8 @@ from collections import OrderedDict
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
 from everest.representers.utils import as_representer
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_member_class
-from everest.resources.utils import new_stage_collection
 from everest.resources.utils import provides_member_resource
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
@@ -269,7 +269,7 @@ def find_connected_resources(resource, dependency_graph=None):
         coll = collections.get(mb_cls)
         if coll is None:
             # Create new collection.
-            coll = new_stage_collection(mb)
+            coll = create_staging_collection(mb)
             collections[mb_cls] = coll
         coll.add(mb)
     return collections

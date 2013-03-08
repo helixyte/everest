@@ -6,3 +6,4 @@
 .coverage
 .project
 .pydevproject
+/dist

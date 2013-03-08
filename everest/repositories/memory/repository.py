@@ -12,7 +12,6 @@ from everest.repositories.memory.cache import EntityCacheManager
 from everest.repositories.memory.session import MemorySessionFactory
 from everest.repositories.memory.uow import OBJECT_STATES
 from threading import Lock
-import uuid
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryRepository',
@@ -39,17 +38,6 @@ class MemoryRepository(Repository):
         self.__cache_mgr = EntityCacheManager(self)
         # By default, we do not use a cache loader.
         self.configure(cache_loader=None)
-
-    def new_id(self):
-        """
-        Generates a new (global) ID.
-        
-        Uses the :func:`uuid.uuid1` function to generate unique string IDs 
-        which are sortable by creation time.
-        
-        :return: UUID string.
-        """
-        return str(uuid.uuid1())
 
     def get_by_id(self, entity_class, entity_id):
         cache = self.__cache_mgr[entity_class]

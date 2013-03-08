@@ -14,10 +14,10 @@ from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
 from everest.resources.io import get_collection_name
 from everest.resources.io import get_read_collection_path
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
-from everest.resources.utils import new_stage_collection
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.entities import MyEntity
@@ -91,7 +91,7 @@ class RepositoryTestCase(ResourceTestCase):
 
     def test_set_collection_parent_fails(self):
         self.config.add_resource(IFoo, FooMember, FooEntity, expose=False)
-        coll = new_stage_collection(IFoo)
+        coll = create_staging_collection(IFoo)
         srvc = get_service()
         repo_mgr = get_repository_manager()
         repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)

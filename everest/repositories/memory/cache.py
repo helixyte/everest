@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 26, 2013.
 """
 from weakref import WeakValueDictionary
+from everest.entities.utils import new_entity_id
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityCache',
@@ -64,11 +65,15 @@ class EntityCache(object):
         """
         if entity.id is None:
             raise ValueError('Entity ID must not be None.')
+        elif entity.id in self.__id_map:
+            raise ValueError('Duplicate entity ID "%s".' % entity.id)
         self.__id_map[entity.id] = entity
         # Unlike the ID, the slug can be a lazy attribute depending on the
         # value of other (possibly not yet initialized) attributes which is
         # why we can not always assume it is available at this point.
         if not entity.slug is None:
+            if entity.slug in self.__slug_map:
+                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
             self.__slug_map[entity.slug] = entity
         self.__entities.append(entity)
 
@@ -79,7 +84,10 @@ class EntityCache(object):
         :param entity: Entity to remove.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises KeyError: If the given entity is not in this cache.
+        :raises ValueError: If the ID of the given entity is `None`.
         """
+        if entity.id is None:
+            raise ValueError('Entity ID must not be None.')
         del self.__id_map[entity.id]
         # We may not have the slug in the slug map because it might not have
         # been available by the time the entity was added.
@@ -93,7 +101,11 @@ class EntityCache(object):
         
         :param entity: Entity to replace.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
+        :raises KeyError: If the given entity is not in this cache.
+        :raises ValueError: If the ID of the given entity is `None`.
         """
+        if entity.id is None:
+            raise ValueError('Entity ID must not be None.')
         old_entity = self.__id_map[entity.id]
         self.remove(old_entity)
         self.add(entity)
@@ -115,6 +127,12 @@ class EntityCacheManager(object):
         self.__loader = loader
         self.__cache_map = {}
 
+    def reset(self):
+        """
+        Clears all entity caches held by this entity cache manager.
+        """
+        self.__cache_map.clear()
+
     def __getitem__(self, entity_class):
         cache = self.__cache_map.get(entity_class)
         if cache is None:
@@ -130,6 +148,6 @@ class EntityCacheManager(object):
         if not loader is None:
             for ent in loader(ent_cls):
                 if ent.id is None:
-                    ent.id = self.__repository.new_id()
+                    ent.id = new_entity_id()
                 cache.add(ent)
         return cache

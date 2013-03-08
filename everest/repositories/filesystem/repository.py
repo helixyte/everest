@@ -12,9 +12,9 @@ from everest.resources.io import dump_resource
 from everest.resources.io import get_read_collection_path
 from everest.resources.io import get_write_collection_path
 from everest.resources.io import load_collection_from_url
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import new_stage_collection
 import os
 
 __all__ = ['FileSystemRepository',
@@ -81,7 +81,7 @@ class FileSystemRepository(MemoryRepository):
                                        self._config['content_type'],
                                        directory=self._config['directory'])
         # Wrap the entities in a temporary collection.
-        coll = new_stage_collection(coll_cls)
+        coll = create_staging_collection(coll_cls)
         for ent in cache.iterator():
             coll.add(mb_cls.create_from_entity(ent))
         # Open stream for writing and dump the collection.

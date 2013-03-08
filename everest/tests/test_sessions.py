@@ -11,6 +11,7 @@ from everest.repositories.memory import Session
 from everest.testing import Pep8CompliantTestCase
 import gc
 import threading
+from everest.entities.utils import new_entity_id
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemorySessionTestCase',
@@ -24,40 +25,40 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self._repository = Repository('DUMMY', Aggregate, autoflush=True)
         self._session = Session(self._repository)
 
-    def test_with_autoflush(self):
+    def test_basics(self):
         ent = _MyEntity()
         self.assert_is_none(ent.id)
         self.assert_is_none(ent.slug)
         self._session.add(_MyEntity, ent)
         self.assert_true(ent in self._session.get_all(_MyEntity))
-        # get_all triggered flush - we should have ID & slug now.
+        # .add triggered ID generation.
         self.assert_is_not_none(ent.id)
         self.assert_is_not_none(ent.slug)
         self.assert_equal(len(self._session.get_all(_MyEntity)), 1)
         self.assert_true(self._session.get_by_id(_MyEntity, ent.id) is ent)
-        self.assert_true(self._session.get_by_slug(_MyEntity, ent.slug) is ent)
+        self.assert_true(
+                        self._session.get_by_slug(_MyEntity, ent.slug) is ent)
         self._session.remove(_MyEntity, ent)
-        self.assert_equal(len(self._session.get_all(_MyEntity)), 0)
+        self.assert_equal(len(list(self._session.iterator(_MyEntity))), 0)
         self.assert_is_none(self._session.get_by_id(_MyEntity, ent.id))
         self.assert_is_none(self._session.get_by_slug(_MyEntity, ent.slug))
 
-    def test_without_autoflush(self):
-        ent = _MyEntity()
-        self._repository.autoflush = False
-        self._session.add(_MyEntity, ent)
-        self.assert_true(ent in self._session.get_all(_MyEntity))
-        # no autoflush - ID & slug should still be none
-        self.assert_is_none(ent.id)
-        self.assert_is_none(ent.slug)
-        #
-        self._session.flush()
-        self.assert_is_not_none(ent.id)
-        self.assert_is_not_none(ent.slug)
+#    def test_without_autoflush(self):
+#        ent = _MyEntity()
+#        self._repository.autoflush = False
+#        self._session.add(_MyEntity, ent)
+#        self.assert_true(ent in self._session.get_all(_MyEntity))
+#        # no autoflush - ID & slug should still be none
+#        self.assert_is_none(ent.id)
+#        self.assert_is_none(ent.slug)
+#        #
+#        self._session.flush()
+#        self.assert_is_not_none(ent.id)
+#        self.assert_is_not_none(ent.slug)
 
     def test_references(self):
         ent = _MyEntity()
         self._session.add(_MyEntity, ent)
-        self._session.flush()
         self.assert_equal(len(self._session.get_all(_MyEntity)), 1)
         # Even with the last external ref gone, the cache should hold a
         # reference to the entities it manages.
@@ -69,11 +70,11 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         ent1 = _MyEntity()
         self._session.add(_MyEntity, ent1)
         ent2 = _MyEntity()
-        self._session.flush()
         self._session.add(_MyEntity, ent2)
-        self._session.flush()
-        self.assert_equal(ent1.id, 0)
-        self.assert_equal(ent2.id, 1)
+        self.assert_is_not_none(ent1.id)
+        self.assert_is_not_none(ent2.id)
+        # entity IDs can be sorted by creation time.
+        self.assert_true(ent2.id > ent1.id)
 
     def test_with_id_without_slug(self):
         ent = _MyEntityNoneSlug(id=0)
@@ -87,12 +88,10 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
                          is ent)
 
     def test_duplicate_id_raises_error(self):
-        ent1 = _MyEntity()
+        ent_id = new_entity_id()
+        ent1 = _MyEntity(id=ent_id)
         self._session.add(_MyEntity, ent1)
-        # Trigger flush to create ID.
-        self._session.flush()
-        self.assert_equal(ent1.id, 0)
-        ent2 = _MyEntity(id=0)
+        ent2 = _MyEntity(id=ent_id)
         self.assert_raises(ValueError, self._session.add, _MyEntity, ent2)
 
     def test_duplicate_slug_raises_error(self):
@@ -102,8 +101,8 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_raises(ValueError,
                            self._session.add, _MyEntityWithSlug, ent2)
 
-    def test_cope_with_string_id(self):
-        ent = _MyEntity(id='0')
+    def test_cope_with_numeric_id(self):
+        ent = _MyEntity(id=0)
         self._session.add(_MyEntity, ent)
         self.assert_equal(self._session.get_by_id(_MyEntity, ent.id).id,
                           ent.id)
@@ -128,10 +127,11 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
     def test_add_remove_add(self):
         ent1 = _MyEntityWithSlug()
         self._session.add(_MyEntity, ent1)
+        ent_id = ent1.id
         self._session.commit()
         self._session.remove(_MyEntity, ent1)
         self._session.add(_MyEntity, ent1)
-        self.assert_equal(ent1.id, 0)
+        self.assert_equal(ent1.id, ent_id)
 
     def test_remove_without_id(self):
         ent = _MyEntity()
@@ -151,18 +151,19 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         ent2.id = None
         with self.assert_raises(ValueError) as cm:
             self._session.commit()
-        exc_msg = 'Can only replace entities that have an ID.'
+        exc_msg = 'Entity ID must not be None.'
         self.assert_equal(cm.exception.message, exc_msg)
 
     def test_replace_with_different_slug(self):
-        ent1 = _MyEntityWithSlug(id=0)
+        ent1 = _MyEntityWithSlug()
         self._session.add(_MyEntityWithSlug, ent1)
+        ent_id = ent1.id
         self._session.commit()
-        ent2 = self._session.get_by_id(_MyEntityWithSlug, 0)
+        ent2 = self._session.get_by_id(_MyEntityWithSlug, ent_id)
         ent2.slug = 'foo'
         self._session.commit()
         ent3 = self._session.get_by_slug(_MyEntityWithSlug, 'foo')
-        self.assert_equal(ent3.id, 0)
+        self.assert_equal(ent3.id, ent_id)
 
     def test_threaded_access(self):
         class MyThread(threading.Thread):
@@ -177,12 +178,12 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         thr.join()
         self.assert_true(thr.ok)
 
-    def test_failing_flush_duplicate_id(self):
+    def test_failing_commit_duplicate_id(self):
         ent1 = _MyEntity()
         self._session.add(_MyEntity, ent1)
         ent2 = _MyEntity()
         self._session.add(_MyEntity, ent2)
-        ent2.id = 0
+        ent2.id = ent1.id
         self.assert_raises(ValueError, self._session.commit)
 
     def test_failing_flush_duplicate_slug(self):
