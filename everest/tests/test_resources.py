@@ -61,6 +61,14 @@ class ResourcesTestCase(ResourceTestCase):
         exc_msg = 'Collection must have a title.'
         self.assert_equal(cm.exception.message, exc_msg)
 
+    def test_update_from_entity(self):
+        foo0 = FooEntity(id=0)
+        coll = get_root_collection(IFoo)
+        mb0 = coll.create_member(foo0)
+        foo1 = FooEntity(id=1)
+        mb0.update_from_entity(foo1)
+        self.assert_equal(mb0.id, 1)
+
 
 class ResourcesFilteringTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'

@@ -113,11 +113,6 @@ class MemoryAggregate(Aggregate):
             ents = ents[self._slice_key]
         return ents, count
 
-    def __check_existing(self, ents, entity):
-        found = [ent for ent in ents
-                 if ent.id == entity.id or ent.slug == entity.slug]
-        return len(found) > 0
-
     def __filter_by_attr(self, ents, attr, value):
         if self._filter_spec is None:
             matching_ents = \

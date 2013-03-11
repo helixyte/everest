@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.entities.base import Entity
 from everest.entities.system import UserMessage
 from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IUserMessage
@@ -30,7 +29,6 @@ from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooMember
 from everest.utils import get_repository_manager
-from pkg_resources import resource_filename # pylint: disable=E0611
 import glob
 import os
 import shutil
@@ -49,7 +47,8 @@ __all__ = ['BasicRepositoryTestCase',
 
 class BasicRepositoryTestCase(Pep8CompliantTestCase):
     def test_args(self):
-        self.assert_raises(ValueError, Repository, 'DUMMY', Aggregate,
+        self.assert_raises(ValueError, Repository, 'DUMMY',
+                           aggregate_class=Aggregate,
                            autocommit=True, join_transaction=True)
 
 
@@ -69,6 +68,11 @@ class RepositoryTestCase(ResourceTestCase):
             acc2 = meth(IMyEntity)
             self.assert_not_equal(id(acc1), id(acc2))
 
+    def test_init_no_name(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
+        self.assert_true(repo.name.startswith(REPOSITORY_TYPES.MEMORY))
+
     def test_manager(self):
         repo_mgr = get_repository_manager()
         repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
@@ -77,17 +81,6 @@ class RepositoryTestCase(ResourceTestCase):
             repo_mgr.new('foo', 'bar')
         exc_msg = 'Unknown repository type.'
         self.assert_equal(cm.exception.message, exc_msg)
-
-    def test_load_representation(self):
-        repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
-        data_path = resource_filename(
-                            'everest.tests.complete_app',
-                            'data/original/myentity-parent-collection.csv')
-        coll = get_root_collection(IMyEntityParent)
-        self.assert_equal(len(coll), 0)
-        repo.load_representation(IMyEntityParent, 'file://%s' % data_path)
-        self.assert_equal(len(coll), 1)
 
     def test_set_collection_parent_fails(self):
         self.config.add_resource(IFoo, FooMember, FooEntity, expose=False)
@@ -98,7 +91,6 @@ class RepositoryTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             repo.set_collection_parent(coll, srvc)
         self.assert_true(cm.exception.message.startswith('No root collect'))
-
 
 
 class _SystemRepositoryBaseTestCase(ResourceTestCase):
@@ -300,13 +292,16 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
             os.unlink(os.path.join(self._data_dir, fn))
 
 
-class _MyEntity(Entity):
-    pass
+class MemoryRepoWithCacheLoaderTestCase(ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_memory_repo_with_cache_loader.zcml'
+
+    def test_repo_has_loaded_entities(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get('CUSTOM_MEMORY_WITH_CACHE_LOADER')
+        agg = repo.get_aggregate(IMyEntity)
+        self.assert_equal(len(list(agg.iterator())), 1)
 
 
-class _MyEntityWithSlug(Entity):
-    slug = 'slug'
-
-
-class _MyEntityNoneSlug(Entity):
-    slug = None
+def entity_loader(entity_class):
+    return [entity_class()]

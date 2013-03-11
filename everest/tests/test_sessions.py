@@ -5,25 +5,21 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 13, 2012.
 """
 from everest.entities.base import Entity
+from everest.entities.utils import new_entity_id
 from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
 from everest.repositories.memory import Session
 from everest.testing import Pep8CompliantTestCase
 import gc
-import threading
-from everest.entities.utils import new_entity_id
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['MemorySessionTestCase',
+__all__ = ['JoinedTransactionMemorySessionTestCase',
+           'TransactionLessMemorySessionTestCase',
            ]
 
 
-class MemorySessionTestCase(Pep8CompliantTestCase):
-
-    def set_up(self):
-        Pep8CompliantTestCase.set_up(self)
-        self._repository = Repository('DUMMY', Aggregate, autoflush=True)
-        self._session = Session(self._repository)
+class _MemorySessionTestCaseBase(Pep8CompliantTestCase):
+    _session = None
 
     def test_basics(self):
         ent = _MyEntity()
@@ -43,18 +39,31 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_is_none(self._session.get_by_id(_MyEntity, ent.id))
         self.assert_is_none(self._session.get_by_slug(_MyEntity, ent.slug))
 
-#    def test_without_autoflush(self):
-#        ent = _MyEntity()
-#        self._repository.autoflush = False
-#        self._session.add(_MyEntity, ent)
-#        self.assert_true(ent in self._session.get_all(_MyEntity))
-#        # no autoflush - ID & slug should still be none
-#        self.assert_is_none(ent.id)
-#        self.assert_is_none(ent.slug)
-#        #
-#        self._session.flush()
-#        self.assert_is_not_none(ent.id)
-#        self.assert_is_not_none(ent.slug)
+    def test_remove_entity_not_in_session_raises_error(self):
+        ent = _MyEntity()
+        self.assert_raises(ValueError, self._session.remove, _MyEntity, ent)
+
+    def test_replace_entity_not_in_session_raises_error(self):
+        ent = _MyEntity()
+        self.assert_raises(ValueError, self._session.replace, _MyEntity, ent)
+
+    def test_get_entity_not_in_session(self):
+        self.assert_is_none(self._session.get_by_id(_MyEntity, '-1'))
+
+
+class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):
+    def set_up(self):
+        Pep8CompliantTestCase.set_up(self)
+        self._repository = Repository('DUMMY', Aggregate,
+                                      join_transaction=True)
+        self._session = Session(self._repository)
+
+
+class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
+    def set_up(self):
+        Pep8CompliantTestCase.set_up(self)
+        self._repository = Repository('DUMMY', Aggregate)
+        self._session = Session(self._repository)
 
     def test_references(self):
         ent = _MyEntity()
@@ -124,6 +133,12 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self.assert_is_none(self._session.get_by_slug(_MyEntity, ent2.slug))
         self.assert_true(ent1.id != ent2.id)
 
+    def test_remove_(self):
+        ent = _MyEntity()
+        self._session.add(_MyEntity, ent)
+        self._session.remove(_MyEntity, ent)
+        self.assert_equal(len(self._session.get_all(_MyEntity)), 0)
+
     def test_add_remove_add(self):
         ent1 = _MyEntityWithSlug()
         self._session.add(_MyEntity, ent1)
@@ -132,16 +147,6 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         self._session.remove(_MyEntity, ent1)
         self._session.add(_MyEntity, ent1)
         self.assert_equal(ent1.id, ent_id)
-
-    def test_remove_without_id(self):
-        ent = _MyEntity()
-        self._session.add(_MyEntity, ent)
-        self._session.remove(_MyEntity, ent)
-        self.assert_equal(len(self._session.get_all(_MyEntity)), 0)
-
-    def test_remove_entity_not_in_session_raises_error(self):
-        ent = _MyEntity()
-        self.assert_raises(ValueError, self._session.remove, _MyEntity, ent)
 
     def test_replace_without_id_raises_error(self):
         ent1 = _MyEntity(id=0)
@@ -165,25 +170,26 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         ent3 = self._session.get_by_slug(_MyEntityWithSlug, 'foo')
         self.assert_equal(ent3.id, ent_id)
 
-    def test_threaded_access(self):
-        class MyThread(threading.Thread):
-            ok = False
-            def run(self):
-                threading.Thread.run(self)
-                self.ok = True
-        def access_session(session):
-            self.assert_equal(len(session.get_all(_MyEntity)), 0)
-        thr = MyThread(target=access_session, args=(self._session,))
-        thr.start()
-        thr.join()
-        self.assert_true(thr.ok)
-
     def test_failing_commit_duplicate_id(self):
         ent1 = _MyEntity()
         self._session.add(_MyEntity, ent1)
         ent2 = _MyEntity()
         self._session.add(_MyEntity, ent2)
         ent2.id = ent1.id
+        self.assert_raises(ValueError, self._session.commit)
+
+    def test_failing_add_commit_none_id(self):
+        ent = _MyEntity()
+        self._session.add(_MyEntity, ent)
+        ent.id = None
+        self.assert_raises(ValueError, self._session.commit)
+
+    def test_failing_add_commit_remove_none_id(self):
+        ent = _MyEntity()
+        self._session.add(_MyEntity, ent)
+        self._session.commit()
+        self._session.remove(_MyEntity, ent)
+        ent.id = None
         self.assert_raises(ValueError, self._session.commit)
 
     def test_failing_flush_duplicate_slug(self):
@@ -195,9 +201,44 @@ class MemorySessionTestCase(Pep8CompliantTestCase):
         ent2.slug = 'slug'
         self.assert_raises(ValueError, self._session.commit)
 
+    def test_find_added_by_id(self):
+        ent1 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent1)
+        ent2 = self._session.get_by_id(_MyEntity, ent1.id)
+        self.assert_is_not_none(ent2)
+        self.assert_equal(ent1.id, ent2.id)
+
+    def test_find_added_by_slug(self):
+        ent1 = _MyEntityWithSlug()
+        self._session.add(_MyEntity, ent1)
+        ent2 = self._session.get_by_slug(_MyEntity, ent1.slug)
+        self.assert_is_not_none(ent2)
+        self.assert_equal(ent1.id, ent2.id)
+
+    def test_find_added_with_none_slug_by_slug(self):
+        ent1 = _MyEntityNoneSlug()
+        self._session.add(_MyEntity, ent1)
+        ent1.slug = 'testslug'
+        ent2 = self._session.get_by_slug(_MyEntity, ent1.slug)
+        self.assert_is_not_none(ent2)
+        self.assert_equal(ent1.id, ent2.id)
+
+    def test_replace(self):
+        ent1 = _MyEntity()
+        self._session.add(_MyEntity, ent1)
+        ent2 = _MyEntity()
+        ent2.id = ent1.id
+        my_attr_value = 1
+        ent2.my_attr = my_attr_value
+        self._session.replace(_MyEntity, ent2)
+        ent3 = self._session.get_by_id(_MyEntity, ent1.id)
+        self.assert_is_not_none(ent3)
+        self.assert_equal(ent3.id, ent1.id)
+        self.assert_equal(ent3.my_attr, my_attr_value)
+
 
 class _MyEntity(Entity):
-    pass
+    my_attr = None
 
 
 class _MyEntityWithSlug(Entity):

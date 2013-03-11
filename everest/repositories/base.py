@@ -7,7 +7,6 @@ Created on Jan 5, 2013.
 """
 from everest.entities.utils import get_entity_class
 from everest.repositories.interfaces import IRepository
-from everest.resources.io import load_into_collection_from_url
 from everest.resources.utils import get_collection_class
 from zope.interface import implements # pylint: disable=E0611,F0401
 
@@ -16,13 +15,6 @@ __all__ = ['Repository',
            'SessionFactory',
            ]
 
-
-class Session(object):
-    def commit(self):
-        pass
-
-    def rollback(self):
-        pass
 
 class SessionFactory(object):
     """
@@ -53,15 +45,13 @@ class Repository(object):
     _configurables = ['messaging_enable', 'messaging_reset_on_start']
 
     def __init__(self, name, aggregate_class,
-                 autoflush=False, join_transaction=False, autocommit=False):
+                 join_transaction=False, autocommit=False):
         """
         Constructor.
         
         :param name: Name for this repository (propagated to repository).
         :param aggregate_class: The aggregate class to use when creating new
           aggregates in this repository.
-        :param autoflush: Indicates whether changes should be flushed
-          automatically.
         :param join_transaction: Indicates whether this repository should 
           participate in the Zope transaction.
         :param autocommit: Indicates whether changes should be committed
@@ -71,8 +61,6 @@ class Repository(object):
         if join_transaction and autocommit:
             raise ValueError('The "join_transaction" flag and the '
                              '"autocommit" flag can not both be set.')
-        #: Flag indicating that changes should be flushed immediately.
-        self.autoflush = autoflush
         #: Flag indicating that the sessions using this repository should
         #: join the Zope transaction.
         self.join_transaction = join_transaction
@@ -132,25 +120,6 @@ class Repository(object):
             raise ValueError('No root collection available for resource.')
         root_coll.__parent__ = parent
 
-    def load_representation(self, resource, url,
-                            content_type=None, resolve_urls=True):
-        """
-        Load the representation of the specified registered resource from the
-        given URL. The new resource is loaded into the resource's root 
-        collection.
-        
-        :param resource: Registered resource.
-        :param url: URL to load.
-        :param content_type: MIME content type of the representation
-        :param resolve_urls: If `true`, links to other resources encountered
-          during loading the representation will be resolved.
-        :raises RuntimeError: If the repository has not been initialized yet.
-        """
-        coll = self.get_collection(resource)
-        load_into_collection_from_url(coll, url,
-                                      content_type=content_type,
-                                      resolve_urls=resolve_urls)
-
     def configure(self, **config):
         """
         Apply the given configuration key:value map to the configuration of 
@@ -183,10 +152,6 @@ class Repository(object):
 
     def register_resource(self, resource):
         self.__registered_resources.add(resource)
-
-    @property
-    def registered_types(self):
-        return [get_entity_class(rc) for rc in self.__registered_resources]
 
     @property
     def is_initialized(self):

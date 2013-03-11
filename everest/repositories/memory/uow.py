@@ -63,8 +63,8 @@ class EntityStateManager(object):
     def manage(cls, entity, unit_of_work):
         if hasattr(entity, '__everest__') \
            and not unit_of_work is entity.__everest__.unit_of_work:
-            raise ValueError('Trying to register an entity that has already '
-                             'been registered with another session!')
+            raise ValueError('Trying to register an entity that has been '
+                             'registered with another session!')
         entity.__everest__ = cls(entity, unit_of_work)
 
     @classmethod
@@ -73,8 +73,8 @@ class EntityStateManager(object):
             raise ValueError('Trying to unregister an entity that has not '
                              'been registered yet!')
         elif not unit_of_work is entity.__everest__.unit_of_work:
-            raise ValueError('Trying to unregister an entity that has not '
-                             'been registered with this session!')
+            raise ValueError('Trying to unregister an entity that has been '
+                             'registered with another session!')
         delattr(entity, '__everest__')
 
     @classmethod
@@ -156,7 +156,7 @@ class UnitOfWork(object):
 
     def register_clean(self, entity_class, entity):
         """
-        Registers the given entity for the given class as CLEAN.
+        Registers the given entixty for the given class as CLEAN.
         
         :returns: Cloned entity.
         """
@@ -171,8 +171,8 @@ class UnitOfWork(object):
         Unregisters the given entity for the given class and discards its
         state information.
         """
-        self.__entity_set_map[entity_class].remove(entity)
         EntityStateManager.release(entity, self)
+        self.__entity_set_map[entity_class].remove(entity)
 
     def mark_clean(self, entity_class, entity):
         """
@@ -239,11 +239,6 @@ class UnitOfWork(object):
         self.__entity_set_map.clear()
 
     def __object_iterator(self, state, ent_cls):
-        if ent_cls is None:
-            keys = self.__entity_set_map.keys()
-        else:
-            keys = [ent_cls]
-        for key in keys:
-            for ent in self.__entity_set_map[key]:
-                if EntityStateManager.get_state(ent) == state:
-                    yield ent
+        for ent in self.__entity_set_map[ent_cls]:
+            if EntityStateManager.get_state(ent) == state:
+                yield ent

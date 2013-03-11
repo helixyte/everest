@@ -6,6 +6,7 @@ Created on Jun 14, 2012.
 """
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_registered_collection_resources
+from everest.resources.utils import get_repository
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import get_resource_url
 from everest.resources.utils import provides_collection_resource
@@ -30,6 +31,10 @@ class ResourcesUtilsTestCase(ResourceTestCase):
         coll = create_collection()
         url = get_resource_url(coll)
         self.assert_not_equal(url.find('/my-entities'), -1)
+
+    def test_get_repository(self):
+        repo = get_repository('MEMORY')
+        self.assert_equal(repo.name, 'MEMORY')
 
     def test_provides_resource(self):
         coll = create_collection()

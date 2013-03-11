@@ -33,10 +33,9 @@ class FileSystemRepository(MemoryRepository):
                      + ['directory', 'content_type']
 
     def __init__(self, name, aggregate_class=None,
-                 autoflush=True, join_transaction=True, autocommit=False):
+                 join_transaction=True, autocommit=False):
         MemoryRepository.__init__(self, name,
                                   aggregate_class=aggregate_class,
-                                  autoflush=autoflush,
                                   join_transaction=join_transaction,
                                   autocommit=autocommit)
         self.configure(directory=os.getcwd(), content_type=CsvMime,

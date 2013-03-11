@@ -28,24 +28,15 @@ class MemoryRepository(Repository):
     lock = Lock()
 
     def __init__(self, name, aggregate_class=None,
-                 autoflush=False, join_transaction=False, autocommit=False):
+                 join_transaction=False, autocommit=False):
         if aggregate_class is None:
             aggregate_class = MemoryAggregate
         Repository.__init__(self, name, aggregate_class,
-                            autoflush=autoflush,
                             join_transaction=join_transaction,
                             autocommit=autocommit)
         self.__cache_mgr = EntityCacheManager(self)
         # By default, we do not use a cache loader.
         self.configure(cache_loader=None)
-
-    def get_by_id(self, entity_class, entity_id):
-        cache = self.__cache_mgr[entity_class]
-        return cache.get_by_id(entity_id)
-
-    def get_by_slug(self, entity_class, entity_slug):
-        cache = self.__cache_mgr[entity_class]
-        return cache.get_by_slug(entity_slug)
 
     def iterator(self, entity_class):
         cache = self.__cache_mgr[entity_class]

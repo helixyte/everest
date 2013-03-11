@@ -7,7 +7,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 3, 2011.
 """
 from everest.interfaces import IResourceUrlConverter
-from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.utils import as_repository
 from everest.resources.interfaces import ICollectionResource
@@ -15,7 +14,6 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IService
-from everest.utils import get_repository_manager
 from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
 from pyramid.traversal import model_path
@@ -51,21 +49,6 @@ def get_root_collection(resource):
     """
     repo = as_repository(resource)
     return repo.get_collection(resource)
-
-
-def new_stage_collection(resource):
-    """
-    Returns a new, empty collection matching the given registered resource.
-
-    :param resource: registered resource
-    :type resource: class implementing or instance providing or subclass of
-        a registered resource interface.
-    """
-    repo_mgr = get_repository_manager()
-    new_repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
-    new_repo.register_resource(resource)
-    new_repo.initialize()
-    return new_repo.get_collection(resource)
 
 
 def get_member_class(resource):

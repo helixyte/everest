@@ -34,12 +34,17 @@ class RdbRepository(Repository):
 
     def __init__(self, name, aggregate_class=None,
                  autoflush=True, join_transaction=True, autocommit=False):
+        """
+        :param autoflush: Sets the `autoflush` attribute.
+        """
         if aggregate_class is None:
             aggregate_class = RdbAggregate
         Repository.__init__(self, name, aggregate_class,
-                            autoflush=autoflush,
                             join_transaction=join_transaction,
                             autocommit=autocommit)
+        #: Flag indicating if changes should be flushed to the treansaction
+        #: automatically.
+        self.autoflush = autoflush
         # Default to an in-memory sqlite DB.
         self.configure(db_string='sqlite://', metadata_factory=empty_metadata)
 

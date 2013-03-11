@@ -266,7 +266,7 @@ class FileResourceIoTestCase(_ResourceIoTestCaseBase):
         self._test_load(load_collection_from_url,
                         lambda fn: "file://%s" % fn, False)
 
-    def tetst_load_from_file_url_into(self):
+    def test_load_from_file_url_into(self):
         self._test_load(load_into_collection_from_url,
                         lambda fn: "file://%s" % fn, True)
 

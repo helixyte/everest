@@ -22,7 +22,13 @@ class EntityCache(object):
     Supports add and remove operations as well as lookup by ID and 
     by slug.
     """
-    def __init__(self):
+    def __init__(self, allow_none_id=False):
+        """
+        :param bool allow_none_id: Flag specifying if calling :meth:`add`
+            with an entity that does not have an ID is allowed.
+        """
+        #
+        self.__allow_none_id = allow_none_id
         # List of cached entities. This is the only place we are holding a
         # real reference to the entity.
         self.__entities = []
@@ -41,6 +47,11 @@ class EntityCache(object):
         return self.__id_map.get(entity_id)
 
     def has_id(self, entity_id):
+        """
+        Checks if this entity cache holds an entity with the given ID.
+        
+        :return: Boolean result of the check.
+        """
         return entity_id in self.__id_map
 
     def get_by_slug(self, entity_slug):
@@ -63,12 +74,15 @@ class EntityCache(object):
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises ValueError: If the ID of the entity to add is ``None``.
         """
-        if entity.id is None:
+        # For certain use cases (e.g., staging), we do not want the entity to
+        # be added to have an ID yet.
+        if not entity.id is None:
+            if entity.id in self.__id_map:
+                raise ValueError('Duplicate entity ID "%s".' % entity.id)
+            self.__id_map[entity.id] = entity
+        elif not self.__allow_none_id:
             raise ValueError('Entity ID must not be None.')
-        elif entity.id in self.__id_map:
-            raise ValueError('Duplicate entity ID "%s".' % entity.id)
-        self.__id_map[entity.id] = entity
-        # Unlike the ID, the slug can be a lazy attribute depending on the
+        # The slug can be a lazy attribute depending on the
         # value of other (possibly not yet initialized) attributes which is
         # why we can not always assume it is available at this point.
         if not entity.slug is None:

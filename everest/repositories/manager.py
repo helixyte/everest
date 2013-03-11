@@ -8,9 +8,7 @@ Created on Jan 25, 2013.
 from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.filesystem.repository import FileSystemRepository
-from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.memory.repository import MemoryRepository
-from everest.repositories.rdb.aggregate import RdbAggregate
 from everest.repositories.rdb.repository import RdbRepository
 from everest.utils import id_generator
 
@@ -63,18 +61,12 @@ class RepositoryManager(object):
         if repo_type == REPOSITORY_TYPES.MEMORY:
             if repository_class is None:
                 repository_class = MemoryRepository
-            if aggregate_class is None:
-                aggregate_class = MemoryAggregate
         elif repo_type == REPOSITORY_TYPES.RDB:
             if repository_class is None:
                 repository_class = RdbRepository
-            if aggregate_class is None:
-                aggregate_class = RdbAggregate
         elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
             if repository_class is None:
                 repository_class = FileSystemRepository
-            if aggregate_class is None:
-                aggregate_class = MemoryAggregate
         else:
             raise ValueError('Unknown repository type.')
         repo = repository_class(name,

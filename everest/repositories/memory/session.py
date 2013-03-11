@@ -20,6 +20,7 @@ __all__ = ['MemorySession',
            'MemorySessionFactory',
            ]
 
+
 class MemorySession(object):
     """
     Session object.
@@ -98,7 +99,7 @@ class MemorySession(object):
         self.__unit_of_work.unregister(entity_class, found_ent)
         self.__unit_of_work.register_new(entity_class, entity)
         cache = self.__cache_mgr[entity_class]
-        cache.replace(entity_class, entity)
+        cache.replace(entity)
 
     def get_by_id(self, entity_class, entity_id):
         """
@@ -111,9 +112,10 @@ class MemorySession(object):
     def get_by_slug(self, entity_class, entity_slug):
         """
         Retrieves the entity for the specified entity class and slug.
-        
-        When the entity is not found in the cache, it is looked up in the
-        list of pending NEW entities.
+
+        When the entity is not found in the cache, it may have been added
+        with an undefined slug and is looked up in the list of pending NEW
+        entities.
         """
         if self.__need_datamanager_setup:
             self.__setup_datamanager()
