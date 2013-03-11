@@ -43,7 +43,7 @@ __all__ = ['ConnectedResourcesSerializer',
 
 
 def load_collection_from_url(collection_class, url,
-                             content_type=None, resolve_urls=True):
+                             content_type=None):
     """
     Loads a collection resource of the given registered resource type from a 
     representation contained in the given URL.
@@ -55,27 +55,23 @@ def load_collection_from_url(collection_class, url,
         # Assume a local path.
         coll = load_collection_from_file(collection_class,
                                          parsed.path, # pylint: disable=E1101
-                                         content_type=content_type,
-                                         resolve_urls=resolve_urls)
+                                         content_type=content_type)
     else:
         raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
     return coll
 
 
-def load_into_collection_from_url(collection, url, content_type=None,
-                                  resolve_urls=True):
+def load_into_collection_from_url(collection, url, content_type=None):
     """
     Convenience function that adds all members loaded from the given
     collection URL to the given collection.
     """
     for mb in load_collection_from_url(type(collection), url,
-                                       content_type=content_type,
-                                       resolve_urls=resolve_urls):
+                                       content_type=content_type):
         collection.add(mb)
 
 
-def load_collection_from_file(collection_class, filename,
-                              content_type=None, resolve_urls=True):
+def load_collection_from_file(collection_class, filename, content_type=None):
     """
     Loads resources from the specified file into the given collection
     resource.
@@ -91,12 +87,10 @@ def load_collection_from_file(collection_class, filename,
             raise ValueError('Could not infer MIME type for file extension '
                              '"%s".' % ext)
     return load_collection_from_stream(collection_class, open(filename, 'rU'),
-                                       content_type,
-                                       resolve_urls=resolve_urls)
+                                       content_type)
 
 
-def load_collection_from_stream(collection_class, stream, content_type,
-                                resolve_urls=True):
+def load_collection_from_stream(collection_class, stream, content_type):
     """
     Loads resources from the given stream into the given collection resource.
     """
@@ -104,11 +98,10 @@ def load_collection_from_stream(collection_class, stream, content_type,
     rpr = as_representer(coll, content_type)
     with stream:
         data_el = rpr.data_from_stream(stream)
-    return rpr.resource_from_data(data_el, resolve_urls=resolve_urls)
+    return rpr.resource_from_data(data_el)
 
 
-def load_into_collections_from_zipfile(collections, zipfile,
-                                       resolve_urls=True):
+def load_into_collections_from_zipfile(collections, zipfile):
     """
     Loads resources contained in the given ZIP archive for each of the
     given collection classes. 
@@ -119,8 +112,6 @@ def load_into_collections_from_zipfile(collections, zipfile,
     
     :param collection_classes: sequence of collection resource classes
     :param str zipfile: ZIP file name
-    :param bool resolve_urls: Flag indicating if URLs should be resolved 
-      during loading.
     """
     with ZipFile(zipfile) as zipf:
         names = zipf.namelist()
@@ -141,8 +132,7 @@ def load_into_collections_from_zipfile(collections, zipfile,
                                  'extension "%s".' % ext)
             for mb in load_collection_from_stream(type(coll),
                                                   zipf.open(coll_fn, 'r'),
-                                                  content_type,
-                                                  resolve_urls=resolve_urls):
+                                                  content_type):
                 coll.add(mb)
     return collections
 

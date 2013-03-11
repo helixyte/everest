@@ -21,8 +21,6 @@ from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonDataTreeTraverser
 from everest.representers.traversal import \
                         DataElementBuilderRepresentationDataVisitor
-from everest.representers.urlloader import LazyAttributeLoaderProxy
-from everest.representers.urlloader import LazyUrlLoader
 from everest.representers.utils import as_representer
 from everest.representers.utils import get_mapping_registry
 from everest.representers.xml import NAMESPACE_MAPPING_OPTION
@@ -35,15 +33,11 @@ from everest.resources.link import Link
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import get_root_collection
-from everest.resources.utils import url_to_resource
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
-from everest.testing import TestCaseWithConfiguration
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
-from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.resources import MyEntityParentMember
 from everest.tests.complete_app.testing import create_collection
@@ -55,7 +49,6 @@ __all__ = ['AtomRepresentationTestCase',
            'AttributesTestCase',
            'CsvRepresenterTestCase',
            'JsonRepresenterTestCase',
-           'LazyAttributeLoaderProxyTestCase',
            'RepresenterConfigurationNoTypesTestCase',
            'RepresenterConfigurationTestCase',
            'RepresenterRegistryTestCase',
@@ -132,56 +125,6 @@ class AttributesTestCase(Pep8CompliantTestCase):
         self.assert_equal(mp_attr.value_type, mp_attr_clone.value_type)
         self.assert_equal(mp_attr.entity_name, mp_attr_clone.entity_name)
         self.assert_equal(mp_attr.cardinality, mp_attr_clone.cardinality)
-
-
-class LazyAttributeLoaderProxyTestCase(ResourceTestCase):
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_no_rdb.zcml'
-
-    def test_lazy_loading_cornercases(self):
-        # Passing no _loader map to constructor raises ValueError.
-        self.assert_raises(LazyAttributeLoaderProxy)
-        # Passing non-dictionary as _loader_map to constructor raises error.
-        self.assert_raises(ValueError, LazyAttributeLoaderProxy,
-                           _loader_map=['foo'])
-        # Passing empty dictionary as _loader_map to constructor raises error.
-        self.assert_raises(ValueError, LazyAttributeLoaderProxy,
-                           _loader_map={})
-        # No dynamic attribute - create "normal" entity.
-        my_entity = LazyAttributeLoaderProxy.create(MyEntity,
-                                                    dict(id=0))
-        self.assert_false(isinstance(my_entity, LazyAttributeLoaderProxy))
-
-    def test_lazy_loading(self):
-        loader = LazyUrlLoader('http://0.0.0.0/my-entity-parents/0',
-                               url_to_resource)
-        my_entity = LazyAttributeLoaderProxy.create(
-                                    MyEntity,
-                                    dict(id=0, parent=loader))
-        self.assert_true(isinstance(my_entity, LazyAttributeLoaderProxy))
-        coll = get_root_collection(IMyEntity)
-        mb = coll.create_member(my_entity)
-        del my_entity
-        # When the dynamically loaded parent is not found, the parent attribute
-        # will be None; once it is in the root collection, resolving works.
-        self.assert_is_none(mb.parent)
-        my_parent = MyEntityParent(id=0)
-        coll = get_root_collection(IMyEntityParent)
-        coll.create_member(my_parent)
-        self.assert_true(isinstance(mb.parent, MyEntityParentMember))
-        self.assert_true(isinstance(mb.parent.get_entity(),
-                                    MyEntityParent))
-        # The entity class reverts back to MyEntity once loading completed
-        # successfully.
-        self.assert_false(isinstance(mb.parent.get_entity(),
-                                     LazyAttributeLoaderProxy))
-
-
-class LazyAttributeLoaderNoRequest(TestCaseWithConfiguration):
-    def test_lazy_loading(self):
-        loader = LazyUrlLoader('http://0.0.0.0/my-entity-parents/0',
-                               url_to_resource)
-        self.assert_is_none(loader())
 
 
 class TestCsvData(Pep8CompliantTestCase):
@@ -396,24 +339,6 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         self._representer.configure(attribute_options=attribute_options)
         loaded_coll = self._representer.resource_from_data(data_el)
         self.assert_true(iter(loaded_coll).next().parent is None)
-
-    def test_csv_proxy(self):
-        # Reload with URL proxies.
-        data_el = self._representer.data_from_resource(self._collection)
-        reloaded_coll_prx = \
-            self._representer.resource_from_data(data_el,
-                                                 resolve_urls=False)
-        self._check_nested_member(reloaded_coll_prx)
-
-    def test_csv_proxy_from_collection_url_fails(self):
-        # Reloading collections lazily from URLs is not supported
-        attribute_options = {('children',):{IGNORE_OPTION:False,
-                                            WRITE_AS_LINK_OPTION:True}}
-        self._representer.configure(attribute_options=attribute_options)
-        data_el = self._representer.data_from_resource(self._collection)
-        self.assert_raises(NotImplementedError,
-                           self._representer.resource_from_data, data_el,
-                           resolve_urls=False)
 
     def test_csv_with_two_collections_expanded(self):
         def check_string(rpr_str):

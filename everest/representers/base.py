@@ -126,18 +126,15 @@ class ResourceRepresenter(Representer):
         generator.run(data_element)
         return stream.getvalue()
 
-    def resource_from_data(self, data_element, resolve_urls=True):
+    def resource_from_data(self, data_element):
         """
         Extracts serialized data from the given data element and constructs
         a resource from it.
 
-        :param resolve_urls: If this is set to `False`, resolving URLs in the
-          data element tree will be delayed until after loading has completed.
         :returns: object implementing
           :class:`everest.resources.interfaces.IResource`
         """
-        return self._mapping.map_to_resource(data_element,
-                                             resolve_urls=resolve_urls)
+        return self._mapping.map_to_resource(data_element)
 
     def data_from_resource(self, resource):
         """
@@ -203,7 +200,7 @@ class RepresenterRegistry(object):
             raise ValueError('The representer class "%s" has already been '
                              'registered.' % representer_class)
         self.__rpr_classes[representer_class.content_type] = representer_class
-        # Create and hold a mapping registry for the registered resource 
+        # Create and hold a mapping registry for the registered resource
         # representer class.
         mp_reg = representer_class.make_mapping_registry()
         self.__mp_regs[representer_class.content_type] = mp_reg
@@ -239,7 +236,7 @@ class RepresenterRegistry(object):
             new_mp = mp_reg.create_mapping(resource_class, configuration)
         elif not configuration is None:
             if resource_class is mp.mapped_class:
-                # We have additional configuration for an existing mapping. 
+                # We have additional configuration for an existing mapping.
                 mp.configuration.update(configuration)
                 new_mp = mp
             else:

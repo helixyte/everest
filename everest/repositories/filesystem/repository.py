@@ -65,8 +65,7 @@ class FileSystemRepository(MemoryRepository):
             url = 'file://%s' % fn
             coll = load_collection_from_url(coll_cls, url,
                                             content_type=
-                                                self._config['content_type'],
-                                            resolve_urls=False)
+                                                self._config['content_type'])
             ents = [mb.get_entity() for mb in coll]
         else:
             ents = []

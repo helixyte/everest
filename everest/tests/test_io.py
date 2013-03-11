@@ -173,8 +173,7 @@ class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
                  get_root_collection(IMyEntityChild),
                  get_root_collection(IMyEntityGrandchild),
                  ]
-        colls = load_into_collections_from_zipfile(colls, strm,
-                                                   resolve_urls=True)
+        colls = load_into_collections_from_zipfile(colls, strm)
         self.assert_equal(len(colls[0]), 1)
         self.assert_equal(len(colls[1]), 1)
         self.assert_equal(len(colls[2]), 1)

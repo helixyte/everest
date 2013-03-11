@@ -134,10 +134,10 @@ class Mapping(object):
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
-    def map_to_resource(self, data_element, resolve_urls=True):
+    def map_to_resource(self, data_element):
         trv = DataElementTreeTraverser(data_element, self,
                                        direction=PROCESSING_DIRECTIONS.READ)
-        visitor = ResourceBuilderDataElementTreeVisitor(resolve_urls)
+        visitor = ResourceBuilderDataElementTreeVisitor()
         trv.run(visitor)
         return visitor.resource
 

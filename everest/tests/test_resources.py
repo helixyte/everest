@@ -69,6 +69,11 @@ class ResourcesTestCase(ResourceTestCase):
         mb0.update_from_entity(foo1)
         self.assert_equal(mb0.id, 1)
 
+    def test_str(self):
+        coll = get_root_collection(IFoo)
+        coll_str = str(coll)
+        self.assert_true(coll_str.startswith('<FooCollection'))
+
 
 class ResourcesFilteringTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'

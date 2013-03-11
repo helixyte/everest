@@ -15,8 +15,6 @@ from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
-from everest.representers.urlloader import LazyAttributeLoaderProxy
-from everest.representers.urlloader import LazyUrlLoader
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.descriptors import CARDINALITY
 from everest.resources.interfaces import ICollectionResource
@@ -221,20 +219,16 @@ class DataElementBuilderResourceTreeVisitor(
 
 
 class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
-    def __init__(self, resolve_urls=True):
+    def __init__(self):
         ResourceDataVisitor.__init__(self)
-        self.__resolve_urls = resolve_urls
         self.__resource = None
 
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
         if is_link_node:
             url = member_node.get_url()
-            if self.__resolve_urls:
-                rc = url_to_resource(url)
-                entity = rc.get_entity()
-            else:
-                entity = LazyUrlLoader(url, url_to_resource)
+            rc = url_to_resource(url)
+            entity = rc.get_entity()
         else:
             entity_cls = get_entity_class(member_node.mapping.mapped_class)
             entity_data = {}
@@ -244,11 +238,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                     nested_entity_data[attr.entity_name] = value
                 else:
                     entity_data[attr.entity_name] = value
-            if self.__resolve_urls:
-                entity = entity_cls.create_from_data(entity_data)
-            else:
-                entity = LazyAttributeLoaderProxy.create(entity_cls,
-                                                         entity_data)
+            entity = entity_cls.create_from_data(entity_data)
             # Set nested attribute values.
             # FIXME: lazy loading of nested attributes is not supported.
             for nested_attr, value in nested_entity_data.iteritems():
@@ -271,12 +261,8 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                          collection_data, is_link_node, parent_data):
         if is_link_node:
             url = collection_node.get_url()
-            if self.__resolve_urls:
-                coll = url_to_resource(url)
-                entities = [mb.get_entity() for mb in coll]
-            else:
-                raise NotImplementedError('Lazy-loading of collection links is '
-                                          'not supported.')
+            coll = url_to_resource(url)
+            entities = [mb.get_entity() for mb in coll]
         else:
             entities = []
             for item in sorted(collection_data.items()):
