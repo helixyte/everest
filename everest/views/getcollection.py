@@ -33,8 +33,8 @@ class GetCollectionView(GetResourceView):
         else:
             needs_default_order = self.context.order is None
             if needs_default_order:
-                # Make sure we have defined an ordering on the collection 
-                # to guarantee an order on the result set. This should not 
+                # Make sure we have defined an ordering on the collection
+                # to guarantee an order on the result set. This should not
                 # be reflected in the links' URLs.
                 self.context.order = deepcopy(self.context.default_order)
             # Build batch links.
@@ -96,7 +96,8 @@ class GetCollectionView(GetResourceView):
         if size_string is None:
             size_string = str(self.context.default_limit)
         slice_key = UrlPartsConverter.make_slice_key(start_string, size_string)
-        if slice_key.stop - slice_key.start > self.context.max_limit:
+        if not self.context.max_limit is None \
+           and slice_key.stop - slice_key.start > self.context.max_limit:
             # Apply maximum batch size, if necessary.
             slice_key = slice(slice_key.start,
                               slice_key.start + self.context.max_limit)

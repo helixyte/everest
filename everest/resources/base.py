@@ -272,11 +272,12 @@ class Collection(Resource):
     description = ''
     #: The default order of the collection's members.
     default_order = AscendingOrderSpecification('id')
-    # The default number of members shown on one page (superclass default: 100).
+    #: The page size default for this collection.
     default_limit = 100
-    #: The maximum number of member that can be shown on one page
-    #: (superclass default: 1000).
-    max_limit = 1000
+    #: The default maximum page size limit for this collection. Unless
+    #: this is set in derived classes, no limit is enforced (i.e., the
+    #: default maximum limit is None).
+    max_limit = None
 
     def __init__(self, aggregate, name=None):
         """
