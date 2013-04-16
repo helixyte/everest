@@ -1,17 +1,18 @@
 """
-Entity cache and manager.
+Entity cache and cache map.
 
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 26, 2013.
 """
+from collections import defaultdict
+from itertools import islice
 from weakref import WeakValueDictionary
-from everest.entities.utils import new_entity_id
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityCache',
-           'EntityCacheManager',
+           'EntityCacheMap',
            ]
 
 
@@ -22,7 +23,7 @@ class EntityCache(object):
     Supports add and remove operations as well as lookup by ID and 
     by slug.
     """
-    def __init__(self, allow_none_id=False):
+    def __init__(self, entities=None, allow_none_id=True):
         """
         :param bool allow_none_id: Flag specifying if calling :meth:`add`
             with an entity that does not have an ID is allowed.
@@ -31,7 +32,9 @@ class EntityCache(object):
         self.__allow_none_id = allow_none_id
         # List of cached entities. This is the only place we are holding a
         # real reference to the entity.
-        self.__entities = []
+        if entities is None:
+            entities = []
+        self.__entities = entities
         # Dictionary mapping entity IDs to entities for fast lookup by ID.
         self.__id_map = WeakValueDictionary()
         # Dictionary mapping entity slugs to entities for fast lookup by slug.
@@ -100,11 +103,7 @@ class EntityCache(object):
         :raises KeyError: If the given entity is not in this cache.
         :raises ValueError: If the ID of the given entity is `None`.
         """
-        if entity.id is None:
-            raise ValueError('Entity ID must not be None.')
-        del self.__id_map[entity.id]
-        # We may not have the slug in the slug map because it might not have
-        # been available by the time the entity was added.
+        self.__id_map.pop(entity.id, None)
         self.__slug_map.pop(entity.slug, None)
         self.__entities.remove(entity)
 
@@ -124,44 +123,59 @@ class EntityCache(object):
         self.remove(old_entity)
         self.add(entity)
 
-    def iterator(self):
+    def get_all(self):
         """
-        Returns an iterator over all entities in this cache in the order they
+        Returns the list of all entities in this cache in the order they
         were added.
         """
-        return iter(self.__entities)
+        return self.__entities
 
-
-class EntityCacheManager(object):
-    """
-    Manager for entity caches.
-    """
-    def __init__(self, repository, loader=None):
-        self.__repository = repository
-        self.__loader = loader
-        self.__cache_map = {}
-
-    def reset(self):
+    def retrieve(self, filter_expression=None,
+                 order_expression=None, slice_expression=None):
         """
-        Clears all entity caches held by this entity cache manager.
+        Retrieve entities from this cache, possibly after filtering, ordering
+        and slicing.
         """
-        self.__cache_map.clear()
+        ents = iter(self.__entities)
+        if not filter_expression is None:
+            ents = filter_expression(ents)
+        if not order_expression is None:
+            # Ordering always involves a copy and conversion to a list, so
+            # we have to wrap in an iterator.
+            ents = iter(order_expression(ents))
+        if not slice_expression is None:
+            ents = islice(ents, slice_expression.start, slice_expression.stop)
+        return ents
+
+    def __contains__(self, entity):
+        if not entity.id is None:
+            is_contained = entity.id in self.__id_map
+        else:
+            is_contained = entity in self.__entities
+        return is_contained
+
+
+class EntityCacheMap(object):
+    """
+    Map for entity caches.
+    """
+    def __init__(self):
+        self.__cache_map = defaultdict(EntityCache)
 
     def __getitem__(self, entity_class):
-        cache = self.__cache_map.get(entity_class)
-        if cache is None:
-            cache = self._initialize_cache(entity_class)
-        return cache
+        return self.__cache_map[entity_class]
 
-    def _initialize_cache(self, ent_cls):
-        cache = self.__cache_map[ent_cls] = EntityCache()
-        # If we did not receive a cache loader at initialization, we use the
-        # one the repository provides as a default.
-        loader = \
-            self.__loader or self.__repository.configuration['cache_loader']
-        if not loader is None:
-            for ent in loader(ent_cls):
-                if ent.id is None:
-                    ent.id = new_entity_id()
-                cache.add(ent)
-        return cache
+    def add(self, entity_class, entity):
+        cache = self.__cache_map[entity_class]
+        cache.add(entity)
+
+    def remove(self, entity_class, entity):
+        cache = self.__cache_map[entity_class]
+        cache.remove(entity)
+
+    def __contains__(self, entity):
+        cache = self.__cache_map[type(entity)]
+        return entity in cache
+
+    def keys(self):
+        return self.__cache_map.keys()

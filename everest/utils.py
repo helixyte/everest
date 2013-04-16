@@ -7,9 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 from StringIO import StringIO
-from everest.repositories.interfaces import IRepositoryManager
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.repositories.interfaces import IRepositoryManager
+from functools import update_wrapper
 from pyramid.threadlocal import get_current_registry
 from weakref import ref
 import re
@@ -19,9 +20,12 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
            'check_email',
            'classproperty',
+           'generative',
            'get_filter_specification_visitor',
+           'get_nested_attribute',
            'get_order_specification_visitor',
            'get_repository_manager',
+           'set_nested_attribute',
            ]
 
 EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$'
@@ -39,6 +43,41 @@ class classproperty(object):
 
     def __get__(self, instance, cls):
         return self.__get(cls)
+
+
+def _resolve_nested_attribute(obj, attribute):
+    #: Helper function for dotted attribute resolution.
+    tokens = attribute.split('.')
+    for token in tokens[:-1]:
+        obj = getattr(obj, token)
+        if obj is None:
+            break
+    return (obj, tokens[-1])
+
+
+def get_nested_attribute(obj, attribute):
+    """
+    Returns the value of the given (possibly dotted) attribute for the given
+    object.
+    """
+    parent, attr = _resolve_nested_attribute(obj, attribute)
+    if not parent is None:
+        attr_value = getattr(parent, attr)
+    else:
+        attr_value = None
+    return attr_value
+
+
+def set_nested_attribute(obj, attribute, value):
+    """
+    Sets the value of the given (possibly dotted) attribute for the given
+    object to the given value.
+    """
+    parent, attr = _resolve_nested_attribute(obj, attribute)
+    if parent is None:
+        raise AttributeError('Can not set attribute "%s" on None value.'
+                             % attr)
+    setattr(parent, attr, value)
 
 
 def id_generator(start=0):
@@ -311,3 +350,15 @@ class WeakList(list):
             cnt += 1
         else:
             raise StopIteration
+
+
+def generative(func):
+    """
+    Marks an instance method as generative.
+    """
+    def wrap(inst, *args, **kw):
+        clone = type(inst).__new__(type(inst))
+        clone.__dict__ = inst.__dict__.copy()
+        return func(clone, *args, **kw)
+    return update_wrapper(wrap, func)
+

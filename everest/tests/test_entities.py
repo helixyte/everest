@@ -21,6 +21,5 @@ class EntitiesTestCase(Pep8CompliantTestCase):
         self.assert_not_equal(ent00, ent1)
 
 
-
 class MyEntity(Entity):
     pass

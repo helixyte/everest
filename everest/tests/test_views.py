@@ -166,13 +166,13 @@ class BasicViewTestCase(FunctionalTestCase):
 
     def test_post_nested_collection_no_parent(self):
         mb, mb_url = self.__make_parent_and_link()
-        child_coll = get_root_collection(IMyEntityChild)
         req_body = '"id","text"\n0,"child"\n'
         res = self.app.post("%schildren" % mb_url,
                             params=req_body,
                             content_type=CsvMime.mime_type_string,
                             status=201)
         self.assert_is_not_none(res)
+        child_coll = get_root_collection(IMyEntityChild)
         child_mb = child_coll['0']
         self.assert_equal(child_mb.text, 'child')
         self.assert_equal(child_mb.parent.id, mb.id)

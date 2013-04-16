@@ -12,14 +12,16 @@ from everest.querying.base import SpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
 from operator import and_ as and_operator
-from zope.interface import implements  # pylint: disable=E0611,F0401
+from zope.interface import implements # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BubbleSorter',
-           'Sorter',
-           'SorterTemplate',
+           'CqlOrderExpression',
            'CqlOrderSpecificationVisitor',
            'OrderSpecificationVisitor',
+           'RepositoryOrderSpecificationVisitor',
+           'Sorter',
+           'SorterTemplate',
            ]
 
 
@@ -130,3 +132,19 @@ class CqlOrderSpecificationVisitor(OrderSpecificationVisitor):
 
     def __preprocess_attribute(self, attr_name):
         return slug_from_identifier(attr_name)
+
+
+class RepositoryOrderSpecificationVisitor(OrderSpecificationVisitor): # pylint: disable=W0223
+    """
+    Specification visitors that build order expressions for a repository
+    backend.
+    """
+    def __init__(self, entity_class):
+        OrderSpecificationVisitor.__init__(self)
+        self._entity_class = entity_class
+
+    def order_query(self, query):
+        """
+        Returns the given query ordered by this visitor's order expression.
+        """
+        raise NotImplementedError('Abstract method.')

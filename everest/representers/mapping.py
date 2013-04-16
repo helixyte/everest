@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+from everest.constants import ResourceAttributeKinds
 from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.config import RepresenterConfiguration
@@ -18,7 +19,6 @@ from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -134,10 +134,10 @@ class Mapping(object):
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
-    def map_to_resource(self, data_element):
+    def map_to_resource(self, data_element, resource=None):
         trv = DataElementTreeTraverser(data_element, self,
                                        direction=PROCESSING_DIRECTIONS.READ)
-        visitor = ResourceBuilderDataElementTreeVisitor()
+        visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
         trv.run(visitor)
         return visitor.resource
 
@@ -168,11 +168,11 @@ class Mapping(object):
             # mapped attributes.
             rc_attrs = get_resource_class_attributes(self.__mapped_cls)
             for rc_attr in rc_attrs.itervalues():
-                attr_key = key + (rc_attr.name,)
+                attr_key = key + (rc_attr.resource_attr,)
                 attr_mp_opts = \
                         self.__configuration.get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
-                collected_mp_attrs[rc_attr.name] = new_mp_attr
+                collected_mp_attrs[rc_attr.resource_attr] = new_mp_attr
         else:
             # Indirect access - fetch mapped attributes from some other
             # class' mapping and clone.

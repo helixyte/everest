@@ -6,22 +6,24 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
+from everest.constants import ResourceAttributeKinds
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import identifier_from_slug
+from everest.entities.utils import slug_from_identifier
 from everest.querying.base import SpecificationVisitorBase
 from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.representers.interfaces import ILinkedDataElement
 from everest.resources.attributes import ResourceAttributeControllerMixin
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.attributes import get_resource_class_attributes
+from everest.resources.attributes import get_resource_class_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
 from everest.resources.link import Link
 from everest.resources.utils import as_member
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import resource_to_url
 from everest.resources.utils import url_to_resource
@@ -31,7 +33,6 @@ from pyramid.traversal import model_path
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
-from everest.resources.utils import get_service
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -42,7 +43,7 @@ __all__ = ['Collection',
 
 class Resource(object):
     """
-    This is the abstract base class for all resources.
+    Abstract base class for all resources.
     """
     implements(IResource)
 
@@ -65,7 +66,7 @@ class Resource(object):
     #: Detailed description of this resource.
     description = ''
 
-    def __init__(self):
+    def __init__(self, relationship=None):
         """
         Constructor:
         """
@@ -74,6 +75,10 @@ class Resource(object):
         if self.__class__.relation is None:
             raise ValueError('Resource classes must have a relation '
                              'attribute.')
+        #: A relationship to some other resource. Makes this resource a
+        #: "nested" resource.
+        self._relationship = relationship
+        self.is_nested = not relationship is None
         #: A set of links to other resources.
         self.links = set()
 
@@ -115,13 +120,13 @@ class Resource(object):
 
 class Member(ResourceAttributeControllerMixin, Resource):
     """
-    This is an abstract class for all member resources.
+    Base class for all member resources.
     """
     implements(IMemberResource)
 
     id = terminal_attribute(int, 'id')
 
-    def __init__(self, entity, name=None):
+    def __init__(self, entity, name=None, relationship=None):
         """
         Constructor:
 
@@ -137,11 +142,11 @@ class Member(ResourceAttributeControllerMixin, Resource):
             raise ValueError(
                     'Invalid entity class "%s" for %s resource class.'
                     % (entity.__class__.__name__, self.__class__.__name__))
-        super(Member, self).__init__()
+        super(Member, self).__init__(relationship=relationship)
         self.__entity = entity
+        self.__name = name
         # Add the rel="self" link.
         self.add_link(Link(self, "self"))
-        self.__name = name
 
     def _get__name__(self):
         # The name of a member resource defaults to the slug of the underlying
@@ -173,18 +178,21 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         Deletes this member.
 
-        Deleting a member resource means removing it from its parent
-        resource.
+        Deleting a member resource of a root collection involves removing it 
+        from the parent (or from the relationship if this is a related
+        member).
         """
-        self.__parent__.remove(self)
+        # FIXME: Remove this method.
+        if self._relationship is None:
+            self.__parent__.remove(self)
 
-    def update_from_entity(self, new_entity):
+    def update_from_entity(self, entity):
         """
-        Updates this member from the given new entity.
+        Updates this member from the given entity.
         
         See :method:`Collection.update_from_entity`.
         """
-        self.__parent__.update_from_entity(self, new_entity)
+        self.__parent__.update_from_entity(entity)
 
     def update_from_data(self, data_element):
         """
@@ -229,8 +237,8 @@ class Member(ResourceAttributeControllerMixin, Resource):
 
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
-        attr = get_resource_class_attributes(self.__class__).get(ident)
-        if attr is None or not attr.is_nested:
+        attr = get_resource_class_attribute(self.__class__, ident)
+        if attr is None:
             raise KeyError('%s' % ident)
         return getattr(self, ident)
 
@@ -253,6 +261,22 @@ class Member(ResourceAttributeControllerMixin, Resource):
         return "%s(id: %s, name: %s)" \
                % (self.__class__.__name__, self.id, self.__name__)
 
+    @property
+    def is_root_member(self):
+        return not self.__parent__ is None \
+               and getattr(self.__parent__, 'is_root_collection', False)
+
+    @classmethod
+    def as_related_member(cls, entity, relationship):
+        """
+        Creates a new relationship member with the relationship's relator
+        as a parent.
+        """
+        rel_mb = cls.create_from_entity(entity)
+        rel_mb._relationship = relationship # pylint: disable=W0212
+        rel_mb.__parent__ = relationship.relator
+        return rel_mb
+
 
 class Collection(Resource):
     """
@@ -261,13 +285,11 @@ class Collection(Resource):
     and sliced.
     """
     implements(ICollectionResource)
-
     #: The title of the collection.
     title = None
     #: The name for the root collection (used as URL path to the root
     #: collection inside the service).
     root_name = None
-
     #: A description of the collection.
     description = ''
     #: The default order of the collection's members.
@@ -278,9 +300,9 @@ class Collection(Resource):
     #: (superclass default: 1000).
     max_limit = 1000
 
-    def __init__(self, aggregate, name=None):
+    def __init__(self, aggregate, name=None, relationship=None):
         """
-        Constructor:
+        Constructor.
 
         :param name: the name of the collection
         :type name: :class:`string`
@@ -291,45 +313,37 @@ class Collection(Resource):
         """
         if self.__class__ is Collection:
             raise NotImplementedError('Abstract class')
+        Resource.__init__(self, relationship=relationship)
         if self.title is None:
             raise ValueError('Collection must have a title.')
-        Resource.__init__(self)
         if name is None:
             name = self.root_name
         self.__name__ = name
         #: The filter specification for this resource. Attribute names in
-        #: this specification are relative to the resource..
+        #: this specification are relative to the resource.
         self._filter_spec = None
         #: The order specification for this resource. Attribute names in
         #: this specification are relative to the resource.
         self._order_spec = None
         # The underlying aggregate.
         self.__aggregate = aggregate
-        #
-        self.__relationship = None
 
     @classmethod
-    def create_from_aggregate(cls, aggregate):
+    def create_from_aggregate(cls, aggregate, relationship=None):
         """
         Creates a new collection from the given aggregate.
 
         :param aggregate: aggregate containing the entities exposed by this
-              collection resource
-        :type aggregate: :class:`everest.entities.aggregates.Aggregate` instance
+            collection resource
+        :param relationship: resource relationship. If given, the root
+            aggregate is converted to a relationship aggregate and the
+            relationship is passed on to the collection class constructor.
+        :type aggregate: :class:`everest.entities.aggregates.RootAggregate`
         """
-        return cls(aggregate)
-
-    def set_relationship(self, relationship):
-        """
-        Sets the relation parent for this collection.
-
-        The relation parent affects the expressions built for filter and order 
-        operations.
-
-        :param relationship: relation with another resource, encapsulated in a
-          :class:`everest.relationship.Relationship` instance.
-        """
-        self.__relationship = relationship
+        if not relationship is None:
+            aggregate = aggregate.make_relationship_aggregate(
+                                            relationship.domain_relationship)
+        return cls(aggregate, relationship=relationship)
 
     def get_aggregate(self):
         """
@@ -349,10 +363,6 @@ class Collection(Resource):
         self.add(member)
         return member
 
-    @property
-    def is_nested(self):
-        return not self.__parent__ is get_service()
-
     def __len__(self):
         """
         Returns the size (count) of the collection.
@@ -365,8 +375,9 @@ class Collection(Resource):
 
         :param key: the name of the member
         :type key: :class:`string` or :class:`unicode`
-        :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one member is found for the given key value.
+        :raises: :class:`everest.exceptions.MultipleResultsException` if more 
+          than one member is found for the given key value.
+        :raises: KeyError if no entity is found for the given key.
         :returns: object implementing
           :class:`everest.resources.interfaces.IMemberResource`
         """
@@ -385,6 +396,16 @@ class Collection(Resource):
             rc = as_member(obj, parent=self)
             yield rc
 
+    def __contains__(self, member):
+        """
+        Checks if this collection contains the given member.
+        
+        :returns: `False` if a lookup of the ID of the given member returns 
+            `None` or if the ID is `None`; else, `True`.
+        """
+        return not (member.id is None \
+                    or self.__aggregate.get_by_id(member.id) is None)
+
     def __str__(self):
         return "<%s name:%s parent:%s>" % (self.__class__.__name__,
                                            self.__name__, self.__parent__)
@@ -395,7 +416,7 @@ class Collection(Resource):
     def add(self, member):
         """
         Adds the given member to this collection.
-
+        
         :param member: member to add.
         :type member: object implementing
                     :class:`everest.resources.interfaces.IMemberResource`
@@ -465,16 +486,15 @@ class Collection(Resource):
                 if not self_mb is None:
                     # Found an existing member - update.
                     self_mb.update_from_data(member_el)
+                    update_ids.add(mb_id)
                 else:
-                    # New data element with a new ID. This is suspicious.
-                    raise ValueError('New member data should not provide '
-                                     'an ID attribute.')
-            update_ids.add(mb_id)
+                    # New data element with a new ID - queue for adding.
+                    new_mb_els.append(member_el)
         # Before adding any new members, check for delete operations.
-        for self_mb in iter(self):
-            if not self_mb.id in update_ids:
+        for self_id, self_mb in self_id_map.iteritems():
+            if not self_id in update_ids:
                 # Found an existing member ID that was not supplied with
-                # the update data- remove.
+                # the update data - remove.
                 self.remove(self_mb)
         # Now, add new members.
         mb_cls = get_member_class(self.__class__)
@@ -482,32 +502,52 @@ class Collection(Resource):
             new_member = mb_cls.create_from_data(new_member_el)
             self.add(new_member)
 
-    def update_from_entity(self, member, source_entity):
+    def update_from_entities(self, entities):
+        update_ids = set()
+        new_ents = []
+        self_ids = dict([(self_mb.id, self_mb) for self_mb in iter(self)])
+        for ent in entities:
+            if ent.id is None:
+                new_ents.append(ent)
+                continue
+            else:
+                if ent.id in self_ids:
+                    self.update_from_entity(ent)
+                    update_ids.add(ent.id)
+                else:
+                    new_ents.append(ent)
+        for self_id, self_mb in self_ids.iteritems():
+            if not self_id in update_ids:
+                self.remove(self_mb)
+        for new_ent in new_ents:
+            self.create_member(new_ent)
+
+    def update_from_entity(self, entity):
         """
-        Updates the given member from the given entity.
+        Updates the member corresponding to the ID of the given entity.
         
-        Unlike :method:`update_from_data`, this completely disregards all
-        resource attribute declarations and relies on the repository to
-        perform the state update.
+        Unlike :method:`update_from_data`, this disregards all resource
+        attribute declarations and relies on the repository to perform the
+        state update.
         
         :param member: Member resource to update.
         :param source_entity: Entity (domain object) to use
+        :returns: Updated member.
         """
-        self.__aggregate.update(member.get_entity(), source_entity)
+        updated_entity = self.__aggregate.update(entity)
+        return as_member(updated_entity, parent=self)
 
     def _get_filter(self):
-        if self.__relationship is None:
+        if self._relationship is None:
             filter_spec = self._filter_spec
         else:
-            # Prepend the relationship specification to the current filter
-            # specification.
+            rel_spec = self._relationship.specification
             if self._filter_spec is None:
-                filter_spec = self.__relationship.specification
+                filter_spec = rel_spec
             else:
                 spec_fac = get_filter_specification_factory()
-                filter_spec = spec_fac.create_conjunction(
-                                            self.__relationship.specification,
-                                            self._filter_spec)
+                filter_spec = spec_fac.create_conjunction(rel_spec,
+                                                          self._filter_spec)
         return filter_spec
 
     def _set_filter(self, filter_spec):
@@ -515,7 +555,7 @@ class Collection(Resource):
             # Translate to entity filter expression before passing on to the
             # aggregate.
             visitor = ResourceToEntityFilterSpecificationVisitor(
-                                                        get_member_class(self))
+                                                    get_member_class(self))
             filter_spec.accept(visitor)
             self.__aggregate.filter = visitor.expression
         else:
@@ -532,7 +572,7 @@ class Collection(Resource):
             # Translate to entity order expression before passing on to the
             # aggregate.
             visitor = ResourceToEntityOrderSpecificationVisitor(
-                                                        get_member_class(self))
+                                                    get_member_class(self))
             order_spec.accept(visitor)
             self.__aggregate.order = visitor.expression
         else:
@@ -554,14 +594,48 @@ class Collection(Resource):
         Returns a clone of this collection.
         """
         agg = self.__aggregate.clone()
-        clone = self.create_from_aggregate(agg)
-        clone.__parent__ = self.__parent__
-        clone.set_relationship(self.__relationship)
+        clone = self.create_from_aggregate(agg,
+                                           relationship=self._relationship)
         # Pass filter and order specs explicitly (may differ from the ones
         # at the aggregate level).
-        clone._filter_spec = self._filter_spec # pylint: disable=W0212
-        clone._order_spec = self._order_spec # pylint: disable=W0212
+        # pylint: disable=W0212
+        clone._filter_spec = self._filter_spec
+        clone._order_spec = self._order_spec
+        # pylint: enable=W0212
+        clone.__parent__ = self.__parent__
         return clone
+
+    @property
+    def is_root_collection(self):
+        return self._relationship is None and not self.__parent__ is None
+
+    def get_root_collection(self, rc):
+        """
+        Returns a root collection for the given resource.
+        
+        The root collection is created using a root aggregate fetched from
+        the same repository that was used to create the root aggregate for
+        this collection.
+        """
+        root_agg = self.__aggregate.get_root_aggregate(rc)
+        coll_cls = get_collection_class(rc)
+        return coll_cls.create_from_aggregate(root_agg)
+
+    @classmethod
+    def as_related_collection(cls, aggregate, relationship):
+        """
+        Creates a new relationship collection with a relationship aggregate
+        and the relationship's relator as a parent.
+        """
+        rel_coll = cls.create_from_aggregate(aggregate,
+                                             relationship=relationship)
+        # The member at the origin of the relationship is the parent.
+        rel_coll.__parent__ = relationship.relator
+        # Set the collection's name to the descriptor's resource
+        # attribute name.
+        rel_coll.__name__ = \
+            slug_from_identifier(relationship.descriptor.resource_attr)
+        return rel_coll
 
 
 class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
@@ -595,16 +669,16 @@ class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
         entity_attr_tokens = []
         rc_class = self.__rc_class
         for rc_attr_token in rc_attr_name.split('.'):
-            rc_attr = get_resource_class_attributes(rc_class)[rc_attr_token]
-            ent_attr_name = rc_attr.entity_name
+            rc_attr = get_resource_class_attribute(rc_class, rc_attr_token)
+            ent_attr_name = rc_attr.entity_attr
             if ent_attr_name is None:
                 raise ValueError('Resource attribute "%s" does not have a '
                                  'corresponding entity attribute.'
-                                 % rc_attr.name)
+                                 % rc_attr.resource_attr)
             if rc_attr.kind != ResourceAttributeKinds.TERMINAL:
                 # Look up the member class for the specified member or
                 # collection resource interface.
-                rc_class = get_member_class(rc_attr.value_type)
+                rc_class = get_member_class(rc_attr.attr_type)
             entity_attr_tokens.append(ent_attr_name)
         return '.'.join(entity_attr_tokens)
 

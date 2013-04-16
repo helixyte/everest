@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 7, 2013.
 """
 from everest.entities.system import UserMessage
-from everest.repositories.rdb import Session
+from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.repositories.utils import GlobalObjectManager
 from inspect import isdatadescriptor
 from sqlalchemy import Column
@@ -20,13 +20,11 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import clear_mappers as sa_clear_mappers
 from sqlalchemy.orm import mapper as sa_mapper
 from sqlalchemy.orm.mapper import _mapper_registry
-from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderClauseList',
-           'RdbTestCaseMixin',
+__all__ = ['RdbTestCaseMixin',
            'as_slug_expression',
            'clear_mappers',
            'empty_metadata',
@@ -54,16 +52,6 @@ get_metadata = _MetaDataManager.get
 set_metadata = _MetaDataManager.set
 is_metadata_initialized = _MetaDataManager.is_initialized
 reset_metadata = _MetaDataManager.reset
-
-
-class OrderClauseList(ClauseList):
-    """
-    Custom clause list for ORDER BY clauses.
-    
-    Suppresses the grouping parentheses which would trigger a syntax error.
-    """
-    def self_group(self, against=None):
-        return self
 
 
 def as_slug_expression(attr):

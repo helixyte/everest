@@ -66,12 +66,6 @@
             </attribute>
         </representer>
         <representer content_type="everest.mime.XmlMime">
-            <attribute name="nested_parent">
-                <option 
-                    name="ignore"
-                    value="true" 
-                    type="zope.configuration.fields.Bool" />
-            </attribute>
             <attribute name="text_rc">
                 <option 
                     name="ignore"

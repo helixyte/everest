@@ -37,7 +37,7 @@ class Operator(object):
     """
     #: The name of the operator. To be specified in derived classes.
     name = None
-    #: The arity (number of arguments required) of the operator. To be 
+    #: The arity (number of arguments required) of the operator. To be
     #: specified in derived classes.
     arity = None
 
@@ -130,7 +130,6 @@ class Specification(object):
     """
     Abstract base classs for all specifications.
     """
-
     implements(ISpecification)
 
     operator = None
@@ -147,7 +146,6 @@ class SpecificationVisitorBase(object):
     """
     Base class for specification visitors.
     """
-
     def __init__(self):
         self.__expression_stack = []
 
@@ -159,7 +157,7 @@ class SpecificationVisitorBase(object):
 
     @property
     def expression(self):
-        # If we have more than one expression on the stack, traversal of the 
+        # If we have more than one expression on the stack, traversal of the
         # input specification tree has not finished yet.
         assert len(self.__expression_stack) == 1
         return self.__expression_stack[0]
@@ -169,7 +167,6 @@ class SpecificationVisitor(SpecificationVisitorBase):
     """
     Base class for all specification visitors.
     """
-
     implements(ISpecificationVisitor)
 
     def visit_nullary(self, spec):

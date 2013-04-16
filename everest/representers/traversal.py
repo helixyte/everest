@@ -7,7 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012.
 """
 from collections import OrderedDict
+from everest.constants import ResourceAttributeKinds
+from everest.constants import ResourceKinds
 from everest.entities.utils import get_entity_class
+from everest.querying.specifications import asc
 from everest.representers.attributes import AttributeKey
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
@@ -15,11 +18,8 @@ from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.descriptors import CARDINALITY
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from everest.resources.kinds import ResourceKinds
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
@@ -219,9 +219,9 @@ class DataElementBuilderResourceTreeVisitor(
 
 
 class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
-    def __init__(self):
+    def __init__(self, resource=None):
         ResourceDataVisitor.__init__(self)
-        self.__resource = None
+        self.__resource = resource
 
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
@@ -250,9 +250,13 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             # Collection member. Store in parent data with index as key.
             parent_data[index] = entity
         elif len(attribute_key) == 0:
-            # Top level. Store root entity and create resource.
-            mapped_cls = member_node.mapping.mapped_class
-            self.__resource = mapped_cls.create_from_entity(entity)
+            # Top level.
+            if self.__resource is None:
+                # Store root entity and create resource.
+                mapped_cls = member_node.mapping.mapped_class
+                self.__resource = mapped_cls.create_from_entity(entity)
+            else:
+                self.__resource.update_from_entity(entity)
         else:
             # Nested member. Store in parent data with attribute as key.
             parent_data[attribute] = entity
@@ -268,10 +272,13 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             for item in sorted(collection_data.items()):
                 entities.append(item[1])
         if len(attribute_key) == 0: # Top level.
-            mapped_cls = collection_node.mapping.mapped_class
-            self.__resource = create_staging_collection(mapped_cls)
-            for ent in entities:
-                self.__resource.create_member(ent)
+            if self.__resource is None:
+                mapped_cls = collection_node.mapping.mapped_class
+                self.__resource = create_staging_collection(mapped_cls)
+                for ent in entities:
+                    self.__resource.create_member(ent)
+            else:
+                self.__resource.update_from_entities(entities)
         else:
             parent_data[attribute] = entities
 
@@ -346,7 +353,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
                 ignore_opt = self._get_ignore_option(mb_attr)
-                if self.__ignore_attribute(ignore_opt, mb_attr, attr_key):
+                if mb_attr.should_ignore(ignore_opt, attr_key):
                     continue
                 if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
                     # Terminal attribute - extract.
@@ -391,26 +398,6 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         else:
             opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
         return opt
-
-    def __ignore_attribute(self, ignore_opt, attr, attr_key):
-        # Rules for ignoring attributes:
-        #  * always ignore when IGNORE_ON_XXX_OPTION is set to True;
-        #  * always include when IGNORE_ON_XXX_OPTION is set to False;
-        #  * also ignore member attributes when the length of the attribute
-        #    key is > 0 or the cardinality is not MANYTOONE (this avoids
-        #    traversing circular attribute definitions such as parent ->
-        #    children -> parent);
-        #  * also ignore collection attributes when the cardinality is
-        #    not MANYTOMANY.
-        do_ignore = ignore_opt
-        if ignore_opt is None:
-            if attr.kind == ResourceAttributeKinds.MEMBER:
-                depth = len(attr_key) + 1 - attr_key.offset
-                do_ignore = depth > 1 \
-                            or attr.cardinality != CARDINALITY.MANYTOONE
-            elif attr.kind == ResourceAttributeKinds.COLLECTION:
-                do_ignore = attr.cardinality != CARDINALITY.MANYTOMANY
-        return do_ignore
 
 
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
@@ -495,6 +482,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
         return getattr(node, attr.name)
 
     def _get_node_members(self, node):
+        # If the collection is not ordered, order by ID for export.
+        if node.order is None:
+            node.order = asc('id')
         return iter(node)
 
     def _is_link_node(self, node, attr):

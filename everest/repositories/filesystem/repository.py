@@ -16,6 +16,7 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 import os
+from everest.resources.utils import get_root_collection
 
 __all__ = ['FileSystemRepository',
            ]
@@ -72,16 +73,16 @@ class FileSystemRepository(MemoryRepository):
         return ents
 
     def __dump_entities(self, entity_class):
-        cache = self._get_cache(entity_class)
-        coll_cls = get_collection_class(entity_class)
-        mb_cls = get_member_class(entity_class)
-        fn = get_write_collection_path(coll_cls,
+        coll = get_root_collection(entity_class)
+#        coll_cls = get_collection_class(entity_class)
+        fn = get_write_collection_path(coll, #_cls,
                                        self._config['content_type'],
                                        directory=self._config['directory'])
-        # Wrap the entities in a temporary collection.
-        coll = create_staging_collection(coll_cls)
-        for ent in cache.iterator():
-            coll.add(mb_cls.create_from_entity(ent))
+#        # Wrap the entities in a temporary collection.
+#        coll = create_staging_collection(coll_cls)
+#        mb_cls = get_member_class(entity_class)
+#        for ent in self.retrieve(entity_class):
+#            coll.add(mb_cls.create_from_entity(ent))
         # Open stream for writing and dump the collection.
         stream = file(fn, 'w')
         with stream:

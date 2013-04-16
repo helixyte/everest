@@ -13,6 +13,8 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
+from everest.constants import ResourceAttributeKinds
+from everest.constants import ResourceKinds
 from everest.mime import CsvMime
 from everest.representers.attributes import AttributeKey
 from everest.representers.base import RepresentationGenerator
@@ -32,8 +34,6 @@ from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
@@ -242,8 +242,8 @@ class CsvRepresentationParser(RepresentationParser):
         # fields we found from the set of all field names.
         if self.__is_first_row:
             self.__first_row_field_names.discard(attribute.repr_name)
-        if attribute.should_ignore(IGNORE_ON_READ_OPTION,
-                                   attribute_key):
+        ignore_opt = attribute.options.get(IGNORE_ON_READ_OPTION)
+        if attribute.should_ignore(ignore_opt, attribute_key):
             if not attribute_value in (None, ''):
                 raise ValueError('Value for attribute "%s" found '
                                  'which is configured to be ignored.'

@@ -6,6 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 19, 2011.
 """
+from everest.constants import ResourceAttributeKinds
+from everest.constants import ResourceKinds
 from everest.mime import XmlMime
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
@@ -20,8 +22,6 @@ from everest.representers.dataelements import MemberDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.mapping import MappingRegistry
 from everest.representers.utils import get_mapping_registry
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
 from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class

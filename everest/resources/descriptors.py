@@ -6,14 +6,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 19, 2011.
 """
-from everest.entities.utils import slug_from_identifier
-from everest.relationship import Relationship
-from everest.resources.staging import create_staging_collection
-from everest.resources.utils import as_member
+from everest.constants import CARDINALITIES
+from everest.constants import DEFAULT_CASCADE
+from everest.constants import ResourceAttributeKinds
+from everest.resources.interfaces import ICollectionResource
+from everest.resources.relationship import ResourceRelationship
 from everest.resources.utils import get_member_class
-from everest.resources.utils import get_root_collection
+from everest.utils import get_nested_attribute
 from everest.utils import id_generator
-#from pyramid.location import lineage
+from everest.utils import set_nested_attribute
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
@@ -26,40 +27,31 @@ __all__ = ['attribute_alias',
            ]
 
 
-class CARDINALITY(object):
-    """
-    Cardinality constants for non-terminal resource attributes.
-    """
-    ONETOMANY = 'ONETOMANY'
-    MANYTOONE = 'MANYTOONE'
-    MANYTOMANY = 'MANYTOMANY'
-
-
 class attribute_base(object):
     """
     Abstract base class for all attribute descriptors.
 
+    :cvar kind: the resource attribute kind
     :ivar attr_type: the type (or interface) of the controlled entity 
       attribute.
     :ivar entity_attr: the entity attribute the descriptor references. May
       be *None*.
-    :ivar cardinality: indicates the cardinality of the relationship for 
-      non-terminal attributes. This is always `None` for terminal attributes. 
-    :ivar int id: unique sequential numeric ID for this attribute. Since this
-      ID is incremented each time a new resource attribute is declared,
-      it can be used to establish a well-defined sorting order on all
-      attribute declarations of a resource.
+    :ivar int index: unique sequential numeric ID for this attribute. Since
+      this index is incremented each time a new resource attribute is
+      declared, it can be used to establish a well-defined sorting order on
+      all attribute declarations of a resource.
     :ivar resource_attr: the resource attribute this descriptor is mapped to.
       This is set after instantiation. 
     """
+    __index_gen = id_generator()
 
-    __id_gen = id_generator()
+    #: The resource attribute kind. Set in derived classes.
+    kind = None
 
-    def __init__(self, attr_type, entity_attr, cardinality):
+    def __init__(self, attr_type, entity_attr):
         self.attr_type = attr_type
         self.entity_attr = entity_attr
-        self.cardinality = cardinality
-        self.id = self.__id_gen.next()
+        self.index = self.__index_gen.next()
         self.resource_attr = None
 
     def __get__(self, resource, resource_class):
@@ -67,29 +59,6 @@ class attribute_base(object):
 
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
-
-    def _set_nested(self, entity, entity_attr, value):
-        parent, entity_attr = self.__resolve_nested(entity, entity_attr)
-        if parent is None:
-            raise AttributeError('Can not set attribute "%s" on None value.'
-                                 % entity_attr)
-        setattr(parent, entity_attr, value)
-
-    def _get_nested(self, entity, entity_attr):
-        parent, entity_attr = self.__resolve_nested(entity, entity_attr)
-        if not parent is None:
-            attr_value = getattr(parent, entity_attr)
-        else:
-            attr_value = None
-        return attr_value
-
-    def __resolve_nested(self, entity, entity_attr):
-        tokens = entity_attr.split('.')
-        for token in tokens[:-1]:
-            entity = getattr(entity, token)
-            if entity is None:
-                break
-        return (entity, tokens[-1])
 
 
 class terminal_attribute(attribute_base):
@@ -100,43 +69,52 @@ class terminal_attribute(attribute_base):
     A terminal attribute is an attribute that the framework will not look
     into any further for querying or serialization.
     """
+    kind = ResourceAttributeKinds.TERMINAL
 
     def __init__(self, attr_type, entity_attr):
         if not isinstance(attr_type, type):
             raise ValueError('The attribute type of a terminal attribute '
                              'must be a class.')
-        attribute_base.__init__(self, attr_type, entity_attr, None)
+        attribute_base.__init__(self, attr_type, entity_attr)
 
     def __get__(self, resource, resource_class):
         if resource is None:
             # Class level access.
             obj = self
         else:
-            obj = self._get_nested(resource.get_entity(), self.entity_attr)
+            obj = get_nested_attribute(resource.get_entity(), self.entity_attr)
         return obj
 
     def __set__(self, resource, value):
-        self._set_nested(resource.get_entity(), self.entity_attr, value)
+        set_nested_attribute(resource.get_entity(), self.entity_attr, value)
 
 
 class _relation_attribute(attribute_base):
     """
     Base class for relation resource descriptors (i.e., descriptors managing
     a related member or collection resource).
+
+    :ivar cardinality: indicates the cardinality of the relationship for 
+      non-terminal attributes. This is always `None` for terminal attributes. 
+    :ivar cascade: sets the cascading rules for this relation attribute. 
+    :ivar resource_backref: attribute of the related resource (relatee) which
+      back-references the current resource (relator).
     """
-    def __init__(self, attr_type, entity_attr=None,
-                 cardinality=None, is_nested=False):
-        """
-        :param bool is_nested: indicates if the URLs generated for this
-            relation descriptor should be relative to the parent ("nested")
-            or absolute.
-        """
+    def __init__(self, attr_type, entity_attr=None, cardinality=None,
+                 cascade=DEFAULT_CASCADE, backref=None):
         if not (isinstance(attr_type, type)
                 or IInterface in provided_by(attr_type)):
             raise ValueError('The attribute type of a member or collection '
                              ' attribute must be a class or an interface.')
-        attribute_base.__init__(self, attr_type, entity_attr, cardinality)
-        self.is_nested = is_nested
+        if entity_attr is None and backref is None:
+            raise ValueError('Either the entity_attr or the backref parameter '
+                             'to a relation resource attribute may be None, '
+                             'but not both.')
+        attribute_base.__init__(self, attr_type, entity_attr)
+        self.cardinality = cardinality
+        self.cascade = cascade
+        self.resource_backref = backref
+        self.__entity_backref = None
 
     def __get__(self, resource, resource_class):
         raise NotImplementedError('Abstract method')
@@ -144,32 +122,60 @@ class _relation_attribute(attribute_base):
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
 
+    def make_relationship(self, relator):
+        return ResourceRelationship(relator, self)
+
+    @property
+    def entity_backref(self):
+        if self.__entity_backref is None:
+            if self.resource_backref is None:
+                self.__entity_backref = None
+            else:
+                attr_mb_class = get_member_class(self.attr_type)
+                backref_rc_descr = getattr(attr_mb_class,
+                                           self.resource_backref, None)
+#                # We require the backref to be a resource attribute of the
+#                # target.
+#                if backref_rc_descr is None:
+#                    raise ValueError('The "backref" attribute must be a '
+#                                     'resource attribute declared on the '
+#                                     'target of the descriptor.')
+                if not backref_rc_descr is None:
+                    self.__entity_backref = backref_rc_descr.entity_attr
+                else:
+                    self.__entity_backref = self.resource_backref
+        return self.__entity_backref
+
 
 class member_attribute(_relation_attribute):
     """
     Descriptor for declaring member attributes of a resource as attributes
-    from its underlying entity.
+    of its underlying entity.
     """
+    kind = ResourceAttributeKinds.MEMBER
+
     def __init__(self, attr_type, entity_attr=None,
-                 cardinality=CARDINALITY.MANYTOONE, is_nested=False):
+                 cardinality=CARDINALITIES.MANYTOONE,
+                 cascade=DEFAULT_CASCADE, backref=None):
         _relation_attribute.__init__(self, attr_type,
                                      entity_attr=entity_attr,
                                      cardinality=cardinality,
-                                     is_nested=is_nested)
+                                     cascade=cascade,
+                                     backref=backref)
+        #: Factory for member.
+        self.__mb_fac = None
+        #: Factory for relationship.
+        self.__rel_fac = None
 
     def __get__(self, resource, resource_class):
         if not resource is None:
-            obj = self._get_nested(resource.get_entity(), self.entity_attr)
-            if not obj is None:
-                if not self.is_nested:
-                    member = as_member(obj)
-                    coll = get_root_collection(member)
-                    member.__parent__ = coll
-                else:
-                    member = as_member(obj, parent=resource)
-                    member.__name__ = slug_from_identifier(self.resource_attr)
+            ent = get_nested_attribute(resource.get_entity(),
+                                       self.entity_attr)
+            if not ent is None:
+                fac = get_member_class(self.attr_type).as_related_member
+                member = fac(ent, self.make_relationship(resource))
             else:
-                member = obj
+                member = None
         else:
             # class level access
             member = self
@@ -180,7 +186,7 @@ class member_attribute(_relation_attribute):
             ent = value.get_entity()
         else:
             ent = None
-        self._set_nested(resource.get_entity(), self.entity_attr, ent)
+        set_nested_attribute(resource.get_entity(), self.entity_attr, ent)
 
 
 class collection_attribute(_relation_attribute):
@@ -188,115 +194,38 @@ class collection_attribute(_relation_attribute):
     Descriptor for declaring collection attributes of a resource as attributes
     from its underlying entity.
     """
+    kind = ResourceAttributeKinds.COLLECTION
+
     def __init__(self, attr_type, entity_attr=None,
-                 cardinality=CARDINALITY.ONETOMANY,
-                 is_nested=True, backref=None):
-        """
-        :param str backref: attribute of the members of the target
-          collection which back-references the current resource (parent).
-        """
-        if entity_attr is None and backref is None:
-            raise ValueError('Either the entity_attr or the backref parameter '
-                             'to a collection attribute may be None, but '
-                             'not both.')
+                 cardinality=CARDINALITIES.ONETOMANY,
+                 cascade=DEFAULT_CASCADE, backref=None):
         _relation_attribute.__init__(self, attr_type,
                                      entity_attr=entity_attr,
                                      cardinality=cardinality,
-                                     is_nested=is_nested)
-        self.backref = backref
-        self.__resource_backref = None
-        self.__entity_backref = None
-        self.__need_backref_setup = not backref is None
+                                     cascade=cascade,
+                                     backref=backref)
 
-    def __get__(self, resource, resource_class):
-        if self.__need_backref_setup:
-            self.__setup_backref()
-        if not resource is None:
+    def __get__(self, member, member_class):
+        if not member is None:
             # Create a collection. We can not just return the
             # entity attribute here as that would load the whole entity
-            # collection.
-            parent = resource.get_entity()
-            if not self.entity_attr is None:
-                children = self._get_nested(parent, self.entity_attr)
-            else:
-                children = None
-            coll = self.__make_collection(resource, parent, children)
+            # collection; so we construct a related collection instead.
+            parent_coll = member.__parent__
+            while not getattr(parent_coll, '__parent__', None) is None \
+                  and not ICollectionResource in provided_by(parent_coll):
+                parent_coll = parent_coll.__parent__ # pragma: no cover FIXME: test case!
+            root_coll = parent_coll.get_root_collection(self.attr_type)
+            coll = root_coll.as_related_collection(
+                                        root_coll.get_aggregate(),
+                                        self.make_relationship(member))
         else:
             # Class level access.
             coll = self
         return coll
 
-# FIXME: Not sure if we want to support replacement of child containers.
-#    def __set__(self, resource, value):
-#        ent_coll = self._get_nested(resource.get_entity(), self.entity_attr)
-#        ent_coll_cls = type(ent_coll)
-#        new_ent_coll = ent_coll_cls([mb.get_entity() for mb in value])
-#        self._set_nested(resource.get_entity(), self.entity_attr, new_ent_coll)
-
-    def __set__(self, resource, value):
-        raise NotImplementedError('Abstract method')
-
-    def __setup_backref(self):
-        if not self.backref is None:
-            # We require the backref to be a resource attribute of the target.
-            attr_mb_class = get_member_class(self.attr_type)
-            backref_rc_descr = getattr(attr_mb_class, self.backref, None)
-#            if backref_rc_descr is None:
-#                raise ValueError('The "backref" attribute must be a '
-#                                 'resource attribute declared on the '
-#                                 'target of the descriptor.')
-            if not backref_rc_descr is None:
-                self.__resource_backref = self.backref
-                self.__entity_backref = backref_rc_descr.entity_attr
-            else:
-                # FIXME: Falling back on the entity attribute here is fishy.
-                self.__entity_backref = self.backref # pragma: no cover
-        self.__need_backref_setup = False
-
-    def __make_collection(self, resource, parent, children):
-        # Create a new collection.
-        rc_parent = resource.__parent__
-        rc_repo = None
-        while not rc_parent is None:
-            rc_repo = getattr(rc_parent, '__repository__', None)
-            if not rc_repo is None:
-                break
-            else:
-                rc_parent = rc_parent.__parent__
-        # Create a new collection.
-#        if not resource.__parent__ is None:
-#            # Use the resource repository that created this resource's
-#            # root collection to create the new collection.
-#            rc_repo = getattr(resource.__parent__, '__repository__', None)
-#            if rc_repo is None:
-#                for rc in lineage(resource.__parent__):
-#                    rc_repo = getattr(rc, '__repository__', None)
-#                    if not rc_repo is None:
-#                        break
-        if not rc_repo is None:
-            coll = rc_repo.get_collection(self.attr_type)
-        else:
-            # This is a floating member.
-            coll = create_staging_collection(self.attr_type)
-        # Set up entity access in the new collection.
-        agg_relationship = Relationship(parent, children,
-                                        backref=self.__entity_backref)
-        agg = coll.get_aggregate()
-        agg.set_relationship(agg_relationship)
-        # Set up URL generation.
-        if self.is_nested:
-            # Make URL generation relative to the resource.
-            coll.__parent__ = resource
-            # Set the collection's name to the descriptor's resource
-            # attribute name.
-            coll.__name__ = slug_from_identifier(self.resource_attr)
-        else:
-            # Add a filter specification for the root collection through
-            # a relationship.
-            coll_relationship = Relationship(resource, coll,
-                                             backref=self.__resource_backref)
-            coll.set_relationship(coll_relationship)
-        return coll
+    # FIXME: Not sure if we want to support replacement of child containers.
+    def __set__(self, member, value):
+        raise NotImplementedError('Not implemented.')
 
 
 class attribute_alias(object):

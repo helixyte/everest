@@ -6,12 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on June 8, 2011.
 """
+from everest.constants import CARDINALITIES
+from everest.constants import ResourceAttributeKinds
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.descriptors import CARDINALITY
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
@@ -65,7 +65,7 @@ class MappedAttribute(object):
             options = {}
         # Make sure we have a valid representation name.
         if options.get(REPR_NAME_OPTION) is None:
-            options[REPR_NAME_OPTION] = attr.name
+            options[REPR_NAME_OPTION] = attr.resource_attr
         # Process the "ignore" option..
         do_ignore = options.get(IGNORE_OPTION)
         if not do_ignore is None:
@@ -83,7 +83,7 @@ class MappedAttribute(object):
         new_options.update(options)
         return MappedAttribute(self.__attr, options=new_options)
 
-    def should_ignore(self, ignore_option_name, attribute_key):
+    def should_ignore(self, ignore_option, attribute_key):
         """
         Checks if the given attribute key should be ignored for the given
         ignore option name.
@@ -92,30 +92,25 @@ class MappedAttribute(object):
          * always ignore when IGNORE_ON_XXX_OPTION is set to True;
          * always include when IGNORE_ON_XXX_OPTION is set to False;
          * also ignore member attributes when the length of the attribute
-           key is > 0 or the cardinality is not MANYTOONE (this avoids
-           traversing circular attribute definitions such as parent ->
-           children -> parent);
+           key is > 0;
          * also ignore collection attributes when the cardinality is 
            not MANYTOMANY.
            
-        :ignore_option_name: configuration option name (IGNORE_ON_READ_OPTION
-          or IGNORE_ON_WRITE_OPTION).
+        :ignore_option: configuration option value.
         :param attribute_key: :class:`AttributeKey` instance.
         """
-        option_value = self.options.get(ignore_option_name)
-        do_ignore = option_value
-        if option_value is None:
+        do_ignore = ignore_option
+        if ignore_option is None:
             if self.kind == ResourceAttributeKinds.MEMBER:
                 depth = len(attribute_key) + 1 - attribute_key.offset
-                do_ignore = depth > 1 \
-                            or self.cardinality != CARDINALITY.MANYTOONE
+                do_ignore = depth > 1
             elif self.kind == ResourceAttributeKinds.COLLECTION:
-                do_ignore = self.cardinality != CARDINALITY.MANYTOMANY
+                do_ignore = self.cardinality != CARDINALITIES.MANYTOMANY
         return do_ignore
 
     @property
     def name(self):
-        return self.__attr.name
+        return self.__attr.resource_attr
 
     @property
     def kind(self):
@@ -123,15 +118,15 @@ class MappedAttribute(object):
 
     @property
     def value_type(self):
-        return self.__attr.value_type
+        return self.__attr.attr_type
 
     @property
     def entity_name(self):
-        return self.__attr.entity_name
+        return self.__attr.entity_attr
 
     @property
     def cardinality(self):
-        return self.__attr.cardinality
+        return getattr(self.__attr, 'cardinality', None)
 
     def __getattr__(self, attr_name):
         # Make options available as attributes.

@@ -13,8 +13,8 @@ from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IResourceDataElement
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
+from everest.constants import ResourceAttributeKinds
+from everest.constants import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
@@ -287,10 +287,12 @@ class SimpleLinkedDataElement(LinkedDataElement):
     @classmethod
     def create(cls, url, kind, relation=None, title=None, **options):
         inst = cls()
+        # pylint: disable=W0212
         inst.__url = url
         inst.__kind = kind
         inst.__relation = relation
         inst.__title = title
+        # pylint: enable=W0212
         return inst
 
     @classmethod

@@ -18,11 +18,12 @@ from everest.utils import get_order_specification_visitor
 from pyparsing import ParseException
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
-from pyramid.url import model_url
 from urllib import unquote
 from urlparse import urlparse
 from zope.interface import implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.resources.utils import get_root_collection
+from everest.resources.interfaces import IResource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
@@ -78,10 +79,20 @@ class ResourceUrlConverter(object):
             raise ValueError('Traversal found non-resource object "%s".' % rc)
         return rc
 
-    def resource_to_url(self, resource, **kw):
-        if ICollectionResource in provided_by(resource):
+    def resource_to_url(self, resource):
+        """
+        :raises ValueError: If the given resource is floating (i.e., has
+          the parent attribute set to `None`) 
+        """
+        ifc = provided_by(resource)
+        if not IResource in ifc:
+            raise TypeError('Can not generate URL for non-resource "%s".'
+                            % resource)
+        elif resource.__parent__ is None:
+            raise ValueError('Can not generate URL for floating resource '
+                             '"%s".' % resource)
+        if ICollectionResource in ifc:
             query = {}
-            query.update(kw)
             if not resource.filter is None:
                 query['q'] = \
                     UrlPartsConverter.make_filter_string(resource.filter)
@@ -91,18 +102,24 @@ class ResourceUrlConverter(object):
             if not resource.slice is None:
                 query['start'], query['size'] = \
                     UrlPartsConverter.make_slice_strings(resource.slice)
-            if query != {}:
-                url = model_url(resource, self.__request, query=query)
+            if not resource.is_root_collection:
+                root_coll = get_root_collection(resource)
             else:
-                url = model_url(resource, self.__request)
-        elif not IMemberResource in provided_by(resource):
-            raise ValueError('Can not convert non-resource object "%s to '
-                             'URL".' % resource)
+                root_coll = resource
+            if query != {}:
+                url = self.__request.resource_url(root_coll, query=query)
+            else:
+                url = self.__request.resource_url(root_coll)
         else:
-            if resource.__parent__ is None:
-                raise ValueError('Can not generate URL for floating member '
-                                 '"%s".' % resource)
-            url = model_url(resource, self.__request)
+#            if resource.__parent__.__parent__ is None:
+#                raise ValueError('Can not generate URL for member of '
+#                                 'floating collection.')
+            if not resource.is_root_member:
+                root_coll = get_root_collection(resource)
+                url = "%s%s/" % (self.__request.resource_url(root_coll),
+                                 resource.__name__)
+            else:
+                url = self.__request.resource_url(resource)
         return unquote(url)
 
 

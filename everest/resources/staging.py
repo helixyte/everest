@@ -1,45 +1,79 @@
 """
-Staging collections.
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 27, 2013.
 """
-from collections import defaultdict
+from everest.entities.base import Aggregate
+from everest.entities.base import RelationshipAggregate
+from everest.entities.traversal import AddingDomainVisitor
+from everest.entities.traversal import DomainTreeTraverser
 from everest.entities.utils import get_entity_class
-from everest.repositories.memory.aggregate import MemoryAggregate
-from everest.repositories.memory.cache import EntityCache
+from everest.querying.base import EXPRESSION_KINDS
+from everest.repositories.memory.cache import EntityCacheMap
+from everest.repositories.memory.querying import MemoryQuery
 from everest.resources.utils import get_collection_class
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['create_staging_collection',
+__all__ = ['StagingAggregate',
+           'create_staging_collection',
            ]
 
 
-class StagingSession(object):
+class StagingAggregate(Aggregate):
     """
-    Staging (transient) session.
-    
-    A staging session serves as a temporary container for entities. Unlike
-    a "real" session, it does not maintain a unit of work and is not
-    connected to a repository backend.
+    Staging aggregate.
+
+    A staging aggregate is used to build up a new set of entities of the same
+    type e.g. from a representation. It does not have a session and therefore
+    has no way to persist the changes that are made to the entities it holds.
     """
-    def __init__(self):
-        self.__cache_map = \
-                        defaultdict(lambda: EntityCache(allow_none_id=True))
 
-    def add(self, entity_class, entity):
-        self.__cache_map[entity_class].add(entity)
+    def __init__(self, entity_class, cache=None):
+        Aggregate.__init__(self)
+        self.entity_class = entity_class
+        if cache is None:
+            cache = EntityCacheMap()
+        self.__cache = cache
 
-    def iterator(self, entity_class):
-        return self.__cache_map[entity_class].iterator()
+    def get_by_id(self, id_key):
+        return self.__cache[self.entity_class].get_by_id(id_key)
+
+    def get_by_slug(self, slug):
+        return self.__cache[self.entity_class].get_by_slug(slug)
+
+    def add(self, entity):
+        trv = DomainTreeTraverser(entity)
+        vst = AddingDomainVisitor(self, self.__cache)
+        trv.run(vst)
+
+    def remove(self, entity):
+        self.__cache[self.entity_class].remove(entity)
+
+    def update(self, entity):
+        # FIXME: Need true update here, not replace.
+        self.__cache[self.entity_class].replace(entity)
+
+    def query(self):
+        return MemoryQuery(self.entity_class,
+                           self.__cache[self.entity_class].get_all())
+
+    @property
+    def expression_kind(self):
+        return EXPRESSION_KINDS.EVAL
+
+    def get_root_aggregate(self, rc):
+        ent_cls = get_entity_class(rc)
+        return StagingAggregate(ent_cls, cache=self.__cache)
+
+    def make_relationship_aggregate(self, relationship):
+        return RelationshipAggregate(self, relationship)
 
 
 def create_staging_collection(resource):
     """
-    Helper function to create a staging session for the given registered
-    resource. 
+    Helper function to create a staging collection for the given registered
+    resource.
 
     :param resource: registered resource
     :type resource: class implementing or instance providing or subclass of
@@ -47,7 +81,5 @@ def create_staging_collection(resource):
     """
     ent_cls = get_entity_class(resource)
     coll_cls = get_collection_class(resource)
-    session = StagingSession()
-    fac = lambda : session
-    agg = MemoryAggregate.create(ent_cls, fac)
+    agg = StagingAggregate(ent_cls)
     return coll_cls.create_from_aggregate(agg)

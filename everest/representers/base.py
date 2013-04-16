@@ -30,18 +30,34 @@ class Representer(object):
     content_type = None
 
     def from_string(self, string_representation):
+        """
+        Extracts resource data from the given string and converts them to
+        a new resource or updates the given resource from it.
+        """
         stream = StringIO(string_representation)
         return self.from_stream(stream)
 
     def to_string(self, obj):
+        """
+        Converts the given resource to a string representation and returns
+        it.
+        """
         stream = StringIO()
         self.to_stream(obj, stream)
         return stream.getvalue()
 
-    def from_stream(self, stream):
+    def from_stream(self, stream, resource=None):
+        """
+        Extracts resource data from the given stream and converts them to
+        a new resource or updates the given resource from it.
+        """
         raise NotImplementedError("Abstract method.")
 
     def to_stream(self, obj, stream):
+        """
+        Converts the given resource to a string representation and writes
+        it to the given stream.
+        """
         raise NotImplementedError("Abstract method.")
 
 
@@ -79,11 +95,11 @@ class ResourceRepresenter(Representer):
     def make_mapping_registry(cls):
         raise NotImplementedError('Abstract method.')
 
-    def from_stream(self, stream):
+    def from_stream(self, stream, resource=None):
         parser = self._make_representation_parser(stream, self.resource_class,
                                                   self._mapping)
         data_el = parser.run()
-        return self.resource_from_data(data_el)
+        return self.resource_from_data(data_el, resource=resource)
 
     def to_stream(self, resource, stream):
         data_el = self.data_from_resource(resource)
@@ -117,7 +133,7 @@ class ResourceRepresenter(Representer):
         """
         Creates a representation from the given data element.
         
-        :param data_element: 
+        :param data_element: Source data element.
         """
         stream = StringIO()
         generator = \
@@ -126,15 +142,19 @@ class ResourceRepresenter(Representer):
         generator.run(data_element)
         return stream.getvalue()
 
-    def resource_from_data(self, data_element):
+    def resource_from_data(self, data_element, resource=None):
         """
         Extracts serialized data from the given data element and constructs
         a resource from it.
 
+        :param data_element: Source data element.
+        :param resource: If given, this resource will be updated from the
+          given :param:`data_element`; otherwise, a new resource will be
+          created.
         :returns: object implementing
           :class:`everest.resources.interfaces.IResource`
         """
-        return self._mapping.map_to_resource(data_element)
+        return self._mapping.map_to_resource(data_element, resource=resource)
 
     def data_from_resource(self, resource):
         """
