@@ -66,6 +66,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+from everest.representers.base import MappingResourceRepresenter
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -371,12 +372,16 @@ class Configurator(PyramidConfigurator):
         rpr_reg = self.get_registered_utility(IRepresenterRegistry)
         if not representer_class is None:
             rpr_reg.register_representer_class(representer_class)
-            mp_reg = rpr_reg.get_mapping_registry(
+            if issubclass(representer_class, MappingResourceRepresenter):
+                mp_reg = rpr_reg.get_mapping_registry(
                                             representer_class.content_type)
+            else:
+                mp_reg = None
         else:
             mp_reg = rpr_reg.get_mapping_registry(content_type)
-        for name, value in options.iteritems():
-            mp_reg.set_default_config_option(name, value)
+        if not mp_reg is None:
+            for name, value in options.iteritems():
+                mp_reg.set_default_config_option(name, value)
 
     def add_resource_representer(self, resource, content_type,
                                  options=None, attribute_options=None,
@@ -404,7 +409,7 @@ class Configurator(PyramidConfigurator):
 
     def add_resource_view(self, resource, view=None, name='', renderer=None,
                           request_method=('GET',), default_content_type=None,
-                          **kw):
+                          default_response_content_type=None, **kw):
         # FIXME: We should not allow **kw to support setting up standard
         #        views here since some options may have undesired side
         #        effects.
@@ -421,7 +426,8 @@ class Configurator(PyramidConfigurator):
             rcs = [resource]
         for rc in rcs:
             self.__add_resource_view(rc, view, name, renderer, request_method,
-                                     default_content_type, kw)
+                                     default_content_type,
+                                     default_response_content_type, kw)
 
     def add_collection_view(self, resource, **kw):
         if IInterface in provided_by(resource):
@@ -577,7 +583,8 @@ class Configurator(PyramidConfigurator):
                      if not settings.get(key, None) is None])
 
     def __add_resource_view(self, rc, view, name, renderer, request_methods,
-                            default_content_type, options):
+                            default_content_type,
+                            default_response_content_type, options):
         for request_method in request_methods:
             opts = options.copy()
             vw = view
@@ -586,6 +593,8 @@ class Configurator(PyramidConfigurator):
                    issubclass(view, RepresentingResourceView)):
                 register_sub_views = name == ''
                 kw = dict(default_content_type=default_content_type,
+                          default_response_content_type=
+                                    default_response_content_type,
                           convert_response=renderer is None)
                 if view is None:
                     # Attempt to guess a default view. We register a factory
@@ -634,7 +643,7 @@ class Configurator(PyramidConfigurator):
             vnames = set([name])
             if register_sub_views:
                 # Add sub-views for registered representer names if this view
-                # uses representers (and is not a namned view itself).
+                # uses representers (and is not a named view itself).
                 vnames.update(get_registered_representer_names())
             for vname in vnames:
                 self.add_view(context=rc, view=vw, renderer=renderer,

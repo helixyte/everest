@@ -49,9 +49,76 @@ class ResourceRepresenter(Representer):
     """
     Base class for resource representers which know how to convert resource
     representations into resources and back.
+    """
 
-    This conversion is performed using four customizable, independent helper
-    objects:
+    def __init__(self, resource_class):
+        Representer.__init__(self)
+        self.resource_class = resource_class
+
+    @classmethod
+    def create_from_resource(cls, rc):
+        """
+        Factory method creating a new representer from the given registered
+        resource.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def data_from_stream(self, stream):
+        """
+        Extracts resource data from the given stream.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def data_from_representation(self, representation):
+        """
+        Converts the given representation to resource data.
+        
+        :returns: resource data object which can be passed to the *_from_data
+            methods
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def representation_from_data(self, data):
+        """
+        Creates a representation from the given resource data.
+        
+        :returns: string representation (using the MIME content type
+            configured for this representer)
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def resource_from_data(self, data):
+        """
+        Converts the given resource data to a resource.
+
+        :returns: object implementing
+          :class:`everest.resources.interfaces.IResource`
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def data_from_resource(self, resource):
+        """
+        Converts the given resource to resource data.
+
+        :returns: resource data object which can be passed to the *_from_data
+            methods
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def configure(self, options=None):
+        """
+        Configures the options for this representer.
+        """
+        raise NotImplementedError('Abstract method.')
+
+
+class MappingResourceRepresenter(ResourceRepresenter):
+    """
+    Base class for resource representers that use configurable attribute
+    mappings to perform conversions from resource representations and back.
+    
+    The conversion is performed using four independent and highly customizable
+    helper objects:
     
      1. The *representation parser* responsible for converting the
         representation into a data element tree;
@@ -62,10 +129,8 @@ class ResourceRepresenter(Representer):
      4. the *representation generator* responsible for converting the data
         element tree into a representation.
     """
-
     def __init__(self, resource_class, mapping):
-        Representer.__init__(self)
-        self.resource_class = resource_class
+        ResourceRepresenter.__init__(self, resource_class)
         self._mapping = mapping
 
     @classmethod
@@ -80,9 +145,7 @@ class ResourceRepresenter(Representer):
         raise NotImplementedError('Abstract method.')
 
     def from_stream(self, stream):
-        parser = self._make_representation_parser(stream, self.resource_class,
-                                                  self._mapping)
-        data_el = parser.run()
+        data_el = self.data_from_stream(stream)
         return self.resource_from_data(data_el)
 
     def to_stream(self, resource, stream):
@@ -90,7 +153,7 @@ class ResourceRepresenter(Representer):
         generator = \
             self._make_representation_generator(stream, self.resource_class,
                                                 self._mapping)
-        return generator.run(data_el)
+        generator.run(data_el)
 
     def data_from_stream(self, stream):
         """
@@ -115,9 +178,10 @@ class ResourceRepresenter(Representer):
 
     def representation_from_data(self, data_element):
         """
-        Creates a representation from the given data element.
+        Converts the given data element into a representation.
         
-        :param data_element: 
+        :param data_element: object implementing 
+            :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         stream = StringIO()
         generator = \
@@ -128,11 +192,10 @@ class ResourceRepresenter(Representer):
 
     def resource_from_data(self, data_element):
         """
-        Extracts serialized data from the given data element and constructs
-        a resource from it.
+        Converts the given data element into a resource.
 
-        :returns: object implementing
-          :class:`everest.resources.interfaces.IResource`
+        :param data_element: object implementing 
+            :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         return self._mapping.map_to_resource(data_element)
 
@@ -155,9 +218,10 @@ class ResourceRepresenter(Representer):
         """
         return self._mapping.map_to_data_element(resource)
 
-    def configure(self, options=None, attribute_options=None):
+    def configure(self, options=None, attribute_options=None): # pylint: disable=W0221
         """
-        Configures the attribute mapping for this representer.
+        Configures the options and attribute options for the mapping
+        associated with this representer.
         
         :param dict options: configuration options for the mapping associated
           with this representer.
@@ -200,10 +264,11 @@ class RepresenterRegistry(object):
             raise ValueError('The representer class "%s" has already been '
                              'registered.' % representer_class)
         self.__rpr_classes[representer_class.content_type] = representer_class
-        # Create and hold a mapping registry for the registered resource
-        # representer class.
-        mp_reg = representer_class.make_mapping_registry()
-        self.__mp_regs[representer_class.content_type] = mp_reg
+        if issubclass(representer_class, MappingResourceRepresenter):
+            # Create and hold a mapping registry for the registered resource
+            # representer class.
+            mp_reg = representer_class.make_mapping_registry()
+            self.__mp_regs[representer_class.content_type] = mp_reg
 
     def is_registered_representer_class(self, representer_class):
         return representer_class in self.__rpr_classes.values()
@@ -227,39 +292,41 @@ class RepresenterRegistry(object):
         if not content_type in self.__rpr_classes:
             raise ValueError('No representer class has been registered for '
                              'content type "%s".' % content_type)
-        # Create or update a mapping.
-        mp_reg = self.__mp_regs[content_type]
-        mp = mp_reg.find_mapping(resource_class)
-        if mp is None:
-            # No mapping was registered yet for this resource class or any
-            # of its base classes; create a new one on the fly.
-            new_mp = mp_reg.create_mapping(resource_class, configuration)
-        elif not configuration is None:
-            if resource_class is mp.mapped_class:
-                # We have additional configuration for an existing mapping.
-                mp.configuration.update(configuration)
-                new_mp = mp
-            else:
-                # We have a derived class with additional configuration.
-                new_mp = mp_reg.create_mapping(resource_class,
-                                               configuration=mp.configuration)
-                new_mp.configuration.update(configuration)
-        elif not resource_class is mp.mapped_class:
-            # We have a derived class without additional configuration.
-            new_mp = mp_reg.create_mapping(resource_class,
-                                           configuration=mp.configuration)
-        else:
-            # We found a dynamically created mapping for the right class
-            # without additional configuration; do not create a new one.
-            new_mp = None
-        if not new_mp is None:
-            # Store the new (or updated) mapping.
-            mp_reg.set_mapping(new_mp)
-        # Register factory resource -> representer for the given resource
-        # class, content type combination.
+        # Register a factory resource -> representer for the given combination
+        # of resource class and content type.
         rpr_cls = self.__rpr_classes[content_type]
         self.__rpr_factories[(resource_class, content_type)] = \
                                             rpr_cls.create_from_resource
+        if issubclass(rpr_cls, MappingResourceRepresenter):
+            # Create or update an attribute mapping.
+            mp_reg = self.__mp_regs[content_type]
+            mp = mp_reg.find_mapping(resource_class)
+            if mp is None:
+                # No mapping was registered yet for this resource class or any
+                # of its base classes; create a new one on the fly.
+                new_mp = mp_reg.create_mapping(resource_class, configuration)
+            elif not configuration is None:
+                if resource_class is mp.mapped_class:
+                    # We have additional configuration for an existing mapping.
+                    mp.configuration.update(configuration)
+                    new_mp = mp
+                else:
+                    # We have a derived class with additional configuration.
+                    new_mp = mp_reg.create_mapping(
+                                            resource_class,
+                                            configuration=mp.configuration)
+                    new_mp.configuration.update(configuration)
+            elif not resource_class is mp.mapped_class:
+                # We have a derived class without additional configuration.
+                new_mp = mp_reg.create_mapping(resource_class,
+                                               configuration=mp.configuration)
+            else:
+                # We found a dynamically created mapping for the right class
+                # without additional configuration; do not create a new one.
+                new_mp = None
+            if not new_mp is None:
+                # Store the new (or updated) mapping.
+                mp_reg.set_mapping(new_mp)
 
     def create(self, resource, content_type):
         """

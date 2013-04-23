@@ -15,9 +15,9 @@ from csv import register_dialect
 from csv import writer
 from everest.mime import CsvMime
 from everest.representers.attributes import AttributeKey
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
-from everest.representers.base import ResourceRepresenter
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
@@ -504,7 +504,7 @@ class CsvRepresentationGenerator(RepresentationGenerator):
                 csv_writer.writerow(row_data)
 
 
-class CsvResourceRepresenter(ResourceRepresenter):
+class CsvResourceRepresenter(MappingResourceRepresenter):
 
     content_type = CsvMime
 

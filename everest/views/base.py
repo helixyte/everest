@@ -101,7 +101,8 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
     A resource view with an associated representer.
     """
     def __init__(self, context, request,
-                 default_content_type=None, convert_response=True):
+                 default_content_type=None,
+                 default_response_content_type=None, convert_response=True):
         if self.__class__ is RepresentingResourceView:
             raise NotImplementedError('Abstract class')
         ResourceView.__init__(self, context, request)
@@ -114,6 +115,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             # FIXME: make this configurable.
             default_content_type = CsvMime
         self._default_content_type = default_content_type
+        self._default_response_content_type = default_response_content_type
 
     def _get_response_representer(self):
         """
@@ -134,7 +136,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             for acc in self.request.accept:
                 if acc == '*/*':
                     # The client does not care; use the default.
-                    mime_type = self._default_content_type
+                    mime_type = self.__get_default_response_mime_type()
                     break
                 try:
                     mime_type = \
@@ -146,7 +148,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             if mime_type is None:
                 if not acc is None:
                     # The client specified a MIME type we can not handle; this
-                    # is a 406 exxception. We supply allowed MIME content 
+                    # is a 406 exxception. We supply allowed MIME content
                     # types in the body of the response.
                     headers = \
                         [('Location', self.request.path_url),
@@ -158,7 +160,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
                                             body=','.join(mime_strings),
                                             headers=headers)
                     raise exc
-                mime_type = self._default_content_type
+                mime_type = self.__get_default_response_mime_type()
             rpr = as_representer(self.context, mime_type)
         return rpr
 
@@ -186,6 +188,13 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         else:
             result = dict(context=resource)
         return result
+
+    def __get_default_response_mime_type(self):
+        if not self._default_response_content_type is None:
+            mime_type = self._default_response_content_type
+        else:
+            mime_type = self._default_content_type
+        return mime_type
 
 
 class GetResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
@@ -305,7 +314,7 @@ class ViewUserMessageChecker(UserMessageChecker):
     """
     Custom user message checker for views.
     """
-    __guid_pattern = re.compile(".*ignore-message=([a-z0-9\-]{36})")
+    __guid_pattern = re.compile(r".*ignore-message=([a-z0-9\-]{36})")
 
     def check(self):
         """

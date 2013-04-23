@@ -8,9 +8,9 @@ Created on Aug 29, 2012.
 """
 from __future__ import absolute_import # Makes the import below absolute
 from everest.mime import JsonMime
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
-from everest.representers.base import ResourceRepresenter
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -179,7 +179,7 @@ class JsonRepresentationGenerator(RepresentationGenerator):
         self._stream.write(rpr_string)
 
 
-class JsonResourceRepresenter(ResourceRepresenter):
+class JsonResourceRepresenter(MappingResourceRepresenter):
 
     content_type = JsonMime
 

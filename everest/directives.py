@@ -288,12 +288,13 @@ class ResourceDirective(GroupingContextDecorator):
 
 
 def _resource_view(_context, for_, default_content_type,
-                   config_callable_name, kw):
+                   default_response_content_type, config_callable_name, kw):
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     config_callable = getattr(config, config_callable_name)
     option_tuples = tuple(sorted([(k, str(v)) for (k, v) in kw.items()]))
     kw['default_content_type'] = default_content_type
+    kw['default_response_content_type'] = default_response_content_type
     for rc in for_:
         discriminator = ('resource_view', rc, config_callable_name) \
                         + option_tuples
@@ -315,7 +316,16 @@ class IResourceViewDirective(IViewDirective):
                value_type=GlobalObject())
     default_content_type = \
         GlobalObject(title=u"The default MIME content type to use when the "
-                            "client does not indicate a preference.",
+                            "client does not indicate a preference. Unless "
+                            "the default_response_content_type setting is "
+                            "also specified, this applies to both the "
+                            "request and the response content type.",
+                     required=False)
+    default_response_content_type = \
+        GlobalObject(title=u"The default MIME content type to use for the "
+                            "response when the client does not indicate a "
+                            "preference. If this is not specified, the "
+                            "setting for default_content_type is used.",
                      required=False)
     request_method = \
         Tokens(title=u"One or more request methods that need to be matched.",
@@ -327,19 +337,22 @@ class IResourceViewDirective(IViewDirective):
                )
 
 
-def resource_view(_context, for_, default_content_type=None, **kw):
+def resource_view(_context, for_, default_content_type=None,
+                  default_response_content_type=None, **kw):
     _resource_view(_context, for_, default_content_type,
-                   'add_resource_view', kw)
+                   default_response_content_type, 'add_resource_view', kw)
 
 
-def collection_view(_context, for_, default_content_type=None, **kw):
+def collection_view(_context, for_, default_content_type=None,
+                    default_response_content_type=None, **kw):
     _resource_view(_context, for_, default_content_type,
-                   'add_collection_view', kw)
+                   default_response_content_type, 'add_collection_view', kw)
 
 
-def member_view(_context, for_, default_content_type=None, **kw):
+def member_view(_context, for_, default_content_type=None,
+                default_response_content_type=None, **kw):
     _resource_view(_context, for_, default_content_type,
-                   'add_member_view', kw)
+                   default_response_content_type, 'add_member_view', kw)
 
 
 class IRepresenterDirective(Interface):

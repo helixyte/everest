@@ -7,9 +7,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 19, 2011.
 """
 from everest.mime import XmlMime
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
-from everest.representers.base import ResourceRepresenter
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -120,7 +120,7 @@ class XmlParserFactory(object):
         return schema
 
 
-class XmlResourceRepresenter(ResourceRepresenter):
+class XmlResourceRepresenter(MappingResourceRepresenter):
 
     content_type = XmlMime
 

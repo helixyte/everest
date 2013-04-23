@@ -8,7 +8,7 @@ Created on May 19, 2011.
 """
 from everest.mime import AtomMime
 from everest.mime import XmlMime
-from everest.representers.base import ResourceRepresenter
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.mapping import Mapping
 from everest.representers.utils import get_mapping_registry
 from everest.representers.xml import XmlMappingRegistry
@@ -32,7 +32,7 @@ XML_PREFIX_OPEN_SEARCH = 'opensearch'
 XML_PREFIX_ATOM = 'atom'
 
 
-class AtomResourceRepresenter(ResourceRepresenter):
+class AtomResourceRepresenter(MappingResourceRepresenter):
 
     content_type = AtomMime
 
