@@ -39,4 +39,3 @@ def create_collection():
     coll.create_member(my_entity0)
     coll.create_member(my_entity1)
     return coll
-

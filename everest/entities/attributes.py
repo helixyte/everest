@@ -44,6 +44,10 @@ class attribute_base(object):
         self.entity_attr = entity_attr
         self.resource_attr = resource_attr
 
+    def __str__(self):
+        return "%s: ent attr %s, type %s" \
+               % (self.__class__.__name__, self.entity_attr, self.attr_type)
+
 
 class terminal_attribute(attribute_base):
     """

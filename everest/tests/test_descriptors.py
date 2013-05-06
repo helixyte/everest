@@ -339,14 +339,16 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         member = coll.create_member(my_entity)
         self.assert_equal(len(member.children), 2)
         mp = self._make_mapping()
-        import gc; gc.collect()
         data_el = mp.map_to_data_element(member)
         del member
         del my_entity
+#        import gc; gc.collect()
         my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(context.children), 1)
+        coll.get_aggregate()._session.flush()
+        from everest.tests.complete_app.entities import MyEntityGrandchild
         context.update_from_data(data_el)
         self.assert_equal(len(context.children), 2)
 

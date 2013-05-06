@@ -14,7 +14,6 @@ from everest.querying.base import SpecificationVisitorBase
 from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
-from everest.representers.interfaces import ILinkedDataElement
 from everest.resources.attributes import ResourceAttributeControllerMixin
 from everest.resources.attributes import get_resource_class_attribute
 from everest.resources.descriptors import terminal_attribute
@@ -25,13 +24,10 @@ from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import resource_to_url
-from everest.resources.utils import url_to_resource
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
 from zope.interface import implements # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
 
 __docformat__ = "reStructuredText en"
@@ -174,17 +170,16 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         return self.__entity
 
-    def delete(self):
+    def update(self, **kw):
         """
-        Deletes this member.
-
-        Deleting a member resource of a root collection involves removing it 
-        from the parent (or from the relationship if this is a related
-        member).
+        Updates this member.
         """
-        # FIXME: Remove this method.
-        if self._relationship is None:
-            self.__parent__.remove(self)
+        for attr_name, attr_value in kw.iteritems():
+            attr = getattr(self.__class__, attr_name)
+            if attr.kind == ResourceAttributeKinds.TERMINAL:
+                setattr(self, attr_name, attr_value)
+            elif attr.kind == ResourceAttributeKinds.MEMBER:
+                rel = attr.make_relationship(self)
 
     def update_from_entity(self, entity):
         """
@@ -202,38 +197,9 @@ class Member(ResourceAttributeControllerMixin, Resource):
             from
         :type data_element: object implementing
          `:class:everest.resources.representers.interfaces.IExplicitDataElement`
-
         """
         mp = data_element.mapping
-        for attr in mp.attribute_iterator():
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                other_value = data_element.get_terminal(attr)
-                if other_value is None:
-                    # Optional attribute - continue.
-                    continue
-                else:
-                    setattr(self, attr.name, other_value)
-            else: # attr.kind MEMBER or COLLECTION
-                rc_data_el = data_element.get_nested(attr)
-                if rc_data_el is None:
-                    # Optional attribute - continue.
-                    continue
-                self_rc = getattr(self, attr.name)
-                if ILinkedDataElement in provided_by(rc_data_el):
-                    # Found a link. Update if the URL is different.
-                    url = rc_data_el.get_url()
-                    if not self_rc is None \
-                       and resource_to_url(self_rc) == url:
-                        #
-                        continue
-                    new_rc = url_to_resource(url)
-                    setattr(self, attr.name, new_rc)
-                else:
-                    if self_rc is None:
-                        new_rc = mp.map_to_resource(rc_data_el)
-                        setattr(self, attr.name, new_rc)
-                    else:
-                        self_rc.update_from_data(rc_data_el)
+        mp.map_to_resource(data_element, resource=self)
 
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
@@ -466,6 +432,9 @@ class Collection(Resource):
         :raises ValueError: when a data element with an ID that is not present
           in this collection is encountered.
         """
+#        mp = data_element.mapping
+#        mp.map_to_resource(data_element, resource=self)
+#        return
         attrs = data_element.mapping.get_attribute_map()
         id_attr = attrs['id']
         update_ids = set()

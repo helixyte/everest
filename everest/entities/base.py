@@ -9,13 +9,12 @@ Created on May 12, 2011.
 from everest.constants import CASCADES
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.traversal import AddingDomainVisitor
-from everest.entities.traversal import DomainTreeTraverser
-from everest.entities.traversal import RemovingDomainVisitor
 from everest.querying.utils import get_filter_specification_factory
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from zope.interface import implements # pylint: disable=E0611,F0401
+from everest.entities.traversal import SourceTargetTraverser
+from everest.entities.traversal import CrudDomainVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -65,8 +64,7 @@ class Aggregate(object):
     """
     Abstract base class for aggregates.
 
-    An aggregate is an accessor for a set of entities of the same type which 
-    are held in some repository. 
+    An aggregate is an accessor for a set of entities of the same type. 
 
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
@@ -298,10 +296,10 @@ class RootAggregate(Aggregate):
     """
     Abstract base class for root aggregates.
 
-    A root aggregate provides access to all entities in an underlying
-    repository.
+    A root aggregate provides access to all entities of a particular type
+    in an underlying repository. It also holds a session factory which creates
+    a thread-local session that stages operations on the repository.
     """
-
     #: This holds the value for the expression_kind property (the kind of
     #: filter and order expression this root aggregate builds).
     _expression_kind = None
@@ -324,7 +322,7 @@ class RootAggregate(Aggregate):
         self.entity_class = entity_class
         #: The session factory.
         self._session_factory = session_factory
-        #
+        # The repository that holds the entities.
         self.__repository = repository
 
     @classmethod
@@ -360,17 +358,27 @@ class RootAggregate(Aggregate):
         if not isinstance(entity, self.entity_class):
             raise ValueError('Can only add entities of type "%s" to this '
                              'aggregate.' % self.entity_class)
-        trv = DomainTreeTraverser(entity)
-        vst = AddingDomainVisitor(self, self._session)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity, None)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+#        trv = DomainTreeTraverser(entity)
+#        vst = AddingDomainVisitor(self, self._session)
         trv.run(vst)
 
     def remove(self, entity):
-        trv = DomainTreeTraverser(entity)
-        vst = RemovingDomainVisitor(self, self._session)
+        trv = SourceTargetTraverser(self.get_root_aggregate, None, entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+#        trv = DomainTreeTraverser(entity)
+#        vst = RemovingDomainVisitor(self, self._session)
         trv.run(vst)
 
     def update(self, entity):
-        return self._session.update(self.entity_class, entity)
+        target_entity = self.get_by_id(entity.id)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity,
+                                    target_entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+        trv.run(vst)
+        return target_entity
+#        return self._session.update(self.entity_class, entity)
 
     def query(self):
         return self._session.query(self.entity_class)
@@ -437,7 +445,11 @@ class RelationshipAggregate(Aggregate):
         return self._root_aggregate.get_root_aggregate(rc)
 
     def update(self, entity):
-        return self._root_aggregate.update(entity)
+        if self._relationship.descriptor.cascade & CASCADES.UPDATE:
+            upd_entity = self._root_aggregate.update(entity)
+        else:
+            upd_entity = entity
+        return upd_entity
 
     def add(self, entity):
         self._relationship.add(entity)

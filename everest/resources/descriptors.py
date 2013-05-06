@@ -60,6 +60,10 @@ class attribute_base(object):
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
 
+    def __str__(self):
+        return "%s: rc attr %s, type %s" \
+               % (self.__class__.__name__, self.resource_attr, self.attr_type)
+
 
 class terminal_attribute(attribute_base):
     """

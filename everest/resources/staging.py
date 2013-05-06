@@ -6,8 +6,8 @@ Created on Feb 27, 2013.
 """
 from everest.entities.base import Aggregate
 from everest.entities.base import RelationshipAggregate
-from everest.entities.traversal import AddingDomainVisitor
-from everest.entities.traversal import DomainTreeTraverser
+from everest.entities.traversal import CrudDomainVisitor
+from everest.entities.traversal import SourceTargetTraverser
 from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
 from everest.repositories.memory.cache import EntityCacheMap
@@ -43,16 +43,24 @@ class StagingAggregate(Aggregate):
         return self.__cache[self.entity_class].get_by_slug(slug)
 
     def add(self, entity):
-        trv = DomainTreeTraverser(entity)
-        vst = AddingDomainVisitor(self, self.__cache)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity, None)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
+#        trv = DomainTreeTraverser(entity)
+#        vst = AddingDomainVisitor(self, self.__cache)
         trv.run(vst)
 
     def remove(self, entity):
-        self.__cache[self.entity_class].remove(entity)
+        trv = SourceTargetTraverser(self.get_root_aggregate, None, entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
+        trv.run(vst)
 
     def update(self, entity):
-        # FIXME: Need true update here, not replace.
-        self.__cache[self.entity_class].replace(entity)
+        # FIXME: This still fails.
+        target_entity = self.__cache[self.entity_class].get_by_id(entity.id)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity,
+                                    target_entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
+        trv.run(vst)
 
     def query(self):
         return MemoryQuery(self.entity_class,

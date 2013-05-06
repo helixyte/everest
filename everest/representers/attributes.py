@@ -12,6 +12,7 @@ from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
+from itertools import izip
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
@@ -23,18 +24,28 @@ class AttributeKey(object):
     """
     Value object used as a key during resource data tree traversal.
     
-    Each key consists of a tuple of attribute strings that uniquely 
+    Each key consists of a tuple of mapped attributes that uniquely 
     determine a node's position in the resource data tree.
     """
     def __init__(self, data):
-        self.__data = tuple(data)
-        self.offset = 0
+        self.__data = list(data)
+        self.names = self._make_names(data)
+
+    def append(self, item):
+        self.__data.append(item)
+        self.names = self.names + self._make_names((item,))
+
+    def pop(self):
+        attr = self.__data.pop()
+        self.names = self.names[:-1]
+        return attr
 
     def __hash__(self):
-        return hash(self.__data)
+        return hash(self.names)
 
     def __eq__(self, other):
-        return self.__data == tuple(other)
+        return all((left == right for (left, right)
+                    in izip(self.names, other)))
 
     def __getitem__(self, index):
         return self.__data.__getitem__(index)
@@ -43,10 +54,36 @@ class AttributeKey(object):
         return len(self.__data)
 
     def __add__(self, other):
-        return AttributeKey(self.__data + tuple(other))
+        return self.__class__(self.__data + list(other))
 
     def __str__(self):
-        return 'AttributeKey(%s, %d)' % (self.__data, self.offset)
+        return 'AttributeKey(%s)' % '.'.join(self.names)
+
+    def _make_names(self, data):
+        raise NotImplementedError('Abstract method.')
+
+
+class MappedAttributeKey(AttributeKey):
+    def __init__(self, data):
+        AttributeKey.__init__(self, data)
+        self.offset = 0
+
+    def _make_names(self, data):
+        return tuple([attr.resource_attr for attr in data])
+
+    def __str__(self):
+        return 'MappedAttributeKey(%s, %d)' % ('.'.join(self.names),
+                                               self.offset)
+
+
+class ResourceAttributeKey(AttributeKey):
+    def _make_names(self, data):
+        return tuple([attr.resource_attr for attr in data])
+
+
+class DomainAttributeKey(AttributeKey):
+    def _make_names(self, data):
+        return tuple([attr.entity_attr for attr in data])
 
 
 class MappedAttribute(object):
@@ -129,11 +166,13 @@ class MappedAttribute(object):
         return getattr(self.__attr, 'cardinality', None)
 
     def __getattr__(self, attr_name):
-        # Make options available as attributes.
         if attr_name in self.options:
-            return self.options.get(attr_name)
+            # Make options available as attributes.
+            attr_value = self.options.get(attr_name)
         else:
-            raise AttributeError(attr_name)
+            # Fall back on underlying descriptor attributes.
+            attr_value = getattr(self.__attr, attr_name)
+        return attr_value
 
     def __str__(self):
         return '%s(%s -> %s, type %s)' % \

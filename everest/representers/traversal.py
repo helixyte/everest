@@ -9,9 +9,10 @@ Created on Apr 25, 2012.
 from collections import OrderedDict
 from everest.constants import ResourceAttributeKinds
 from everest.constants import ResourceKinds
+from everest.entities.attributes import \
+                        get_domain_class_terminal_attribute_iterator
 from everest.entities.utils import get_entity_class
-from everest.querying.specifications import asc
-from everest.representers.attributes import AttributeKey
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -24,6 +25,8 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import url_to_resource
+from everest.utils import get_nested_attribute
+from everest.utils import set_nested_attribute
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -222,6 +225,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
     def __init__(self, resource=None):
         ResourceDataVisitor.__init__(self)
         self.__resource = resource
+        self.__updating = not resource is None
 
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
@@ -238,7 +242,13 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                     nested_entity_data[attr.entity_name] = value
                 else:
                     entity_data[attr.entity_name] = value
+#            if not self.__updating:
             entity = entity_cls.create_from_data(entity_data)
+#            else:
+#                entity = reduce(getattr, tuple(attribute_key),
+#                                self.__resource).get_entity()
+#                for attr, value in entity_data.iteritems():
+#                    setattr(entity, attr, value)
             # Set nested attribute values.
             # FIXME: lazy loading of nested attributes is not supported.
             for nested_attr, value in nested_entity_data.iteritems():
@@ -251,7 +261,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             parent_data[index] = entity
         elif len(attribute_key) == 0:
             # Top level.
-            if self.__resource is None:
+            if not self.__updating:
                 # Store root entity and create resource.
                 mapped_cls = member_node.mapping.mapped_class
                 self.__resource = mapped_cls.create_from_entity(entity)
@@ -272,7 +282,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             for item in sorted(collection_data.items()):
                 entities.append(item[1])
         if len(attribute_key) == 0: # Top level.
-            if self.__resource is None:
+            if not self.__updating:
                 mapped_cls = collection_node.mapping.mapped_class
                 self.__resource = create_staging_collection(mapped_cls)
                 for ent in entities:
@@ -298,12 +308,13 @@ class DataTreeTraverser(object):
         """
         Runs this traverser.
         """
-        self._dispatch(AttributeKey(()), None, self.__root, None, visitor)
+        self._dispatch(MappedAttributeKey(()), None, self.__root, None,
+                       visitor)
 
     def _traverse_collection(self, attr_key, attr, collection_node,
                              parent_data, visitor):
-        is_link_node = self._is_link_node(collection_node, attr)
         collection_data = {}
+        is_link_node = self._is_link_node(collection_node, attr)
         if not is_link_node:
             all_mb_nodes = self._get_node_members(collection_node)
             for idx, mb_node in enumerate(all_mb_nodes):
@@ -372,7 +383,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                         # contain a nested attribute of the given mapped
                         # name.
                         continue
-                    nested_attr_key = attr_key + (mb_attr.name,)
+                    nested_attr_key = attr_key + (mb_attr,)
                     if ignore_opt is False:
                         # The offset in the attribute key ensures that
                         # the defaults for ignoring attributes of the
@@ -470,7 +481,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
             self._traverse_collection(attr_key, attr, node, parent_data,
                                       visitor)
         else:
-            raise ValueError('Data must be a resource.')
+            raise ValueError('Can only traverse domain objects that '
+                             'provide IMember or ICollection (key: %s).'
+                             % str(attr_key))
 
     def _get_node_type(self, node):
         return type(node)
@@ -482,11 +495,245 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
         return getattr(node, attr.name)
 
     def _get_node_members(self, node):
-        # If the collection is not ordered, order by ID for export.
-        if node.order is None:
-            node.order = asc('id')
         return iter(node)
 
     def _is_link_node(self, node, attr):
         return not attr is None and \
                not attr.options.get(WRITE_AS_LINK_OPTION) is False
+
+
+class SourceTargetTreeTraverser(object):
+    def __init__(self, source, target,
+                 ignore_none_values=True):
+        self.__source_root = source
+        self.__target_root = target
+        self._ignore_none_values = ignore_none_values
+
+    def run(self, visitor):
+        """
+        Runs this traverser.
+        """
+        self._dispatch([], MappedAttributeKey(()), self.__source_root,
+                       self.__target_root, visitor)
+
+    def _dispatch(self, path, attr_key, source_node, target_node, visitor):
+        raise NotImplementedError('Abstract method.')
+
+    def _do_traverse(self, attr_key, source_node, target_node):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_node_type(self, node):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_attribute_iterator(self, element_type, attr_key):
+        raise NotImplementedError('Abstract method.')
+
+    def _do_dispatch(self, attr_key, source_node, target_node):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_node_nested(self, node, attr):
+        raise NotImplementedError('Abstract method.')
+
+    def _get_node_members(self, node):
+        raise NotImplementedError('Abstract method.')
+
+    def _lookup_target(self, source_node):
+        raise NotImplementedError('Abstract method.')
+
+    def _traverse_node(self, path, attr_key, source_node, target_node,
+                          visitor):
+        if self._do_traverse(attr_key, source_node, target_node):
+            if len(attr_key) == 0:
+                attr = attr_key[-1]
+                node_type = get_member_class(attr.value_type)
+            else:
+                node_type = self._get_node_type(source_node or target_node)
+            for mb_attr in self._get_attribute_iterator(node_type, attr_key):
+                attr_key.append(mb_attr)
+                if self._do_dispatch(attr_key, source_node, target_node):
+                    if not source_node is None:
+                        attr_source = self._get_node_nested(source_node,
+                                                            mb_attr)
+                    else:
+                        attr_source = None
+                    if not target_node is None:
+                        attr_target = self._get_node_nested(target_node,
+                                                            mb_attr)
+                    else:
+                        attr_target = None
+                    if attr_source is None and attr_target is None:
+                        # If both source and target have None values, there is
+                        # nothing to do.
+                        continue
+#                    if ignore_opt is False:
+#                        # The offset in the attribute key ensures that
+#                        # the defaults for ignoring attributes of the
+#                        # nested attribute can be retrieved correctly.
+#                        nested_attr_key.offset = len(nested_attr_key)
+                    path.append((source_node, target_node))
+                    self._dispatch(path, attr_key, attr_source, attr_target,
+                                   visitor)
+                    path.pop()
+                attr_key.pop()
+        visitor.visit_node(attr_key, source_node, target_node)
+#                             is_link_node, parent_data,
+#                             target_node=target_node, index=index)
+
+    def _traverse_set(self, path, attr_key, source_set, target_set, visitor):
+        source_ids = set()
+        if self._do_traverse(attr_key, source_set, target_set):
+            for source_node in self._get_node_members(source_set):
+                source_id = source_node.id
+                if not source_id is None:
+                    source_ids.add(source_id)
+                    if not target_set is None:
+                        # if we find a target here: UPDATE else: CREATE
+                        target_node = self._lookup_target(source_node)
+                    else:
+                        # CREATE
+                        target_node = None
+                else:
+                    # CREATE
+                    target_node = None
+                self._traverse_node(path, attr_key, source_node,
+                                      target_node, visitor)
+        if not target_set is None:
+            for target_node in target_set:
+                if target_node.id in source_ids:
+                    continue
+                # DELETE
+                self._traverse_node(path, attr_key, None, target_node,
+                                      visitor)
+        visitor.visit_set(path, attr_key, source_set, target_set)
+
+
+class SourceTargetDataElementTreeTraverser(SourceTargetTreeTraverser):
+    def __init__(self, source, target, mapping,
+                 direction=PROCESSING_DIRECTIONS.READ,
+                 **kw):
+        SourceTargetTreeTraverser.__init__(self, source, target, **kw)
+        self._mapping = mapping
+        self._direction = direction
+
+    def _dispatch(self, path, attr_key, source, target, visitor):
+        ifcs = provided_by(source or target)
+        if IMemberResource in ifcs:
+            self._traverse_node(path, attr_key, source, target, visitor)
+        elif ICollectionResource in ifcs:
+            self._traverse_set(path, attr_key, source, target, visitor)
+        else:
+            raise ValueError('Can only traverse domain objects that '
+                             'provide IMember or ICollection (key: %s).'
+                             % str(attr_key))
+
+    def _do_traverse(self, attr_key, source_node, target_node):
+        return self._is_link_node(attr_key[-1])
+
+    def _do_dispatch(self, attr_key, source_node, target_node):
+        ignore_opt = self._get_ignore_option(attr_key[-1])
+        return not attr_key[-1].should_ignore(ignore_opt, attr_key)
+
+    def _lookup_target(self, source_node):
+        coll = source_node.get_root_collection()
+        return coll[source_node.slug]
+
+    def _get_attribute_iterator(self, element_type, attr_key):
+        return self._mapping.nonterminal_attribute_iterator(
+                                                    mapped_class=element_type,
+                                                    key=attr_key)
+
+    def _get_node_type(self, node):
+        return type(node)
+
+    def _get_node_terminal(self, node, attr):
+        return getattr(node, attr.name)
+
+    def _get_node_nested(self, node, attr):
+        return getattr(node, attr.name)
+
+    def _get_node_members(self, node):
+        return iter(node)
+
+    def _is_link_node(self, attr):
+        return not attr is None and \
+               not attr.options.get(WRITE_AS_LINK_OPTION) is False
+
+    def _get_ignore_option(self, attr):
+        if self._direction == PROCESSING_DIRECTIONS.READ:
+            opt = attr.options.get(IGNORE_ON_READ_OPTION)
+        else:
+            opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
+        return opt
+
+
+class CrudResourceVisitor(object):
+    def __init__(self, session, aggregate_factory):
+        self.__session = session
+        self.__agg_fac = aggregate_factory
+
+    def visit_node(self, path, attribute, source_data_element,
+                   target_resource):
+        if attribute is None:
+            # Visiting the root.
+            entity_class = get_entity_class(target_resource)
+        else:
+            entity_class = get_entity_class(attribute.attr_type)
+#        if target_entity is None and not source_entity.id is None:
+#            # Try to load the target entity if we have an ID.
+#            agg = self.__agg_fac(source_entity)
+#            target_entity = agg.get_by_id(source_entity.id)
+        if source_data_element is None or target_resource is None:
+            if attribute is None:
+                relationship = None
+            else:
+                if source_data_element is None:
+                    parent = path[-1][1]
+                else:
+                    parent = path[-1][0]
+                relationship = attribute.make_relationship(parent)
+            if target_resource is None:
+                self.__create(source_data_element, entity_class,
+                              relationship=relationship)
+            else:
+                self.__delete(target_resource, entity_class,
+                              relationship=relationship)
+        else:
+            self.__update(entity_class, source_data_element, target_resource)
+
+    def visit_set(self, path, attr, source_aggregate, target_aggregate):
+        pass
+
+    def __create(self, entity, entity_class, relationship=None):
+        if relationship is None:
+            if not entity in self.__session:
+                self.__session.add(entity_class, entity)
+        else:
+            relationship.add(entity)
+            if not entity in self.__session:
+                if not entity.id is None:
+                    root_agg = self.__agg_fac(entity_class)
+                    do_add = root_agg.get_by_id(entity.id) is None
+                else:
+                    do_add = True
+                if do_add:
+                    self.__session.add(entity_class, entity)
+
+    def __update(self, entity_class, source_entity, target_entity):
+        for attr in get_domain_class_terminal_attribute_iterator(entity_class):
+            source_value = get_nested_attribute(source_entity,
+                                                attr.entity_attr)
+            target_value = get_nested_attribute(target_entity,
+                                                attr.entity_attr)
+            if target_value != source_value:
+                set_nested_attribute(target_entity, attr.entity_attr,
+                                     source_value)
+
+    def __delete(self, entity, entity_class, relationship=None):
+        if relationship is None:
+            # Visiting the root.
+            self.__session.remove(entity_class, entity)
+        else:
+            root_agg = self.__agg_fac(entity_class)
+            if not root_agg.get_by_id(entity.id) is None:
+                self.__session.remove(entity_class, entity)
+            relationship.remove(entity)
