@@ -19,6 +19,7 @@ IGNORE_OPTION = 'ignore' # deprecated
 IGNORE_ON_READ_OPTION = 'ignore_on_read'
 IGNORE_ON_WRITE_OPTION = 'ignore_on_write'
 WRITE_AS_LINK_OPTION = 'write_as_link'
+WRITE_MEMBERS_AS_LINK_OPTION = 'write_members_as_link'
 REPR_NAME_OPTION = 'repr_name'
 
 
@@ -47,6 +48,9 @@ class RepresenterConfiguration(object):
        %(WRITE_AS_LINK_OPTION)s :
          Write this mapped attribute as a link rather than as a full
          representation.
+       %(WRITE_MEMBERS_AS_LINK_OPTION)s :
+         Write members of a mapped collection attribute as a link rather
+         than as a full representation.
        %(IGNORE_ON_READ_OPTION)s:
          Ignore this attribute when reading a representation.
        %(IGNORE_ON_WRITE_OPTION)s:
@@ -65,6 +69,7 @@ class RepresenterConfiguration(object):
     _default_attributes_options = {IGNORE_ON_READ_OPTION:None,
                                    IGNORE_ON_WRITE_OPTION:None,
                                    WRITE_AS_LINK_OPTION:None,
+                                   WRITE_MEMBERS_AS_LINK_OPTION:None,
                                    REPR_NAME_OPTION:None}
 
     def __init__(self, options=None, attribute_options=None):

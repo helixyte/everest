@@ -12,6 +12,7 @@ from everest.representers.attributes import AttributeKey
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
@@ -295,7 +296,10 @@ class DataTreeTraverser(object):
 
     def _traverse_collection(self, attr_key, attr, collection_node,
                              parent_data, visitor):
-        is_link_node = self._is_link_node(collection_node, attr)
+        is_link_node = \
+            self._is_link_node(collection_node, attr) \
+            and not (not attr is None and
+                     attr.options.get(WRITE_MEMBERS_AS_LINK_OPTION) is True)
         collection_data = {}
         if not is_link_node:
             all_mb_nodes = self._get_node_members(collection_node)
@@ -336,7 +340,10 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
                          visitor, index=None):
         member_data = OrderedDict()
-        is_link_node = self._is_link_node(member_node, attr)
+        is_link_node = \
+            self._is_link_node(member_node, attr) \
+            or (not index is None and not attr is None and
+                attr.options.get(WRITE_MEMBERS_AS_LINK_OPTION) is True)
         # Ignore links for traversal.
         if not is_link_node:
             if not attr is None:

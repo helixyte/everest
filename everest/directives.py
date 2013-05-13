@@ -12,6 +12,7 @@ from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
+from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from pyramid.threadlocal import get_current_registry
@@ -471,7 +472,8 @@ def option(_context, name, value, type=None): # pylint: disable=W0622
         field = type()
         value = field.fromUnicode(value)
     elif name in (IGNORE_OPTION, IGNORE_ON_READ_OPTION,
-                  IGNORE_ON_WRITE_OPTION, WRITE_AS_LINK_OPTION):
+                  IGNORE_ON_WRITE_OPTION, WRITE_AS_LINK_OPTION,
+                  WRITE_MEMBERS_AS_LINK_OPTION):
         field = Bool()
         value = field.fromUnicode(value)
     grouping_context.options[name] = value
