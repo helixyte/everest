@@ -271,7 +271,11 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 elif attr.kind == ResourceAttributeKinds.COLLECTION:
                     attr_type = get_collection_class(attr.value_type)
                 mp = self.mapping.mapping_registry.find_mapping(attr_type)
-                xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
+                if not mp is None:
+                    xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
+                else:
+                    # Not mapped.
+                    xml_ns = None
             if not xml_ns is None:
                 q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
             else:
