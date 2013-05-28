@@ -33,6 +33,7 @@ from everest.repositories.memory import ObjectOrderSpecificationVisitor
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.representers.atom import AtomResourceRepresenter
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
@@ -54,7 +55,9 @@ from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
-from pyramid.configuration import Configurator as PyramidConfigurator
+#from pyramid.configuration import Configurator as PyramidConfigurator
+from pyramid.config import Configurator as PyramidConfigurator
+from pyramid.config.util import action_method
 from pyramid.interfaces import IApplicationCreated
 from pyramid.interfaces import IRendererFactory
 from pyramid.interfaces import IRequest
@@ -66,7 +69,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-from everest.representers.base import MappingResourceRepresenter
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -81,6 +83,7 @@ class Configurator(PyramidConfigurator):
     def __init__(self,
                  registry=None,
                  package=None,
+                 autocommit=True,
                  # Entity level services.
                  filter_specification_factory=None,
                  order_specification_factory=None,
@@ -104,12 +107,13 @@ class Configurator(PyramidConfigurator):
             # class constructor.
             # FIXME: There is some code duplication with Pyramid here.
             name_resolver = DottedNameResolver(package)
-            name_resolver = name_resolver
             package_name = name_resolver.get_package_name()
             registry = Registry(package_name)
             self.registry = registry
+        # FIXME: Investigate why we need the "autocommit=True" flag here.
         PyramidConfigurator.__init__(self,
-                                     registry=registry, package=package, **kw)
+                                     registry=registry, package=package,
+                                     autocommit=autocommit, **kw)
         # Set up configurator's load_zcml method.
         self.add_directive('load_zcml', load_zcml, action_wrap=False)
         if call_setup:
@@ -439,6 +443,15 @@ class Configurator(PyramidConfigurator):
             resource = self._get_utility(resource, 'member-class')
         self.add_resource_view(resource, **kw)
 
+    @action_method
+    def add_renderer(self, name, factory):
+        # Pyramid has default renderers (e.g., for JSON) that conflict with
+        # the everest renderers, hence we override add_renderer to only add
+        # the non-conflicting
+        if not (name in get_registered_representer_names()
+                and factory is not RendererFactory):
+            PyramidConfigurator.add_renderer(self, name, factory)
+
     def _get_utility(self, *args, **kw):
         return self.registry.getUtility(*args, **kw) # pylint: disable=E1103
 
@@ -521,7 +534,8 @@ class Configurator(PyramidConfigurator):
             self.__add_repository(REPOSITORY_DOMAINS.ROOT,
                                   REPOSITORY_TYPES.MEMORY,
                                   None, None, True, None)
-            # Create representer registry and register builtin representer classes.
+            # Create representer registry and register builtin
+            # representer classes.
             rpr_reg = RepresenterRegistry()
             rpr_reg.register_representer_class(CsvResourceRepresenter)
             rpr_reg.register_representer_class(JsonResourceRepresenter)
@@ -533,7 +547,8 @@ class Configurator(PyramidConfigurator):
             rnd = self.query_registered_utilities(IRendererFactory,
                                                   reg_rnd_name)
             if not isinstance(rnd, RendererFactory):
-                self.add_renderer(reg_rnd_name, RendererFactory)
+                PyramidConfigurator.add_renderer(self, reg_rnd_name,
+                                                 RendererFactory)
         if not filter_specification_factory is None:
             self._set_filter_specification_factory(
                                                 filter_specification_factory)
