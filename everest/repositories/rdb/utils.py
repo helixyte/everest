@@ -125,9 +125,7 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
             mpr.dispose()
             raise ValueError('Attempting to overwrite the custom data '
                              'descriptor defined for the "id" attribute.')
-        fget = lambda obj: getattr(obj, id_attribute)
-        fset = lambda self, value: setattr(self, id_attribute, value)
-        class_.id = hybrid_property(fget, fset=fset, expr=fget)
+        class_.id = synonym(id_attribute)
     # Set up the slug attribute as a hybrid property.
     if slug_expression is None:
         cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
@@ -149,6 +147,16 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         descr = slug_descr
     class_.slug = hybrid_descriptor(descr, expr=cls_expr)
     return mpr
+
+
+def synonym(name):
+    """
+    Utility function mimicking the behavior of the old SA synonym function
+    with the new hybrid property semantics.
+    """
+    return hybrid_property(lambda inst: getattr(inst, name),
+                           lambda inst, value: setattr(inst, name, value),
+                           expr=lambda cls: getattr(cls, name))
 
 
 def clear_mappers():
