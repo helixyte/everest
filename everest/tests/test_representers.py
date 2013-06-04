@@ -77,14 +77,14 @@ class RepresenterRegistryTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             rpr_reg.register(MyEntityMember, MyMime)
         exc_msg = 'No representer class has been registered for content type'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_autocreate_mapping(self):
         coll = create_collection()
         # This registers a representer (factory) and creates a mapping for
         # the collection.
         coll_rpr = as_representer(coll, CsvMime)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         # This auto-creates a mapping for the member.
         coll_rpr.data_from_resource(mb)
         rpr_reg = self.config.get_registered_utility(IRepresenterRegistry)
@@ -149,7 +149,7 @@ class _RepresenterTestCase(ResourceTestCase):
                                            self.content_type)
 
     def test_member_representer(self):
-        mb = iter(self._collection).next()
+        mb = next(iter(self._collection))
         rpr = as_representer(mb, self.content_type)
         mb_reloaded = rpr.from_string(rpr.to_string(mb))
         self.assert_equal(mb.id, mb_reloaded.id)
@@ -201,17 +201,17 @@ class _RepresenterTestCase(ResourceTestCase):
             coll_checker(reloaded_coll)
 
     def _check_id(self, collection):
-        self.assert_equal(iter(collection).next().id,
-                          iter(self._collection).next().id)
+        self.assert_equal(next(iter(collection)).id,
+                          next(iter(self._collection).id))
 
     def _check_nested_member(self, collection):
-        self.assert_equal(iter(collection).next().parent.id,
-                          iter(self._collection).next().parent.id)
+        self.assert_equal(next(iter(collection)).parent.id,
+                          next(iter(self._collection)).parent.id)
 
     def _check_nested_collection(self, collection):
         self.assert_equal(
-                    iter(iter(collection).next().children).next().id,
-                    iter(iter(self._collection).next().children).next().id)
+                    next(iter(next(iter(collection)).children)).id,
+                    next(iter(next(iter(self._collection)).children)).id)
 
 
 class JsonRepresenterTestCase(_RepresenterTestCase):
@@ -252,7 +252,7 @@ class JsonRepresenterTestCase(_RepresenterTestCase):
             trv = JsonDataTreeTraverser(json_data, mp)
             with self.assert_raises(ValueError) as cm:
                 trv.run(vst)
-            self.assert_true(cm.exception.message.startswith(exc_msg))
+            self.assert_true(str(cm.exception).startswith(exc_msg))
 
 
 class CsvRepresenterTestCase(_RepresenterTestCase):
@@ -338,7 +338,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
                              ('parent_text',):{IGNORE_OPTION:True, }}
         self._representer.configure(attribute_options=attribute_options)
         loaded_coll = self._representer.resource_from_data(data_el)
-        self.assert_true(iter(loaded_coll).next().parent is None)
+        self.assert_true(next(iter(loaded_coll)).parent is None)
 
     def test_csv_with_two_collections_expanded(self):
         def check_string(rpr_str):
@@ -368,23 +368,23 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         csv_invalid_field = '"id","text","number","foo"\n0,"abc",0,"xyz"'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_invalid_field)
-        self.assert_true(cm.exception.message.startswith('Invalid field'))
+        self.assert_true(str(cm.exception).startswith('Invalid field'))
         csv_invalid_row_length = '"id","text","number"\n0,"abc",0,"xyz",5'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_invalid_row_length)
         self.assert_true(
-                    cm.exception.message.startswith('Invalid row length'))
+                    str(cm.exception).startswith('Invalid row length'))
         csv_value_for_ignored_field = '"id","children"\n' \
                                       '0,"http://0.0.0.0/my-entity-parents/0"'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(
                                                 csv_value_for_ignored_field)
-        self.assert_true(cm.exception.message.startswith(
+        self.assert_true(str(cm.exception).startswith(
                                                     'Value for attribute'))
         csv_invalid_link = '"id","parent"\n0,"my-entity-parents/0"'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_invalid_link)
-        self.assert_true(cm.exception.message.startswith(
+        self.assert_true(str(cm.exception).startswith(
                                             'Value for nested attribute'))
 
     def test_csv_with_two_collections_expanded_fails(self):
@@ -400,7 +400,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
                 '"id","children.id","children.children.id"\n0,0,0'
         with self.assert_raises(ValueError) as cm:
             self._representer.data_from_representation(csv_two_colls_expanded)
-        self.assert_true(cm.exception.message.startswith(
+        self.assert_true(str(cm.exception).startswith(
                                             'All but one nested collection'))
 
     def test_csv_with_multiple_nested_members(self):
@@ -419,7 +419,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
           1)
 
     def test_csv_none_attribute_value(self):
-        ent = iter(self._collection).next().get_entity()
+        ent = next(iter(self._collection)).get_entity()
         ent.text = None
         def check_string(rpr_str):
             lines = rpr_str.split(os.linesep)
@@ -470,7 +470,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
 
     def test_terminal_attr(self):
         coll = create_collection()
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         mp = self.__get_member_mapping_and_representer()[0]
         text_attr = mp.get_attribute_map()['text']
         de = mp.map_to_data_element(mb)
@@ -481,7 +481,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
 
     def test_data(self):
         coll = create_collection()
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         mp = self.__get_member_mapping_and_representer()[0]
         de = mp.map_to_data_element(mb)
         self.assert_equal(de.data.keys(),
@@ -504,7 +504,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
 
     def test_create_with_attr_namespace(self):
         coll = create_collection()
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         ns = 'foo'
         mp = self.__get_member_mapping_and_representer()[0]
         mp.configuration.set_attribute_option(('parent',),
@@ -519,7 +519,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
 
     def test_create_with_attr_no_namespace(self):
         coll = create_collection()
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         ns = None
         mp = self.__get_member_mapping_and_representer()[0]
         parent_mp = mp.mapping_registry.find_mapping(MyEntityParentMember)
@@ -550,7 +550,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_mapping(Link)
         de = mp.data_element_class.create_from_resource(coll)
-        link_el = de.iterchildren().next()
+        link_el = next(de.iterchildren())
         self.assert_equal(link_el.get_kind(), ResourceKinds.COLLECTION)
         self.assert_not_equal(link_el.get_relation().find('myentity'), -1)
         self.assert_true(link_el.get_title().startswith('Collection of'))
@@ -571,7 +571,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         with self.assert_raises(SyntaxError) as cm:
             rpr.from_string('<?xml version="1.0" encoding="UTF-8"?><murks/>')
         exc_msg = 'Could not parse XML document for schema'
-        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def test_no_xml_string_as_schema(self):
         mp, rpr = self.__get_collection_mapping_and_representer()
@@ -580,7 +580,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         with self.assert_raises(SyntaxError) as cm:
             rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
         exc_msg = 'Could not parse XML schema'
-        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def test_no_schema_xml_string_as_schema(self):
         mp, rpr = self.__get_collection_mapping_and_representer()
@@ -589,7 +589,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         with self.assert_raises(SyntaxError) as cm:
             rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
         exc_msg = 'Invalid XML schema'
-        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def __get_collection_mapping_and_representer(self):
         rc_type = get_collection_class(IMyEntity)
@@ -628,7 +628,7 @@ class AtomRepresentationTestCase(ResourceTestCase):
         _test(coll)
 
     def test_atom_member(self):
-        mb = iter(create_collection()).next()
+        mb = next(iter(create_collection()))
         rpr = as_representer(mb, AtomMime)
         rpr_str = rpr.to_string(mb)
         self.assert_not_equal(
@@ -740,7 +740,7 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             coll.update_from_data(de)
         exc_msg = 'New member data should not provide an ID attribute.'
-        self.assert_equal(cm.exception.message, exc_msg)
+        self.assert_equal(str(cm.exception), exc_msg)
 
     def test_update_nested_member_from_data(self):
         # Set up member that does not have a parent.

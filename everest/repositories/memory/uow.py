@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 16, 2013.
 """
 from collections import defaultdict
+from pyramid.compat import iteritems_
 from weakref import WeakSet
 from weakref import ref
 
@@ -94,19 +95,19 @@ class EntityStateManager(object):
     @classmethod
     def _get_state_data(cls, entity):
         return dict([(attr_name, attr_value)
-                     for attr_name, attr_value in entity.__dict__.iteritems()
+                     for attr_name, attr_value in iteritems_(entity.__dict__)
                      if not attr_name.startswith('_')])
 
     @classmethod
     def _set_state_data(cls, entity, data):
-        for attr_name, attr_value in data.iteritems():
+        for attr_name, attr_value in iteritems_(data):
             setattr(entity, attr_name, attr_value)
 
     def __get_state_string(self):
         # Concatenate all public attribute name:value pairs.
         data = self._get_state_data(self.__obj_ref())
         tokens = ['%s:%s' % (k, v)
-                  for (k, v) in data.iteritems()]
+                  for (k, v) in iteritems_(data)]
         return ','.join(tokens)
 
     def __get_state(self):

@@ -12,7 +12,7 @@ from everest.repositories.memory.cache import EntityCacheManager
 from everest.repositories.memory.uow import UnitOfWork
 from threading import local
 from transaction.interfaces import IDataManager
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 import transaction
 
 __docformat__ = 'reStructuredText en'
@@ -176,12 +176,12 @@ class MemorySessionFactory(SessionFactory):
         return session
 
 
+@implementer(IDataManager)
 class DataManager(object):
     """
     Data manager to plug a :class:`MemorySession` into a zope transaction.
     """
     # TODO: implement safepoints.
-    implements(IDataManager)
 
     def __init__(self, session):
         self.__session = session

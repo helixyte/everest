@@ -6,8 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 30, 2012.
 """
-from ConfigParser import SafeConfigParser
-from StringIO import StringIO
+from pyramid.compat import NativeIO
+from pyramid.compat import configparser
 import nose.plugins
 import os
 
@@ -103,7 +103,7 @@ class EverestIni(object):
             cls.__ini_parser = cls.__make_parser()
             if cls.ini_file_path is None:
                 # Initialize with empty ini file.
-                strm = StringIO('[DEFAULT]')
+                strm = NativeIO('[DEFAULT]')
                 cls.__ini_parser.readfp(strm)
             else:
                 cls.__ini_parser.read(cls.ini_file_path)
@@ -115,4 +115,4 @@ class EverestIni(object):
             defaults = {'here':os.path.dirname(cls.ini_file_path)}
         else:
             defaults = {}
-        return SafeConfigParser(defaults=defaults)
+        return configparser.SafeConfigParser(defaults=defaults)

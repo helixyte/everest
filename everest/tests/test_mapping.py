@@ -136,7 +136,7 @@ class MappingTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             mp.mapping_registry.set_mapping(mp)
         exc_msg = 'is already registered for namespace'
-        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def test_mapping_duplicate_tag(self):
         mp_reg = get_mapping_registry(XmlMime)
@@ -148,7 +148,7 @@ class MappingTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             getattr(mp.mapping_registry, 'parsing_lookup')
         exc_msg = 'Duplicate tag "%s" ' % mb_tag
-        self.assert_not_equal(cm.exception.message.find(exc_msg), -1)
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def test_mapping_reset_lookup(self):
         mp_reg = get_mapping_registry(XmlMime)

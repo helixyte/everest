@@ -12,7 +12,7 @@ from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
 from everest.resources.utils import resource_to_url
 from everest.resources.utils import url_to_resource
-from urlparse import urlparse
+from pyramid.compat import urlparse
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UrlTestCase',
@@ -34,7 +34,7 @@ class UrlTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             resource_to_url(ent)
         exc_msg = 'Can not convert non-resource object'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_resource_to_url_floating_member(self):
         ent = create_entity(entity_id=2)
@@ -42,7 +42,7 @@ class UrlTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             resource_to_url(mb)
         exc_msg = 'Can not generate URL for floating member'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_resource_to_url(self):
         self.__check_url(resource_to_url(self.coll),
@@ -85,42 +85,42 @@ class UrlTestCase(ResourceTestCase):
         with self.assert_raises(KeyError) as cm:
             url_to_resource('http://0.0.0.0:6543/my-foos/')
         exc_msg = 'has no subelement my-foos'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
     def test_url_to_resource_non_resource_object(self):
         with self.assert_raises(ValueError) as cm:
             url_to_resource('http://0.0.0.0:6543/')
         exc_msg = 'Traversal found non-resource object'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_url_to_resource_invalid_filter_criterion(self):
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?q=id|foo')
         exc_msg = 'Expression parameters have errors'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_url_to_resource_invalid_order_criterion(self):
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?sort=id|foo')
         exc_msg = 'Expression parameters have errors'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_url_to_resource_invalid_slice(self):
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?start=0&size=a')
         exc_msg = 'must be a number.'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?start=a&size=100')
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?start=-1&size=100')
         exc_msg = 'must be zero or a positive number.'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
         with self.assert_raises(ValueError) as cm:
             url_to_resource(self.base_url + '?start=0&size=-100')
         exc_msg = 'must be a positive number.'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
 
     def test_url_to_resource(self):
         coll_from_url = url_to_resource(self.base_url)
@@ -211,7 +211,7 @@ class UrlTestCase(ResourceTestCase):
 
     def __check_url(self, url,
                     schema=None, path=None, params=None, query=None):
-        urlp = urlparse(url)
+        urlp = urlparse.urlparse(url)
         if not schema is None:
             self.assert_equal(urlp.scheme, schema) # pylint: disable=E1101
         if not path is None:

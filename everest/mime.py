@@ -26,7 +26,7 @@ from everest.interfaces import IXmlRequest
 from everest.interfaces import IZipMime
 from everest.interfaces import IZipRequest
 from everest.utils import BidirectionalLookup
-from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from zope.interface import provider # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
@@ -115,8 +115,8 @@ get_registered_mime_type_for_extension = \
                                     MimeTypeRegistry.get_type_for_extension
 
 
+@provider(IJsonMime)
 class JsonMime(object):
-    class_provides(IJsonMime)
     mime_type_string = 'application/json'
     representer_name = 'json'
     file_extension = '.json'
@@ -126,8 +126,8 @@ JSON_MIME = JsonMime.mime_type_string
 register_mime_type(JsonMime)
 
 
+@provider(IAtomMime)
 class AtomMime(object):
-    class_provides(IAtomMime)
     mime_type_string = 'application/atom+xml'
     representer_name = 'atom'
     file_extension = '.atom'
@@ -138,28 +138,28 @@ register_mime_type(AtomMime)
 
 
 class AtomFeedMime(AtomMime):
-    class_provides(IAtomFeedMime)
+    provider(IAtomFeedMime)
     mime_type_string = 'application/atom+xml;type=feed'
 
 ATOM_FEED_MIME = AtomFeedMime.mime_type_string
 
 
 class AtomEntryMime(AtomMime):
-    class_provides(IAtomEntryMime)
+    provider(IAtomEntryMime)
     mime_type_string = 'application/atom+xml;type=entry'
 
 ATOM_ENTRY_MIME = AtomFeedMime.mime_type_string
 
 
 class AtomServiceMime(AtomMime):
-    class_provides(IAtomServiceMime)
+    provider(IAtomServiceMime)
     mime_type_string = 'application/atomsvc+xml'
 
 ATOM_SERVICE_MIME = AtomFeedMime.mime_type_string
 
 
+@provider(IXmlMime)
 class XmlMime(object):
-    class_provides(IXmlMime)
     mime_type_string = 'application/xml'
     representer_name = 'xml'
     file_extension = '.xml'
@@ -169,8 +169,8 @@ XML_MIME = XmlMime.mime_type_string
 register_mime_type(XmlMime)
 
 
+@provider(ICsvMime)
 class CsvMime(object):
-    class_provides(ICsvMime)
     mime_type_string = 'application/csv'
     representer_name = 'csv'
     file_extension = '.csv'
@@ -180,32 +180,32 @@ CSV_MIME = CsvMime.mime_type_string
 register_mime_type(CsvMime)
 
 
+@provider(IHtmlMime)
 class HtmlMime(object):
-    class_provides(IHtmlMime)
     mime_type_string = 'text/html'
     file_extension = '.html'
 
 HTML_MIME = HtmlMime.mime_type_string
 
 
+@provider(ITextPlainMime)
 class TextPlainMime(object):
-    class_provides(ITextPlainMime)
     mime_type_string = 'text/plain'
     file_extension = '.txt'
 
 TEXT_PLAIN_MIME = TextPlainMime.mime_type_string
 
 
+@provider(IXlsMime)
 class XlsMime(object):
-    class_provides(IXlsMime)
     mime_type_string = 'application/vnd.xls'
     file_extension = '.xls'
 
 XLS_MIME = XlsMime.mime_type_string
 
 
+@provider(IZipMime)
 class ZipMime(object):
-    class_provides(IZipMime)
     mime_type_string = 'application/zip'
     file_extension = '.zip'
 

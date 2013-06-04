@@ -19,6 +19,7 @@ from everest.resources.utils import get_root_collection
 from functools import update_wrapper
 from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
+from pyramid.compat import iteritems_
 from pyramid.registry import Registry
 from pyramid.testing import DummyRequest
 from webtest import TestApp
@@ -459,7 +460,7 @@ def check_attributes(test_object, attribute_map):
     :param attribute_map: a dictionary with key = attribute name
             and value = expected value for this attribute
     """
-    for attr_name, exp_val in attribute_map.iteritems():
+    for attr_name, exp_val in iteritems_(attribute_map):
         obj_val = getattr(test_object, attr_name)
         if obj_val != exp_val:
             raise AssertionError('Values for attribute %s differ!'

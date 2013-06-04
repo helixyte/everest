@@ -12,6 +12,7 @@ from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
 from everest.repositories.rdb.utils import OrderClauseList
 from everest.resources.interfaces import IResource
+from functools import reduce as func_reduce
 from sqlalchemy import and_ as sqlalchemy_and
 from sqlalchemy import not_ as sqlalchemy_not
 from sqlalchemy import or_ as sqlalchemy_or
@@ -19,7 +20,7 @@ from sqlalchemy.orm.interfaces import MANYTOMANY
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.sql.expression import ClauseList
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmAttributeInspector',
@@ -110,13 +111,12 @@ class OrmAttributeInspector(object):
         return kind, target_type
 
 
+@implementer(IFilterSpecificationVisitor)
 class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
     """
     Filter specification visitor implementation for the RDB repository
     (builds a SQL expression).
     """
-
-    implements(IFilterSpecificationVisitor)
 
     def __init__(self, entity_class, custom_clause_factories=None):
         """
@@ -200,16 +200,15 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
             elif kind == EntityAttributeKinds.AGGREGATE:
                 expr = entity_attr.any
                 exprs.insert(0, expr)
-        return reduce(lambda g, h: h(g), exprs, expr)
+        return func_reduce(lambda g, h: h(g), exprs, expr)
 
 
+@implementer(IOrderSpecificationVisitor)
 class SqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
     Order specification visitor implementation for the rdb repository 
     (builds a SQL expression).
     """
-
-    implements(IOrderSpecificationVisitor)
 
     def __init__(self, entity_class, custom_join_clauses=None):
         """

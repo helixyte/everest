@@ -9,7 +9,7 @@ Created on Nov 22, 2011.
 from datetime import datetime
 from everest.entities.base import Entity
 from everest.interfaces import IUserMessage
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 import uuid
 
 __docformat__ = 'reStructuredText en'
@@ -17,9 +17,8 @@ __all__ = ['UserMessage',
            ]
 
 
+@implementer(IUserMessage)
 class UserMessage(Entity):
-    # This is required for the user message checker to work.
-    implements(IUserMessage)
     def __init__(self, text, guid=None, time_stamp=None, **kw):
         Entity.__init__(self, **kw)
         if guid is None:

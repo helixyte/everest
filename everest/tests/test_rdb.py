@@ -26,7 +26,7 @@ from sqlalchemy import Table
 from sqlalchemy.engine import create_engine
 from sqlalchemy.sql.expression import Function
 from sqlalchemy.sql.expression import cast
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RdbTestCase',
@@ -60,8 +60,8 @@ class RdbTestCase(Pep8CompliantTestCase):
         class MyDerivedEntity(MyEntity):
             pass
 
+        @implementer(IEntity)
         class MyEntityWithCustomId(object):
-            implements(IEntity)
 
             def __init__(self, id=None): # redefining id pylint: disable=W0622
                 self.__id = id
@@ -82,12 +82,12 @@ class RdbTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm:
             mpr = mapper(MyDerivedEntity, t1, id_attribute='my_id')
         msg_str = 'Attempting to overwrite the mapped'
-        self.assert_true(cm.exception.message.startswith(msg_str))
+        self.assert_true(str(cm.exception).startswith(msg_str))
         t2 = self._make_table(False)
         with self.assert_raises(ValueError) as cm:
             mpr = mapper(MyEntityWithCustomId, t2, id_attribute='my_id')
         msg_str = 'Attempting to overwrite the custom data'
-        self.assert_true(cm.exception.message.startswith(msg_str))
+        self.assert_true(str(cm.exception).startswith(msg_str))
         #
         slug_expr = lambda cls: as_slug_expression(cast(cls.id, String))
         mpr = mapper(MyDerivedEntity, t2,

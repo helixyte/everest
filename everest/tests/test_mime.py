@@ -14,7 +14,7 @@ from everest.mime import get_registered_mime_types
 from everest.mime import get_registered_representer_names
 from everest.mime import register_mime_type
 from everest.testing import Pep8CompliantTestCase
-from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from zope.interface import provider # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MimeTestCase',
@@ -51,22 +51,22 @@ class MimeNotImplementingIMime(object):
     pass
 
 
+@provider(IMime)
 class MimeWithDuplicateTypeString(object):
-    class_provides(IMime)
     mime_type_string = 'application/xml'
     representer_name = 'myxml'
     file_extension = 'xmlish'
 
 
+@provider(IMime)
 class MimeWithDuplicateNameString(object):
-    class_provides(IMime)
     mime_type_string = 'application/xmlish'
     representer_name = 'xml'
     file_extension = '.xmlish'
 
 
+@provider(IMime)
 class MimeWithDuplicateFileExtensionString(object):
-    class_provides(IMime)
     mime_type_string = 'application/xmlish'
     representer_name = 'myxml'
     file_extension = '.xml'

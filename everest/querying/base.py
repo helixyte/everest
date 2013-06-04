@@ -9,7 +9,7 @@ Created on Dec 2, 2011.
 from everest.entities.utils import identifier_from_slug
 from everest.querying.interfaces import ISpecification
 from everest.querying.interfaces import ISpecificationVisitor
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BinaryOperator',
@@ -37,7 +37,7 @@ class Operator(object):
     """
     #: The name of the operator. To be specified in derived classes.
     name = None
-    #: The arity (number of arguments required) of the operator. To be 
+    #: The arity (number of arguments required) of the operator. To be
     #: specified in derived classes.
     arity = None
 
@@ -126,12 +126,11 @@ class CqlExpressionList(object):
         return self.__cql_and.join([str(expr) for expr in self.expressions])
 
 
+@implementer(ISpecification)
 class Specification(object):
     """
     Abstract base classs for all specifications.
     """
-
-    implements(ISpecification)
 
     operator = None
 
@@ -159,18 +158,17 @@ class SpecificationVisitorBase(object):
 
     @property
     def expression(self):
-        # If we have more than one expression on the stack, traversal of the 
+        # If we have more than one expression on the stack, traversal of the
         # input specification tree has not finished yet.
         assert len(self.__expression_stack) == 1
         return self.__expression_stack[0]
 
 
+@implementer(ISpecificationVisitor)
 class SpecificationVisitor(SpecificationVisitorBase):
     """
     Base class for all specification visitors.
     """
-
-    implements(ISpecificationVisitor)
 
     def visit_nullary(self, spec):
         op = self.__get_op_func(spec.operator.name)

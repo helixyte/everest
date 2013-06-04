@@ -80,7 +80,7 @@ class RepositoryTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             repo_mgr.new('foo', 'bar')
         exc_msg = 'Unknown repository type.'
-        self.assert_equal(cm.exception.message, exc_msg)
+        self.assert_equal(str(cm.exception), exc_msg)
 
     def test_set_collection_parent_fails(self):
         self.config.add_resource(IFoo, FooMember, FooEntity, expose=False)
@@ -90,7 +90,7 @@ class RepositoryTestCase(ResourceTestCase):
         repo = repo_mgr.get(REPOSITORY_TYPES.MEMORY)
         with self.assert_raises(ValueError) as cm:
             repo.set_collection_parent(coll, srvc)
-        self.assert_true(cm.exception.message.startswith('No root collect'))
+        self.assert_true(str(cm.exception).startswith('No root collect'))
 
 
 class _SystemRepositoryBaseTestCase(ResourceTestCase):
@@ -201,7 +201,7 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
 
     def test_add_remove(self):
         coll = get_root_collection(IMyEntity)
-        mb_rm = iter(coll).next()
+        mb_rm = next(iter(coll))
         coll.remove(mb_rm)
         ent = MyEntity(id=1)
         mb_add = MyEntityMember.create_from_entity(ent)
@@ -241,7 +241,7 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
 
     def test_remove_add_same_member(self):
         coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         coll.remove(mb)
         transaction.commit()
         coll.add(mb)
@@ -250,7 +250,7 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
 
     def test_commit(self):
         coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         TEXT = 'Changed.'
         mb.text = TEXT
         transaction.commit()
@@ -263,17 +263,17 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
 
     def test_abort(self):
         coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         OLD_TEXT = mb.text
         TEXT = 'Changed.'
         mb.text = TEXT
         transaction.abort()
-        old_mb = iter(coll).next()
+        old_mb = next(iter(coll))
         self.assert_equal(old_mb.text, OLD_TEXT)
 
     def test_failing_commit(self):
         coll = get_root_collection(IMyEntity)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         mb.id = None
         self.assert_raises(ValueError, transaction.commit)
 

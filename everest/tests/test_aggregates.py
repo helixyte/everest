@@ -44,7 +44,7 @@ class _AggregateTestCase(EntityTestCase):
         ent = self._make_one()[0]
         with self.assert_raises(ValueError) as cm:
             Relationship(ent)
-        self.assert_true(cm.exception.message.startswith('Do not know'))
+        self.assert_true(str(cm.exception).startswith('Do not know'))
 
     def _test_with_filter(self, agg_children):
         spec_fac = get_filter_specification_factory()

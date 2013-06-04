@@ -11,7 +11,7 @@ from everest.interfaces import IUserMessage
 from everest.interfaces import IUserMessageChecker
 from everest.interfaces import IUserMessageNotifier
 from pyramid.threadlocal import get_current_registry
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MESSENGER_KINDS',
@@ -26,11 +26,11 @@ class MESSENGER_KINDS(object):
     PERSISTENT = 'persistent'
 
 
+@implementer(IUserMessageNotifier)
 class UserMessageNotifier(object):
     """
     Notifier for user messages.
     """
-    implements(IUserMessageNotifier)
 
     def notify(self, message_text):
         msg = UserMessage(message_text)
@@ -52,6 +52,7 @@ class UserMessageNotifier(object):
         return vote
 
 
+@implementer(IUserMessageChecker)
 class UserMessageChecker(object):
     """
     Abstract base class for user message checkers.
@@ -60,7 +61,6 @@ class UserMessageChecker(object):
     should be stopped in response to a non-critical event reported through
     a user message.
     """
-    implements(IUserMessageChecker)
     def __init__(self):
         self.__message = None
         # The default vote is True, i.e., continue processing.

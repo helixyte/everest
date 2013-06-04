@@ -8,6 +8,7 @@ Created on Dec 5, 2011.
 """
 from everest.querying.base import BinaryOperator
 from everest.querying.base import UnaryOperator
+from pyramid.compat import string_types
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ASCENDING',
@@ -35,7 +36,7 @@ class STARTS_WITH(BinaryOperator):
 
     @staticmethod
     def apply(value, ref_value):
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             res = value.startswith(ref_value)
         else:
             res = value[0] == ref_value
@@ -47,7 +48,7 @@ class ENDS_WITH(BinaryOperator):
 
     @staticmethod
     def apply(value, ref_value):
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             res = value.endswith(ref_value)
         else:
             res = value[-1] == ref_value

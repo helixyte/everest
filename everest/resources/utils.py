@@ -14,11 +14,11 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IService
+from pyramid.compat import string_types
+from pyramid.compat import urlparse
 from pyramid.threadlocal import get_current_registry
 from pyramid.threadlocal import get_current_request
 from pyramid.traversal import model_path
-from urlparse import urlparse
-from urlparse import urlunparse
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
 
@@ -126,8 +126,8 @@ def is_resource_url(url_string):
     Currently, this check only looks if the URL scheme is either "http" or
     "https".
     """
-    return isinstance(url_string, basestring) \
-           and urlparse(url_string).scheme in ('http', 'https') # pylint: disable=E1101
+    return isinstance(url_string, string_types) \
+           and urlparse.urlparse(url_string).scheme in ('http', 'https') # pylint: disable=E1101
 
 
 def get_resource_url(resource):
@@ -135,9 +135,9 @@ def get_resource_url(resource):
     Returns the URL for the given resource.
     """
     path = model_path(resource)
-    parsed = list(urlparse(path))
+    parsed = list(urlparse.urlparse(path))
     parsed[1] = ""
-    return urlunparse(parsed)
+    return urlparse.urlunparse(parsed)
 
 
 def provides_resource(obj):

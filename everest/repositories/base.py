@@ -8,7 +8,7 @@ Created on Jan 5, 2013.
 from everest.entities.utils import get_entity_class
 from everest.repositories.interfaces import IRepository
 from everest.resources.utils import get_collection_class
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Repository',
@@ -27,6 +27,7 @@ class SessionFactory(object):
         raise NotImplementedError('Abstract method.')
 
 
+@implementer(IRepository)
 class Repository(object):
     """
     Base class for repositories.
@@ -39,7 +40,6 @@ class Repository(object):
        (thread-local) session. The session is used by the accessors to 
        load entities and resources from the repository. 
     """
-    implements(IRepository)
 
     #: A list of key names which can be used by :method:`configure`.
     _configurables = ['messaging_enable', 'messaging_reset_on_start']

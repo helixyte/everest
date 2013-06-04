@@ -7,3 +7,5 @@
 .project
 .pydevproject
 /dist
+.externalToolBuilders
+__pycache__

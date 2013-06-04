@@ -59,7 +59,7 @@ class attribute_base(object):
         self.attr_type = attr_type
         self.entity_attr = entity_attr
         self.cardinality = cardinality
-        self.id = self.__id_gen.next()
+        self.id = next(self.__id_gen)
         self.resource_attr = None
 
     def __get__(self, resource, resource_class):

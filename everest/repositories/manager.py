@@ -11,6 +11,7 @@ from everest.repositories.filesystem.repository import FileSystemRepository
 from everest.repositories.memory.repository import MemoryRepository
 from everest.repositories.rdb.repository import RdbRepository
 from everest.utils import id_generator
+from pyramid.compat import itervalues_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepositoryManager',
@@ -54,7 +55,7 @@ class RepositoryManager(object):
         else:
             join_transaction = False
             if name is None:
-                name = "%s%d" % (repo_type, self.__repo_id_gen.next())
+                name = "%s%d" % (repo_type, next(self.__repo_id_gen))
             # The system repository is special in that its repository
             # should not join the transaction but still commit all changes.
             autocommit = name == REPOSITORY_DOMAINS.SYSTEM
@@ -102,7 +103,7 @@ class RepositoryManager(object):
         Convenience method to initialize all repositories that have not been
         initialized yet.
         """
-        for repo in self.__repositories.itervalues():
+        for repo in itervalues_(self.__repositories):
             if not repo.is_initialized:
                 repo.initialize()
 

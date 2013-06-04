@@ -11,8 +11,9 @@ from everest.querying.base import CqlExpression
 from everest.querying.base import SpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.operators import CQL_ORDER_OPERATORS
+from functools import reduce as func_reduce
 from operator import and_ as and_operator
-from zope.interface import implements  # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BubbleSorter',
@@ -109,15 +110,14 @@ class CqlOrderExpression(CqlExpression):
                                         op=self.op_name)
 
 
+@implementer(IOrderSpecificationVisitor)
 class CqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
     Order specification visitor building a CQL expression.
     """
 
-    implements(IOrderSpecificationVisitor)
-
     def _conjunction_op(self, spec, *expressions):
-        res = reduce(and_operator, expressions)
+        res = func_reduce(and_operator, expressions)
         return res
 
     def _asc_op(self, spec):

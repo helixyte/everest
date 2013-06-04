@@ -136,7 +136,7 @@ class BasicViewTestCase(FunctionalTestCase):
                            content_type=CsvMime.mime_type_string,
                            status=200)
         self.assert_is_not_none(res)
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         self.assert_equal(mb.__name__, '1')
         self.assert_equal(mb.text, 'abc')
 
@@ -346,12 +346,12 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     def test_add_collection_view_with_put_fails(self):
         with self.assert_raises(ValueError) as cm:
             self.config.add_collection_view(IFoo, request_method='PUT')
-        self.assert_true(cm.exception.message.startswith('Autodetection'))
+        self.assert_true(str(cm.exception).startswith('Autodetection'))
 
     def test_add_member_view_with_post_fails(self):
         with self.assert_raises(ValueError) as cm:
             self.config.add_member_view(IFoo, request_method='POST')
-        self.assert_true(cm.exception.message.startswith('Autodetection'))
+        self.assert_true(str(cm.exception).startswith('Autodetection'))
 
 
 class StaticViewTestCase(FunctionalTestCase):

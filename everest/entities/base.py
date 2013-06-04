@@ -8,7 +8,7 @@ Created on May 12, 2011.
 """
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -16,6 +16,7 @@ __all__ = ['Aggregate',
            ]
 
 
+@implementer(IEntity)
 class Entity(object):
     """
     Abstract base class for all model entities.
@@ -23,7 +24,6 @@ class Entity(object):
     All entities have an ID which is used as the default value for equality
     comparison. The object may be initialized without an ID.
     """
-    implements(IEntity)
 
     id = None
 
@@ -51,7 +51,11 @@ class Entity(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        return id(self)
 
+
+@implementer(IAggregate)
 class Aggregate(object):
     """
     Abstract base class for all aggregates.
@@ -66,7 +70,6 @@ class Aggregate(object):
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
     """
-    implements(IAggregate)
 
     def __init__(self, entity_class, session_factory):
         """

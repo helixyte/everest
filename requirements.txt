@@ -1,15 +1,10 @@
-Paste>=1.7.5.1
-PasteDeploy>=1.5.0
-PasteScript>=1.7.5
 WSGIFilter>=0.2
 iso8601
 lxml>=3.2.1
-pyOpenSSL==0.10
 pyparsing==1.5.5
 pyramid>=1.4.2
 pyramid_tm>=0.7
 pyramid_zcml>=1.0.0
 python-graph-core
-rfc3339
 sqlalchemy>=0.8.1
 zope.sqlalchemy>=0.7.2

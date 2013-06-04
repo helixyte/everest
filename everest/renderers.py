@@ -14,7 +14,7 @@ from everest.representers.utils import as_representer
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
 from pyramid.interfaces import IRenderer
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
@@ -45,8 +45,8 @@ class RendererFactory(object):
         return rnd(value, system)
 
 
+@implementer(IRenderer)
 class ResourceRenderer(object):
-    implements(IRenderer)
 
     def __init__(self, content_type): # redef format pylint:disable=W0622
         self._content_type = content_type

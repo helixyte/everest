@@ -8,11 +8,11 @@ from copy import deepcopy
 from everest.representers.converters import ConverterRegistry
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import IRepresentationConverter
+from everest.rfc3339 import rfc3339
 from everest.testing import Pep8CompliantTestCase
 from iso8601.iso8601 import parse_date
 from pytz import timezone
-from rfc3339 import rfc3339
-from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from zope.interface import provider # pylint: disable=E0611,F0401
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -24,10 +24,10 @@ class RepresenterConverterTestCase(Pep8CompliantTestCase):
     def test_registry(self):
         with self.assert_raises(ValueError) as cm:
             SimpleConverterRegistry.register(bool, MyConverter)
-        self.assert_true(cm.exception.message.startswith('For %s' % bool))
+        self.assert_true(str(cm.exception).startswith('For %s' % bool))
         with self.assert_raises(ValueError) as cm:
             SimpleConverterRegistry.register(MyNumberType, MyInvalidConverter)
-        self.assert_true(cm.exception.message.startswith('Converter class'))
+        self.assert_true(str(cm.exception).startswith('Converter class'))
 
     def test_default_converter(self):
         self.assert_equal(
@@ -76,9 +76,8 @@ class MyInvalidConverter(object):
     pass
 
 
+@provider(IRepresentationConverter)
 class MyConverter(object):
-    class_provides(IRepresentationConverter)
-
     @classmethod
     def convert_from_representation(cls, representation_value,
                                     value_type): # pylint: disable=W0613

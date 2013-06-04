@@ -157,7 +157,7 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         with self.assert_raises(ValueError) as cm:
             self._session.commit()
         exc_msg = 'Entity ID must not be None.'
-        self.assert_equal(cm.exception.message, exc_msg)
+        self.assert_equal(str(cm.exception), exc_msg)
 
     def test_replace_with_different_slug(self):
         ent1 = _MyEntityWithSlug()

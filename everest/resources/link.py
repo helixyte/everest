@@ -8,13 +8,14 @@ Created on Jun 29, 2011.
 """
 from everest.resources.interfaces import IResourceLink
 from everest.resources.utils import resource_to_url
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Link',
            ]
 
 
+@implementer(IResourceLink)
 class Link(object):
     """
     A resource link.
@@ -22,7 +23,6 @@ class Link(object):
     ::note: The URL for the linked resource is created lazily; at
       instantiation time, we may not have a request to generate the URL.
     """
-    implements(IResourceLink)
 
     def __init__(self, linked_resource, rel,
                  type=None, title=None, length=None): # pylint: disable=W0622

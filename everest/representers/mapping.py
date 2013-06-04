@@ -28,6 +28,8 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from pyramid.compat import iteritems_
+from pyramid.compat import itervalues_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -98,7 +100,7 @@ class Mapping(object):
 
     def attribute_iterator(self, mapped_class=None, key=None):
         attr_map = self.get_attribute_map(mapped_class=mapped_class, key=key)
-        for attr in attr_map.itervalues():
+        for attr in itervalues_(attr_map):
             yield attr
 
     def terminal_attribute_iterator(self, mapped_class=None, key=None):
@@ -167,7 +169,7 @@ class Mapping(object):
             # Bootstrapping: fetch resource attributes and create new
             # mapped attributes.
             rc_attrs = get_resource_class_attributes(self.__mapped_cls)
-            for rc_attr in rc_attrs.itervalues():
+            for rc_attr in itervalues_(rc_attrs):
                 attr_key = key + (rc_attr.name,)
                 attr_mp_opts = \
                         self.__configuration.get_attribute_options(attr_key)
@@ -189,13 +191,13 @@ class Mapping(object):
             else:
                 mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             mp_attrs = mp.get_attribute_map()
-            for mp_attr in mp_attrs.itervalues():
+            for mp_attr in itervalues_(mp_attrs):
                 attr_key = key + (mp_attr.name,)
                 attr_mp_opts = \
                     dict(((k, v)
                           for (k, v) in
-                            self.__configuration \
-                                .get_attribute_options(attr_key).iteritems()
+                            iteritems_(self.__configuration
+                                       .get_attribute_options(attr_key))
                           if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.name] = clnd_mp_attr
@@ -304,7 +306,7 @@ class MappingRegistry(object):
         :returns: iterator yielding tuples containing a mapped class as the 
           first and a :class:`Mapping` instance as the second item.
         """
-        return self.__mappings.itervalues()
+        return itervalues_(self.__mappings)
 
 
 class SimpleMappingRegistry(MappingRegistry):

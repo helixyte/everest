@@ -8,7 +8,7 @@ Created on Apr 24, 2011.
 """
 from everest.utils import get_traceback
 from everest.views.base import ResourceView
-from webob.exc import HTTPOk
+from pyramid.httpexceptions import HTTPOk
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DeleteMemberView',
@@ -32,8 +32,8 @@ class DeleteMemberView(ResourceView):
         self._logger.debug('DELETE Request received on %s' % self.request.url)
         try:
             self.context.__parent__.remove(self.context)
-        except Exception, err: # catch Exception pylint: disable=W0703
-            response = self._handle_unknown_exception(err.message,
+        except Exception as err: # catch Exception pylint: disable=W0703
+            response = self._handle_unknown_exception(str(err),
                                                       get_traceback())
         else:
             response = self.request.get_response(HTTPOk())

@@ -25,6 +25,8 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import url_to_resource
+from functools import reduce as func_reduce
+from pyramid.compat import iteritems_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -122,7 +124,7 @@ class DataElementBuilderResourceDataVisitorBase(ResourceDataVisitor):
             mb_data_el = self._create_member_data_element(attribute,
                                                           member_node)
             # Process attributes.
-            for attr, value in member_data.iteritems():
+            for attr, value in iteritems_(member_data):
                 if attr.kind == ResourceAttributeKinds.TERMINAL:
                     self._set_terminal_attribute(mb_data_el, attr, value)
                 else:
@@ -234,7 +236,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             entity_cls = get_entity_class(member_node.mapping.mapped_class)
             entity_data = {}
             nested_entity_data = {}
-            for attr, value in member_data.iteritems():
+            for attr, value in iteritems_(member_data):
                 if '.' in attr.entity_name:
                     nested_entity_data[attr.entity_name] = value
                 else:
@@ -242,9 +244,9 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
             entity = entity_cls.create_from_data(entity_data)
             # Set nested attribute values.
             # FIXME: lazy loading of nested attributes is not supported.
-            for nested_attr, value in nested_entity_data.iteritems():
+            for nested_attr, value in iteritems_(nested_entity_data):
                 tokens = nested_attr.split('.')
-                parent = reduce(getattr, tokens[:-1], entity)
+                parent = func_reduce(getattr, tokens[:-1], entity)
                 if not parent is None:
                     setattr(parent, tokens[-1], value)
         if not index is None:

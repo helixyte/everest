@@ -26,7 +26,7 @@ from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPUnsupportedMediaType
 from pyramid.response import Response
 from pyramid.threadlocal import get_current_request
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 import logging
 import re
 
@@ -53,6 +53,7 @@ class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=
                '<!-- %(comment)s -->'
 
 
+@implementer(IResourceView)
 class ResourceView(object):
     """
     Abstract base class for all resource views.
@@ -60,7 +61,6 @@ class ResourceView(object):
     Resource views know how to handle a number of things that can go wrong
     in a REST request.
     """
-    implements(IResourceView)
 
     __context = None
     __request = None
@@ -177,7 +177,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         if self._convert_response:
             try:
                 rpr = self._get_response_representer()
-            except HTTPError, http_exc:
+            except HTTPError as http_exc:
                 result = self.request.get_response(http_exc)
             else:
                 # Set content type and body of the response.
@@ -245,10 +245,10 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
                         response = self._process_request_data(data)
                     if not checker.vote is True:
                         response = checker.create_307_response()
-            except HTTPError, err:
+            except HTTPError as err:
                 response = self.request.get_response(err)
-            except Exception, err: # catch Exception pylint: disable=W0703
-                response = self._handle_unknown_exception(err.message,
+            except Exception as err: # catch Exception pylint: disable=W0703
+                response = self._handle_unknown_exception(str(err),
                                                           get_traceback())
         return response
 

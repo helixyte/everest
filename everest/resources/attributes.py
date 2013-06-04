@@ -14,6 +14,7 @@ from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_member_class
+from pyramid.compat import iteritems_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionResourceAttribute',
@@ -60,7 +61,7 @@ class _ResourceAttribute(object):
         self.name = name
         #: The type or interface of the attribute in the underlying entity.
         self.value_type = value_type
-        #: For non-terminal attributes, indicates the cardinality of the 
+        #: For non-terminal attributes, indicates the cardinality of the
         #: relationship.
         self.cardinality = cardinality
         #: The name of the attribute in the underlying entity.
@@ -84,7 +85,7 @@ class _ResourceResourceAttribute(_ResourceAttribute):
         _ResourceAttribute.__init__(self, name, value_type, cardinality,
                                     entity_name=entity_name)
         #: If this is set, URLs for this resource attribute will be relative
-        #: to the parent resource. 
+        #: to the parent resource.
         self.is_nested = is_nested
 
 
@@ -139,12 +140,12 @@ class MetaResourceAttributeCollector(type):
         type.__init__(mcs, name, bases, class_dict)
 
     def __collect_attributes(mcs, dicts):
-        # Loop over the namespace of the given resource class and its base 
+        # Loop over the namespace of the given resource class and its base
         # classes looking for descriptors inheriting from
         # :class:`everest.resources.descriptors.attribute_base`.
         descr_map = {}
         for base_cls_namespace in dicts:
-            for descr_name, descr in base_cls_namespace.iteritems():
+            for descr_name, descr in iteritems_(base_cls_namespace):
                 if isinstance(descr, attribute_base):
                     descr_map[descr_name] = descr
         # Order by descriptor ID (=sequence in which they were declared).
@@ -157,7 +158,7 @@ class MetaResourceAttributeCollector(type):
         # `resource_name` attribute in the collected descriptors.
         attr_map = OrderedDict()
         for attr_name, descr in ordered_descr_map.items():
-            # It would be awkward to repeat the resource attribute name 
+            # It would be awkward to repeat the resource attribute name
             # in the parameters to the descriptor, so we set it manually
             # here.
             descr.resource_attr = attr_name

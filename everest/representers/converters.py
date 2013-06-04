@@ -7,10 +7,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 25, 2012.
 """
 from everest.representers.interfaces import IRepresentationConverter
+from everest.rfc3339 import rfc3339
 from iso8601.iso8601 import FixedOffset
-from rfc3339 import rfc3339
-from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from pyramid.compat import string_types
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface import provider # pylint: disable=E0611,F0401
 import datetime
 import iso8601
 
@@ -74,7 +75,7 @@ class ConverterRegistry(object):
         representation_value = value
         if not cnv is None and not value is None:
             representation_value = cnv.to_representation(value)
-        elif not isinstance(value, basestring) and not value is None:
+        elif not isinstance(value, string_types) and not value is None:
             representation_value = str(value) # FIXME: use unicode?
         return representation_value
 
@@ -83,9 +84,8 @@ class SimpleConverterRegistry(ConverterRegistry):
     pass
 
 
+@provider(IRepresentationConverter)
 class DateTimeConverter(object):
-    class_provides(IRepresentationConverter)
-
     @classmethod
     def from_representation(cls, value):
         if value is None:
@@ -102,9 +102,8 @@ class DateTimeConverter(object):
 SimpleConverterRegistry.register(datetime.datetime, DateTimeConverter)
 
 
+@provider(IRepresentationConverter)
 class BooleanConverter(object):
-    class_provides(IRepresentationConverter)
-
     @classmethod
     def from_representation(cls, value):
         if value is None:
@@ -121,8 +120,8 @@ class BooleanConverter(object):
 SimpleConverterRegistry.register(bool, BooleanConverter)
 
 
+@provider(IRepresentationConverter)
 class NoOpConverter(object):
-    class_provides(IRepresentationConverter)
     @classmethod
     def from_representation(cls, value):
         return value

@@ -55,7 +55,8 @@ from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
-#from pyramid.configuration import Configurator as PyramidConfigurator
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
 from pyramid.config import Configurator as PyramidConfigurator
 from pyramid.config.util import action_method
 from pyramid.interfaces import IApplicationCreated
@@ -69,6 +70,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+#from pyramid.configuration import Configurator as PyramidConfigurator
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -384,7 +386,7 @@ class Configurator(PyramidConfigurator):
         else:
             mp_reg = rpr_reg.get_mapping_registry(content_type)
         if not mp_reg is None:
-            for name, value in options.iteritems():
+            for name, value in iteritems_(options):
                 mp_reg.set_default_config_option(name, value)
 
     def add_resource_representer(self, resource, content_type,
@@ -417,7 +419,7 @@ class Configurator(PyramidConfigurator):
         # FIXME: We should not allow **kw to support setting up standard
         #        views here since some options may have undesired side
         #        effects.
-        if isinstance(request_method, basestring):
+        if isinstance(request_method, string_types):
             request_method = (request_method,)
         if IInterface in provided_by(resource):
             if not view is None:

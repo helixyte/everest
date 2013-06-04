@@ -38,7 +38,7 @@ class ResourcesUtilsTestCase(ResourceTestCase):
 
     def test_provides_resource(self):
         coll = create_collection()
-        mb = iter(coll).next()
+        mb = next(iter(coll))
         self.assert_true(provides_member_resource(type(mb)))
         self.assert_true(provides_member_resource(mb))
         self.assert_false(provides_member_resource(coll))

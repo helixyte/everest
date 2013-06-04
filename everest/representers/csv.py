@@ -39,7 +39,9 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
 from itertools import product
-from zope.interface import classProvides as class_provides # pylint: disable=E0611,F0401
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
+from zope.interface import provider # pylint: disable=E0611,F0401
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -74,12 +76,12 @@ class CsvConverterRegistry(ConverterRegistry):
     pass
 
 
+@provider(IRepresentationConverter)
 class CsvIntConverter(object):
     """
     Specialized converter coping with the CSV reader's unfortunate habit
     to convert integers to floats upon reading.
     """
-    class_provides(IRepresentationConverter)
 
     @classmethod
     def from_representation(cls, value):
@@ -300,7 +302,7 @@ class CsvRepresentationParser(RepresentationParser):
         return self._CollectionData(collection_class, attrs, attribute_key)
 
     def __is_link(self, value):
-        return isinstance(value, basestring) and is_resource_url(value)
+        return isinstance(value, string_types) and is_resource_url(value)
 
     def __process_link(self, link, attr):
         if not self.__is_link(link):
@@ -379,7 +381,7 @@ class CsvData(object):
             data = {}
         self.fields = []
         self.data = []
-        for attr_name, value in data.iteritems():
+        for attr_name, value in iteritems_(data):
             if not isinstance(value, CsvData):
                 self.fields.append(attr_name)
                 if len(self.data) == 0:
@@ -427,7 +429,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
                                self.__encode(member_node.get_url())})
         else:
             rpr_mb_data = OrderedDict()
-            for attr, value in member_data.iteritems():
+            for attr, value in iteritems_(member_data):
                 new_field_name = self.__get_field_name(attribute_key, attr)
                 rpr_mb_data[new_field_name] = value
             mb_data = CsvData(rpr_mb_data)

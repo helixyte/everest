@@ -43,14 +43,14 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm:
             EntityStateManager.get_state(ent)
         msg = 'Trying to get the state of an unregistered entity'
-        self.assert_true(cm.exception.message.startswith(msg))
+        self.assert_true(str(cm.exception).startswith(msg))
 
     def test_release_unregistered_fails(self):
         ent = _MyEntity()
         with self.assert_raises(ValueError) as cm:
             self._uow.unregister(_MyEntity, ent)
         msg = 'Trying to unregister an entity that has not been'
-        self.assert_true(cm.exception.message.startswith(msg))
+        self.assert_true(str(cm.exception).startswith(msg))
 
     def test_registered_with_other_uow_fails(self):
         ent = _MyEntity()
@@ -59,11 +59,11 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm1:
             self._uow.register_new(_MyEntity, ent)
         msg1 = 'Trying to register an entity that has been'
-        self.assert_true(cm1.exception.message.startswith(msg1))
+        self.assert_true(str(cm1.exception).startswith(msg1))
         with self.assert_raises(ValueError) as cm2:
             self._uow.unregister(_MyEntity, ent)
         msg2 = 'Trying to unregister an entity that has been'
-        self.assert_true(cm2.exception.message.startswith(msg2))
+        self.assert_true(str(cm2.exception).startswith(msg2))
 
     def test_mark_deleted_as_clean(self):
         ent = _MyEntity()
@@ -72,7 +72,7 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm:
             self._uow.mark_clean(_MyEntity, ent)
         msg = 'Invalid state transition'
-        self.assert_true(cm.exception.message.startswith(msg))
+        self.assert_true(str(cm.exception).startswith(msg))
 
 
 class _MyEntity(Entity):

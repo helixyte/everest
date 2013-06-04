@@ -19,9 +19,9 @@ from pyparsing import ParseException
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
 from pyramid.url import model_url
-from urllib import unquote
-from urlparse import urlparse
-from zope.interface import implements # pylint: disable=E0611,F0401
+from pyramid.compat import url_unquote
+from pyramid.compat import urlparse
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -30,6 +30,7 @@ __all__ = ['ResourceUrlConverter',
            ]
 
 
+@implementer(IResourceUrlConverter)
 class ResourceUrlConverter(object):
     """
     Performs URL <-> resource instance conversion.
@@ -37,8 +38,6 @@ class ResourceUrlConverter(object):
     See http://en.wikipedia.org/wiki/Query_string for information on characters
     supported in query strings.
     """
-
-    implements(IResourceUrlConverter)
 
     def __init__(self, request):
         # The request is needed for access to app URL, registry, traversal.
@@ -54,7 +53,7 @@ class ResourceUrlConverter(object):
         ::note : If the query string in the URL has multiple values for a
           query parameter, the last definition in the query string wins.
         """
-        parsed = urlparse(url)
+        parsed = urlparse.urlparse(url)
         parsed_path = parsed.path # namedtupble problem pylint: disable=E1101
         rc = find_resource(self.__request.root, traversal_path(parsed_path))
         if ICollectionResource in provided_by(rc):
@@ -103,7 +102,7 @@ class ResourceUrlConverter(object):
                 raise ValueError('Can not generate URL for floating member '
                                  '"%s".' % resource)
             url = model_url(resource, self.__request)
-        return unquote(url)
+        return url_unquote(url)
 
 
 class UrlPartsConverter(object):
@@ -116,7 +115,7 @@ class UrlPartsConverter(object):
         """
         try:
             return parse_filter(filter_string)
-        except ParseException, err:
+        except ParseException as err:
             raise ValueError('Expression parameters have errors. %s' % err)
 
     @classmethod
@@ -130,7 +129,7 @@ class UrlPartsConverter(object):
     def make_order_specification(cls, order_string):
         try:
             return parse_order(order_string)
-        except ParseException, err:
+        except ParseException as err:
             raise ValueError('Expression parameters have errors. %s' % err)
 
     @classmethod
@@ -151,17 +150,15 @@ class UrlPartsConverter(object):
         """
         try:
             start = int(start_string)
-        except ValueError, err:
-            err.message = 'Query parameter "start" must be a number.'
-            raise err
+        except ValueError:
+            raise ValueError('Query parameter "start" must be a number.')
         if start < 0:
             raise ValueError('Query parameter "start" must be zero or '
                              'a positive number.')
         try:
             size = int(size_string)
-        except ValueError, err:
-            err.message = 'Query parameter "size" must be a number.'
-            raise err
+        except ValueError:
+            raise ValueError('Query parameter "size" must be a number.')
         if size < 1:
             raise ValueError('Query parameter "size" must be a positive '
                              'number.')

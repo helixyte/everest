@@ -7,18 +7,19 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012
 """
 from collections import OrderedDict
-from everest.representers.utils import data_element_tree_to_string
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IResourceDataElement
+from everest.representers.utils import data_element_tree_to_string
 from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
-from zope.interface import implements # pylint: disable=E0611,F0401
+from pyramid.compat import iteritems_
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -33,6 +34,7 @@ __all__ = ['CollectionDataElement',
            ]
 
 
+@implementer(IResourceDataElement)
 class DataElement(object):
     """
     Abstract base class for data element classes.
@@ -41,8 +43,6 @@ class DataElement(object):
     Implementations may need to be adapted to the format of the external
     representation they manage.
     """
-
-    implements(IResourceDataElement)
 
     #: Static attribute mapping.
     mapping = None
@@ -66,12 +66,11 @@ class DataElement(object):
         return data_element_tree_to_string(self)
 
 
+@implementer(IMemberDataElement)
 class MemberDataElement(DataElement):
     """
     Abstract base class for member data element classes.
     """
-
-    implements(IMemberDataElement)
 
     #: Registry of representation string <-> value converters. To be set
     #: in derived classes.
@@ -120,12 +119,11 @@ class MemberDataElement(DataElement):
         raise NotImplementedError('Abstract method.')
 
 
+@implementer(ICollectionDataElement)
 class CollectionDataElement(DataElement):
     """
     Abstract base class for collection data elements.
     """
-
-    implements(ICollectionDataElement)
 
     def add_member(self, data_element):
         """
@@ -172,7 +170,7 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
         if self.__data is None:
             self.__data = OrderedDict()
         return OrderedDict((k, v)
-                           for (k, v) in self.__data.iteritems()
+                           for (k, v) in iteritems_(self.__data)
                            if not isinstance(v, DataElement))
 
     @property
@@ -180,7 +178,7 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
         if self.__data is None:
             self.__data = OrderedDict()
         return OrderedDict((k, v)
-                           for (k, v) in self.__data.iteritems()
+                           for (k, v) in iteritems_(self.__data)
                            if isinstance(v, DataElement))
 
     def get_nested(self, attr):
@@ -246,13 +244,12 @@ class SimpleCollectionDataElement(_SimpleDataElementMixin,
         return len(self.__members)
 
 
+@implementer(ILinkedDataElement)
 class LinkedDataElement(DataElement):
     """
     Data element managing a linked resource during serialization and
     deserialization.
     """
-
-    implements(ILinkedDataElement)
 
     @classmethod
     def create(cls, url, kind, relation=None, title=None, **options):
@@ -287,10 +284,12 @@ class SimpleLinkedDataElement(LinkedDataElement):
     @classmethod
     def create(cls, url, kind, relation=None, title=None, **options):
         inst = cls()
+        # pylint:disable=W0212
         inst.__url = url
         inst.__kind = kind
         inst.__relation = relation
         inst.__title = title
+        # pylint:enable=W0212
         return inst
 
     @classmethod

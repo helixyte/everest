@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
-from StringIO import StringIO
 from everest.mime import CsvMime
 from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.repositories.rdb.utils import reset_metadata
@@ -36,6 +35,8 @@ from everest.tests.complete_app.interfaces import IMyEntityGrandchild
 from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.resources import MyEntityChildMember
 from everest.tests.complete_app.resources import MyEntityGrandchildMember
+from pyramid.compat import NativeIO
+from pyramid.compat import itervalues_
 import glob
 import os
 import shutil
@@ -99,13 +100,13 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
     def test_find_connected_with_member(self):
         member = _make_test_entity_member()
         coll_map = find_connected_resources(member)
-        for coll in coll_map.itervalues():
+        for coll in itervalues_(coll_map):
             self.assert_equal(len(coll), 1)
 
     def test_find_connected_with_collection(self):
         member = _make_test_entity_member()
         coll_map = find_connected_resources(member.__parent__)
-        for coll in coll_map.itervalues():
+        for coll in itervalues_(coll_map):
             self.assert_equal(len(coll), 1)
 
     def test_find_connected_with_deps(self):
@@ -116,7 +117,7 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         coll_map = find_connected_resources(member,
                                             dependency_graph=dep_grph)
         # Backrefs should not make a difference since we check for duplicates.
-        for coll in coll_map.itervalues():
+        for coll in itervalues_(coll_map):
             self.assert_equal(len(coll), 1)
 
     def test_find_connected_with_custom_deps(self):
@@ -165,7 +166,7 @@ class _ResourceIoTestCaseBase(ResourceTestCase):
 class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
     def test_load_from_zipfile(self):
         member = _make_test_entity_member()
-        strm = StringIO('w')
+        strm = NativeIO('w')
         dump_resource_to_zipfile(member, strm)
         colls = [
                  get_root_collection(IMyEntityParent),
@@ -184,7 +185,7 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
     config_file_name = 'configure_no_rdb.zcml'
 
     def test_load_from_zipfile_invalid_extension(self):
-        strm = StringIO('w')
+        strm = NativeIO('w')
         zipf = zipfile.ZipFile(strm, 'w')
         coll_name = get_collection_name(get_collection_class(IMyEntity))
         zipf.writestr('%s.foo' % coll_name, '')
@@ -193,10 +194,10 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
         with self.assert_raises(ValueError) as cm:
             dummy = load_into_collections_from_zipfile(colls, strm)
         exc_msg = 'Could not infer MIME type'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_load_from_zipfile_filename_not_found(self):
-        strm = StringIO('w')
+        strm = NativeIO('w')
         zipf = zipfile.ZipFile(strm, 'w')
         zipf.writestr('foo.foo', '')
         zipf.close()
@@ -217,7 +218,7 @@ class StreamResourceIoTestCase(_ResourceIoTestCaseBase):
     config_file_name = 'configure_no_rdb.zcml'
     def test_dump_no_content_type(self):
         member = _make_test_entity_member()
-        strm = StringIO()
+        strm = NativeIO()
         dump_resource(member, strm)
         self.assert_true(strm.getvalue().startswith('"id",'))
 
@@ -256,7 +257,7 @@ class FileResourceIoTestCase(_ResourceIoTestCaseBase):
             dummy = \
               load_collection_from_file(coll_cls, 'my-entity-collection.foo')
         exc_msg = 'Could not infer MIME type'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_load_from_file(self):
         self._test_load(load_collection_from_file, lambda fn: fn, False)

@@ -73,7 +73,7 @@ class XmlRepresentationParser(RepresentationParser):
         parser = XmlParserFactory.create(schema_location=schema_loc)
         try:
             tree = objectify.parse(self._stream, parser)
-        except etree.XMLSyntaxError, err:
+        except etree.XMLSyntaxError as err:
             raise SyntaxError('Could not parse XML document for schema %s.'
                               '\n%s' % (schema_loc, err.msg))
         return tree.getroot()[0]
@@ -109,14 +109,14 @@ class XmlParserFactory(object):
     def __get_xml_schema(cls, xml_schema_path):
         try:
             doc = etree.parse(resource_filename(*xml_schema_path.split(':')))
-        except etree.XMLSyntaxError, err:
+        except etree.XMLSyntaxError as err:
             raise SyntaxError('Could not parse XML schema %s.\n%s' %
                               (xml_schema_path, err.msg))
         try:
             schema = etree.XMLSchema(doc)
-        except etree.XMLSchemaParseError, err:
+        except etree.XMLSchemaParseError as err:
             raise SyntaxError('Invalid XML schema.\n Parser message: %s'
-                              % err.message)
+                              % str(err))
         return schema
 
 
@@ -183,12 +183,12 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         q_tag = self.__get_q_tag(attr)
         child_it = self.iterchildren(q_tag)
         try:
-            child = child_it.next()
+            child = next(child_it)
         except StopIteration:
             child = None
         else:
             try:
-                child_it.next()
+                next(child_it)
             except StopIteration:
                 pass
             else:
@@ -372,12 +372,12 @@ class XmlRepresenterConfiguration(RepresenterConfiguration):
         The XML namespace prefix to use for the represented data element class.
     """
     _default_config_options = \
-            dict(RepresenterConfiguration._default_config_options.items()
-                 + [(XML_TAG_OPTION, None), (XML_SCHEMA_OPTION, None),
-                    (XML_NAMESPACE_OPTION, None), (XML_PREFIX_OPTION, None)])
+        dict(list(RepresenterConfiguration._default_config_options.items())
+             + [(XML_TAG_OPTION, None), (XML_SCHEMA_OPTION, None),
+                (XML_NAMESPACE_OPTION, None), (XML_PREFIX_OPTION, None)])
     _default_attributes_options = \
-            dict(RepresenterConfiguration._default_attributes_options.items()
-                 + [(NAMESPACE_MAPPING_OPTION, None)])
+        dict(list(RepresenterConfiguration._default_attributes_options.items())
+             + [(NAMESPACE_MAPPING_OPTION, None)])
 
 
 class XmlMappingRegistry(MappingRegistry):

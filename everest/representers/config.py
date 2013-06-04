@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 8, 2012.
 """
 from collections import defaultdict
+from pyramid.compat import iteritems_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresenterConfiguration',
@@ -139,7 +140,7 @@ class RepresenterConfiguration(object):
         """
         if attribute_key is None:
             opts = defaultdict(self._default_attributes_options.copy)
-            for attr, mp_options in self.__attribute_options.iteritems():
+            for attr, mp_options in iteritems_(self.__attribute_options):
                 opts[attr].update(mp_options)
         else:
             opts = self._default_attributes_options.copy()
@@ -149,12 +150,12 @@ class RepresenterConfiguration(object):
 
     def __update(self, opts, mp_opts):
         if not opts is None:
-            for option_name, option_value in opts.iteritems():
+            for option_name, option_value in iteritems_(opts):
                 if not option_value is None:
                     self.set_option(option_name, option_value)
         if not mp_opts is None:
-            for attr_name, attr_mp_options in mp_opts.iteritems():
-                for mp_opt_name, mp_opt_value in attr_mp_options.iteritems():
+            for attr_name, attr_mp_options in iteritems_(mp_opts):
+                for mp_opt_name, mp_opt_value in iteritems_(attr_mp_options):
                     if not mp_opt_value is None:
                         self.set_attribute_option(attr_name,
                                                 mp_opt_name, mp_opt_value)

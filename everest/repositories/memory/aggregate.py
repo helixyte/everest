@@ -11,6 +11,7 @@ from everest.exceptions import DuplicateException
 from everest.querying.base import EXPRESSION_KINDS
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
+from pyramid.compat import iteritems_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregate',
@@ -75,7 +76,7 @@ class MemoryAggregate(Aggregate):
         # FIXME: We need a proper __getstate__ method here.
         entity.__dict__.update(
                     dict([(k, v)
-                          for (k, v) in source_entity.__dict__.iteritems()
+                          for (k, v) in iteritems_(source_entity.__dict__)
                           if not k.startswith('_')]))
 
     def _apply_filter(self):

@@ -22,9 +22,11 @@ from everest.querying.operators import LESS_THAN
 from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import IResource
 from everest.resources.utils import resource_to_url
+from functools import reduce as func_reduce
 from operator import and_ as operator_and
 from operator import or_ as operator_or
-from zope.interface import implements  # pylint: disable=E0611,F0401
+from pyramid.compat import string_types
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CqlFilterSpecificationVisitor',
@@ -123,12 +125,11 @@ class CqlFilterExpression(CqlExpression):
         return CqlFilterExpression(self.attr_name, op_name, self.value)
 
 
+@implementer(IFilterSpecificationVisitor)
 class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
     """
     Filter specification visitor building a CQL expression.
     """
-
-    implements(IFilterSpecificationVisitor)
 
     __cql_range_format = '%(from_value)s-%(to_value)s'
 
@@ -190,10 +191,10 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
                                    value)
 
     def _conjunction_op(self, spec, *expressions):
-        return reduce(operator_and, expressions)
+        return func_reduce(operator_and, expressions)
 
     def _disjunction_op(self, spec, *expressions):
-        return reduce(operator_or, expressions)
+        return func_reduce(operator_or, expressions)
 
     def _negation_op(self, spec, expression):
         return ~expression
@@ -202,9 +203,9 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         return slug_from_identifier(attr_name)
 
     def __preprocess_value(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             result = '"%s"' % value
-        elif IResource.providedBy(value):  # pylint: disable=E1101
+        elif IResource.providedBy(value): # pylint: disable=E1101
             result = resource_to_url(value)
         else:
             result = str(value)

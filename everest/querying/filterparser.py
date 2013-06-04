@@ -51,6 +51,7 @@ from pyparsing import operatorPrecedence
 from pyparsing import removeQuotes
 from pyparsing import replaceWith
 from pyparsing import srange
+from pyramid.compat import string_types
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['parse_filter',
@@ -179,11 +180,11 @@ class CriterionConverter(object):
 
     @classmethod
     def __is_empty_string(cls, v):
-        return isinstance(v, basestring) and len(v) == 0
+        return isinstance(v, string_types) and len(v) == 0
 
     @classmethod
     def __is_url(cls, v):
-        return isinstance(v, basestring) and v.startswith('http://')
+        return isinstance(v, string_types) and v.startswith('http://')
 
 
 def convert_conjunction(toks):

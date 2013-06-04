@@ -31,27 +31,31 @@ from everest.querying.utils import get_filter_specification_factory
 from everest.testing import TestCaseWithConfiguration
 from everest.testing import TestCaseWithIni
 from nose.tools import raises
+from pyramid.compat import iteritems_
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['TestConjunctionFilterSpecification',
-           'TestDisjunctionFilterSpecification',
-           'TestNegationFilterSpecification',
-           'TestValueContainedFilterSpecification',
-           'TestValueContainsFilterSpecification',
-           'TestValueEqualToFilterSpecification',
-           'TestValueGreaterThanOrEqualToFilterSpecification',
-           'TestValueGreaterThanFilterSpecification',
-           'TestValueInRangeFilterSpecification',
-           'TestValueLessThanOrEqualToFilterSpecification',
-           'TestValueLessThanFilterSpecification',
-           'TestValueEndsWithFilterSpecification',
-           'TestValueStartsWithFilterSpecification',
+__all__ = ['CompositeFilterSpecificationTestCase',
+           'ConjunctionFilterSpecificationTestCase',
+           'DisjunctionFilterSpecificationTestCase',
+           'NegationFilterSpecificationTestCase',
+           'OrderSpecificationTestCase',
+           'SpecificationGeneratorTestCase',
+           'ValueContainedFilterSpecificationTestCase',
+           'ValueContainsFilterSpecificationTestCase',
+           'ValueEndsWithFilterSpecificationTestCase',
+           'ValueEqualToFilterSpecificationTestCase',
+           'ValueGreaterThanFilterSpecificationTestCase',
+           'ValueGreaterThanOrEqualToFilterSpecificationTestCase',
+           'ValueInRangeFilterSpecificationTestCase',
+           'ValueLessThanOrEqualToFilterSpecificationTestCase',
+           'ValueLessThanOrEqualToFilterSpecificationTestCase',
+           'ValueStartsWithFilterSpecificationTestCase',
            ]
 
 
 class Candidate(object):
     def __init__(self, **attributes):
-        for attr_name, attr_value in attributes.iteritems():
+        for attr_name, attr_value in iteritems_(attributes):
             setattr(self, attr_name, attr_value)
 
     def __str__(self):
@@ -682,7 +686,7 @@ class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_gt_generator(self):
-        spec = gt(number_attr= -1)
+        spec = gt(number_attr=-1)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_ge_generator(self):
@@ -723,7 +727,7 @@ class SpecificationGeneratorTestCase(TestCaseWithConfiguration):
 
     def test_instantiating_generator(self):
         gen = FilterSpecificationGenerator(get_filter_specification_factory())
-        spec = gen.lt(number_attr=1) & gen.gt(number_attr= -1)
+        spec = gen.lt(number_attr=1) & gen.gt(number_attr=-1)
         self.assert_true(spec.is_satisfied_by(self.candidate))
 
     def test_generator_or(self):

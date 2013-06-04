@@ -27,8 +27,8 @@ class GetCollectionView(GetResourceView):
             self.__filter_collection()
             self.__order_collection()
             self.__slice_collection()
-        except ValueError, err:
-            result = self._handle_unknown_exception(err.message,
+        except ValueError as err:
+            result = self._handle_unknown_exception(err.args[0],
                                                     get_traceback())
         else:
             needs_default_order = self.context.order is None

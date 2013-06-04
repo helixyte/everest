@@ -6,8 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
 """
-from StringIO import StringIO
 from everest.representers.utils import get_mapping_registry
+from pyramid.compat import NativeIO
 from everest.resources.base import Resource
 
 __docformat__ = 'reStructuredText en'
@@ -30,11 +30,11 @@ class Representer(object):
     content_type = None
 
     def from_string(self, string_representation):
-        stream = StringIO(string_representation)
+        stream = NativeIO(string_representation)
         return self.from_stream(stream)
 
     def to_string(self, obj):
-        stream = StringIO()
+        stream = NativeIO()
         self.to_stream(obj, stream)
         return stream.getvalue()
 
@@ -173,7 +173,7 @@ class MappingResourceRepresenter(ResourceRepresenter):
         :returns: object implementing 
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
-        stream = StringIO(representation)
+        stream = NativeIO(representation)
         return self.data_from_stream(stream)
 
     def representation_from_data(self, data_element):
@@ -183,7 +183,7 @@ class MappingResourceRepresenter(ResourceRepresenter):
         :param data_element: object implementing 
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
-        stream = StringIO()
+        stream = NativeIO()
         generator = \
             self._make_representation_generator(stream, self.resource_class,
                                                 self._mapping)

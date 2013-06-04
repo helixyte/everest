@@ -22,12 +22,12 @@ class UtilsTestCase(Pep8CompliantTestCase):
     def test_id_generator(self):
         # Initialize with start value.
         idgen = id_generator(3)
-        self.assert_equal(idgen.next(), 3)
-        self.assert_equal(idgen.next(), 4)
+        self.assert_equal(next(idgen), 3)
+        self.assert_equal(next(idgen), 4)
         # Push ID to higher value.
         idgen.send(5)
-        self.assert_equal(idgen.next(), 6)
-        self.assert_equal(idgen.next(), 7)
+        self.assert_equal(next(idgen), 6)
+        self.assert_equal(next(idgen), 7)
         # ID values must increase monotonically.
         self.assert_raises(ValueError, idgen.send, 6)
 

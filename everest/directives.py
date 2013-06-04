@@ -15,6 +15,7 @@ from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
+from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
 from pyramid_zcml import IViewDirective
 from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
@@ -24,7 +25,7 @@ from zope.configuration.fields import GlobalObject # pylint: disable=E0611,F0401
 from zope.configuration.fields import Path # pylint: disable=E0611,F0401
 from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 
@@ -235,12 +236,12 @@ class IResourceDirective(Interface):
              )
 
 
+@implementer(IConfigurationContext, IResourceDirective)
 class ResourceDirective(GroupingContextDecorator):
     """
     Directive for registering a resource. Calls
     :meth:`everest.configuration.Configurator.add_resource`.
     """
-    implements(IConfigurationContext, IResourceDirective)
 
     def __init__(self, context, interface, member, entity,
                  collection=None, collection_root_name=None,
@@ -269,7 +270,7 @@ class ResourceDirective(GroupingContextDecorator):
                             repository=self.repository,
                             expose=self.expose,
                             _info=self.context.info)
-        for key, value in self.representers.iteritems():
+        for key, value in iteritems_(self.representers):
             cnt_type, rc_kind = key
             opts, mp_opts = value
             if rc_kind == RESOURCE_KINDS.member:
@@ -369,9 +370,8 @@ class IRepresenterDirective(Interface):
                      required=False)
 
 
+@implementer(IConfigurationContext, IRepresenterDirective)
 class RepresenterDirective(GroupingContextDecorator):
-
-    implements(IConfigurationContext, IRepresenterDirective)
 
     def __init__(self, context, content_type=None, representer_class=None):
         self.context = context
@@ -411,13 +411,13 @@ class IResourceRepresenterDirective(Interface):
                required=False)
 
 
+@implementer(IConfigurationContext, IResourceRepresenterDirective)
 class ResourceRepresenterDirective(GroupingContextDecorator):
     """
     Grouping directive for registering a representer for a given resource(s) 
     and content type combination. Delegates the work to a
     :class:`everest.configuration.Configurator`.
     """
-    implements(IConfigurationContext, IResourceRepresenterDirective)
 
     def __init__(self, context, content_type, kind=None):
         self.context = context
@@ -439,8 +439,8 @@ class IResourceRepresenterAttributeDirective(Interface):
         TextLine(title=u"Name of the representer attribute.")
 
 
+@implementer(IConfigurationContext, IResourceRepresenterAttributeDirective)
 class ResourceRepresenterAttributeDirective(GroupingContextDecorator):
-    implements(IConfigurationContext, IResourceRepresenterAttributeDirective)
 
     def __init__(self, context, name):
         self.context = context

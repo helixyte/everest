@@ -6,11 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
 """
-from StringIO import StringIO
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.interfaces import IResourceDataElement
+from pyramid.compat import NativeIO
+from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import os
@@ -81,7 +82,7 @@ def data_element_tree_to_string(data_element):
                               data_el.get_relation()))
             else:
                 first_attr = True
-                for attr_name, attr_value in data_el.data.iteritems():
+                for attr_name, attr_value in iteritems_(data_el.data):
                     if first_attr:
                         first_attr = False
                     else:
@@ -94,6 +95,6 @@ def data_element_tree_to_string(data_element):
                     else:
                         __dump(attr_value, stream, offset)
             stream.write(')')
-    stream = StringIO()
+    stream = NativeIO()
     __dump(data_element, stream, 0)
     return stream.getvalue()

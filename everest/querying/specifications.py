@@ -31,8 +31,9 @@ from everest.querying.operators import LESS_THAN
 from everest.querying.operators import NEGATION
 from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import IResource
+from pyramid.compat import string_types
 from pyramid.threadlocal import get_current_registry
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 import re
 
 __docformat__ = 'reStructuredText en'
@@ -366,12 +367,11 @@ class ValueInRangeFilterSpecification(CriterionFilterSpecification):
         return self.attr_value[1]
 
 
+@implementer(IFilterSpecificationFactory)
 class FilterSpecificationFactory(object):
     """
     Filter specification factory.
     """
-
-    implements(IFilterSpecificationFactory)
 
     def create_equal_to(self, attr_name, attr_value):
         return ValueEqualToFilterSpecification(attr_name, attr_value)
@@ -504,7 +504,7 @@ class NaturalOrderSpecification(ObjectOrderSpecification):
 
     def _get_value(self, obj):
         value = ObjectOrderSpecification._get_value(self, obj)
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             res = [self.__convert(c) for c in re.split(r'([0-9]+)', value)]
         else:
             res = value
@@ -567,12 +567,11 @@ class ConjunctionOrderSpecification(OrderSpecification):
         visitor.visit_binary(self)
 
 
+@implementer(IOrderSpecificationFactory)
 class OrderSpecificationFactory(object):
     """
     Order specification factory.
     """
-
-    implements(IOrderSpecificationFactory)
 
     def create_ascending(self, attr_name):
         return AscendingOrderSpecification(attr_name)

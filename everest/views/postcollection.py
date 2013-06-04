@@ -12,7 +12,8 @@ from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
 from everest.resources.utils import resource_to_url
 from everest.views.base import PutOrPostResourceView
-from webob.exc import HTTPCreated
+from pyramid.compat import iteritems_
+from pyramid.httpexceptions import HTTPCreated
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PostCollectionView',
@@ -70,7 +71,7 @@ class PostCollectionView(PutOrPostResourceView):
 
     def __check_parent(self, new_mb_rc):
         parent_mb_cls = get_member_class(self.context.__parent__)
-        for attr_name, attr in type(new_mb_rc).get_attributes().iteritems():
+        for attr_name, attr in iteritems_(type(new_mb_rc).get_attributes()):
             if attr.kind == ResourceAttributeKinds.MEMBER \
                and get_member_class(attr.value_type) is parent_mb_cls \
                and getattr(new_mb_rc, attr_name) is None:

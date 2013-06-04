@@ -32,6 +32,8 @@ from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import is_resource_url
 from json import dumps
 from json import loads
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -69,7 +71,7 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
         elif isinstance(node, list):
             traverse_fn = self._traverse_collection
         else:
-            if not isinstance(node, basestring):
+            if not isinstance(node, string_types):
                 raise ValueError('Need dict (member), list (collection) '
                                  'or string (URL) type for JSON data, found '
                                  '"%s"' % type(node))
@@ -109,7 +111,7 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
         return node
 
     def _is_link_node(self, node, attr): # pylint: disable=W0613
-        return isinstance(node, basestring) and is_resource_url(node)
+        return isinstance(node, string_types) and is_resource_url(node)
 
 
 class JsonRepresentationParser(RepresentationParser):
@@ -135,7 +137,7 @@ class JsonDataElementTreeVisitor(ResourceDataVisitor):
             mb_data = member_node.get_url()
         else:
             mb_data = {}
-            for attr, value in member_data.iteritems():
+            for attr, value in iteritems_(member_data):
 #                if attr.kind == ResourceAttributeKinds.TERMINAL:
                 mb_data[attr.repr_name] = value
             # Use the relation for class hinting.

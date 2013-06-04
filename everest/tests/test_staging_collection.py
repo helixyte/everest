@@ -28,5 +28,5 @@ class StagingCollectionTestCase(ResourceTestCase):
         foo = FooEntity()
         foo_mb = FooMember.create_from_entity(foo)
         self.coll.add(foo_mb)
-        self.assert_true(self.session.iterator(FooEntity).next() is foo)
+        self.assert_true(next(self.session.iterator(FooEntity)) is foo)
         self.assert_equal(len(list(self.session.iterator(FooEntity))), 1)

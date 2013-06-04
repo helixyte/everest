@@ -59,7 +59,7 @@ class ResourcesTestCase(ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             CollectionWithoutTitle(None)
         exc_msg = 'Collection must have a title.'
-        self.assert_equal(cm.exception.message, exc_msg)
+        self.assert_equal(str(cm.exception), exc_msg)
 
     def test_update_from_entity(self):
         foo0 = FooEntity(id=0)
@@ -81,7 +81,7 @@ class ResourcesFilteringTestCase(ResourceTestCase):
 
     def test_filter_nested(self):
         coll = create_collection()
-        children = iter(coll).next().children
+        children = next(iter(coll)).children
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('id', 1)
         children.filter = spec
@@ -93,7 +93,7 @@ class ResourcesFilteringTestCase(ResourceTestCase):
         # The grand children are not nested, so the filter spec has to be
         # a ConjunctionFilterSpecification.
         coll = create_collection()
-        grand_children = iter(iter(coll).next().children).next().children
+        grand_children = next(iter(next(iter(coll)).children)).children
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('id', 1)
         grand_children.filter = spec
@@ -109,15 +109,15 @@ class ResourcesFilteringTestCase(ResourceTestCase):
         # We can not use resource attributes that do not have a corresponding
         # entity attribute (such as backref only collections) for filtering.
         coll = create_collection()
-        children = iter(coll).next().children
-        grandchildren = iter(children).next().children
-        grandchild = iter(grandchildren).next()
+        children = next(iter(coll)).children
+        grandchildren = next(iter(children)).children
+        grandchild = next(iter(grandchildren))
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('backref_only_children', grandchild)
         with self.assert_raises(ValueError) as cm:
             children.filter = spec
         exc_msg = 'does not have a corresponding entity attribute.'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
 
 
 class UnregisteredEntity(Entity):

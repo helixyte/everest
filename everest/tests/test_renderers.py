@@ -9,6 +9,7 @@ from everest.renderers import RendererFactory
 from everest.renderers import ResourceRenderer
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.testing import create_collection
+from pyramid.compat import string_types
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RendererTestCase',
@@ -26,7 +27,7 @@ class RendererTestCase(ResourceTestCase):
             inf = self._Info(rnd_name)
             fac = RendererFactory(inf)
             rpr_str = fac(dict(), dict(request=self._request, context=rc))
-            self.assert_true(isinstance(rpr_str, basestring))
+            self.assert_true(isinstance(rpr_str, string_types))
             self.assert_not_equal(rpr_str.find(exp_str), -1)
         resource = create_collection()
         _test(resource, 'csv', '"id","parent"')

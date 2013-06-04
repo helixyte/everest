@@ -103,7 +103,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
             type('my_rc', (Member,),
                  dict(foo=my_descriptor(IMyEntityParent, 'foo')))
         exc_msg = 'Unknown resource attribute type'
-        self.assert_true(cm.exception.message.startswith(exc_msg))
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_invalid_descriptor_parameters(self):
         self.assert_raises(ValueError,
@@ -197,10 +197,10 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
-        self.assert_equal(iter(context.children).next().text,
+        self.assert_equal(next(iter(context.children)).text,
                           MyEntity.DEFAULT_TEXT)
         context.update_from_data(data_el)
-        self.assert_equal(iter(context.children).next().text,
+        self.assert_equal(next(iter(context.children)).text,
                           self.UPDATED_TEXT)
 
     def test_update_member(self):
@@ -276,10 +276,10 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         my_entity = create_entity()
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
-        self.assert_equal(len(iter(context.children).next().children),
+        self.assert_equal(len(next(iter(context.children)).children),
                           1)
         context.update_from_data(data_el)
-        self.assert_equal(len(iter(context.children).next().children),
+        self.assert_equal(len(next(iter(context.children)).children),
                           0)
 
     def test_add_child(self):
@@ -303,11 +303,11 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
     def test_rdb_attribute_inspector(self):
         with self.assert_raises(ValueError) as cm:
             OrmAttributeInspector.inspect(MyEntity, 'text.something')
-        self.assert_true(cm.exception.message.endswith(
+        self.assert_true(str(cm.exception).endswith(
                                     'references a terminal attribute.'))
         with self.assert_raises(ValueError) as cm:
             OrmAttributeInspector.inspect(MyEntity, 'DEFAULT_TEXT')
-        self.assert_true(cm.exception.message.endswith('not mapped.'))
+        self.assert_true(str(cm.exception).endswith('not mapped.'))
 
     def test_filter_specification_visitor(self):
         coll = get_root_collection(IMyEntity)
@@ -373,13 +373,13 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         with self.assert_raises(ValueError) as cm:
             collection_attribute(IMyEntity)
         exc_msg = 'may be None, but not both.'
-        self.assert_true(cm.exception.message.endswith(exc_msg))
+        self.assert_true(str(cm.exception).endswith(exc_msg))
 
     def test_backref_only_collection(self):
         coll = create_collection()
-        child_mb = iter(iter(coll).next().children).next()
+        child_mb = next(iter(next(iter(coll)).children))
         self.assert_equal(len(child_mb.backref_only_children), 1)
-        grandchild_mb = iter(child_mb.children).next()
+        grandchild_mb = next(iter(child_mb.children))
         grandchild_mb.parent = None
         self.assert_equal(len(child_mb.backref_only_children), 0)
 

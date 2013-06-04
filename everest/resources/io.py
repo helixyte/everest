@@ -6,7 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 27, 2012.
 """
-from StringIO import StringIO
 from collections import OrderedDict
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
@@ -16,7 +15,9 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
-from urlparse import urlparse
+from pyramid.compat import NativeIO
+from pyramid.compat import iteritems_
+from pyramid.compat import urlparse
 from zipfile import ZIP_DEFLATED
 from zipfile import ZipFile
 import os
@@ -50,7 +51,7 @@ def load_collection_from_url(collection_class, url,
     
     :returns: collection resource
     """
-    parsed = urlparse(url)
+    parsed = urlparse.urlparse(url)
     if parsed.scheme == 'file': # pylint: disable=E1101
         # Assume a local path.
         coll = load_collection_from_file(collection_class,
@@ -208,7 +209,7 @@ def build_resource_graph(resource, dependency_graph=None):
     def visit(rc, grph, dep_grph):
         mb_cls = type(rc)
         attr_map = mb_cls.get_attributes()
-        for attr_name, attr in attr_map.iteritems():
+        for attr_name, attr in iteritems_(attr_map):
             if mb_cls.is_terminal(attr_name):
                 continue
             # Only follow the resource attribute if the dependency graph
@@ -326,8 +327,8 @@ class ConnectedResourcesSerializer(object):
                                      dependency_graph=self.__dependency_graph)
         # Build a map of representations.
         rpr_map = OrderedDict()
-        for (mb_cls, coll) in collections.iteritems():
-            strm = StringIO('w')
+        for (mb_cls, coll) in iteritems_(collections):
+            strm = NativeIO('w')
             dump_resource(coll, strm, content_type=self.__content_type)
             rpr_map[mb_cls] = strm.getvalue()
         return rpr_map
@@ -340,7 +341,7 @@ class ConnectedResourcesSerializer(object):
         collections = \
             find_connected_resources(resource,
                                      dependency_graph=self.__dependency_graph)
-        for (mb_cls, coll) in collections.iteritems():
+        for (mb_cls, coll) in iteritems_(collections):
             fn = get_write_collection_path(mb_cls,
                                            self.__content_type,
                                            directory=directory)
@@ -354,7 +355,7 @@ class ConnectedResourcesSerializer(object):
         """
         rpr_map = self.to_strings(resource)
         with ZipFile(zipfile, 'w') as zipf:
-            for (mb_cls, rpr_string) in rpr_map.iteritems():
+            for (mb_cls, rpr_string) in iteritems_(rpr_map):
                 fn = get_collection_filename(mb_cls, self.__content_type)
                 zipf.writestr(fn, rpr_string, compress_type=ZIP_DEFLATED)
 

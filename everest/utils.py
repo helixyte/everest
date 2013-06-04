@@ -6,10 +6,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
-from StringIO import StringIO
-from everest.repositories.interfaces import IRepositoryManager
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
+from everest.repositories.interfaces import IRepositoryManager
+from pyramid.compat import NativeIO
+from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
 from weakref import ref
 import re
@@ -66,7 +67,7 @@ def get_traceback():
 
     :returns: formatted traceback (string)
     """
-    buf = StringIO()
+    buf = NativeIO()
     traceback.print_exc(file=buf)
     return buf.getvalue()
 
@@ -125,7 +126,7 @@ class BidirectionalLookup(object):
         self.__left = map_type()
         self.__right = map_type()
         if not init_map is None:
-            for left, right in init_map.iteritems():
+            for left, right in iteritems_(init_map):
                 self.__setitem__(left, right)
 
     def __setitem__(self, left_item, right_item):

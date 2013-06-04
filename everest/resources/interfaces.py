@@ -36,8 +36,8 @@ class ILocationAware(Interface):
     The __parent__ of the root object should be None and its __name__ should be
     the empty string. For instance:
 
+    @implementer(ILocationAware)
     class MyRootObject(object):
-        implements(ILocationAware)
         __name__ = ''
         __parent__ = None
     """

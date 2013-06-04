@@ -10,7 +10,7 @@ from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
 from functools import partial
-from zope.interface import implements  # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ObjectFilterSpecificationVisitor',
@@ -18,13 +18,12 @@ __all__ = ['ObjectFilterSpecificationVisitor',
            ]
 
 
+@implementer(IFilterSpecificationVisitor)
 class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
     """
     Filter specification visitor building an evaluator for in-memory 
     filtering.
     """
-
-    implements(IFilterSpecificationVisitor)
 
     @staticmethod
     def __evaluator(spec, entities):
@@ -70,13 +69,12 @@ class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
         return partial(self.__evaluator, spec)
 
 
+@implementer(IOrderSpecificationVisitor)
 class ObjectOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
     Order specification visitor building an evaluator for in-memory 
     ordering.
     """
-
-    implements(IOrderSpecificationVisitor)
 
     def _conjunction_op(self, spec, *expressions):
         return lambda entities: sorted(entities, cmp=spec.cmp)

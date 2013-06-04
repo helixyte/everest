@@ -28,7 +28,7 @@ from everest.resources.utils import url_to_resource
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
-from zope.interface import implements # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
 from everest.resources.utils import get_service
@@ -40,11 +40,11 @@ __all__ = ['Collection',
            ]
 
 
+@implementer(IResource)
 class Resource(object):
     """
     This is the abstract base class for all resources.
     """
-    implements(IResource)
 
     #: Authentication specifier. Override as needed.
     __acl__ = [
@@ -113,11 +113,11 @@ class Resource(object):
         return data_element.mapping.map_to_resource(data_element)
 
 
+@implementer(IMemberResource)
 class Member(ResourceAttributeControllerMixin, Resource):
     """
     This is an abstract class for all member resources.
     """
-    implements(IMemberResource)
 
     id = terminal_attribute(int, 'id')
 
@@ -254,13 +254,13 @@ class Member(ResourceAttributeControllerMixin, Resource):
                % (self.__class__.__name__, self.id, self.__name__)
 
 
+@implementer(ICollectionResource)
 class Collection(Resource):
     """
     This is an abstract base class for all resource collections.
     A collection is a set of member resources which can be filtered, sorted,
     and sliced.
     """
-    implements(ICollectionResource)
 
     #: The title of the collection.
     title = None
@@ -565,12 +565,12 @@ class Collection(Resource):
         return clone
 
 
+@implementer(ISpecificationVisitor)
 class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
     """
     Base class for specification visitors that convert resource to entity
     attribute names.
     """
-    implements(ISpecificationVisitor)
 
     def __init__(self, rc_class):
         SpecificationVisitorBase.__init__(self)

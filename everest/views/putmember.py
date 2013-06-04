@@ -8,7 +8,7 @@ Created on Oct 14, 2011.
 """
 from everest.resources.utils import resource_to_url
 from everest.views.base import PutOrPostResourceView
-from webob.exc import HTTPOk
+from pyramid.httpexceptions import HTTPOk
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PutMemberView',
@@ -36,7 +36,7 @@ class PutMemberView(PutOrPostResourceView):
                 [('Location',
                   resource_to_url(self.context, request=self.request))]
         # We return the (representation of) the updated member to
-        # assist the client in doing the right thing. 
-        # Not all clients give access to the Response headers and we 
+        # assist the client in doing the right thing.
+        # Not all clients give access to the Response headers and we
         # cannot find the new location when HTTP/1.1 301 is returned.
         return self._get_result(self.context)

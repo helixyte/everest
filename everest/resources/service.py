@@ -9,13 +9,15 @@ Created on Jul 27, 2011.
 from everest.repositories.utils import as_repository
 from everest.resources.base import Resource
 from everest.resources.interfaces import IService
-from zope.interface import implements # pylint: disable=E0611,F0401
+from pyramid.compat import iterkeys_
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Service',
            ]
 
 
+@implementer(IService)
 class Service(Resource):
     """
     The service resource class.
@@ -23,7 +25,6 @@ class Service(Resource):
     The service resource is placed at the root of the resource tree and 
     provides traversal (=URL) access to all exposed collection resources. 
     """
-    implements(IService)
 
     relation = 'service'
 
@@ -77,7 +78,7 @@ class Service(Resource):
         return len(self.__collections)
 
     def __iter__(self):
-        for key in self.__collections.iterkeys():
+        for key in iterkeys_(self.__collections):
             yield self.__getitem__(key)
 
     def __str__(self):
