@@ -4,10 +4,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 19, 2012.
 """
+from everest.entities.system import UserMessage
 from everest.interfaces import IUserMessageNotifier
 from everest.messaging import UserMessageChecker
-from everest.messaging import UserMessageNotifier
 from everest.messaging import UserMessageHandlingContextManager
+from everest.messaging import UserMessageNotifier
 from everest.testing import TestCaseWithConfiguration
 
 __docformat__ = 'reStructuredText en'
@@ -22,6 +23,9 @@ class MessagingTestCase(TestCaseWithConfiguration):
         reg.registerUtility(UserMessageNotifier(), # pylint:disable=E1103
                             IUserMessageNotifier)
         self.values = []
+
+    def test_user_message(self):
+        self.assert_raises(ValueError, UserMessage, 'blah', guid='-1', id=1)
 
     def test_single(self):
         checker1 = MyChecker1()

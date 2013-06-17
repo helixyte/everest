@@ -31,13 +31,15 @@ from everest.querying.operators import LESS_THAN
 from everest.querying.operators import NEGATION
 from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import IResource
+from everest.utils import get_nested_attribute
 from pyramid.compat import string_types
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer # pylint: disable=E0611,F0401
 import re
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CompositeFilterSpecification',
+__all__ = ['AscendingOrderSpecification',
+           'CompositeFilterSpecification',
            'ConjunctionFilterSpecification',
            'ConjunctionOrderSpecification',
            'CriterionFilterSpecification',
@@ -131,6 +133,8 @@ class CriterionFilterSpecification(LeafFilterSpecification):
         LeafFilterSpecification.__init__(self)
         self.__attr_name = attr_name
         self.__attr_value = attr_value
+        self.__attr_func = \
+                    get_nested_attribute if '.' in attr_name else getattr
 
     def __eq__(self, other):
         return (isinstance(other, CriterionFilterSpecification)
@@ -163,7 +167,7 @@ class CriterionFilterSpecification(LeafFilterSpecification):
         return self.operator.apply(cand_value, attr_value)
 
     def _get_candidate_value(self, candidate):
-        return getattr(candidate, self.attr_name)
+        return self.__attr_func(candidate, self.attr_name)
 
 
 class CompositeFilterSpecification(FilterSpecification):
@@ -453,6 +457,8 @@ class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
             raise NotImplementedError('Abstract class')
         OrderSpecification.__init__(self)
         self.__attr_name = attr_name
+        self.__attr_func = \
+                get_nested_attribute if '.' in attr_name else getattr
 
     def __str__(self):
         str_format = '<%s attr_name: %s>'
@@ -482,7 +488,7 @@ class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
         visitor.visit_nullary(self)
 
     def _get_value(self, obj):
-        return getattr(obj, self.attr_name)
+        return self.__attr_func(obj, self.attr_name)
 
 
 class AscendingOrderSpecification(ObjectOrderSpecification):

@@ -131,7 +131,6 @@ class Specification(object):
     """
     Abstract base classs for all specifications.
     """
-
     operator = None
 
     def __init__(self):
@@ -146,7 +145,6 @@ class SpecificationVisitorBase(object):
     """
     Base class for specification visitors.
     """
-
     def __init__(self):
         self.__expression_stack = []
 
@@ -169,7 +167,6 @@ class SpecificationVisitor(SpecificationVisitorBase):
     """
     Base class for all specification visitors.
     """
-
     def visit_nullary(self, spec):
         op = self.__get_op_func(spec.operator.name)
         self._push(op(spec))

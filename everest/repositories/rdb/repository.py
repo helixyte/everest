@@ -1,6 +1,4 @@
 """
-
-
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -8,6 +6,8 @@ Created on Jan 7, 2013.
 """
 from everest.repositories.base import Repository
 from everest.repositories.rdb.aggregate import RdbAggregate
+from everest.repositories.rdb.querying import OptimizedCountingQuery
+from everest.repositories.rdb.querying import SimpleCountingQuery
 from everest.repositories.rdb.session import RdbSessionFactory
 from everest.repositories.rdb.utils import empty_metadata
 from everest.repositories.rdb.utils import get_metadata
@@ -18,6 +18,7 @@ from everest.repositories.utils import get_engine
 from everest.repositories.utils import is_engine_initialized
 from everest.repositories.utils import set_engine
 from sqlalchemy.engine import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import StaticPool
 
 __docformat__ = 'reStructuredText en'
@@ -46,7 +47,8 @@ class RdbRepository(Repository):
         #: automatically.
         self.autoflush = autoflush
         # Default to an in-memory sqlite DB.
-        self.configure(db_string='sqlite://', metadata_factory=empty_metadata)
+        self.configure(db_string='sqlite://',
+                       metadata_factory=empty_metadata)
 
     def _initialize(self):
         # Manages a RDB engine and a metadata instance for this repository.
@@ -79,7 +81,9 @@ class RdbRepository(Repository):
         metadata.bind = engine
 
     def _make_session_factory(self):
-        return RdbSessionFactory(self)
+        engine = get_engine(self.name)
+        query_class = self.__check_query_class(engine)
+        return RdbSessionFactory(self, query_class)
 
     def __make_engine(self):
         db_string = self._config['db_string']
@@ -91,3 +95,14 @@ class RdbRepository(Repository):
         else:
             kw = {} # pragma: no cover
         return create_engine(db_string, **kw)
+
+    def __check_query_class(self, engine):
+        # We check if the backend supports windowing for optimized counting.
+        conn = engine.connect()
+        try:
+            conn.execute("select count(1) over()")
+        except OperationalError:
+            query_class = SimpleCountingQuery
+        else:
+            query_class = OptimizedCountingQuery # pragma: no cover
+        return query_class

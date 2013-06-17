@@ -20,9 +20,18 @@ __all__ = ['UserMessage',
 @implementer(IUserMessage)
 class UserMessage(Entity):
     def __init__(self, text, guid=None, time_stamp=None, **kw):
+        msg_id = kw.pop('id', None)
+        if msg_id is None:
+            if guid is None:
+                guid = str(uuid.uuid4())
+            msg_id = guid
+        elif not guid is None and msg_id != guid:
+            raise ValueError('Can not pass different values for "guid" and '
+                             '"id" parameter.')
+        else:
+            guid = msg_id
+        kw['id'] = msg_id
         Entity.__init__(self, **kw)
-        if guid is None:
-            guid = str(uuid.uuid4())
         if time_stamp is None:
             time_stamp = datetime.now()
         self.text = text

@@ -10,14 +10,16 @@ from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
+from everest.tests.complete_app.testing import create_collection
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooCollection
 from everest.tests.simple_app.resources import FooMember
-from everest.tests.complete_app.testing import create_collection
+from mock import patch
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ResourcesFilteringTestCase',
+__all__ = ['RelatedResourcesTestCase',
+           'ResourcesFilteringTestCase',
            'ResourcesTestCase',
            ]
 
@@ -33,6 +35,14 @@ class ResourcesTestCase(ResourceTestCase):
     def test_wrong_entity_raises_error(self):
         ent = UnregisteredEntity()
         self.assert_raises(ValueError, FooMember, ent)
+
+    def test_member_name(self):
+        coll = get_root_collection(IFoo)
+        foo = FooEntity(id=0)
+        mb = coll.create_member(foo)
+        self.assert_equal(mb.__name__, '0')
+        mb.__name__ = 'foo'
+        self.assert_equal(mb.__name__, 'foo')
 
     def test_member_delete(self):
         coll = get_root_collection(IFoo)
@@ -62,17 +72,40 @@ class ResourcesTestCase(ResourceTestCase):
         self.assert_equal(str(cm.exception), exc_msg)
 
     def test_update_from_entity(self):
-        foo0 = FooEntity(id=0)
+        foo0 = FooEntity(id=0, name='foo0')
         coll = get_root_collection(IFoo)
         mb0 = coll.create_member(foo0)
-        foo1 = FooEntity(id=1)
+        foo1 = FooEntity(id=0)
+        foo1.name = 'foo1'
+        # update_from_entity directly updates the entity.
         mb0.update_from_entity(foo1)
-        self.assert_equal(mb0.id, 1)
+        self.assert_equal(mb0.get_entity().name, 'foo1')
+
+    def test_update_from_entities(self):
+        foo0 = FooEntity(id=0)
+        coll = get_root_collection(IFoo)
+        mb = coll.create_member(foo0)
+        self.assert_equal(set([mb.id for mb in coll]), set([0]))
+        #
+        ents = [FooEntity(id=1), FooEntity(id=2), FooEntity()]
+        coll.update_from_entities(ents)
+        self.assert_equal(set([mb.id for mb in coll]), set([1, 2, None]))
 
     def test_str(self):
         coll = get_root_collection(IFoo)
         coll_str = str(coll)
         self.assert_true(coll_str.startswith('<FooCollection'))
+
+
+class RelatedResourcesTestCase(ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
+
+    def test_delete_related_member(self):
+        coll = create_collection()
+        mb = coll['0']
+        parent = mb.parent
+        parent.delete()
 
 
 class ResourcesFilteringTestCase(ResourceTestCase):
@@ -81,19 +114,19 @@ class ResourcesFilteringTestCase(ResourceTestCase):
 
     def test_filter_nested(self):
         coll = create_collection()
-        children = next(iter(coll)).children
+        children = coll['1'].children
         spec_fac = get_filter_specification_factory()
-        spec = spec_fac.create_equal_to('id', 1)
+        spec = spec_fac.create_equal_to('id', 0)
         children.filter = spec
         self.assert_true(isinstance(children.filter,
-                                    ValueEqualToFilterSpecification))
+                                    ConjunctionFilterSpecification))
         self.assert_equal(len(children), 0)
 
     def test_filter_not_nested(self):
         # The grand children are not nested, so the filter spec has to be
         # a ConjunctionFilterSpecification.
         coll = create_collection()
-        grand_children = next(iter(next(iter(coll)).children)).children
+        grand_children = coll['0'].children['0'].children
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('id', 1)
         grand_children.filter = spec
@@ -113,9 +146,11 @@ class ResourcesFilteringTestCase(ResourceTestCase):
         grandchildren = next(iter(children)).children
         grandchild = next(iter(grandchildren))
         spec_fac = get_filter_specification_factory()
-        spec = spec_fac.create_equal_to('backref_only_children', grandchild)
-        with self.assert_raises(ValueError) as cm:
-            children.filter = spec
+        spec = spec_fac.create_equal_to('children', grandchild)
+        with patch('%s.resources.MyEntityChildMember.children.entity_attr'
+                   % self.package_name, None):
+            with self.assert_raises(ValueError) as cm:
+                children.filter = spec
         exc_msg = 'does not have a corresponding entity attribute.'
         self.assert_true(str(cm.exception).endswith(exc_msg))
 

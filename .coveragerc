@@ -10,3 +10,6 @@ exclude_lines =
     def __repr__
     raise AssertionError
     raise NotImplementedError
+
+[html]
+extra_css = .cov-style.css

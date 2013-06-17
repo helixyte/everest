@@ -6,8 +6,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 12, 2011.
 """
+from everest.constants import CASCADES
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
+from everest.entities.traversal import CrudDomainVisitor
+from everest.entities.traversal import SourceTargetTraverser
+from everest.querying.utils import get_filter_specification_factory
+from everest.utils import get_filter_specification_visitor
+from everest.utils import get_order_specification_visitor
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -46,7 +52,9 @@ class Entity(object):
         return cls(**data)
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.id == other.id
+        return isinstance(other, self.__class__) \
+               and self.id == other.id \
+               and not (self.id is None and other.id is None)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -58,106 +66,42 @@ class Entity(object):
 @implementer(IAggregate)
 class Aggregate(object):
     """
-    Abstract base class for all aggregates.
+    Abstract base class for aggregates.
 
-    An aggregate is an accessor for a set of entities of the same type which 
-    are held in some repository. 
-    
-    The wrapped entity set may be a "root" set of all entities in the 
-    repository or a "relation" set defined by a relationship to entities of 
-    some other type.
+    An aggregate is an accessor for a set of entities of the same type. 
 
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
     """
 
-    def __init__(self, entity_class, session_factory):
-        """
-        Constructor:
+    #: Entity class (type) of the entities in this aggregate.
+    entity_class = None
 
-        :param entity_class: the entity class (type) of the entities in this
-            aggregate.
-        :type entity_class: a class implementing
-            :class:`everest.entities.interfaces.IEntity`
-        :param session: Session object.
-        """
+    def __init__(self):
         if self.__class__ is Aggregate:
             raise NotImplementedError('Abstract class.')
-        # : Entity class (type) of the entities in this aggregate.
-        self.entity_class = entity_class
-        # : The session factory.
-        self._session_factory = session_factory
-        # : Relationship of entities in this aggregate to a parent entity.
-        self._relationship = None
-        # : Specification for filtering
-        # : (:class:`everest.querying.specifications.FilterSpecification`).
-        # : Attribute names in this specification are relative to the entity.
+        #: Specification for filtering
+        #: (:class:`everest.querying.specifications.FilterSpecification`).
+        #: Attribute names in this specification are relative to the entity.
         self._filter_spec = None
-        # : Specification for ordering
-        # : (:class:`everest.querying.specifications.OrderSpecification`).
-        # : Attribute names in this specification are relative to the entity.
+        #: Specification for ordering
+        #: (:class:`everest.querying.specifications.OrderSpecification`).
+        #: Attribute names in this specification are relative to the entity.
         self._order_spec = None
-        # : Key for slicing. (:type:`slice`).
+        #: Key for slicing. (:type:`slice`).
         self._slice_key = None
-
-    @classmethod
-    def create(cls, entity_class, session_factory):
-        """
-        Factory class method to create a new aggregate.
-        """
-        return cls(entity_class, session_factory)
 
     def clone(self):
         """
         Returns a clone of this aggregate.
         """
-        clone = self.__class__.create(self.entity_class, self._session_factory)
+        clone = self.__class__.__new__(self.__class__)
         # access protected member pylint: disable=W0212
-        clone._relationship = self._relationship
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
         # pylint: enable=W0212
         return clone
-
-    def count(self):
-        """
-        Returns the total number of entities in the underlying aggregate.
-        If specified, filter specs are applied. A specified slice key is
-        ignored.
-
-        :returns: number of aggregate members (:class:`int`)
-        """
-        raise NotImplementedError('Abstract method')
-
-    def get_by_id(self, id_key):
-        """
-        Returns an entity by ID from the underlying aggregate or `None` if
-        the entity is not found.
-
-        :note: if a filter is set which matches the requested entity, it
-          will not be found.
-        :param id_key: ID value to look up
-        :type id_key: `int` or `str`
-        :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one entity is found for the given ID value. 
-        :returns: specified entity or `None`
-
-        Returns a single entity from the underlying aggregate by ID.
-        """
-        raise NotImplementedError('Abstract method')
-
-    def get_by_slug(self, slug):
-        """
-        Returns an entity by slug or `None` if the entity is not found.
-
-        :param slug: slug value to look up
-        :type slug: `str`
-        :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one entity is found for the given ID value. 
-        :returns: entity or `None`
-        """
-        raise NotImplementedError('Abstract method')
 
     def iterator(self):
         """
@@ -168,7 +112,48 @@ class Aggregate(object):
 
         :returns: an iterator for the aggregate entities
         """
-        raise NotImplementedError('Abstract method')
+        return iter(self._get_data_query())
+
+    def __iter__(self):
+        return self.iterator()
+
+    def count(self):
+        """
+        Returns the total number of entities in the underlying aggregate.
+        If specified, filter specs are applied. A specified slice key is
+        ignored.
+
+        :returns: number of aggregate members (:class:`int`)
+        """
+        return self._get_filtered_query(None).count()
+
+    def get_by_id(self, id_key):
+        """
+        Returns an entity by ID  or `None` if the entity is not found.
+
+        :note: if a filter is set which matches the requested entity, it
+          will not be found.
+        :param id_key: ID value to look up
+        :type id_key: `int` or `str`
+        :raises: :class:`everest.exceptions.MultipleResultsException` if more
+          than one entity is found for the given ID value. 
+        :returns: specified entity or `None`
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def get_by_slug(self, slug):
+        """
+        Returns an entity by slug or `None` if the entity is not found.
+
+        :note: if a filter is set which matches the requested entity, it
+          will not be found.
+        :param slug: slug value to look up
+        :type slug: `str`
+        :raises: :class:`everest.exceptions.MultipleResultsException` if more
+          than one entity is found for the given ID value. 
+        :returns: entity or `None`
+        """
+        raise NotImplementedError('Abstract method.')
 
     def add(self, entity):
         """
@@ -181,7 +166,7 @@ class Aggregate(object):
           :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: if an entity with the same ID exists
         """
-        raise NotImplementedError('Abstract method')
+        raise NotImplementedError('Abstract method.')
 
     def remove(self, entity):
         """
@@ -192,12 +177,12 @@ class Aggregate(object):
           :class:`everest.entities.interfaces.IEntity`
         :raise ValueError: entity was not found
         """
-        raise NotImplementedError('Abstract method')
+        raise NotImplementedError('Abstract method.')
 
-    def update(self, entity, source_entity):
+    def update(self, entity):
         """
-        Updates the state of the given entity such that it reflects the state
-        of the given source entity.
+        Updates the existing entity with the same ID as the given entity 
+        with the state of the latter.
         
         Relies on the underlying repository for the implementation of the
         state update.
@@ -209,64 +194,289 @@ class Aggregate(object):
         :type source_entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
         """
-        raise NotImplementedError('Abstract method')
+        raise NotImplementedError('Abstract method.')
 
-    def set_relationship(self, relationship):
+    def query(self):
         """
-        Sets a relationship for this aggregate.
+        Returns a query for this aggregate.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    @property
+    def expression_kind(self):
+        """
+        Returns the kind of filter and order expression this aggregate builds.
+        """
+        raise NotImplementedError('Abstract property.')
+
+    def get_root_aggregate(self, rc):
+        """
+        Returns a root aggregate for the given registered resource. 
         
-        :param relationship: 
-            instance of :class:`everest.relationship.Relationship`.
+        The aggregate is retrieved from the same repository that was used to
+        create this aggregate.
         """
-        self._relationship = relationship
+        raise NotImplementedError('Abstract method.')
+
+    def _get_filter(self):
+        #: Returns the filter specification for this aggregate.
+        return self._filter_spec
+
+    def _set_filter(self, filter_spec):
+        #: Sets the filter specification for this aggregate.
+        self._filter_spec = filter_spec
+
+    filter = property(_get_filter, _set_filter)
+
+    def _get_order(self):
+        #: Returns the order specification for this aggregate.
+        return self._order_spec
+
+    def _set_order(self, order_spec):
+        #: Sets the order specification for this aggregate.
+        self._order_spec = order_spec
+
+    order = property(_get_order, _set_order)
+
+    def _get_slice(self):
+        #: Returns the slice key for this aggregate.
+        return self._slice_key
+
+    def _set_slice(self, slice_key):
+        #: Sets the slice key for this aggregate. Filter and order specs
+        #: are applied before the slicing operation is performed.
+        self._slice_key = slice_key
+
+    slice = property(_get_slice, _set_slice)
+
+    def _query_optimizer(self, query, slice_key): # unused pylint: disable=W0613
+        """
+        Override this to generate optimized queries based on the given
+        slice key.
+        
+        This default implementation just returns the given query as is.
+        
+        :param query: query to optimize as returned from the data source.
+        :param key: slice key to use for the query or `None`, if no slicing
+          was applied.
+        """
+        return query
+
+    def _get_filtered_query(self, key):
+        #: Returns a query filtered by the current filter specification.
+        query = self._query_optimizer(self.query(), key)
+        if not self.filter is None:
+            visitor_cls = \
+              get_filter_specification_visitor(self.expression_kind)
+            vst = visitor_cls(self.entity_class)
+            self.filter.accept(vst)
+            query = vst.filter_query(query)
+        return query
+
+    def _get_ordered_query(self, key):
+        #: Returns a filtered query ordered by the current order
+        #: specification.
+        query = self._get_filtered_query(key)
+        if not self._order_spec is None:
+            #: Orders the given query with the given order specification.
+            visitor_cls = \
+              get_order_specification_visitor(self.expression_kind)
+            vst = visitor_cls(self.entity_class)
+            self._order_spec.accept(vst)
+            query = vst.order_query(query)
+        return query
+
+    def _get_data_query(self):
+        #: Returns an ordered query sliced by the current slice key.
+        query = self._get_ordered_query(self._slice_key)
+        if not self._slice_key is None:
+            query = query.slice(self._slice_key.start,
+                                self._slice_key.stop)
+        return query
+
+
+class RootAggregate(Aggregate):
+    """
+    Abstract base class for root aggregates.
+
+    A root aggregate provides access to all entities of a particular type
+    in an underlying repository. It also holds a session factory which creates
+    a thread-local session that stages operations on the repository.
+    """
+    #: This holds the value for the expression_kind property (the kind of
+    #: filter and order expression this root aggregate builds).
+    _expression_kind = None
+
+    def __init__(self, entity_class, session_factory, repository):
+        """
+        Constructor.
+
+        :param entity_class: The entity class (type) of the entities in this
+            aggregate.
+        :type entity_class: A class implementing
+            :class:`everest.entities.interfaces.IEntity`.
+        :param session_factory: The session factory for this aggregate.
+        :param repository: The repository that created this aggregate. 
+        """
+        if self.__class__ is RootAggregate:
+            raise NotImplementedError('Abstract class.')
+        Aggregate.__init__(self)
+        #: The entity class managed by this aggregate.
+        self.entity_class = entity_class
+        #: The session factory.
+        self._session_factory = session_factory
+        # The repository that holds the entities.
+        self.__repository = repository
+
+    @classmethod
+    def create(cls, entity_class, session_factory, repository):
+        """
+        Factory class method to create a new aggregate.
+        """
+        return cls(entity_class, session_factory, repository)
+
+    def clone(self):
+        clone = Aggregate.clone(self)
+        clone.entity_class = self.entity_class
+         # protected pylint: disable=W0212
+        clone._session_factory = self._session_factory
+        clone.__repository = self.__repository
+         # enable=W0212
+        return clone
+
+    def get_by_id(self, id_key):
+        ent = self._session.get_by_id(self.entity_class, id_key)
+        if ent is None:
+            ent = self._query_by_id(id_key)
+        if not ent is None \
+           and not self._filter_spec is None \
+           and not self._filter_spec.is_satisfied_by(ent):
+            ent = None
+        return ent
+
+    def get_by_slug(self, slug):
+        raise NotImplementedError('Abstract method.')
+
+    def add(self, entity):
+        if not isinstance(entity, self.entity_class):
+            raise ValueError('Can only add entities of type "%s" to this '
+                             'aggregate.' % self.entity_class)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity, None)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+#        trv = DomainTreeTraverser(entity)
+#        vst = AddingDomainVisitor(self, self._session)
+        trv.run(vst)
+
+    def remove(self, entity):
+        trv = SourceTargetTraverser(self.get_root_aggregate, None, entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+#        trv = DomainTreeTraverser(entity)
+#        vst = RemovingDomainVisitor(self, self._session)
+        trv.run(vst)
+
+    def update(self, entity):
+        target_entity = self.get_by_id(entity.id)
+        trv = SourceTargetTraverser(self.get_root_aggregate, entity,
+                                    target_entity)
+        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
+        trv.run(vst)
+        return target_entity
+#        return self._session.update(self.entity_class, entity)
+
+    def query(self):
+        return self._session.query(self.entity_class)
+
+    @property
+    def expression_kind(self):
+        return self._expression_kind
+
+    def get_root_aggregate(self, rc):
+        return self.__repository.get_aggregate(rc)
+
+    def make_relationship_aggregate(self, relationship):
+        """
+        Returns a new relationship aggregate for the given relationship.
+        
+        :param relationship: instance of 
+          :class:`everest.relationship.ReferencedRelateeRelationship` or
+          :class:`everest.relationship.BackreferencedRelatorRelationship`
+        """
+        return RelationshipAggregate(self, relationship)
+
+    def _query_by_id(self, id_key):
+        raise NotImplementedError('Abstract method.')
 
     @property
     def _session(self):
         return self._session_factory()
 
+
+class RelationshipAggregate(Aggregate):
+    """
+    An aggregate that references a subset of a root aggregate defined through
+    a relationship.
+    """
+    def __init__(self, root_aggregate, relationship):
+        Aggregate.__init__(self)
+        self._root_aggregate = root_aggregate
+        self._relationship = relationship
+
+    def get_by_id(self, id_key):
+        ent = self._root_aggregate.get_by_id(id_key)
+        if not ent is None and not self.filter.is_satisfied_by(ent):
+            ent = None
+        return ent
+
+    def get_by_slug(self, slug):
+        ent = self._root_aggregate.get_by_slug(slug)
+        if not ent is None and not self.filter.is_satisfied_by(ent):
+            ent = None
+        return ent
+
+    def query(self):
+        return self._root_aggregate.query()
+
+    @property
+    def entity_class(self):
+        return self._root_aggregate.entity_class
+
+    @property
+    def expression_kind(self):
+        return self._root_aggregate.expression_kind
+
+    def get_root_aggregate(self, rc):
+        return self._root_aggregate.get_root_aggregate(rc)
+
+    def update(self, entity):
+        if self._relationship.descriptor.cascade & CASCADES.UPDATE:
+            upd_entity = self._root_aggregate.update(entity)
+        else:
+            upd_entity = entity
+        return upd_entity
+
+    def add(self, entity):
+        self._relationship.add(entity)
+        if self._relationship.descriptor.cascade & CASCADES.ADD \
+           and (entity.id is None
+                or self._root_aggregate.get_by_id(entity.id) is None):
+            self._root_aggregate.add(entity)
+
+    def remove(self, entity):
+        if self._relationship.descriptor.cascade & CASCADES.DELETE \
+           and (not entity.id is None
+                and not self._root_aggregate.get_by_id(entity.id) is None):
+            self._root_aggregate.remove(entity)
+        self._relationship.remove(entity)
+
     def _get_filter(self):
-        # : Returns the filter specification for this aggregate.
-        return self._filter_spec
+        # Overwrite to prepend relationship specification to filter spec.
+        rel_spec = self._relationship.specification
+        if not self._filter_spec is None:
+            spec_fac = get_filter_specification_factory()
+            filter_spec = spec_fac.create_conjunction(rel_spec,
+                                                      self._filter_spec)
+        else:
+            filter_spec = rel_spec
+        return filter_spec
 
-    def _set_filter(self, filter_spec):
-        # : Sets the filter specification for this aggregate.
-        self._filter_spec = filter_spec
-        self._apply_filter()
-
-    filter = property(_get_filter, _set_filter)
-
-    def _get_order(self):
-        # : Returns the order specification for this aggregate.
-        return self._order_spec
-
-    def _set_order(self, order_spec):
-        # : Sets the order specification for this aggregate.
-        self._order_spec = order_spec
-        self._apply_order()
-
-    order = property(_get_order, _set_order)
-
-    def _get_slice(self):
-        # : Returns the slice key for this aggregate.
-        return self._slice_key
-
-    def _set_slice(self, slice_key):
-        # : Sets the slice key for this aggregate. Filter and order specs
-        # : are applied before the slicing operation is performed.
-        self._slice_key = slice_key
-        self._apply_slice()
-
-    slice = property(_get_slice, _set_slice)
-
-    def _apply_filter(self):
-        # : Called when the filter specification has changed.
-        raise NotImplementedError('Abstract method')
-
-    def _apply_order(self):
-        # : Called when the order specification has changed.
-        raise NotImplementedError('Abstract method')
-
-    def _apply_slice(self):
-        # : Called when the slice key has changed.
-        raise NotImplementedError('Abstract method')
-
+    filter = property(_get_filter, Aggregate._set_filter)

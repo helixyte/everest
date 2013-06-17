@@ -13,9 +13,10 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
+from everest.constants import ResourceAttributeKinds
+from everest.constants import ResourceKinds
 from everest.mime import CsvMime
-from everest.representers.attributes import AttributeKey
-from everest.representers.base import MappingResourceRepresenter
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
 from everest.representers.config import IGNORE_ON_READ_OPTION
@@ -32,8 +33,6 @@ from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
@@ -179,7 +178,7 @@ class CsvRepresentationParser(RepresentationParser):
                 # get attribute values destructively from the row_data.
                 self.__row_data_key = self.__coll_data.make_key(row_data)
             mb_data_el = self.__process_row(row_data, self._resource_class,
-                                            AttributeKey(()))
+                                            MappedAttributeKey(()))
             if self.__is_first_row:
                 self.__is_first_row = False
                 if len(self.__first_row_field_names) > 0:
@@ -244,8 +243,8 @@ class CsvRepresentationParser(RepresentationParser):
         # fields we found from the set of all field names.
         if self.__is_first_row:
             self.__first_row_field_names.discard(attribute.repr_name)
-        if attribute.should_ignore(IGNORE_ON_READ_OPTION,
-                                   attribute_key):
+        ignore_opt = attribute.options.get(IGNORE_ON_READ_OPTION)
+        if attribute.should_ignore(ignore_opt, attribute_key):
             if not attribute_value in (None, ''):
                 raise ValueError('Value for attribute "%s" found '
                                  'which is configured to be ignored.'
@@ -263,7 +262,7 @@ class CsvRepresentationParser(RepresentationParser):
                             self.__process_link(attribute_value, attribute)
                     data_el.set_nested(attribute, link_data_el)
                 elif not has_attribute and len(row_data) > 0:
-                    nested_attr_key = attribute_key + (attribute.name,)
+                    nested_attr_key = attribute_key + (attribute,)
                     # We recursively look for nested resource attributes in
                     # other fields.
                     if attribute.kind == ResourceAttributeKinds.MEMBER:
@@ -423,14 +422,15 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
         if is_link_node:
-            new_field_name = self.__get_field_name(attribute_key[:-1],
+            new_field_name = self.__get_field_name(attribute_key.names[:-1],
                                                    attribute)
             mb_data = CsvData({new_field_name:
                                self.__encode(member_node.get_url())})
         else:
             rpr_mb_data = OrderedDict()
             for attr, value in iteritems_(member_data):
-                new_field_name = self.__get_field_name(attribute_key, attr)
+                new_field_name = self.__get_field_name(attribute_key.names,
+                                                       attr)
                 rpr_mb_data[new_field_name] = value
             mb_data = CsvData(rpr_mb_data)
         if not index is None:
@@ -446,7 +446,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def visit_collection(self, attribute_key, attribute, collection_node,
                          collection_data, is_link_node, parent_data):
         if is_link_node:
-            new_field_name = self.__get_field_name(attribute_key[:-1],
+            new_field_name = self.__get_field_name(attribute_key.names[:-1],
                                                    attribute)
             coll_data = CsvData({new_field_name:collection_node.get_url()})
         else:
@@ -463,11 +463,11 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def csv_data(self):
         return self.__csv_data
 
-    def __get_field_name(self, attribute_key, attribute):
+    def __get_field_name(self, attribute_names, attribute):
         if attribute.name != attribute.repr_name:
             field_name = attribute.repr_name
         else:
-            field_name = '.'.join(attribute_key + (attribute.name,))
+            field_name = '.'.join(attribute_names + (attribute.name,))
         return self.__encode(field_name)
 
     def __encode(self, item):

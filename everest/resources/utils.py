@@ -203,6 +203,9 @@ def get_service():
 def resource_to_url(resource, request=None):
     """
     Converts the given resource to a URL.
+    
+    :param request: Request object (required for the host name part of the 
+      URL). If this is not given, the current request is used.
     """
     if request is None:
         request = get_current_request()
@@ -215,6 +218,9 @@ def resource_to_url(resource, request=None):
 def url_to_resource(url, request=None):
     """
     Converts the given URL to a resource.
+
+    :param request: Request object (required for the host name part of the 
+      URL). If this is not given, the current request is used.
     """
     if request is None:
         request = get_current_request()
@@ -222,4 +228,3 @@ def url_to_resource(url, request=None):
     reg = get_current_registry()
     cnv = reg.getAdapter(request, IResourceUrlConverter)
     return cnv.url_to_resource(url)
-

@@ -7,13 +7,18 @@ Created on Feb 4, 2011.
 from everest.querying.ordering import BubbleSorter
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
+from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.simple_app.entities import FooEntity
+from mock import MagicMock
 import random
-from everest.repositories.rdb import SqlOrderSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderSpecificationTestCase',
+__all__ = ['AscendingOrderSpecificationTestCase',
+           'ConjunctionOrderSpecificationTestCase',
+           'ReverseOrderSpecificationTestCase',
+           'SorterTestCase',
+           'SqlOrderingSpecificationVisitorTestCase',
            ]
 
 
@@ -163,12 +168,20 @@ class SqlOrderingSpecificationVisitorTestCase(Pep8CompliantTestCase):
     class MySqlOrderSpecificationVisitor(SqlOrderSpecificationVisitor):
         def _asc_op(self, spec):
             return lambda value: None
+
     def test_custom_clause(self):
         obj = object()
         spec = AscendingOrderSpecification('id')
         join_map = {'id':[obj]}
+        def get_item(key):
+            return join_map[key]
+        def contains(key):
+            return key in join_map
+        mock_join_map = MagicMock(spec=dict)
+        mock_join_map.__getitem__.side_effect = get_item
+        mock_join_map.__contains__.side_effect = contains
         visitor = self.MySqlOrderSpecificationVisitor(FooEntity,
                                                       custom_join_clauses=
-                                                                    join_map)
+                                                                mock_join_map)
         visitor.visit_nullary(spec)
-        self.assert_equal(visitor.get_joins(), set([obj]))
+        mock_join_map.__getitem__.assert_called_with('id')

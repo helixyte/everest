@@ -29,8 +29,10 @@ from pyramid.compat import string_types
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['CqlFilterSpecificationVisitor',
+__all__ = ['CqlFilterExpression',
+           'CqlFilterSpecificationVisitor',
            'FilterSpecificationVisitor',
+           'RepositoryFilterSpecificationVisitor',
            ]
 
 
@@ -38,9 +40,6 @@ class FilterSpecificationVisitor(SpecificationVisitor):
     """
     Base class for filter specification visitors.
     """
-
-    def __init__(self):
-        SpecificationVisitor.__init__(self)
 
     def _disjunction_op(self, spec, *expressions):
         raise NotImplementedError('Abstract method.')
@@ -210,3 +209,20 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         else:
             result = str(value)
         return result
+
+
+class RepositoryFilterSpecificationVisitor(FilterSpecificationVisitor): # pylint: disable=W0223
+    """
+    Specification visitors that build filter expressions for a repository
+    backend.
+    """
+    def __init__(self, entity_class):
+        FilterSpecificationVisitor.__init__(self)
+        self._entity_class = entity_class
+
+    def filter_query(self, query):
+        """
+        Returns the given query filtered by this visitor's filter expression.
+        """
+        raise NotImplementedError('Abstract method.')
+

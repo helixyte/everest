@@ -7,12 +7,22 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 27, 2012.
 """
 from collections import OrderedDict
+from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
+from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.memory.cache import EntityCacheMap
 from everest.representers.utils import as_representer
+from everest.resources.attributes import get_resource_class_attribute_names
+from everest.resources.attributes import get_resource_class_attributes
+from everest.resources.attributes import is_resource_class_collection_attribute
+from everest.resources.attributes import is_resource_class_terminal_attribute
+from everest.resources.staging import StagingAggregate
 from everest.resources.staging import create_staging_collection
+from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
+from everest.utils import get_repository_manager
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from pyramid.compat import NativeIO
@@ -38,41 +48,36 @@ __all__ = ['ConnectedResourcesSerializer',
            'load_collection_from_file',
            'load_collection_from_stream',
            'load_collection_from_url',
+           'load_into_collection_from_file',
+           'load_into_collection_from_stream',
            'load_into_collection_from_url',
            'load_into_collections_from_zipfile',
            ]
 
 
-def load_collection_from_url(collection_class, url,
-                             content_type=None):
+def load_into_collection_from_stream(collection, stream, content_type):
     """
-    Loads a collection resource of the given registered resource type from a 
-    representation contained in the given URL.
-    
-    :returns: collection resource
+    Loads resources from the given resource data stream (of the specified MIME
+    content type) into the given collection resource.
     """
-    parsed = urlparse.urlparse(url)
-    if parsed.scheme == 'file': # pylint: disable=E1101
-        # Assume a local path.
-        coll = load_collection_from_file(collection_class,
-                                         parsed.path, # pylint: disable=E1101
-                                         content_type=content_type)
-    else:
-        raise ValueError('Unsupported URL scheme "%s".' % parsed.scheme) # pylint: disable=E1101
+    rpr = as_representer(collection, content_type)
+    with stream:
+        data_el = rpr.data_from_stream(stream)
+    rpr.resource_from_data(data_el, resource=collection)
+
+
+def load_collection_from_stream(resource, stream, content_type):
+    """
+    Creates a new collection for the registered resource and calls
+    `load_into_collection_from_stream` with it.
+    """
+    coll = create_staging_collection(resource)
+    load_into_collection_from_stream(coll, stream, content_type)
     return coll
 
 
-def load_into_collection_from_url(collection, url, content_type=None):
-    """
-    Convenience function that adds all members loaded from the given
-    collection URL to the given collection.
-    """
-    for mb in load_collection_from_url(type(collection), url,
-                                       content_type=content_type):
-        collection.add(mb)
-
-
-def load_collection_from_file(collection_class, filename, content_type=None):
+def load_into_collection_from_file(collection, filename,
+                                   content_type=None):
     """
     Loads resources from the specified file into the given collection
     resource.
@@ -87,31 +92,59 @@ def load_collection_from_file(collection_class, filename, content_type=None):
         except KeyError:
             raise ValueError('Could not infer MIME type for file extension '
                              '"%s".' % ext)
-    return load_collection_from_stream(collection_class, open(filename, 'rU'),
-                                       content_type)
+    load_into_collection_from_stream(collection, open(filename, 'rU'),
+                                     content_type)
 
 
-def load_collection_from_stream(collection_class, stream, content_type):
+def load_collection_from_file(resource, filename, content_type=None):
     """
-    Loads resources from the given stream into the given collection resource.
+    Creates a new collection for the registered resource and calls
+    `load_into_collection_from_file` with it.
     """
-    coll = object.__new__(collection_class)
-    rpr = as_representer(coll, content_type)
-    with stream:
-        data_el = rpr.data_from_stream(stream)
-    return rpr.resource_from_data(data_el)
+    coll = create_staging_collection(resource)
+    load_into_collection_from_file(coll, filename,
+                                   content_type=content_type)
+    return coll
+
+
+def load_into_collection_from_url(collection, url, content_type=None):
+    """
+    Loads resources from the representation contained in the given URL into
+    the given collection resource.
+    
+    :returns: collection resource
+    """
+    parsed = urlparse(url)
+    scheme = parsed.scheme # pylint: disable=E1101
+    if scheme == 'file':
+        # Assume a local path.
+        load_into_collection_from_file(collection,
+                                       parsed.path, # pylint: disable=E1101
+                                       content_type=content_type)
+    else:
+        raise ValueError('Unsupported URL scheme "%s".' % scheme)
+
+
+def load_collection_from_url(resource, url, content_type=None):
+    """
+    Creates a new collection for the registered resource and calls
+    `load_into_collection_from_url` with it.
+    """
+    coll = create_staging_collection(resource)
+    load_into_collection_from_url(coll, url, content_type=content_type)
+    return coll
 
 
 def load_into_collections_from_zipfile(collections, zipfile):
     """
-    Loads resources contained in the given ZIP archive for each of the
-    given collection classes. 
+    Loads resources contained in the given ZIP archive into each of the
+    given collections. 
     
     The ZIP file is expected to contain a list of file names obtained with
     the :func:`get_collection_filename` function, each pointing to a file
     of zipped collection resource data.
     
-    :param collection_classes: sequence of collection resource classes
+    :param collections: sequence of collection resources
     :param str zipfile: ZIP file name
     """
     with ZipFile(zipfile) as zipf:
@@ -131,11 +164,9 @@ def load_into_collections_from_zipfile(collections, zipfile):
             except KeyError:
                 raise ValueError('Could not infer MIME type for file '
                                  'extension "%s".' % ext)
-            for mb in load_collection_from_stream(type(coll),
-                                                  zipf.open(coll_fn, 'r'),
-                                                  content_type):
-                coll.add(mb)
-    return collections
+            load_into_collection_from_stream(coll,
+                                             zipf.open(coll_fn, 'r'),
+                                             content_type)
 
 
 def dump_resource(resource, stream, content_type=None):
@@ -166,8 +197,8 @@ def build_resource_dependency_graph(resource_classes,
       parent) should be included in the dependency graph.
     """
     def visit(mb_cls, grph, path, incl_backrefs):
-        for attr_name in mb_cls.get_attribute_names():
-            if mb_cls.is_terminal(attr_name):
+        for attr_name in get_resource_class_attribute_names(mb_cls):
+            if is_resource_class_terminal_attribute(mb_cls, attr_name):
                 continue
             child_descr = getattr(mb_cls, attr_name)
             child_mb_cls = get_member_class(child_descr.attr_type)
@@ -208,17 +239,17 @@ def build_resource_graph(resource, dependency_graph=None):
     """
     def visit(rc, grph, dep_grph):
         mb_cls = type(rc)
-        attr_map = mb_cls.get_attributes()
-        for attr_name, attr in iteritems_(attr_map):
-            if mb_cls.is_terminal(attr_name):
+        attr_map = get_resource_class_attributes(mb_cls)
+        for attr_name, attr in attr_map.iteritems():
+            if is_resource_class_terminal_attribute(mb_cls, attr_name):
                 continue
             # Only follow the resource attribute if the dependency graph
             # has an edge here.
-            child_mb_cls = get_member_class(attr.value_type)
+            child_mb_cls = get_member_class(attr.attr_type)
             if not dep_grph.has_edge((mb_cls, child_mb_cls)):
                 continue
             child_rc = getattr(rc, attr_name)
-            if mb_cls.is_collection(attr_name):
+            if is_resource_class_collection_attribute(mb_cls, attr_name):
                 for child_mb in child_rc:
                     if not grph.has_node(child_mb): # Ignore cyclic references.
                         grph.add_node(child_mb)
@@ -255,12 +286,15 @@ def find_connected_resources(resource, dependency_graph=None):
                                      dependency_graph=dependency_graph)
     # Build an ordered dictionary of collections.
     collections = OrderedDict()
+    repo_mgr = get_repository_manager()
+    repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
+    repo.initialize()
     for mb in topological_sorting(resource_graph):
         mb_cls = get_member_class(mb)
         coll = collections.get(mb_cls)
         if coll is None:
             # Create new collection.
-            coll = create_staging_collection(mb)
+            coll = repo.get_collection(mb)
             collections[mb_cls] = coll
         coll.add(mb)
     return collections
@@ -313,6 +347,17 @@ class ConnectedResourcesSerializer(object):
         self.__content_type = content_type
         self.__dependency_graph = dependency_graph
 
+    def __collect(self, resource):
+        ent_cls = get_entity_class(resource)
+        coll_cls = get_collection_class(resource)
+        cache = EntityCacheMap()
+        agg = StagingAggregate(ent_cls, cache)
+        coll = coll_cls.create_from_aggregate(agg)
+        coll.add(resource)
+        return dict([(get_member_class(ent_cls),
+                      coll.get_root_collection(ent_cls))
+                     for ent_cls in cache.keys()])
+
     def to_strings(self, resource):
         """
         Dumps the all resources reachable from the given resource to a map of 
@@ -322,9 +367,7 @@ class ConnectedResourcesSerializer(object):
         :returns: dictionary mapping resource member classes to string 
             representations
         """
-        collections = \
-            find_connected_resources(resource,
-                                     dependency_graph=self.__dependency_graph)
+        collections = self.__collect(resource)
         # Build a map of representations.
         rpr_map = OrderedDict()
         for (mb_cls, coll) in iteritems_(collections):
@@ -338,10 +381,8 @@ class ConnectedResourcesSerializer(object):
         Dumps the given resource and all resources linked to it into a set of
         representation files in the given directory.
         """
-        collections = \
-            find_connected_resources(resource,
-                                     dependency_graph=self.__dependency_graph)
-        for (mb_cls, coll) in iteritems_(collections):
+        collections = self.__collect(resource)
+        for (mb_cls, coll) in collections.iteritems():
             fn = get_write_collection_path(mb_cls,
                                            self.__content_type,
                                            directory=directory)

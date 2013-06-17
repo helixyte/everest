@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Aug 29, 2012.
 """
 from __future__ import absolute_import # Makes the import below absolute
+from everest.constants import ResourceAttributeKinds
 from everest.mime import JsonMime
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
@@ -26,7 +27,6 @@ from everest.representers.traversal import ResourceDataTreeTraverser
 from everest.representers.traversal import ResourceDataVisitor
 from everest.representers.traversal import \
                                 DataElementBuilderRepresentationDataVisitor
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import is_resource_url

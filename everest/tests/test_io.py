@@ -17,6 +17,7 @@ from everest.resources.io import find_connected_resources
 from everest.resources.io import get_collection_filename
 from everest.resources.io import get_collection_name
 from everest.resources.io import load_collection_from_file
+from everest.resources.io import load_collection_from_stream
 from everest.resources.io import load_collection_from_url
 from everest.resources.io import load_into_collection_from_url
 from everest.resources.io import load_into_collections_from_zipfile
@@ -33,8 +34,6 @@ from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityGrandchild
 from everest.tests.complete_app.interfaces import IMyEntityParent
-from everest.tests.complete_app.resources import MyEntityChildMember
-from everest.tests.complete_app.resources import MyEntityGrandchildMember
 from pyramid.compat import NativeIO
 from pyramid.compat import itervalues_
 import glob
@@ -120,28 +119,6 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
         for coll in itervalues_(coll_map):
             self.assert_equal(len(coll), 1)
 
-    def test_find_connected_with_custom_deps(self):
-        member = _make_test_entity_member()
-        ent = member.get_entity()
-        # Point grandchild's parent to new child.
-        new_child = MyEntityChild(id=1, parent=ent)
-        ent.children[0].children[0].parent = new_child
-        # When backrefs are excluded, we should not pick up the new parent
-        # of the grandchild; when backrefs are included, we should.
-        dep_grph = build_resource_dependency_graph(self._interfaces)
-        self.assert_false(dep_grph.has_edge((MyEntityGrandchildMember,
-                                             MyEntityChildMember)))
-        coll_map = find_connected_resources(member)
-        self.assert_equal(len(coll_map[MyEntityChildMember]), 1)
-        dep_grph = \
-            build_resource_dependency_graph(self._interfaces,
-                                            include_backrefs=True)
-        self.assert_true(dep_grph.has_edge((MyEntityGrandchildMember,
-                                            MyEntityChildMember)))
-        coll_map = find_connected_resources(member,
-                                            dependency_graph=dep_grph)
-        self.assert_equal(len(coll_map[MyEntityChildMember]), 2)
-
     def test_convert_to_strings(self):
         member = _make_test_entity_member()
         srl = ConnectedResourcesSerializer(CsvMime)
@@ -158,8 +135,7 @@ class _ResourceIoTestCaseBase(ResourceTestCase):
         self.config.add_resource_representer(
                     IMyEntity, CsvMime,
                     attribute_options=
-                            {('nested_parent',):{IGNORE_OPTION:True},
-                             ('children',):{IGNORE_OPTION:True}
+                            {('children',):{IGNORE_OPTION:True}
                              })
 
 
@@ -174,7 +150,11 @@ class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
                  get_root_collection(IMyEntityChild),
                  get_root_collection(IMyEntityGrandchild),
                  ]
-        colls = load_into_collections_from_zipfile(colls, strm)
+        self.assert_equal(len(colls[0]), 0)
+        self.assert_equal(len(colls[1]), 0)
+        self.assert_equal(len(colls[2]), 0)
+        self.assert_equal(len(colls[3]), 0)
+        load_into_collections_from_zipfile(colls, strm)
         self.assert_equal(len(colls[0]), 1)
         self.assert_equal(len(colls[1]), 1)
         self.assert_equal(len(colls[2]), 1)
@@ -192,7 +172,7 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
         zipf.close()
         colls = [get_root_collection(IMyEntity)]
         with self.assert_raises(ValueError) as cm:
-            dummy = load_into_collections_from_zipfile(colls, strm)
+            load_into_collections_from_zipfile(colls, strm)
         exc_msg = 'Could not infer MIME type'
         self.assert_true(str(cm.exception).startswith(exc_msg))
 
@@ -202,7 +182,7 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
         zipf.writestr('foo.foo', '')
         zipf.close()
         colls = [get_root_collection(IMyEntity)]
-        colls = load_into_collections_from_zipfile(colls, strm)
+        load_into_collections_from_zipfile(colls, strm)
         self.assert_equal(len(colls[0]), 0)
 
 
@@ -261,6 +241,11 @@ class FileResourceIoTestCase(_ResourceIoTestCaseBase):
 
     def test_load_from_file(self):
         self._test_load(load_collection_from_file, lambda fn: fn, False)
+
+    def test_load_from_stream(self):
+        self._test_load(lambda rc, fn: load_collection_from_stream(rc, fn,
+                                                                   CsvMime),
+                        lambda fn: open(fn, 'rU'), False)
 
     def test_load_from_file_url(self):
         self._test_load(load_collection_from_url,

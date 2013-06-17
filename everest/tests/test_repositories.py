@@ -101,12 +101,15 @@ class _SystemRepositoryBaseTestCase(ResourceTestCase):
         txt = 'user message.'
         msg = UserMessage(txt)
         agg.add(msg)
-        self.assert_is_not_none(msg.id)
         txt1 = 'user message 1.'
-        msg1 = UserMessage(txt1)
-        agg.update(msg, msg1)
-        self.assert_equal(msg.text, txt1)
-        agg.remove(msg)
+        msg1 = UserMessage(txt1, id=msg.id)
+        self.assert_equal(msg1.id, msg.id)
+        msg2 = agg.update(msg1)
+        self.assert_equal(msg2.id, msg1.id)
+        self.assert_equal(msg2.text, txt1)
+        msg3 = agg.get_by_id(msg.id)
+        self.assert_equal(msg3.text, txt1)
+        agg.remove(msg3)
         self.assert_equal(len(list(agg.iterator())), 0)
 
 
@@ -214,30 +217,21 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
         ent = MyEntity(id=1)
         mb = MyEntityMember.create_from_entity(ent)
         coll.add(mb)
-        transaction.commit()
         coll.remove(mb)
-        transaction.commit()
         self.assert_equal(len(coll), 1)
 
-    def test_repeated_add_remove_same_member_no_id(self):
+    def test_add_commit_remove_same_member(self):
         coll = get_root_collection(IMyEntity)
         ent1 = MyEntity()
         mb1 = MyEntityMember.create_from_entity(ent1)
         coll.add(mb1)
         transaction.commit()
         self.assert_equal(len(coll), 2)
-        coll.remove(mb1)
-        transaction.commit()
-        self.assert_equal(len(coll), 1)
-        ent2 = MyEntity()
-        mb2 = MyEntityMember.create_from_entity(ent2)
-        coll.add(mb2)
-        transaction.commit()
-        self.assert_equal(len(coll), 2)
+        #
+        mb2 = coll[mb1.id]
         coll.remove(mb2)
         transaction.commit()
         self.assert_equal(len(coll), 1)
-        self.assert_not_equal(mb1.id, mb2.id)
 
     def test_remove_add_same_member(self):
         coll = get_root_collection(IMyEntity)
@@ -259,7 +253,7 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
                   'rU') as data_file:
             lines = data_file.readlines()
         data = lines[1].split(',')
-        self.assert_equal(data[3], '"%s"' % TEXT)
+        self.assert_equal(data[2], '"%s"' % TEXT)
 
     def test_abort(self):
         coll = get_root_collection(IMyEntity)

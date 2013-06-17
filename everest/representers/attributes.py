@@ -6,12 +6,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on June 8, 2011.
 """
+from everest.constants import CARDINALITIES
+from everest.constants import ResourceAttributeKinds
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.descriptors import CARDINALITY
+from itertools import izip
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
@@ -23,18 +24,28 @@ class AttributeKey(object):
     """
     Value object used as a key during resource data tree traversal.
     
-    Each key consists of a tuple of attribute strings that uniquely 
+    Each key consists of a tuple of mapped attributes that uniquely 
     determine a node's position in the resource data tree.
     """
     def __init__(self, data):
-        self.__data = tuple(data)
-        self.offset = 0
+        self.__data = list(data)
+        self.names = self._make_names(data)
+
+    def append(self, item):
+        self.__data.append(item)
+        self.names = self.names + self._make_names((item,))
+
+    def pop(self):
+        attr = self.__data.pop()
+        self.names = self.names[:-1]
+        return attr
 
     def __hash__(self):
-        return hash(self.__data)
+        return hash(self.names)
 
     def __eq__(self, other):
-        return self.__data == tuple(other)
+        return all((left == right for (left, right)
+                    in izip(self.names, other)))
 
     def __getitem__(self, index):
         return self.__data.__getitem__(index)
@@ -43,10 +54,36 @@ class AttributeKey(object):
         return len(self.__data)
 
     def __add__(self, other):
-        return AttributeKey(self.__data + tuple(other))
+        return self.__class__(self.__data + list(other))
 
     def __str__(self):
-        return 'AttributeKey(%s, %d)' % (self.__data, self.offset)
+        return 'AttributeKey(%s)' % '.'.join(self.names)
+
+    def _make_names(self, data):
+        raise NotImplementedError('Abstract method.')
+
+
+class MappedAttributeKey(AttributeKey):
+    def __init__(self, data):
+        AttributeKey.__init__(self, data)
+        self.offset = 0
+
+    def _make_names(self, data):
+        return tuple([attr.resource_attr for attr in data])
+
+    def __str__(self):
+        return 'MappedAttributeKey(%s, %d)' % ('.'.join(self.names),
+                                               self.offset)
+
+
+class ResourceAttributeKey(AttributeKey):
+    def _make_names(self, data):
+        return tuple([attr.resource_attr for attr in data])
+
+
+class DomainAttributeKey(AttributeKey):
+    def _make_names(self, data):
+        return tuple([attr.entity_attr for attr in data])
 
 
 class MappedAttribute(object):
@@ -65,7 +102,7 @@ class MappedAttribute(object):
             options = {}
         # Make sure we have a valid representation name.
         if options.get(REPR_NAME_OPTION) is None:
-            options[REPR_NAME_OPTION] = attr.name
+            options[REPR_NAME_OPTION] = attr.resource_attr
         # Process the "ignore" option..
         do_ignore = options.get(IGNORE_OPTION)
         if not do_ignore is None:
@@ -83,7 +120,7 @@ class MappedAttribute(object):
         new_options.update(options)
         return MappedAttribute(self.__attr, options=new_options)
 
-    def should_ignore(self, ignore_option_name, attribute_key):
+    def should_ignore(self, ignore_option, attribute_key):
         """
         Checks if the given attribute key should be ignored for the given
         ignore option name.
@@ -92,30 +129,25 @@ class MappedAttribute(object):
          * always ignore when IGNORE_ON_XXX_OPTION is set to True;
          * always include when IGNORE_ON_XXX_OPTION is set to False;
          * also ignore member attributes when the length of the attribute
-           key is > 0 or the cardinality is not MANYTOONE (this avoids
-           traversing circular attribute definitions such as parent ->
-           children -> parent);
+           key is > 0;
          * also ignore collection attributes when the cardinality is 
            not MANYTOMANY.
            
-        :ignore_option_name: configuration option name (IGNORE_ON_READ_OPTION
-          or IGNORE_ON_WRITE_OPTION).
+        :ignore_option: configuration option value.
         :param attribute_key: :class:`AttributeKey` instance.
         """
-        option_value = self.options.get(ignore_option_name)
-        do_ignore = option_value
-        if option_value is None:
+        do_ignore = ignore_option
+        if ignore_option is None:
             if self.kind == ResourceAttributeKinds.MEMBER:
                 depth = len(attribute_key) + 1 - attribute_key.offset
-                do_ignore = depth > 1 \
-                            or self.cardinality != CARDINALITY.MANYTOONE
+                do_ignore = depth > 1
             elif self.kind == ResourceAttributeKinds.COLLECTION:
-                do_ignore = self.cardinality != CARDINALITY.MANYTOMANY
+                do_ignore = self.cardinality != CARDINALITIES.MANYTOMANY
         return do_ignore
 
     @property
     def name(self):
-        return self.__attr.name
+        return self.__attr.resource_attr
 
     @property
     def kind(self):
@@ -123,22 +155,24 @@ class MappedAttribute(object):
 
     @property
     def value_type(self):
-        return self.__attr.value_type
+        return self.__attr.attr_type
 
     @property
     def entity_name(self):
-        return self.__attr.entity_name
+        return self.__attr.entity_attr
 
     @property
     def cardinality(self):
-        return self.__attr.cardinality
+        return getattr(self.__attr, 'cardinality', None)
 
     def __getattr__(self, attr_name):
-        # Make options available as attributes.
         if attr_name in self.options:
-            return self.options.get(attr_name)
+            # Make options available as attributes.
+            attr_value = self.options.get(attr_name)
         else:
-            raise AttributeError(attr_name)
+            # Fall back on underlying descriptor attributes.
+            attr_value = getattr(self.__attr, attr_name)
+        return attr_value
 
     def __str__(self):
         return '%s(%s -> %s, type %s)' % \

@@ -22,11 +22,19 @@ class StagingCollectionTestCase(ResourceTestCase):
     def set_up(self):
         ResourceTestCase.set_up(self)
         self.coll = create_staging_collection(IFoo)
-        self.session = self.coll.get_aggregate()._session # pylint:disable=W0212
 
     def test_basics(self):
-        foo = FooEntity()
+        foo = FooEntity(id=0)
         foo_mb = FooMember.create_from_entity(foo)
         self.coll.add(foo_mb)
-        self.assert_true(next(self.session.iterator(FooEntity)) is foo)
-        self.assert_equal(len(list(self.session.iterator(FooEntity))), 1)
+        agg = self.coll.get_aggregate()
+        self.assert_true(agg.get_by_id(foo.id) is foo)
+        self.assert_true(agg.get_by_slug(foo.slug) is foo)
+        foo1 = FooEntity(id=0)
+        txt = 'FROBNIC'
+        foo1.text = txt
+        agg.update(foo1)
+        self.assert_equal(agg.get_by_id(foo.id).text, txt)
+        self.assert_equal(len(list(agg.iterator())), 1)
+        agg.remove(foo)
+        self.assert_equal(len(list(agg.iterator())), 0)

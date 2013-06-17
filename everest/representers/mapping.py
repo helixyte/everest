@@ -7,8 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+from everest.constants import ResourceAttributeKinds
 from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
@@ -18,7 +20,6 @@ from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -27,9 +28,9 @@ from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -90,7 +91,7 @@ class Mapping(object):
         if mapped_class is None:
             mapped_class = self.__mapped_cls
         if key is None:
-            key = AttributeKey(()) # Top level access.
+            key = MappedAttributeKey(()) # Top level access.
         # FIXME: Investigate caching of mapped attributes.
         attrs = None # self.__mapped_attr_cache.get((mapped_class, key))
         if attrs is None:
@@ -136,10 +137,10 @@ class Mapping(object):
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
-    def map_to_resource(self, data_element):
+    def map_to_resource(self, data_element, resource=None):
         trv = DataElementTreeTraverser(data_element, self,
                                        direction=PROCESSING_DIRECTIONS.READ)
-        visitor = ResourceBuilderDataElementTreeVisitor()
+        visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
         trv.run(visitor)
         return visitor.resource
 
@@ -163,24 +164,28 @@ class Mapping(object):
         return self.__mp_reg
 
     def __collect_mapped_attributes(self, mapped_class, key):
+        if isinstance(key, AttributeKey):
+            names = key.names
+        else:
+            names = key
         collected_mp_attrs = OrderedDict()
         is_mapped_cls = mapped_class is self.__mapped_cls
-        if len(key) == 0 and is_mapped_cls:
+        if len(names) == 0 and is_mapped_cls:
             # Bootstrapping: fetch resource attributes and create new
             # mapped attributes.
             rc_attrs = get_resource_class_attributes(self.__mapped_cls)
             for rc_attr in itervalues_(rc_attrs):
-                attr_key = key + (rc_attr.name,)
+                attr_key = names + (rc_attr.resource_attr,)
                 attr_mp_opts = \
                         self.__configuration.get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
-                collected_mp_attrs[rc_attr.name] = new_mp_attr
+                collected_mp_attrs[rc_attr.resource_attr] = new_mp_attr
         else:
             # Indirect access - fetch mapped attributes from some other
             # class' mapping and clone.
             if is_mapped_cls:
                 mp = self
-            elif len(key) == 0 and self.__is_collection_mapping:
+            elif len(names) == 0 and self.__is_collection_mapping:
                 if provides_member_resource(mapped_class):
                     # Mapping a polymorphic member class.
                     mapped_coll_cls = get_collection_class(mapped_class)
@@ -192,7 +197,7 @@ class Mapping(object):
                 mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             mp_attrs = mp.get_attribute_map()
             for mp_attr in itervalues_(mp_attrs):
-                attr_key = key + (mp_attr.name,)
+                attr_key = names + (mp_attr.name,)
                 attr_mp_opts = \
                     dict(((k, v)
                           for (k, v) in

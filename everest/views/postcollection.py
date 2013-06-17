@@ -6,13 +6,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
 """
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
 from everest.resources.utils import resource_to_url
 from everest.views.base import PutOrPostResourceView
-from pyramid.compat import iteritems_
 from pyramid.httpexceptions import HTTPCreated
 
 __docformat__ = 'reStructuredText en'
@@ -44,13 +41,7 @@ class PostCollectionView(PutOrPostResourceView):
         else:
             new_members = resource
         was_created = True
-        parent_collection_is_nested = self.context.is_nested
         for new_member in new_members:
-            if parent_collection_is_nested:
-                # If we are POSTing to a nested collection, the framework
-                # tries to infer the parent for each member if it has not
-                # been provided by the representation.
-                self.__check_parent(new_member)
             if self.context.get(new_member.__name__) is not None:
                 # We have a member with the same name - 409 Conflict.
                 response = self._handle_conflict(new_member.__name__)
@@ -68,11 +59,3 @@ class PostCollectionView(PutOrPostResourceView):
             self.request.response.headerlist = [('Location', new_location)]
             response = self._get_result(resource)
         return response
-
-    def __check_parent(self, new_mb_rc):
-        parent_mb_cls = get_member_class(self.context.__parent__)
-        for attr_name, attr in iteritems_(type(new_mb_rc).get_attributes()):
-            if attr.kind == ResourceAttributeKinds.MEMBER \
-               and get_member_class(attr.value_type) is parent_mb_cls \
-               and getattr(new_mb_rc, attr_name) is None:
-                setattr(new_mb_rc, attr_name, self.context.__parent__)

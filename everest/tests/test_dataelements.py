@@ -5,12 +5,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 7, 2012.
 """
 from collections import OrderedDict
+from everest.constants import ResourceKinds
 from everest.representers.attributes import MappedAttribute
 from everest.representers.csv import CsvLinkedDataElement
 from everest.representers.dataelements import DataElementAttributeProxy
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
-from everest.resources.kinds import ResourceKinds
+from everest.resources.attributes import get_resource_class_attribute
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.testing import create_collection
@@ -31,7 +32,8 @@ class DataElementsTestCase(ResourceTestCase):
         # Test nesteds.
         self.assert_equal(data_el.nesteds.keys(), [])
         parent_data_el = SimpleMemberDataElement.create()
-        rc_nested_attr = MyEntityMember.get_attributes()['parent']
+        rc_nested_attr = \
+            get_resource_class_attribute(MyEntityMember, 'parent')
         mp_nested_attr = MappedAttribute(rc_nested_attr)
         data_el.set_nested(mp_nested_attr, parent_data_el)
         self.assert_true(data_el.get_nested(mp_nested_attr) is parent_data_el)
@@ -44,7 +46,8 @@ class DataElementsTestCase(ResourceTestCase):
                                      number=0,
                                      date_time=ldt)
         for term_attr_name, term_attr_value in term_attr_data.items():
-            rc_attr = MyEntityMember.get_attributes()[term_attr_name]
+            rc_attr = get_resource_class_attribute(MyEntityMember,
+                                                   term_attr_name)
             mp_attr = MappedAttribute(rc_attr)
             # Check setting to None value.
             data_el.set_terminal(mp_attr, None)
@@ -66,7 +69,7 @@ class DataElementsTestCase(ResourceTestCase):
     def test_printing_with_none_value(self):
         data_el = SimpleMemberDataElement.create()
         self.assert_equal(data_el.terminals.keys(), [])
-        rc_attr = MyEntityMember.get_attributes()['text']
+        rc_attr = get_resource_class_attribute(MyEntityMember, 'text')
         mp_attr = MappedAttribute(rc_attr)
         data_el.set_terminal(mp_attr, None) # Need one None attr value.
         prt_str = str(data_el)
