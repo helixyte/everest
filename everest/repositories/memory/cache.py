@@ -1,12 +1,13 @@
 """
 Entity cache and cache map.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 26, 2013.
 """
 from collections import defaultdict
+from everest.repositories.memory.querying import MemoryQuery
 from itertools import islice
 from weakref import WeakValueDictionary
 
@@ -19,8 +20,8 @@ __all__ = ['EntityCache',
 class EntityCache(object):
     """
     Cache for entities.
-    
-    Supports add and remove operations as well as lookup by ID and 
+
+    Supports add and remove operations as well as lookup by ID and
     by slug.
     """
     def __init__(self, entities=None, allow_none_id=True):
@@ -43,7 +44,7 @@ class EntityCache(object):
     def get_by_id(self, entity_id):
         """
         Performs a lookup of an entity by its ID.
-        
+
         :param int entity_id: entity ID.
         :return: entity found or ``None``.
         """
@@ -52,7 +53,7 @@ class EntityCache(object):
     def has_id(self, entity_id):
         """
         Checks if this entity cache holds an entity with the given ID.
-        
+
         :return: Boolean result of the check.
         """
         return entity_id in self.__id_map
@@ -60,7 +61,7 @@ class EntityCache(object):
     def get_by_slug(self, entity_slug):
         """
         Performs a lookup of an entity by its slug.
-        
+
         :param str entity_id: entity slug.
         :return: entity found or ``None``.
         """
@@ -72,7 +73,7 @@ class EntityCache(object):
     def add(self, entity):
         """
         Adds the given entity to this cache.
-        
+
         :param entity: Entity to add.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises ValueError: If the ID of the entity to add is ``None``.
@@ -97,7 +98,7 @@ class EntityCache(object):
     def remove(self, entity):
         """
         Removes the given entity from this cache.
-        
+
         :param entity: Entity to remove.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises KeyError: If the given entity is not in this cache.
@@ -111,7 +112,7 @@ class EntityCache(object):
         """
         Replaces the current entity that has the same ID as the given new
         entity with the latter.
-        
+
         :param entity: Entity to replace.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises KeyError: If the given entity is not in this cache.
@@ -165,6 +166,10 @@ class EntityCacheMap(object):
     def __getitem__(self, entity_class):
         return self.__cache_map[entity_class]
 
+    def get_by_id(self, entity_class, entity_id):
+        cache = self.__cache_map[entity_class]
+        return cache.get_by_id(entity_id)
+
     def add(self, entity_class, entity):
         cache = self.__cache_map[entity_class]
         cache.add(entity)
@@ -172,6 +177,14 @@ class EntityCacheMap(object):
     def remove(self, entity_class, entity):
         cache = self.__cache_map[entity_class]
         cache.remove(entity)
+
+    def replace(self, entity_class, source_entity, target_entity): # pylint: disable=W0613
+        cache = self.__cache_map[entity_class]
+        cache.remove(source_entity)
+
+    def query(self, entity_class):
+        return MemoryQuery(entity_class,
+                           self.__cache_map[entity_class].get_all())
 
     def __contains__(self, entity):
         cache = self.__cache_map[type(entity)]

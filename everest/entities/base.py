@@ -1,7 +1,7 @@
 """
 Entity and aggregate base classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 12, 2011.
@@ -68,7 +68,7 @@ class Aggregate(object):
     """
     Abstract base class for aggregates.
 
-    An aggregate is an accessor for a set of entities of the same type. 
+    An aggregate is an accessor for a set of entities of the same type.
 
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
@@ -136,7 +136,7 @@ class Aggregate(object):
         :param id_key: ID value to look up
         :type id_key: `int` or `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
-          than one entity is found for the given ID value. 
+          than one entity is found for the given ID value.
         :returns: specified entity or `None`
         """
         raise NotImplementedError('Abstract method.')
@@ -150,7 +150,7 @@ class Aggregate(object):
         :param slug: slug value to look up
         :type slug: `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
-          than one entity is found for the given ID value. 
+          than one entity is found for the given ID value.
         :returns: entity or `None`
         """
         raise NotImplementedError('Abstract method.')
@@ -181,16 +181,16 @@ class Aggregate(object):
 
     def update(self, entity):
         """
-        Updates the existing entity with the same ID as the given entity 
+        Updates the existing entity with the same ID as the given entity
         with the state of the latter.
-        
+
         Relies on the underlying repository for the implementation of the
         state update.
-        
+
         :param entity: entity (domain object) to transfer state to.
         :type entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
-        :param source_entity: source entity to transfer state from. 
+        :param source_entity: source entity to transfer state from.
         :type source_entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
         """
@@ -211,8 +211,8 @@ class Aggregate(object):
 
     def get_root_aggregate(self, rc):
         """
-        Returns a root aggregate for the given registered resource. 
-        
+        Returns a root aggregate for the given registered resource.
+
         The aggregate is retrieved from the same repository that was used to
         create this aggregate.
         """
@@ -253,9 +253,9 @@ class Aggregate(object):
         """
         Override this to generate optimized queries based on the given
         slice key.
-        
+
         This default implementation just returns the given query as is.
-        
+
         :param query: query to optimize as returned from the data source.
         :param key: slice key to use for the query or `None`, if no slicing
           was applied.
@@ -316,7 +316,7 @@ class RootAggregate(Aggregate):
         :type entity_class: A class implementing
             :class:`everest.entities.interfaces.IEntity`.
         :param session_factory: The session factory for this aggregate.
-        :param repository: The repository that created this aggregate. 
+        :param repository: The repository that created this aggregate.
         """
         if self.__class__ is RootAggregate:
             raise NotImplementedError('Abstract class.')
@@ -361,27 +361,19 @@ class RootAggregate(Aggregate):
         if not isinstance(entity, self.entity_class):
             raise ValueError('Can only add entities of type "%s" to this '
                              'aggregate.' % self.entity_class)
-        trv = SourceTargetTraverser(self.get_root_aggregate, entity, None)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
-#        trv = DomainTreeTraverser(entity)
-#        vst = AddingDomainVisitor(self, self._session)
-        trv.run(vst)
+        self._session.add(self.entity_class, entity)
 
     def remove(self, entity):
-        trv = SourceTargetTraverser(self.get_root_aggregate, None, entity)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
-#        trv = DomainTreeTraverser(entity)
-#        vst = RemovingDomainVisitor(self, self._session)
-        trv.run(vst)
+        if not isinstance(entity, self.entity_class):
+            raise ValueError('Can only remove entities of type "%s" from '
+                             'this aggregate.' % self.entity_class)
+        self._session.remove(self.entity_class, entity)
 
     def update(self, entity):
-        target_entity = self.get_by_id(entity.id)
-        trv = SourceTargetTraverser(self.get_root_aggregate, entity,
-                                    target_entity)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self._session)
-        trv.run(vst)
-        return target_entity
-#        return self._session.update(self.entity_class, entity)
+        if not isinstance(entity, self.entity_class):
+            raise ValueError('Can only update entities of type "%s" through '
+                             'this aggregate.' % self.entity_class)
+        self._session.update(self.entity_class, entity)
 
     def query(self):
         return self._session.query(self.entity_class)
@@ -396,8 +388,8 @@ class RootAggregate(Aggregate):
     def make_relationship_aggregate(self, relationship):
         """
         Returns a new relationship aggregate for the given relationship.
-        
-        :param relationship: instance of 
+
+        :param relationship: instance of
           :class:`everest.relationship.ReferencedRelateeRelationship` or
           :class:`everest.relationship.BackreferencedRelatorRelationship`
         """

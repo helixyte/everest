@@ -1,7 +1,7 @@
 """
 Unit of work.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 16, 2013.
@@ -20,7 +20,7 @@ class UnitOfWork(object):
     """
     The Unit Of Work records object state changes for subsequent commit
     to a repository.
-    
+
     Responsibilities:
      * Clone CLEAN entities upon registration;
      * Record entity state changes.
@@ -31,22 +31,22 @@ class UnitOfWork(object):
     def register_new(self, entity_class, entity):
         """
         Registers the given entity for the given class as NEW.
-        
+
         :raises ValueError: If the given entity already holds state that was
           created by another Unit Of Work.
         """
-        EntityStateManager.manage(entity, self)
+        EntityStateManager.manage(entity_class, entity, self)
         EntityStateManager.set_state(entity, ENTITY_STATES.NEW)
         self.__entity_set_map[entity_class].add(entity)
 
     def register_clean(self, entity_class, entity):
         """
         Registers the given entity for the given class as CLEAN.
-        
+
         :returns: Cloned entity.
         """
-        clone = EntityStateManager.clone(entity)
-        EntityStateManager.manage(clone, self)
+        clone = EntityStateManager.clone(entity_class, entity)
+        EntityStateManager.manage(entity_class, clone, self)
         EntityStateManager.set_state(clone, ENTITY_STATES.CLEAN)
         self.__entity_set_map[entity_class].add(clone)
         return clone
@@ -54,11 +54,11 @@ class UnitOfWork(object):
     def register_deleted(self, entity_class, entity):
         """
         Registers the given entity for the given class as DELETED.
-        
+
         :raises ValueError: If the given entity already holds state that was
           created by another Unit Of Work.
         """
-        EntityStateManager.manage(entity, self)
+        EntityStateManager.manage(entity_class, entity, self)
         EntityStateManager.set_state(entity, ENTITY_STATES.DELETED)
         self.__entity_set_map[entity_class].add(entity)
 
@@ -92,7 +92,7 @@ class UnitOfWork(object):
     def mark_new(self, entity):
         """
         Marks the given entity for the given class as NEW.
-        
+
         This is done when an entity is re-associated with a session after
         having been removed before.
         """
@@ -101,7 +101,7 @@ class UnitOfWork(object):
     def mark_clean(self, entity):
         """
         Marks the given entity for the given class as CLEAN.
-        
+
         This is done when an entity is loaded fresh from the repository or
         after a commit.
         """
@@ -110,7 +110,7 @@ class UnitOfWork(object):
     def mark_deleted(self, entity):
         """
         Marks the given entity for the given class as DELETED.
-        
+
         :raises ValueError: If the given entity does not hold state.
         """
         EntityStateManager.set_state(entity, ENTITY_STATES.DELETED)
@@ -118,7 +118,7 @@ class UnitOfWork(object):
     def mark_dirty(self, entity):
         """
         Marks the given entity for the given class as DIRTY.
-        
+
         :raises ValueError: If the given entity does not hold state.
         """
         EntityStateManager.set_state(entity, ENTITY_STATES.DIRTY)

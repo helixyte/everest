@@ -185,7 +185,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
     def update_from_entity(self, entity):
         """
         Updates this member from the given entity.
-        
+
         See :method:`Collection.update_from_entity`.
         """
         self.__parent__.update_from_entity(entity)
@@ -343,7 +343,7 @@ class Collection(Resource):
 
         :param key: the name of the member
         :type key: :class:`string` or :class:`unicode`
-        :raises: :class:`everest.exceptions.MultipleResultsException` if more 
+        :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one member is found for the given key value.
         :raises: KeyError if no entity is found for the given key.
         :returns: object implementing
@@ -367,8 +367,8 @@ class Collection(Resource):
     def __contains__(self, member):
         """
         Checks if this collection contains the given member.
-        
-        :returns: `False` if a lookup of the ID of the given member returns 
+
+        :returns: `False` if a lookup of the ID of the given member returns
             `None` or if the ID is `None`; else, `True`.
         """
         return not (member.id is None \
@@ -384,7 +384,7 @@ class Collection(Resource):
     def add(self, member):
         """
         Adds the given member to this collection.
-        
+
         :param member: member to add.
         :type member: object implementing
                     :class:`everest.resources.interfaces.IMemberResource`
@@ -421,7 +421,7 @@ class Collection(Resource):
         Updates this collection from the given data element.
 
         This iterates over the members of this collection and checks if
-        a member with the same ID exists in the given update data. If yes, 
+        a member with the same ID exists in the given update data. If yes,
         the existing member is updated with the update member; if no,
         the member is removed. All data elements in the update data that
         have no ID are added as new members. Data elements with an ID that
@@ -434,9 +434,9 @@ class Collection(Resource):
         :raises ValueError: when a data element with an ID that is not present
           in this collection is encountered.
         """
-#        mp = data_element.mapping
-#        mp.map_to_resource(data_element, resource=self)
-#        return
+        mp = data_element.mapping
+        mp.map_to_resource(data_element, resource=self)
+        return
         attrs = data_element.mapping.get_attribute_map()
         id_attr = attrs['id']
         update_ids = set()
@@ -496,11 +496,11 @@ class Collection(Resource):
     def update_from_entity(self, entity):
         """
         Updates the member corresponding to the ID of the given entity.
-        
+
         Unlike :method:`update_from_data`, this disregards all resource
         attribute declarations and relies on the repository to perform the
         state update.
-        
+
         :param member: Member resource to update.
         :param source_entity: Entity (domain object) to use
         :returns: Updated member.
@@ -583,7 +583,7 @@ class Collection(Resource):
     def get_root_collection(self, rc):
         """
         Returns a root collection for the given resource.
-        
+
         The root collection is created using a root aggregate fetched from
         the same repository that was used to create the root aggregate for
         this collection.

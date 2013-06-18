@@ -550,9 +550,9 @@ class SourceTargetTreeTraverser(object):
         raise NotImplementedError('Abstract method.')
 
     def _traverse_node(self, path, attr_key, source_node, target_node,
-                          visitor):
+                       visitor):
         if self._do_traverse(attr_key, source_node, target_node):
-            if len(attr_key) == 0:
+            if len(attr_key) > 0:
                 attr = attr_key[-1]
                 node_type = get_member_class(attr.value_type)
             else:
@@ -605,14 +605,14 @@ class SourceTargetTreeTraverser(object):
                     # CREATE
                     target_node = None
                 self._traverse_node(path, attr_key, source_node,
-                                      target_node, visitor)
+                                    target_node, visitor)
         if not target_set is None:
             for target_node in target_set:
                 if target_node.id in source_ids:
                     continue
                 # DELETE
                 self._traverse_node(path, attr_key, None, target_node,
-                                      visitor)
+                                    visitor)
         visitor.visit_set(path, attr_key, source_set, target_set)
 
 

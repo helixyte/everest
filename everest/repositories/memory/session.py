@@ -1,11 +1,13 @@
 """
 In-memory session.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from everest.entities.traversal import CrudDomainVisitor
+from everest.entities.traversal import SourceTargetTraverser
 from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import SessionFactory
@@ -29,7 +31,7 @@ __all__ = ['DataManager',
 class MemorySession(object):
     """
     Session object.
-    
+
     The session
      * Holds a Unit Of Work;
      * Serves as identity and slug map;
@@ -56,10 +58,10 @@ class MemorySession(object):
 
     def load(self, entity_class, entity):
         """
-        Loads the given repository entity into the session and return a
+        Load the given repository entity into the session and return a
         clone. If it was already loaded before, look up the loaded entity
         and return it.
-        
+
         :raises ValueError: When an attempt is made to load an entity that
           has no ID
         """
@@ -80,64 +82,42 @@ class MemorySession(object):
     def add(self, entity_class, entity):
         """
         Adds the given entity of the given entity class to the session.
-        
+
         At the point an entity is added, it must not have an ID or a slug
         of another entity that is already in the session. However, both the ID
         and the slug may be ``None`` values.
         """
-        cache = self.__get_cache(entity_class)
-        if not self.__unit_of_work.is_marked_deleted(entity):
-            self.__unit_of_work.register_new(entity_class, entity)
-            if not entity.id is None and cache.has_id(entity.id):
-                raise ValueError('Duplicate entity ID "%s".' % entity.id)
-            if not entity.slug is None and cache.has_slug(entity.slug):
-                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
-        else:
-            self.__unit_of_work.mark_clean(entity)
-        cache.add(entity)
+        self.__run_crud_operation(entity_class, entity, None)
 
     def remove(self, entity_class, entity):
         """
         Removes the given entity of the given entity class from the session.
-        
+
         :raises ValueError: If the entity to remove does not have an ID
             (unless it is marked NEW).
         """
-        if not self.__unit_of_work.is_registered(entity):
-            if entity.id is None:
-                raise ValueError('Can not remove un-registered entity '
-                                 'without an ID')
-            else:
-                self.__unit_of_work.register_deleted(entity_class, entity)
-        else:
-            if not self.__unit_of_work.is_marked_new(entity):
-                self.__unit_of_work.mark_deleted(entity)
-            else:
-                self.__unit_of_work.mark_clean(entity)
-            cache = self.__get_cache(entity_class)
-            cache.remove(entity)
+        self.__run_crud_operation(entity_class, None, entity)
 
     def update(self, entity_class, entity):
         """
-        Updates the existing entity with the same ID as the given entity 
+        Updates the existing entity with the same ID as the given entity
         with the state of the latter.
-        
-        :raises ValueError: If the session does not contain an entity with 
+
+        :raises ValueError: If the session does not contain an entity with
             the same ID as the ID of the given :param:`entity`.
         """
-        existing_entity = self.get_by_id(entity_class, entity)
-        if existing_entity is None:
+        target_entity = self.get_by_id(entity_class, entity)
+        if target_entity is None:
             # Not loaded into the session; try reloading from repository.
             try:
-                existing_entity = \
+                target_entity = \
                     self.query(entity_class).filter_by(id=entity.id).one()
             except NoResultsException:
                 pass
-            if existing_entity is None:
+            if target_entity is None:
                 raise ValueError('Entity with ID %s to update not found.'
                                  % entity.id)
-        EntityStateManager.transfer_state_data(entity, existing_entity)
-        return existing_entity
+        self.__run_crud_operation(entity_class, entity, target_entity)
 
     def get_by_id(self, entity_class, entity_id):
         """
@@ -174,6 +154,46 @@ class MemorySession(object):
     def query(self, entity_class):
         return MemorySessionQuery(entity_class, self, self.__repository)
 
+    def __run_crud_operation(self, entity_class, source_entity, target_entity):
+        trv = SourceTargetTraverser(self, source_entity, target_entity)
+        vst = CrudDomainVisitor(entity_class,
+                                self.__add_single,
+                                self.__remove_single,
+                                self.__update_single)
+        trv.run(vst)
+
+    def __add_single(self, entity_class, entity):
+        cache = self.__get_cache(entity_class)
+        if not self.__unit_of_work.is_marked_deleted(entity):
+            self.__unit_of_work.register_new(entity_class, entity)
+            if not entity.id is None and cache.has_id(entity.id):
+                raise ValueError('Duplicate entity ID "%s".' % entity.id)
+            if not entity.slug is None and cache.has_slug(entity.slug):
+                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
+        else:
+            self.__unit_of_work.mark_clean(entity)
+        cache.add(entity)
+
+    def __remove_single(self, entity_class, entity):
+        if not self.__unit_of_work.is_registered(entity):
+            if entity.id is None:
+                raise ValueError('Can not remove un-registered entity '
+                                 'without an ID')
+            else:
+                self.__unit_of_work.register_deleted(entity_class, entity)
+        else:
+            if not self.__unit_of_work.is_marked_new(entity):
+                self.__unit_of_work.mark_deleted(entity)
+            else:
+                self.__unit_of_work.mark_clean(entity)
+            cache = self.__get_cache(entity_class)
+            cache.remove(entity)
+
+    def __update_single(self, entity_class, source_entity, target_entity):
+        EntityStateManager.transfer_state_data(entity_class,
+                                               source_entity, target_entity)
+        return source_entity
+
     def __contains__(self, entity):
         cache = self.__cache_map.get(type(entity))
         if not cache is None:
@@ -199,7 +219,7 @@ class MemoryAutocommittingSession(AutocommittingSessionMixin, MemorySession):
 class MemorySessionFactory(SessionFactory):
     """
     Factory for :class:`MemorySession` instances.
-    
+
     The factory creates exactly one session per thread.
     """
     def __init__(self, repository):

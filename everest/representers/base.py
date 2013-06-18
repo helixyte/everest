@@ -63,8 +63,8 @@ class Representer(object):
 
 class ResourceRepresenter(Representer):
     """
-    Base class for resource representers which know how to convert resource
-    representations into resources and back.
+    Abstract basee class for resource representers which know how to convert
+    resource representations into resources and back.
     """
 
     def __init__(self, resource_class):
@@ -103,10 +103,12 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
-    def resource_from_data(self, data):
+    def resource_from_data(self, data, resource=None):
         """
         Converts the given resource data to a resource.
 
+        :param resource: If given, this resource will be updated from the
+          given data; otherwise, a new resource will be created.
         :returns: object implementing
           :class:`everest.resources.interfaces.IResource`
         """
@@ -209,14 +211,9 @@ class MappingResourceRepresenter(ResourceRepresenter):
 
     def resource_from_data(self, data_element, resource=None):
         """
-        Converts the given data element into a resource.
+        Converts the given data element to a resource.
 
         :param data_element: Source data element.
-        :param resource: If given, this resource will be updated from the
-          given :param:`data_element`; otherwise, a new resource will be
-          created.
-        :returns: object implementing
-          :class:`everest.resources.interfaces.IResource`
         """
         return self._mapping.map_to_resource(data_element, resource=resource)
 

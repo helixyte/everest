@@ -1,7 +1,7 @@
 """
 Entity attributes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
@@ -18,6 +18,18 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['aggregate_attribute',
            'attribute_base',
            'entity_attribute',
+           'get_domain_class_attribute_iterator',
+           'get_domain_class_attribute',
+           'get_domain_class_attribute_iterator',
+           'get_domain_class_attribute_names',
+           'get_domain_class_attributes',
+           'get_domain_class_domain_attribute_iterator',
+           'get_domain_class_entity_attribute_iterator',
+           'get_domain_class_terminal_attribute_iterator',
+           'is_domain_class_aggregate_attribute',
+           'is_domain_class_domain_attribute',
+           'is_domain_class_entity_attribute',
+           'is_domain_class_terminal_attribute',
            'terminal_attribute',
            ]
 
@@ -30,7 +42,7 @@ class attribute_base(object):
     :ivar attr_type: the type of the domain attribute.
     :ivar int index: unique serial ID (or ordering purposes).
     :ivar entity_attr: the entity attribute the domain attribute references.
-    :ivar resource_attr: the resource attribute the domain attribute is 
+    :ivar resource_attr: the resource attribute the domain attribute is
         mapped to.
     """
     #: The domain attribute kind (one of the constants defined in
@@ -74,7 +86,7 @@ class _relation_attribute(attribute_base):
         """
         Creates a relationship object for this domain attribute with the
         given relator.
-        
+
         :param relator: entity or aggregate object serving as the source end
             of the relationship.
         :returns: :class:`everest.entities.relationship.DomainRelationship`
@@ -168,6 +180,16 @@ def get_domain_class_attribute(ent, name):
     be found.
     """
     return ent.__everest_attributes__.get(name)
+
+
+@_arg_to_entity_class
+def get_domain_class_attribute_iterator(ent):
+    """
+    Returns an iterator over all attributes in the given registered
+    resource.
+    """
+    for attr in ent.__everest_attributes__.values():
+        yield attr
 
 
 @_arg_to_entity_class

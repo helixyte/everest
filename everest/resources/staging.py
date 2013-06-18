@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 27, 2013.
@@ -11,7 +11,6 @@ from everest.entities.traversal import SourceTargetTraverser
 from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
 from everest.repositories.memory.cache import EntityCacheMap
-from everest.repositories.memory.querying import MemoryQuery
 from everest.resources.utils import get_collection_class
 
 __docformat__ = 'reStructuredText en'
@@ -35,6 +34,10 @@ class StagingAggregate(Aggregate):
         if cache is None:
             cache = EntityCacheMap()
         self.__cache = cache
+        self.__visitor = CrudDomainVisitor(entity_class,
+                                           self.__cache.add,
+                                           self.__cache.remove,
+                                           self.__cache.replace)
 
     def get_by_id(self, id_key):
         return self.__cache[self.entity_class].get_by_id(id_key)
@@ -43,28 +46,20 @@ class StagingAggregate(Aggregate):
         return self.__cache[self.entity_class].get_by_slug(slug)
 
     def add(self, entity):
-        trv = SourceTargetTraverser(self.get_root_aggregate, entity, None)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
-#        trv = DomainTreeTraverser(entity)
-#        vst = AddingDomainVisitor(self, self.__cache)
-        trv.run(vst)
+        trv = SourceTargetTraverser(self.__cache, entity, None)
+        trv.run(self.__visitor)
 
     def remove(self, entity):
-        trv = SourceTargetTraverser(self.get_root_aggregate, None, entity)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
-        trv.run(vst)
+        trv = SourceTargetTraverser(self.__cache, None, entity)
+        trv.run(self.__visitor)
 
     def update(self, entity):
-        # FIXME: This still fails.
-        target_entity = self.__cache[self.entity_class].get_by_id(entity.id)
-        trv = SourceTargetTraverser(self.get_root_aggregate, entity,
-                                    target_entity)
-        vst = CrudDomainVisitor(self.get_root_aggregate, self.__cache)
-        trv.run(vst)
+        target_entity = self.__cache.get_by_id(self.entity_class, entity.id)
+        trv = SourceTargetTraverser(self.__cache, entity, target_entity)
+        trv.run(self.__visitor)
 
     def query(self):
-        return MemoryQuery(self.entity_class,
-                           self.__cache[self.entity_class].get_all())
+        return self.__cache.query(self.entity_class)
 
     @property
     def expression_kind(self):

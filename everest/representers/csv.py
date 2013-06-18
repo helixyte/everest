@@ -1,7 +1,7 @@
 """
 CSV representers.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 19, 2011.
@@ -17,6 +17,7 @@ from everest.constants import ResourceAttributeKinds
 from everest.constants import ResourceKinds
 from everest.mime import CsvMime
 from everest.representers.attributes import MappedAttributeKey
+from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
 from everest.representers.config import IGNORE_ON_READ_OPTION
@@ -101,25 +102,25 @@ CsvConverterRegistry.register(float, NoOpConverter)
 class CsvRepresentationParser(RepresentationParser):
     """
     Parser for CSV representations.
-    
+
     The tabular structure of the CSV format makes it difficult to transport
-    nested (tree-like) data structures with it. The simplest way to solve 
+    nested (tree-like) data structures with it. The simplest way to solve
     this problem is to resort to links (URLs) for specifying nested resources
-    which implies that the referenced resources have to be created in 
-    advance. 
-    
-    Since it is quite a common use case to create a resource and its 
+    which implies that the referenced resources have to be created in
+    advance.
+
+    Since it is quite a common use case to create a resource and its
     immediate children from one representation (i.e., in a single REST call),
-    the CSV parser also supports explicit specification of nested member 
-    attributes through separate CSV fields and specification of nested 
+    the CSV parser also supports explicit specification of nested member
+    attributes through separate CSV fields and specification of nested
     collection member attributes through separate
     CSV fields and multiple rows (i.e., each row is specifying a member in
     the nested collection while all other field values remain unchanged).
     Nested collection members are allocated to their enclosing member either
-    by the member ID (if specified in a column named "id") or by the 
+    by the member ID (if specified in a column named "id") or by the
     combined values of all remaining fields (sorted by field name).
-    
-    :note: The CSV column (field) names have to be mapped uniquely to 
+
+    :note: The CSV column (field) names have to be mapped uniquely to
       (nested) attribute representation names.
     :note: Polymorphic nested resources may not be mapped correctly.
     """
@@ -479,11 +480,11 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
 class CsvRepresentationGenerator(RepresentationGenerator):
     """
     A generator converting data elements into CSV representations.
-    
+
     :note: ``None`` values in terminal attributes are represented as the empty
            string (this is the default behavior of the CSV writer from the
            standard library).
-    :note: Nested member and collection resources are handled by adding 
+    :note: Nested member and collection resources are handled by adding
            more columns (member attributes) and rows (collection members)
            dynamically. By default, column names for nested member attributes
            are built as dot-concatenation of the corresponding attribute key.

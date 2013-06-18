@@ -1,13 +1,13 @@
 """
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 10, 2013.
 """
 from everest.entities.base import Entity
-from everest.repositories.uow import EntityStateManager
 from everest.repositories.state import ENTITY_STATES
+from everest.repositories.state import EntityStateManager
 from everest.repositories.uow import UnitOfWork
 from everest.testing import Pep8CompliantTestCase
 
