@@ -1,6 +1,7 @@
 [run]
 omit = everest/ini.py
        everest/flexfilter.py
+       everest/rfc3339.py
        everest/testing.py
        everest/tests/*
 

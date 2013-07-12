@@ -1,12 +1,11 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
 from everest.mime import CsvMime
 from everest.repositories.rdb.utils import RdbTestCaseMixin
-from everest.repositories.rdb.utils import reset_metadata
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph
@@ -208,10 +207,6 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
 
 class ZipResourceIoTestCaseRdb(RdbTestCaseMixin, _ZipResourceIoTestCaseBase):
     config_file_name = 'configure.zcml'
-
-    @classmethod
-    def teardown_class(cls):
-        reset_metadata()
 
 
 class StreamResourceIoTestCase(_ResourceIoTestCaseBase):

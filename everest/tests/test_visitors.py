@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
@@ -8,7 +8,6 @@ from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.repositories.rdb.utils import OrderClauseList
 from everest.repositories.rdb.utils import Session
-from everest.repositories.rdb.utils import reset_metadata
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
@@ -51,11 +50,11 @@ def create_metadata(engine):
 
 
 def teardown():
+    # Module level tear down.
     if not Person.metadata is None:
         Person.metadata.drop_all()
         Person.metadata = None
-    # Module level tear down.
-    reset_metadata()
+#    reset_metadata()
 
 
 class VisitorTestCase(Pep8CompliantTestCase):
@@ -271,9 +270,11 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
 class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
-            reset_metadata()
+#            reset_metadata()
             engine = create_engine('sqlite://')
-            Person.metadata = create_metadata(engine)
+            metadata = create_metadata(engine)
+            Person.metadata = metadata
+            metadata.bind = engine
         VisitorTestCase.set_up(self)
 
     def _make_visitor(self):
@@ -426,7 +427,6 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
 
     def set_up(self):
         if Person.metadata is None:
-            reset_metadata()
             engine = create_engine('sqlite://')
             Person.metadata = create_metadata(engine)
         OrderVisitorTestCase.set_up(self)
@@ -478,7 +478,7 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         finally:
             Person.name.asc = old_asc
         # Make sure the correct ORDER BY clause is generated.
-        q = Session.query(Person).order_by(expr)  # pylint: disable=E1101
+        q = Session.query(Person).order_by(expr) # pylint: disable=E1101
         q_str = str(q.statement)
         self.assert_not_equal(q_str.find("ORDER BY %s" % expr), -1)
 

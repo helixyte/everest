@@ -1,14 +1,15 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 31, 2012.
 """
-from everest.repositories.interfaces import IRepositoryManager
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
 from everest.relationship import Relationship
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
+from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntity
@@ -160,10 +161,7 @@ class MemoryAggregateTestCase(_AggregateTestCase):
         self.assert_equal(len(ent.children), 3)
 
 
-# FIXME: This should inherit from RdbTestCaseMixin. However, for some reason
-#        doing so breaks subsequent RDB test cases with an OperationalError
-#        "ambiguous column" from SqlAlchemy.
-class RdbAggregateTestCase(_AggregateTestCase):
+class RdbAggregateTestCase(RdbTestCaseMixin, _AggregateTestCase):
     config_file_name = 'configure.zcml'
 
     def _get_repo(self):

@@ -1,6 +1,6 @@
 """
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
@@ -9,6 +9,8 @@ from everest.querying.filtering import FilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
+from everest.querying.specifications import ValueContainedFilterSpecification
+from everest.resources.interfaces import ICollectionResource
 from functools import partial
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
@@ -21,7 +23,7 @@ __all__ = ['ObjectFilterSpecificationVisitor',
 @implementer(IFilterSpecificationVisitor)
 class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
     """
-    Filter specification visitor building an evaluator for in-memory 
+    Filter specification visitor building an evaluator for in-memory
     filtering.
     """
 
@@ -48,6 +50,11 @@ class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
         return partial(self.__evaluator, spec)
 
     def _contained_op(self, spec):
+        if len(spec.attr_value) == 1 \
+           and ICollectionResource.providedBy(spec.attr_value[0]): # pylint: disable=E1101
+            spec = ValueContainedFilterSpecification(
+                        spec.attr_name,
+                        [rc.get_entity() for rc in spec.attr_value[0]])
         return partial(self.__evaluator, spec)
 
     def _equal_to_op(self, spec):
@@ -72,7 +79,7 @@ class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
 @implementer(IOrderSpecificationVisitor)
 class ObjectOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
-    Order specification visitor building an evaluator for in-memory 
+    Order specification visitor building an evaluator for in-memory
     ordering.
     """
 

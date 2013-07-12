@@ -14,6 +14,7 @@ class FooCollection(Collection):
     title = 'My Foo Collection'
     root_name = 'foos'
     description = 'My fancy Foo collection.'
+    max_limit = 1000
 
 
 class BarCollection(Collection):
