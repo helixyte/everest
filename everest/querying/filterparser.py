@@ -1,7 +1,7 @@
 """
 Filter CQL criteria expression parser.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
@@ -226,7 +226,7 @@ cql_string = dblQuotedString.setParseAction(removeQuotes)
 # URLs
 protocol = Literal('http')
 domain = Combine(OneOrMore(CharsNotIn('/')))
-path = Combine(slash + OneOrMore(CharsNotIn(',~?&')))
+path = Combine(slash + OneOrMore(CharsNotIn('~')))
 cql_url = Combine(protocol + '://' + domain + path)
 
 # Number range.

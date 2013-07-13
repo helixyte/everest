@@ -1,12 +1,13 @@
 """
 Utilities for the RDBMS backend.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
 """
 from everest.entities.system import UserMessage
+from everest.repositories.rdb.orm import OrmAttributeInspector
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.repositories.utils import GlobalObjectManager
 from inspect import isdatadescriptor
@@ -43,9 +44,14 @@ class _MetaDataManager(GlobalObjectManager):
 
     @classmethod
     def reset(cls):
+        # This removes all attribute instrumentation from the entity classes.
+        clear_mappers()
+        # This is *very* important - the ORM attribute inspector caches
+        # attributes which have become invalidated by the clearing of the
+        # mappers.
+        OrmAttributeInspector.reset()
         for md in cls._globs.values():
             md.clear()
-        clear_mappers()
         super(_MetaDataManager, cls).reset()
 
 get_metadata = _MetaDataManager.get
@@ -91,10 +97,10 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
     Convenience wrapper around the SA mapper which will set up the hybrid
     "id" and "slug" attributes required by everest after calling the SA
     mapper.
-    
+
     If you (e.g., for testing purposes) want to clear mappers created with
     this function, use the :func:`clear_mappers` function in this module.
-    
+
     :param str id_attribute: the name of the column in the table to use as
       ID column (will be aliased to a new "id" attribute in the mapped class)
     :param slug_expression: function to generate a slug SQL expression given
@@ -151,7 +157,7 @@ def clear_mappers():
     """
     Clears all mappers set up by SA and also clears all custom "id" and
     "slug" attributes inserted by the :func:`mapper` function in this module.
-    
+
     This should only ever be needed in a testing context.
     """
     # Remove our hybrid property constructs.
@@ -198,6 +204,18 @@ class RdbTestCaseMixin(object):
         super(RdbTestCaseMixin, self).tear_down()
         Session.remove()
 
+#    @classmethod
+#    def setup_class(cls):
+#        base_cls = super(RdbTestCaseMixin, cls)
+#        try:
+#            base_cls.setup_class()
+#        except AttributeError:
+#            pass
+#        Session.remove()
+#        assert not Session.registry.has()
+#        reset_metadata()
+#        reset_engines()
+
     @classmethod
     def teardown_class(cls):
         base_cls = super(RdbTestCaseMixin, cls)
@@ -205,5 +223,6 @@ class RdbTestCaseMixin(object):
             base_cls.teardown_class()
         except AttributeError:
             pass
+        Session.remove()
         assert not Session.registry.has()
         reset_metadata()

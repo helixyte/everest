@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
@@ -10,8 +10,10 @@ from everest.querying.filtering import RepositoryFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import RepositoryOrderSpecificationVisitor
+from everest.querying.specifications import ValueContainedFilterSpecification
 from everest.querying.specifications import eq
 from everest.repositories.base import Query
+from everest.resources.interfaces import ICollectionResource
 from everest.utils import generative
 from itertools import chain
 from itertools import islice
@@ -196,7 +198,7 @@ class EvalFilterExpression(object):
 @implementer(IFilterSpecificationVisitor)
 class ObjectFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
     """
-    Filter specification visitor building an evaluator for in-memory 
+    Filter specification visitor building an evaluator for in-memory
     filtering.
     """
 
@@ -222,6 +224,11 @@ class ObjectFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
         return EvalFilterExpression(spec)
 
     def _contained_op(self, spec):
+        if len(spec.attr_value) == 1 \
+           and ICollectionResource.providedBy(spec.attr_value[0]): # pylint: disable=E1101
+            spec = ValueContainedFilterSpecification(
+                        spec.attr_name,
+                        [rc.get_entity() for rc in spec.attr_value[0]])
         return EvalFilterExpression(spec)
 
     def _equal_to_op(self, spec):
@@ -260,7 +267,7 @@ class EvalOrderExpression(object):
 @implementer(IOrderSpecificationVisitor)
 class ObjectOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
     """
-    Order specification visitor building an evaluator for in-memory 
+    Order specification visitor building an evaluator for in-memory
     ordering.
     """
 

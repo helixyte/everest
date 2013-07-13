@@ -1,27 +1,30 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
+from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.resources.utils import get_root_collection
+from everest.resources.utils import resource_to_url
+from everest.resources.utils import url_to_resource
 from everest.testing import ResourceTestCase
+from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
-from everest.resources.utils import resource_to_url
-from everest.resources.utils import url_to_resource
 from pyramid.compat import urlparse
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['UrlTestCase',
+__all__ = ['RepoUrlTestCaseNoRdb',
+           'RepoUrlTestCaseRdb',
            ]
 
 
-class UrlTestCase(ResourceTestCase):
+class _UrlBaseTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_no_rdb.zcml'
 
     def set_up(self):
         ResourceTestCase.set_up(self)
@@ -44,7 +47,12 @@ class UrlTestCase(ResourceTestCase):
         exc_msg = 'Can not generate URL for floating resource'
         self.assert_true(str(cm.exception).startswith(exc_msg))
 
-    def test_resource_to_url(self):
+    def test_resource_to_url_member(self):
+        self.__check_url(resource_to_url(self.coll['0']),
+                         schema='http', path='/my-entities/0/', params='',
+                         query='')
+
+    def test_resource_to_url_collection(self):
         self.__check_url(resource_to_url(self.coll),
                          schema='http', path='/my-entities/', params='',
                          query='')
@@ -55,13 +63,24 @@ class UrlTestCase(ResourceTestCase):
                          schema='http', path='/my-entities/',
                          params='', query='start=0&size=1')
 
-    def test_resource_to_url_with_filter(self):
+    def test_resource_to_url_with_id_filter(self):
         flt_spec_fac = get_filter_specification_factory()
         flt_spec = flt_spec_fac.create_equal_to('id', 0)
         self.coll.filter = flt_spec
         self.__check_url(resource_to_url(self.coll),
                          schema='http', path='/my-entities/', params='',
                          query='q=id:equal-to:0')
+
+    def test_resource_to_url_with_resource_filter(self):
+        parent_coll = get_root_collection(IMyEntityParent)
+        parent = parent_coll['0']
+        parent_url = resource_to_url(parent)
+        flt_spec_fac = get_filter_specification_factory()
+        flt_spec = flt_spec_fac.create_equal_to('parent', parent)
+        self.coll.filter = flt_spec
+        self.__check_url(resource_to_url(self.coll),
+                         schema='http', path='/my-entities/', params='',
+                         query='q=parent:equal-to:%s' % parent_url)
 
     def test_resource_to_url_with_order(self):
         ord_spec_fac = get_order_specification_factory()
@@ -207,6 +226,12 @@ class UrlTestCase(ResourceTestCase):
         coll_from_url = url_to_resource(self.base_url + '?q=%s' % criterion)
         self.assert_equal(len(coll_from_url), 1)
 
+    def test_url_to_resource_contained_with_collection_link(self):
+        url = self.app_url + '/my-entities/?q=parent:contained:"' \
+              + self.app_url + '/my-entity-parents/?q=id:less-than:3"'
+        coll_from_url = url_to_resource(url)
+        self.assert_equal(len(coll_from_url), 2)
+
     def __check_url(self, url,
                     schema=None, path=None, params=None, query=None):
         urlp = urlparse.urlparse(url)
@@ -218,3 +243,11 @@ class UrlTestCase(ResourceTestCase):
             self.assert_equal(urlp.params, params) # pylint: disable=E1101
         if not query is None:
             self.assert_equal(urlp.query, query) # pylint: disable=E1101
+
+
+class RepoUrlTestCaseNoRdb(_UrlBaseTestCase):
+    config_file_name = 'configure_no_rdb.zcml'
+
+
+class RepoUrlTestCaseRdb(RdbTestCaseMixin, _UrlBaseTestCase):
+    config_file_name = 'configure.zcml'

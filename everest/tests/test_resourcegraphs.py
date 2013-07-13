@@ -1,11 +1,10 @@
 """
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
-from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.resources.io import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
 from everest.testing import TestCaseWithConfiguration
@@ -19,12 +18,12 @@ __all__ = ['ResourceGraphTestCase',
            ]
 
 
-class ResourceGraphTestCase(RdbTestCaseMixin, TestCaseWithConfiguration):
+class ResourceGraphTestCase(TestCaseWithConfiguration):
     package_name = 'everest.tests.complete_app'
 
     def set_up(self):
         TestCaseWithConfiguration.set_up(self)
-        self.config.load_zcml('configure.zcml')
+        self.config.load_zcml('configure_no_rdb.zcml')
         self._interfaces = [IMyEntityParent, IMyEntity, IMyEntityChild,
                             IMyEntityGrandchild]
 

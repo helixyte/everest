@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 31, 2012.
@@ -13,6 +13,7 @@ from everest.querying.specifications import asc
 from everest.querying.specifications import eq
 from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.rdb.aggregate import RdbAggregate
+from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
@@ -224,5 +225,6 @@ class MemoryRelationshipAggregateTestCase(_RelationshipAggregateTestCase):
     config_file_name = 'configure_no_rdb.zcml'
 
 
-class RdbRelationshipAggregateTestCase(_RelationshipAggregateTestCase):
+class RdbRelationshipAggregateTestCase(RdbTestCaseMixin,
+                                       _RelationshipAggregateTestCase):
     pass

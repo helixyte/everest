@@ -1,7 +1,7 @@
 """
 Configurator for everest.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2011.
@@ -386,7 +386,10 @@ class Configurator(PyramidConfigurator):
             if issubclass(representer_class, MappingResourceRepresenter):
                 mp_reg = rpr_reg.get_mapping_registry(
                                             representer_class.content_type)
-            else:
+            else: # pragma: no cover
+                # FIXME: This is for representers that bypass the mapping
+                #        machinery by using custom parsers/generators. Needs
+                #        a test case.
                 mp_reg = None
         else:
             mp_reg = rpr_reg.get_mapping_registry(content_type)

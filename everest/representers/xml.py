@@ -273,8 +273,9 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 mp = self.mapping.mapping_registry.find_mapping(attr_type)
                 if not mp is None:
                     xml_ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
-                else:
+                else: # pragma: no cover
                     # Not mapped.
+                    # FIXME This case is neither tested nor documented.
                     xml_ns = None
             if not xml_ns is None:
                 q_tag = '{%s}%s' % (xml_ns, attr.repr_name)

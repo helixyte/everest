@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
@@ -7,7 +7,7 @@ Created on Nov 17, 2011.
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
 from everest.renderers import RendererFactory
-from everest.repositories.rdb.utils import reset_metadata
+from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
@@ -34,6 +34,7 @@ from everest.views.utils import accept_csv_only
 from pkg_resources import resource_filename # pylint: disable=E0611
 from pyramid.testing import DummyRequest
 import transaction
+from everest.testing import ResourceTestCase
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicViewTestCase',
@@ -354,6 +355,35 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
         self.assert_true(str(cm.exception).startswith('Autodetection'))
 
 
+class GetCollectionViewTestCase(ResourceTestCase):
+    package_name = 'everest.tests.simple_app'
+    config_file_name = 'configure.zcml'
+
+    def test_get_collection_view_with_size(self):
+        coll = get_root_collection(IFoo)
+        app_url = self._get_app_url()
+        path_url = 'http://0.0.0.0:6543/foos/'
+        req = DummyRequest(application_url=app_url, host_url=app_url,
+                           path_url=path_url,
+                           url=path_url + '?size=10',
+                           params=dict(size=10),
+                           registry=self.config.registry,
+                           accept=['*/*'])
+        req.get_response = lambda exc: None
+        view = GetCollectionView(coll, req)
+        res = view()
+        self.assert_is_not_none(res)
+        self.assert_equal(view.context.slice.start, 0)
+        self.assert_equal(view.context.slice.stop, 10)
+        # Try again with size exceeding the allowed maximum limit (page size).
+        req.params = dict(size=10000)
+        req.url = path_url + '?size=10000'
+        res = view()
+        self.assert_is_not_none(res)
+        self.assert_equal(view.context.slice.start, 0)
+        self.assert_equal(view.context.slice.stop, FooCollection.max_limit)
+
+
 class StaticViewTestCase(FunctionalTestCase):
     package_name = 'everest.tests.complete_app'
     ini_file_path = resource_filename('everest.tests.complete_app',
@@ -502,12 +532,8 @@ class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
     config_file_name = 'everest.tests.simple_app:configure_messaging_memory.zcml'
 
 
-class WarningViewRdbTestCase(_WarningViewBaseTestCase):
+class WarningViewRdbTestCase(RdbTestCaseMixin, _WarningViewBaseTestCase):
     config_file_name = 'everest.tests.simple_app:configure_messaging_rdb.zcml'
-
-    @classmethod
-    def tear_down_class(cls):
-        reset_metadata()
 
 
 class WarningWithExceptionViewTestCase(FunctionalTestCase):

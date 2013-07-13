@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
@@ -51,10 +51,10 @@ def create_metadata(engine):
 
 
 def teardown():
+    # Module level tear down.
     if not Person.metadata is None:
         Person.metadata.drop_all()
         Person.metadata = None
-    # Module level tear down.
     reset_metadata()
 
 
@@ -273,7 +273,9 @@ class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
         if Person.metadata is None:
             reset_metadata()
             engine = create_engine('sqlite://')
-            Person.metadata = create_metadata(engine)
+            metadata = create_metadata(engine)
+            Person.metadata = metadata
+            metadata.bind = engine
         VisitorTestCase.set_up(self)
 
     def _make_visitor(self):
@@ -426,7 +428,6 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
 
     def set_up(self):
         if Person.metadata is None:
-            reset_metadata()
             engine = create_engine('sqlite://')
             Person.metadata = create_metadata(engine)
         OrderVisitorTestCase.set_up(self)
