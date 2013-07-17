@@ -50,11 +50,12 @@ class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
         return partial(self.__evaluator, spec)
 
     def _contained_op(self, spec):
-        if len(spec.attr_value) == 1 \
-           and ICollectionResource.providedBy(spec.attr_value[0]): # pylint: disable=E1101
-            spec = ValueContainedFilterSpecification(
-                        spec.attr_name,
-                        [rc.get_entity() for rc in spec.attr_value[0]])
+        if len(spec.attr_value) == 1:
+            value = next(iter(spec.attr_value)) # Works also for sets.
+            if ICollectionResource.providedBy(value): # pylint: disable=E1101
+                spec = ValueContainedFilterSpecification(
+                                            spec.attr_name,
+                                            [rc.get_entity() for rc in value])
         return partial(self.__evaluator, spec)
 
     def _equal_to_op(self, spec):

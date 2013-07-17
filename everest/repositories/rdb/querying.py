@@ -66,14 +66,15 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         return self.__build(spec.attr_name, 'contains', spec.attr_value)
 
     def _contained_op(self, spec):
-        if len(spec.attr_value) == 1 \
-           and ICollectionResource.providedBy(spec.attr_value[0]): # pylint:disable=E1101
-            # FIXME: This is a hack that allows us to query for containment
-            #        of a member in an arbitrary collection (not supported
-            #        by SQLAlchemy yet).
-            spec = ValueContainedFilterSpecification(
-                                    spec.attr_name + '.id',
-                                    [rc.id for rc in spec.attr_value[0]])
+        if len(spec.attr_value) == 1:
+            value = next(iter(spec.attr_value)) # Works also for sets.
+            if ICollectionResource.providedBy(value): # pylint:disable=E1101
+                # FIXME: This is a hack that allows us to query for containment
+                #        of a member in an arbitrary collection (not supported
+                #        by SQLAlchemy yet).
+                spec = ValueContainedFilterSpecification(
+                                        spec.attr_name + '.id',
+                                        [rc.id for rc in value])
         return self.__build(spec.attr_name, 'in_', spec.attr_value)
 
     def _equal_to_op(self, spec):
