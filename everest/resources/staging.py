@@ -6,8 +6,8 @@ Created on Feb 27, 2013.
 """
 from everest.entities.base import Aggregate
 from everest.entities.base import RelationshipAggregate
-from everest.entities.traversal import CrudDomainVisitor
-from everest.entities.traversal import SourceTargetTraverser
+from everest.entities.traversal import CrudVisitor
+from everest.entities.traversal import SourceTargetDomainTraverser
 from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
 from everest.repositories.memory.cache import EntityCacheMap
@@ -34,10 +34,10 @@ class StagingAggregate(Aggregate):
         if cache is None:
             cache = EntityCacheMap()
         self.__cache = cache
-        self.__visitor = CrudDomainVisitor(entity_class,
-                                           self.__cache.add,
-                                           self.__cache.remove,
-                                           self.__cache.replace)
+        self.__visitor = CrudVisitor(entity_class,
+                                     self.__cache.add,
+                                     self.__cache.remove,
+                                     self.__cache.replace)
 
     def get_by_id(self, id_key):
         return self.__cache[self.entity_class].get_by_id(id_key)
@@ -46,16 +46,16 @@ class StagingAggregate(Aggregate):
         return self.__cache[self.entity_class].get_by_slug(slug)
 
     def add(self, entity):
-        trv = SourceTargetTraverser(self.__cache, entity, None)
+        trv = SourceTargetDomainTraverser(self.__cache, entity, None)
         trv.run(self.__visitor)
 
     def remove(self, entity):
-        trv = SourceTargetTraverser(self.__cache, None, entity)
+        trv = SourceTargetDomainTraverser(self.__cache, None, entity)
         trv.run(self.__visitor)
 
     def update(self, entity):
         target_entity = self.__cache.get_by_id(self.entity_class, entity.id)
-        trv = SourceTargetTraverser(self.__cache, entity, target_entity)
+        trv = SourceTargetDomainTraverser(self.__cache, entity, target_entity)
         trv.run(self.__visitor)
 
     def query(self):

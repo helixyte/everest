@@ -9,8 +9,6 @@ Created on May 12, 2011.
 from everest.constants import CASCADES
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
-from everest.entities.traversal import CrudDomainVisitor
-from everest.entities.traversal import SourceTargetTraverser
 from everest.querying.utils import get_filter_specification_factory
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor

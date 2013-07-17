@@ -15,6 +15,9 @@ from everest.utils import get_nested_attribute
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from everest.exceptions import NoResultsException
 from everest.repositories.state import EntityStateManager
+from everest.constants import ResourceAttributeKinds
+from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import ICollectionResource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AddingDomainVisitor',
@@ -182,20 +185,20 @@ class SourceTargetTraverser(object):
     """
     Traverser for synchronous traversal of a source and a target node tree.
 
-    For each node pair, starting with the root source and target nodes, iterate
-    over the non-terminal attributes of the associated type and obtain the
-    attribute value (child node) for both the source and the target node. If
-    the parent source or target node is `None`, the corresponding child node
-    is also `None`.
+    For each node pair, starting with the root source and target nodes,
+    iterate over the non-terminal attributes of the associated type and
+    obtain the attribute value (child node) for both the source and the
+    target node. If the parent source or target node is `None`, the
+    corresponding child node is also `None`.
 
     A child node is only traversed when the parent attribute corresponding
     to it has the ADD (only target node found), DELETE (only source node
     found) or UPDATE (both source and target nodes found) cascade set.
     """
     def __init__(self, session, source_root, target_root):
-        self.__sess = session
-        self.__source_root = source_root
-        self.__target_root = target_root
+        self._session = session
+        self._source_root = source_root
+        self._target_root = target_root
         self.__traversed = set()
 
     def run(self, visitor):
@@ -204,40 +207,114 @@ class SourceTargetTraverser(object):
         :type visitor: subclass of
             :class:`everest.entities.traversal.DomainVisitor`
         """
-        provided = provided_by(self.__source_root or self.__target_root)
-        if IEntity in provided:
-            self._traverse_entity([], None, self.__source_root,
-                                  self.__target_root, visitor)
-        elif IAggregate in provided:
-            self._traverse_aggregate([], None, self.__source_root,
-                                     self.__target_root, visitor)
-        else:
-            raise ValueError('Can only traverse domain objects that '
-                             'provide IEntity or IAggregate.')
+        self._dispatch([], None, self._source_root, self._target_root,
+                       visitor)
 
+    def _dispatch(self, path, attribute, source, target, visitor):
+        raise NotImplementedError('Abstract method.')
+
+    def _do_traverse(self, attribute, source, target):
+        raise NotImplementedError('Abstract method.')
+
+    def _find_target(self, attribute, source):
+        raise NotImplementedError('Abstract method.')
+
+    def _attribute_iterator(self, attribute, source, target):
+        raise NotImplementedError('Abstract method.')
+
+    def _mark_node(self, key):
+        marked = key in self.__traversed
+        if not marked:
+            self.__traversed.add(key)
+        return marked
+
+
+class SourceTargetResourceTraverser(SourceTargetTraverser):
+    def _dispatch(self, path, attribute, source, target, visitor):
+        #: Dispatches the appropriate _traverse_* operation for the given
+        #: combination of path, resource attribute, and resource object.
+        if not attribute is None:
+            if attribute.kind == ResourceAttributeKinds.MEMBER:
+                traverse_method = self._traverse_member
+            elif attribute.kind == ResourceAttributeKinds.COLLECTION:
+                traverse_method = self._traverse_collection
+            else:
+                raise ValueError('Can only traverse objects for non-terminal '
+                                 'resource attributes.')
+        else:
+            # For the root node, we use the provided interface.
+            provided = provided_by(self._source_root or self._target_root)
+            if IMemberResource in provided:
+                traverse_method = self._traverse_member
+            elif ICollectionResource in provided:
+                traverse_method = self._traverse_collection
+            else:
+                raise ValueError('Can only traverse resource objects that '
+                                 'provide IMemberResource or '
+                                 'ICollectionResource.')
+        traverse_method(path, attribute, source, target, visitor)
+
+    def _traverse_member(self, path, attribute, source_member, target_member,
+                         visitor):
+        key = (source_member, target_member)
+        if not self._mark_node(key):
+            pass
+
+    def _traverse_collection(self, path, attribute, source, target, visitor):
+        pass
+
+    def _find_target(self, attribute, source):
+        raise NotImplementedError('Abstract method.')
+
+    def _attribute_iterator(self, attribute, source, target):
+        raise NotImplementedError('Abstract method.')
+
+
+class SourceTargetDomainTraverser(SourceTargetTraverser):
     def _dispatch(self, path, attribute, source, target, visitor):
         #: Dispatches the appropriate _traverse_* operation for the given
         #: combination of path, domain attribute, and domain object.
-        if attribute.kind == DomainAttributeKinds.ENTITY:
-            self._traverse_entity(path, attribute, source, target, visitor)
-        elif attribute.kind == DomainAttributeKinds.AGGREGATE:
-            self._traverse_aggregate(path, attribute, source, target, visitor)
+        if not attribute is None:
+            if attribute.kind == DomainAttributeKinds.ENTITY:
+                traverse_method = self._traverse_entity
+            elif attribute.kind == DomainAttributeKinds.AGGREGATE:
+                traverse_method = self._traverse_aggregate
+            else:
+                raise ValueError('Can only traverse objects for non-terminal '
+                                 'domain attributes.')
         else:
-            raise ValueError('Can only traverse objects for non-terminal '
-                             'domain attributes.')
+            # For the root node, we use the provided interface.
+            provided = provided_by(self._source_root or self._target_root)
+            if IEntity in provided:
+                traverse_method = self._traverse_entity
+            elif IAggregate in provided:
+                traverse_method = self._traverse_aggregate
+            else:
+                raise ValueError('Can only traverse domain objects that '
+                                 'provide IEntity or IAggregate.')
+        traverse_method(path, attribute, source, target, visitor)
+
+    def _traverse_one(self, path, attribute, source, target, visitor):
+        if self._do_traverse(attribute, source, target):
+            pass
+
+    def _do_traverse(self, attribute, source, target):
+        key = (source, target)
+        return not self._mark_node(key)
 
     def _traverse_entity(self, path, attribute, source_entity, target_entity,
                          visitor):
-        key = (source_entity, target_entity)
-        if not key in self.__traversed:
-            self.__traversed.add(key)
+        if self._do_traverse(attribute, source_entity, target_entity):
             if not attribute is None:
                 ent_cls = get_entity_class(attribute.attr_type)
             else:
                 ent_cls = get_entity_class(source_entity or target_entity)
-            if not getattr(source_entity, 'id', None) is None:
-                # If we find a target here: UPDATE else: CREATE
-                target_entity = self.__query_by_id(ent_cls, source_entity.id)
+            if target_entity is None and not source_entity.id is None:
+                # Look up the target for UPDATE.
+                target_entity = self._find_target(attribute, source_entity)
+                if target_entity is None:
+                    raise ValueError('Non-existing entities must not have '
+                                     'an ID.')
             for attr in get_domain_class_domain_attribute_iterator(ent_cls):
                 if attr.entity_attr is None:
                     continue
@@ -263,15 +340,14 @@ class SourceTargetTraverser(object):
                     do_dispatch = attr.cascade & CASCADES.DELETE
                 else:
                     # UPDATE
-                    do_dispatch = source_attr_value != target_attr_value \
-                                  and attr.cascade & CASCADES.UPDATE
+                    do_dispatch = attr.cascade & CASCADES.UPDATE
                 if do_dispatch:
                     path.append((source_entity, target_entity))
-                    self._dispatch(path, attr, source_attr_value,
+                    self._dispatch(path[:], attr, source_attr_value,
                                    target_attr_value, visitor)
                     path.pop()
-            visitor.visit_entity(path, attribute, source_entity,
-                                 target_entity)
+            visitor.visit_one(path, attribute, source_entity,
+                              target_entity)
 
     def _traverse_aggregate(self, path, attribute, source_aggregate,
                             target_aggregate, visitor):
@@ -291,28 +367,36 @@ class SourceTargetTraverser(object):
                 # DELETE
                 self._traverse_entity(path, attribute, None, target_entity,
                                       visitor)
-        visitor.visit_aggregate(path, attribute, source_aggregate,
-                                target_aggregate)
+        visitor.visit_many(path, attribute,
+                           source_aggregate, target_aggregate)
 
-    def __query_by_id(self, entity_class, entity_id):
-        ent = self.__sess.get_by_id(entity_class, entity_id)
+    def _find_target(self, attribute, source):
+        if not attribute is None:
+            ent_cls = get_entity_class(attribute.attr_type)
+        else:
+            ent_cls = get_entity_class(self._source_root or self._target_root)
+        ent = self._session.get_by_id(ent_cls, source.id)
         if ent is None:
             try:
-                ent = \
-                 self.__sess.query(entity_class).filter_by(id=entity_id).one()
+                ent = self._session.query(ent_cls) \
+                          .filter_by(id=source.id) \
+                          .one()
             except NoResultsException:
                 pass
         return ent
 
 
-class CrudDomainVisitor(object):
-    def __init__(self, rc_class, session_proxy):
+class CrudVisitor(object):
+    def __init__(self, rc_class,
+                 create_callback, update_callback, delete_callback):
         self.__rc_class = rc_class
-        self.__session_proxy = session_proxy
+        self.__create_callback = create_callback
+        self.__update_callback = update_callback
+        self.__delete_callback = delete_callback
         self.__state_map = {}
         self.__result = None
 
-    def visit_entity(self, path, attribute, source_data, target):
+    def visit_one(self, path, attribute, source_data, target):
         if attribute is None:
             # Visiting the root.
             rc_class = self.__rc_class
@@ -320,28 +404,29 @@ class CrudDomainVisitor(object):
         else:
             rc_class = attribute.attr_type
             parent = path[-1][0]
-            parent_data = self.__state_map.setdefault(parent, {}).get(parent)
+            parent_data = self.__state_map.get(parent)
+            if parent_data is None:
+                parent_data = self.__state_map.setdefault(parent, {})
         if source_data is None:
             if not parent is None:
                 parent_data[attribute] = None
-            self.__session_proxy.remove(rc_class, target)
+            self.__delete_callback(rc_class, target)
             source = None
         else:
             state_data = EntityStateManager.get_state_data(rc_class,
                                                            source_data)
 
             if target is None:
-                source = self.__session_proxy.create(rc_class, state_data)
-                self.__session_proxy.add(rc_class, source)
+                source = self.__create_callback(rc_class, state_data)
             else:
-                source = self.__session_proxy.update(rc_class,
-                                                     source_data, target)
+                source = self.__update_callback(rc_class,
+                                                source_data, target)
             if not parent is None:
                 parent_data[attribute] = state_data
             else:
                 self.__result = source
 
-    def visit_aggregate(self, path, attr, source_aggregate, target_aggregate):
+    def visit_many(self, path, attr, source_data, target):
         pass
 
     @property
