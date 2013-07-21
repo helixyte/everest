@@ -396,6 +396,12 @@ class RootAggregate(Aggregate):
     def _query_by_id(self, id_key):
         raise NotImplementedError('Abstract method.')
 
+    def __iter__(self):
+        """
+        Support for iteration.
+        """
+        return self.iterator()
+
     @property
     def _session(self):
         return self._session_factory()

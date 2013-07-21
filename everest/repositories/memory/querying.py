@@ -10,10 +10,8 @@ from everest.querying.filtering import RepositoryFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import RepositoryOrderSpecificationVisitor
-from everest.querying.specifications import ValueContainedFilterSpecification
 from everest.querying.specifications import eq
 from everest.repositories.base import Query
-from everest.resources.interfaces import ICollectionResource
 from everest.utils import generative
 from itertools import chain
 from itertools import islice
@@ -224,11 +222,6 @@ class ObjectFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
         return EvalFilterExpression(spec)
 
     def _contained_op(self, spec):
-        if len(spec.attr_value) == 1 \
-           and ICollectionResource.providedBy(spec.attr_value[0]): # pylint: disable=E1101
-            spec = ValueContainedFilterSpecification(
-                        spec.attr_name,
-                        [rc.get_entity() for rc in spec.attr_value[0]])
         return EvalFilterExpression(spec)
 
     def _equal_to_op(self, spec):

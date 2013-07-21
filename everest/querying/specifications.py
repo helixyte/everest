@@ -1,10 +1,10 @@
 """
 Specifications.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
-The central idea of a Specification is to separate the statement of how to 
+The central idea of a Specification is to separate the statement of how to
 match a candidate from the candidate object that it is matched against.
 
 Read http://en.wikipedia.org/wiki/Specification_pattern for more info and
@@ -30,7 +30,8 @@ from everest.querying.operators import LESS_OR_EQUALS
 from everest.querying.operators import LESS_THAN
 from everest.querying.operators import NEGATION
 from everest.querying.operators import STARTS_WITH
-from everest.resources.interfaces import IResource
+from everest.resources.interfaces import ICollectionResource
+from everest.resources.interfaces import IMemberResource
 from everest.utils import get_nested_attribute
 from pyramid.compat import string_types
 from pyramid.threadlocal import get_current_registry
@@ -99,7 +100,7 @@ class FilterSpecification(Specification):
 
 class LeafFilterSpecification(FilterSpecification): # still abstract pylint: disable=W0223
     """
-    Abstract base class for specifications that represent leaves in a 
+    Abstract base class for specifications that represent leaves in a
     specification tree.
     """
 
@@ -131,10 +132,8 @@ class CriterionFilterSpecification(LeafFilterSpecification):
         if self.__class__ is CriterionFilterSpecification:
             raise NotImplementedError('Abstract class')
         LeafFilterSpecification.__init__(self)
-        self.__attr_name = attr_name
-        self.__attr_value = attr_value
-        self.__attr_func = \
-                    get_nested_attribute if '.' in attr_name else getattr
+        self.attr_name = attr_name
+        self.attr_value = attr_value
 
     def __eq__(self, other):
         return (isinstance(other, CriterionFilterSpecification)
@@ -150,24 +149,19 @@ class CriterionFilterSpecification(LeafFilterSpecification):
                   self.operator.name, self.attr_name, self.attr_value)
         return str_format % params
 
-    @property
-    def attr_name(self):
-        return self.__attr_name
-
-    @property
-    def attr_value(self):
-        return self.__attr_value
-
     def is_satisfied_by(self, candidate):
         cand_value = self._get_candidate_value(candidate)
-        if IResource.providedBy(self.__attr_value): # pylint: disable=E1101
-            attr_value = self.__attr_value.get_entity()
+        if IMemberResource.providedBy(self.attr_value): # pylint: disable=E1101
+            attr_value = self.attr_value.get_entity()
+        elif ICollectionResource.providedBy(self.attr_value): # pylint: disable=E1101
+            attr_value = self.attr_value.get_aggregate()
         else:
-            attr_value = self.__attr_value
+            attr_value = self.attr_value
         return self.operator.apply(cand_value, attr_value)
 
     def _get_candidate_value(self, candidate):
-        return self.__attr_func(candidate, self.attr_name)
+        attr_func = get_nested_attribute if '.' in self.attr_name else getattr
+        return attr_func(candidate, self.attr_name)
 
 
 class CompositeFilterSpecification(FilterSpecification):
