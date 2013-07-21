@@ -9,8 +9,6 @@ from everest.querying.filtering import FilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
-from everest.querying.specifications import ValueContainedFilterSpecification
-from everest.resources.interfaces import ICollectionResource
 from functools import partial
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
@@ -50,12 +48,6 @@ class ObjectFilterSpecificationVisitor(FilterSpecificationVisitor):
         return partial(self.__evaluator, spec)
 
     def _contained_op(self, spec):
-        if len(spec.attr_value) == 1:
-            value = next(iter(spec.attr_value)) # Works also for sets.
-            if ICollectionResource.providedBy(value): # pylint: disable=E1101
-                spec = ValueContainedFilterSpecification(
-                                            spec.attr_name,
-                                            [rc.get_entity() for rc in value])
         return partial(self.__evaluator, spec)
 
     def _equal_to_op(self, spec):

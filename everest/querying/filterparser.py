@@ -38,6 +38,7 @@ from pyparsing import Group
 from pyparsing import Literal
 from pyparsing import OneOrMore
 from pyparsing import Optional
+from pyparsing import ParseResults
 from pyparsing import Regex
 from pyparsing import Word
 from pyparsing import ZeroOrMore
@@ -52,6 +53,7 @@ from pyparsing import removeQuotes
 from pyparsing import replaceWith
 from pyparsing import srange
 from pyramid.compat import string_types
+from everest.resources.interfaces import ICollectionResource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['parse_filter',
@@ -132,21 +134,44 @@ class CriterionConverter(object):
     @classmethod
     def convert(cls, toks):
         crit = toks[0]
+        # Extract attribute name.
+        attr_name = cls.__prepare_identifier(crit.name)
+        # Extract operator name.
         op_name = cls.__prepare_identifier(crit.operator)
         if op_name.startswith("not_"):
             op_name = op_name[4:]
             negate = True
         else:
             negate = False
-        attr_name = cls.__prepare_identifier(crit.name)
-        attr_values = cls.__prepare_values(crit.value)
-        if attr_values == []:
+        # Extract attribute value.
+        if len(crit.value) == 0:
             raise ValueError('Criterion does not define a value.')
-        # For the CONTAINED spec, we treat all parsed values as one value.
-        if op_name == CONTAINED.name:
-            attr_values = [attr_values]
+        elif len(crit.value) == 1 and isinstance(crit.value[0], ParseResults):
+            # URLs - convert to resource.
+            val = crit.value[0]
+            try:
+                rc = url_to_resource(val.resource)
+            except:
+                raise ValueError('Could not convert "%s" to a resource.')
+            if not val.query == '':
+                if not ICollectionResource.providedBy(rc): # pylint: disable=E1101
+                    raise ValueError('Member resources can not have a '
+                                     'query string.')
+                rc.filter = val.query
+            attr_value = rc
+            value_is_resource = True
+        else:
+            attr_value = cls.__prepare_values(crit.value)
+            value_is_resource = False
         spec_gen = cls.spec_map[op_name]
-        return cls.__make_spec(spec_gen, attr_name, attr_values, negate)
+        if op_name == CONTAINED.name or value_is_resource:
+            spec = spec_gen(**{attr_name:attr_value})
+            if negate:
+                spec = ~spec
+        else:
+            # Create a spec for each value and concatenate with OR.
+            spec = cls.__make_spec(spec_gen, attr_name, attr_value, negate)
+        return spec
 
     @classmethod
     def __make_spec(cls, spec_gen, attr_name, attr_values, negate):
@@ -169,22 +194,13 @@ class CriterionConverter(object):
     def __prepare_values(cls, values):
         prepared = []
         for val in values:
-            if cls.__is_empty_string(val):
-                continue
-            elif cls.__is_url(val):
-                # URLs - convert to resource.
-                val = url_to_resource(''.join(val))
-            if not val in prepared:
+            if not cls.__is_empty_string(val) and not val in prepared:
                 prepared.append(val)
         return prepared
 
     @classmethod
     def __is_empty_string(cls, v):
         return isinstance(v, string_types) and len(v) == 0
-
-    @classmethod
-    def __is_url(cls, v):
-        return isinstance(v, string_types) and v.startswith('http://')
 
 
 def convert_conjunction(toks):
@@ -209,6 +225,14 @@ def convert_simple_criteria(toks):
     return spec
 
 
+def convert_resource(toks):
+    return toks[0]
+
+
+def convert_nested_query(toks):
+    return toks[0][0]
+
+
 # Numbers are converted to ints if possible.
 cql_number = Combine(Optional('-') + ('0' | Word(nonzero_nums, nums)) +
                      Optional('.' + Word(nums)) +
@@ -223,29 +247,34 @@ cql_date = Combine(dbl_quote.suppress() + Regex(ISO8601_REGEX) +
 # removed.
 cql_string = dblQuotedString.setParseAction(removeQuotes)
 
+query = Forward()
+
 # URLs
-protocol = Literal('http')
+protocol = Combine(Literal('http') + Optional('s'))
 domain = Combine(OneOrMore(CharsNotIn('/')))
-path = Combine(slash + OneOrMore(CharsNotIn('~')))
-cql_url = Combine(protocol + '://' + domain + path)
+path = Combine(slash + OneOrMore(CharsNotIn('?')))
+resource = Combine(protocol + '://' + domain + path).setParseAction(convert_resource)
+nested_query = Group((Literal('?q=') | Literal('&q=')).suppress()
+                     + query).setParseAction(convert_nested_query)
+cql_url = Combine(resource('resource') + Optional(nested_query('query')))
+
 
 # Number range.
 # FIXME: char ranges are not supported yet
 cql_number_range = Group(cql_number + '-' + cql_number
                            ).setParseAction(convert_range)
 
-cql_values = Group(
-    delimitedList(
-        cql_number_range('range') |
-        cql_number('number') |
-        cql_date('date') |
-        cql_string('string') |
-        cql_url('url') |
-        true |
-        false |
-        empty
-        )
-    )
+cql_values = Group(cql_url('url') |
+                   delimitedList(
+                        cql_number_range('range') |
+                        cql_number('number') |
+                        cql_date('date') |
+                        cql_string('string') |
+                        true |
+                        false |
+                        empty
+                        )
+                   )
 
 logical_op = and_op('operator') | or_op('operator')
 
@@ -271,7 +300,7 @@ simple_criteria = Group(criterion +
                         OneOrMore(tilde.suppress() + criterion))
 simple_criteria.setParseAction(convert_simple_criteria)
 
-query = simple_criteria | junctions
+query << (simple_criteria | junctions) # pylint: disable=W0104
 
 
 def parse_filter(query_string):

@@ -10,7 +10,6 @@ from everest.querying.filtering import FilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
-from everest.querying.specifications import ValueContainedFilterSpecification
 from everest.repositories.rdb.orm import OrmAttributeInspector
 from everest.repositories.rdb.utils import OrderClauseList
 from everest.resources.interfaces import ICollectionResource
@@ -66,15 +65,12 @@ class SqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         return self.__build(spec.attr_name, 'contains', spec.attr_value)
 
     def _contained_op(self, spec):
-        if len(spec.attr_value) == 1:
-            value = next(iter(spec.attr_value)) # Works also for sets.
-            if ICollectionResource.providedBy(value): # pylint:disable=E1101
-                # FIXME: This is a hack that allows us to query for containment
-                #        of a member in an arbitrary collection (not supported
-                #        by SQLAlchemy yet).
-                spec = ValueContainedFilterSpecification(
-                                        spec.attr_name + '.id',
-                                        [rc.id for rc in value])
+        if ICollectionResource.providedBy(spec.attr_value): # pylint:disable=E1101
+            # FIXME: This is a hack that allows us to query for containment
+            #        of a member in an arbitrary collection (not supported
+            #        by SQLAlchemy yet).
+            spec.attr_name = spec.attr_name + '.id'
+            spec.attr_value = [rc.id for rc in spec.attr_value]
         return self.__build(spec.attr_name, 'in_', spec.attr_value)
 
     def _equal_to_op(self, spec):

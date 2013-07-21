@@ -1,7 +1,7 @@
 """
 Entity and aggregate base classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 12, 2011.
@@ -60,11 +60,11 @@ class Aggregate(object):
     """
     Abstract base class for all aggregates.
 
-    An aggregate is an accessor for a set of entities of the same type which 
-    are held in some repository. 
-    
-    The wrapped entity set may be a "root" set of all entities in the 
-    repository or a "relation" set defined by a relationship to entities of 
+    An aggregate is an accessor for a set of entities of the same type which
+    are held in some repository.
+
+    The wrapped entity set may be a "root" set of all entities in the
+    repository or a "relation" set defined by a relationship to entities of
     some other type.
 
     Supports filtering, sorting, slicing, counting, iteration as well as
@@ -140,7 +140,7 @@ class Aggregate(object):
         :param id_key: ID value to look up
         :type id_key: `int` or `str`
         :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one entity is found for the given ID value. 
+          one entity is found for the given ID value.
         :returns: specified entity or `None`
 
         Returns a single entity from the underlying aggregate by ID.
@@ -154,7 +154,7 @@ class Aggregate(object):
         :param slug: slug value to look up
         :type slug: `str`
         :raises: :class:`everest.exceptions.DuplicateException` if more than
-          one entity is found for the given ID value. 
+          one entity is found for the given ID value.
         :returns: entity or `None`
         """
         raise NotImplementedError('Abstract method')
@@ -198,14 +198,14 @@ class Aggregate(object):
         """
         Updates the state of the given entity such that it reflects the state
         of the given source entity.
-        
+
         Relies on the underlying repository for the implementation of the
         state update.
-        
+
         :param entity: entity (domain object) to transfer state to.
         :type entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
-        :param source_entity: source entity to transfer state from. 
+        :param source_entity: source entity to transfer state from.
         :type source_entity: object implementing
           :class:`everest.entities.interfaces.IEntity`
         """
@@ -214,11 +214,17 @@ class Aggregate(object):
     def set_relationship(self, relationship):
         """
         Sets a relationship for this aggregate.
-        
-        :param relationship: 
+
+        :param relationship:
             instance of :class:`everest.relationship.Relationship`.
         """
         self._relationship = relationship
+
+    def __iter__(self):
+        """
+        Support for iteration.
+        """
+        return self.iterator()
 
     @property
     def _session(self):
