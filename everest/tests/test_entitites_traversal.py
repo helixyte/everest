@@ -7,9 +7,8 @@ Created on Apr 12, 2013.
 from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.base import Entity
 from everest.entities.traversal import DomainTreeTraverser
-from everest.entities.traversal import SourceTargetDomainTraverser
+from everest.entities.traversal import SourceTargetTraverser
 from everest.entities.utils import get_root_aggregate
-from everest.repositories.memory.cache import EntityCacheMap
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
@@ -69,8 +68,7 @@ class SourceTargetDomainTraverserTestCase(EntityTestCase):
     def test_traverse_with_create(self):
         mock_vst = MagicMock()
         ent = create_entity(entity_id=None)
-        session = EntityCacheMap()
-        trv = SourceTargetDomainTraverser(session, ent, None)
+        trv = SourceTargetTraverser.make_traverser(ent, None)
         trv.run(mock_vst)
         parent_attr = get_domain_class_attribute(MyEntity, 'parent')
         children_attr = get_domain_class_attribute(MyEntity, 'children')
@@ -94,6 +92,7 @@ class SourceTargetDomainTraverserTestCase(EntityTestCase):
             self.assert_is_none(meth_call[1][3])
 
         #
+#        session = EntityCacheMap()
 #        self.assert_true(ent in session)
 #        self.assert_true(ent.parent in session)
 #        self.assert_true(ent.children[0] in session)

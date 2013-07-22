@@ -12,6 +12,7 @@ from everest.entities.interfaces import IEntity
 from everest.entities.relationship import DomainRelationship
 from everest.entities.utils import get_entity_class
 from functools import wraps
+from pyramid.compat import itervalues_
 from zope.interface import implementedBy as implemented_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -188,8 +189,7 @@ def get_domain_class_attribute_iterator(ent):
     Returns an iterator over all attributes in the given registered
     resource.
     """
-    for attr in ent.__everest_attributes__.values():
-        yield attr
+    return itervalues_(ent.__everest_attributes__)
 
 
 @_arg_to_entity_class
@@ -198,7 +198,7 @@ def get_domain_class_terminal_attribute_iterator(ent):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in ent.__everest_attributes__.values():
+    for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind == DomainAttributeKinds.TERMINAL:
             yield attr
 
@@ -209,7 +209,7 @@ def get_domain_class_domain_attribute_iterator(ent):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in ent.__everest_attributes__.values():
+    for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind != DomainAttributeKinds.TERMINAL:
             yield attr
 
@@ -220,7 +220,7 @@ def get_domain_class_entity_attribute_iterator(ent):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in ent.__everest_attributes__.values():
+    for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind == DomainAttributeKinds.ENTITY:
             yield attr
 
@@ -231,6 +231,6 @@ def get_domain_class_aggregate_attribute_iterator(ent):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in ent.__everest_attributes__.values():
+    for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind == DomainAttributeKinds.AGGREGATE:
             yield attr

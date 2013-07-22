@@ -250,10 +250,10 @@ cql_string = dblQuotedString.setParseAction(removeQuotes)
 query = Forward()
 
 # URLs
-protocol = Combine(Literal('http') + Optional('s'))
+protocol = Combine(Literal('http') + Optional('s')) + Literal(':').suppress()
 domain = Combine(OneOrMore(CharsNotIn('/')))
 path = Combine(slash + OneOrMore(CharsNotIn('?')))
-resource = Combine(protocol + '://' + domain + path).setParseAction(convert_resource)
+resource = Combine(protocol + '//' + domain + path).setParseAction(convert_resource)
 nested_query = Group((Literal('?q=') | Literal('&q=')).suppress()
                      + query).setParseAction(convert_nested_query)
 cql_url = Combine(resource('resource') + Optional(nested_query('query')))

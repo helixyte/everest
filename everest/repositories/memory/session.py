@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 8, 2013.
 """
 from everest.entities.traversal import CrudVisitor
-from everest.entities.traversal import SourceTargetDomainTraverser
+from everest.entities.traversal import SourceTargetTraverser
 from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import SessionFactory
@@ -155,7 +155,7 @@ class MemorySession(object):
         return MemorySessionQuery(entity_class, self, self.__repository)
 
     def __run_crud_operation(self, entity_class, source_entity, target_entity):
-        trv = SourceTargetDomainTraverser(self, source_entity, target_entity)
+        trv = SourceTargetTraverser(source_entity, target_entity)
         vst = CrudVisitor(entity_class,
                           self.__create,
                           self.__remove_single,

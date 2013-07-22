@@ -9,27 +9,37 @@ Created on Jun 28, 2011.
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
+from everest.querying.filterparser import protocol
 from everest.querying.orderparser import parse_order
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IResource
+from everest.resources.utils import get_root_collection
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from pyparsing import ParseException
+from pyramid.compat import string_types
 from pyramid.compat import url_unquote
 from pyramid.compat import urlparse
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
-from pyramid.url import model_url
 from urlparse import parse_qsl
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.resources.utils import get_root_collection
-from everest.resources.interfaces import IResource
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
            'UrlPartsConverter',
+           'is_url',
            ]
+
+
+def is_url(obj):
+    """
+    Checks if the given object is a URL string.
+    """
+    return isinstance(obj, string_types) \
+           and len(protocol.searchString(obj)) > 0
 
 
 @implementer(IResourceUrlConverter)
@@ -82,7 +92,7 @@ class ResourceUrlConverter(object):
     def resource_to_url(self, resource):
         """
         :raises ValueError: If the given resource is floating (i.e., has
-          the parent attribute set to `None`) 
+          the parent attribute set to `None`)
         """
         ifc = provided_by(resource)
         if not IResource in ifc:
@@ -187,5 +197,3 @@ class UrlPartsConverter(object):
         start = slice_key.start
         size = slice_key.stop - start
         return (str(start), str(size))
-
-

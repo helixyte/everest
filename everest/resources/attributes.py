@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Resource attribute handling classes.
@@ -22,6 +22,7 @@ from everest.resources.interfaces import IMemberResource
 from everest.resources.utils import get_member_class
 from functools import wraps
 from pyramid.compat import iteritems_
+from pyramid.compat import itervalues_
 from zope.interface import implementedBy as implemented_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
@@ -29,6 +30,7 @@ __all__ = ['MetaResourceAttributeCollector',
            'ResourceAttributeControllerMixin',
            'domain_attributes_injector',
            'get_resource_class_attribute',
+           'get_resource_class_attribute_iterator',
            'get_resource_class_attribute_names',
            'get_resource_class_attributes',
            'is_resource_class_collection_attribute',
@@ -168,12 +170,20 @@ def get_resource_class_attribute_names(rc):
 
 
 @arg_to_member_class
+def get_resource_class_attribute_iterator(rc):
+    """
+    Returns an iterator over all attributes in the given registered resource.
+    """
+    for attr in rc.__everest_attributes__.values():
+        yield attr
+
+@arg_to_member_class
 def get_resource_class_terminal_attribute_iterator(rc):
     """
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in rc.__everest_attributes__.values():
+    for attr in itervalues_(rc.__everest_attributes__):
         if attr.kind == ResourceAttributeKinds.TERMINAL:
             yield attr
 
@@ -184,7 +194,7 @@ def get_resource_class_resource_attribute_iterator(rc):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in rc.__everest_attributes__.values():
+    for attr in itervalues_(rc.__everest_attributes__):
         if attr.kind != ResourceAttributeKinds.TERMINAL:
             yield attr
 
@@ -195,7 +205,7 @@ def get_resource_class_member_attribute_iterator(rc):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in rc.__everest_attributes__.values():
+    for attr in itervalues_(rc.__everest_attributes__):
         if attr.kind == ResourceAttributeKinds.MEMBER:
             yield attr
 
@@ -206,7 +216,7 @@ def get_resource_class_collection_attribute_iterator(rc):
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
-    for attr in rc.__everest_attributes__.values():
+    for attr in itervalues_(rc.__everest_attributes__):
         if attr.kind == ResourceAttributeKinds.COLLECTION:
             yield attr
 
@@ -214,7 +224,7 @@ def get_resource_class_collection_attribute_iterator(rc):
 class domain_attributes_injector(object):
     """
     Attribute injector.
-    
+
     This is used to inject the resource attribute declarations into the
     corresponding entity class namespace. It is installed as
     "__everest_atttributes__" attribute into the class namespace of all
