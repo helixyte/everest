@@ -9,7 +9,7 @@ Created on Jun 28, 2011.
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
-from everest.querying.filterparser import protocol
+from everest.querying.filterparser import url_protocol
 from everest.querying.orderparser import parse_order
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -39,7 +39,7 @@ def is_url(obj):
     Checks if the given object is a URL string.
     """
     return isinstance(obj, string_types) \
-           and len(protocol.searchString(obj)) > 0
+           and len(url_protocol.searchString(obj)) > 0
 
 
 @implementer(IResourceUrlConverter)
