@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
     xmlns="http://pylonshq.com/pyramid"
 >
 
-    <!-- Load BFG directives. -->
+    <!-- Load pyramid directives. -->
     <include
         package="pyramid_zcml" />
 

@@ -6,7 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
-from everest.entities.traversal import CrudVisitor
+from everest.entities.traversal import AruVisitor
 from everest.entities.traversal import SourceTargetTraverser
 from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
@@ -87,7 +87,7 @@ class MemorySession(object):
         of another entity that is already in the session. However, both the ID
         and the slug may be ``None`` values.
         """
-        self.__run_crud_operation(entity_class, entity, None)
+        self.__traverse(entity_class, entity, None)
 
     def remove(self, entity_class, entity):
         """
@@ -96,7 +96,7 @@ class MemorySession(object):
         :raises ValueError: If the entity to remove does not have an ID
             (unless it is marked NEW).
         """
-        self.__run_crud_operation(entity_class, None, entity)
+        self.__traverse(entity_class, None, entity)
 
     def update(self, entity_class, entity):
         """
@@ -117,7 +117,7 @@ class MemorySession(object):
             if target_entity is None:
                 raise ValueError('Entity with ID %s to update not found.'
                                  % entity.id)
-        self.__run_crud_operation(entity_class, entity, target_entity)
+        self.__traverse(entity_class, entity, target_entity)
 
     def get_by_id(self, entity_class, entity_id):
         """
@@ -154,16 +154,13 @@ class MemorySession(object):
     def query(self, entity_class):
         return MemorySessionQuery(entity_class, self, self.__repository)
 
-    def __run_crud_operation(self, entity_class, source_entity, target_entity):
+    def __traverse(self, entity_class, source_entity, target_entity):
         trv = SourceTargetTraverser(source_entity, target_entity)
-        vst = CrudVisitor(entity_class,
-                          self.__create,
-                          self.__remove_single,
-                          self.__update_single)
+        vst = AruVisitor(entity_class,
+                         self.__add, self.__remove, self.__update)
         trv.run(vst)
 
-    def __create(self, entity_class, entity_data):
-        entity = entity_class.create_from_data(entity_data)
+    def __add(self, entity_class, entity):
         cache = self.__get_cache(entity_class)
         if not self.__unit_of_work.is_marked_deleted(entity):
             self.__unit_of_work.register_new(entity_class, entity)
@@ -175,7 +172,7 @@ class MemorySession(object):
             self.__unit_of_work.mark_clean(entity)
         cache.add(entity)
 
-    def __remove_single(self, entity_class, entity):
+    def __remove(self, entity_class, entity):
         if not self.__unit_of_work.is_registered(entity):
             if entity.id is None:
                 raise ValueError('Can not remove un-registered entity '
@@ -190,7 +187,7 @@ class MemorySession(object):
             cache = self.__get_cache(entity_class)
             cache.remove(entity)
 
-    def __update_single(self, entity_class, source_entity, target_entity):
+    def __update(self, entity_class, source_entity, target_entity):
         EntityStateManager.transfer_state_data(entity_class,
                                                source_entity, target_entity)
         return source_entity

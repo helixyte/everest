@@ -27,6 +27,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 from everest.resources.interfaces import IResource
 from everest.resources.utils import get_root_collection
 from everest.entities.utils import get_root_aggregate
+from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AddingDomainVisitor',
@@ -205,6 +206,12 @@ class TraversalImplementation(object):
         self.accessor = accessor
         self.__traversed = set()
 
+    def get_id(self, data):
+        """
+        Returns the given (source) data ID.
+        """
+        raise NotImplementedError('Abstract method.')
+
     def get_iterator(self, data):
         """
         Returns an element iterator for the given sequence (source) data.
@@ -245,9 +252,9 @@ class TraversalImplementation(object):
 
     def _mark_as_traversed(self, key):
         """
-        Marks the given key as visited.
+        Marks the given key as traversed.
 
-        Returns a Boolean indicating if the key had already been visited
+        Returns a Boolean indicating if the key had already been marked
         before.
         """
         was_traversed_before = key in self.__traversed
@@ -257,6 +264,9 @@ class TraversalImplementation(object):
 
 
 class DomainTraversalImplementation(TraversalImplementation):
+    def get_id(self, data):
+        return data.id
+
     def get_iterator(self, data):
         return iter(data)
 
@@ -302,6 +312,9 @@ class DomainTraversalImplementation(TraversalImplementation):
 
 
 class ResourceTraversalImplementation(TraversalImplementation):
+    def get_id(self, data):
+        return data.id
+
     def get_iterator(self, data):
         return iter(data)
 
@@ -354,6 +367,9 @@ class ResourceTraversalImplementation(TraversalImplementation):
 
 
 class DataElementTraversalImplementation(TraversalImplementation):
+    def get_id(self, data):
+        return data.id
+
     def get_iterator(self, data):
         return data.get_members()
 
@@ -365,24 +381,34 @@ class DataElementTraversalImplementation(TraversalImplementation):
         return value
 
     def get_attribute_iterator(self, data):
-        rc_cls = data.mapping.mapped_class
-        return get_resource_class_attribute_iterator(rc_cls)
+        return data.mapping.attribute_iterator()
 
     def get_data_kind(self, attribute, data):
-        ifcs = provided_by(data)
-        if IMemberDataElement in ifcs:
-            kind = TRAVERSAL_DATA_KINDS.ONE
-        elif ICollectionDataElement in ifcs:
-            kind = TRAVERSAL_DATA_KINDS.MANY
-        elif ILinkedDataElement in ifcs:
-            link_kind = data.get_kind()
-            if link_kind == ResourceKinds.MEMBER:
+        if not attribute is None:
+            if attribute.kind in (ResourceAttributeKinds.MEMBER,
+                                  DomainAttributeKinds.ENTITY):
                 kind = TRAVERSAL_DATA_KINDS.ONE
-            else: # kind == ResourceKinds.COLLECTION
+            elif attribute.kind in (ResourceAttributeKinds.COLLECTION,
+                                    DomainAttributeKinds.AGGREGATE):
                 kind = TRAVERSAL_DATA_KINDS.MANY
+            else:
+                raise ValueError('Can only traverse objects for non-terminal '
+                                 'attributes.')
         else:
-            raise ValueError('Need MEMBER or COLLECTION data element; found '
-                             '"%s".' % data)
+            ifcs = provided_by(data)
+            if IMemberDataElement in ifcs:
+                kind = TRAVERSAL_DATA_KINDS.ONE
+            elif ICollectionDataElement in ifcs:
+                kind = TRAVERSAL_DATA_KINDS.MANY
+            elif ILinkedDataElement in ifcs:
+                link_kind = data.get_kind()
+                if link_kind == ResourceKinds.MEMBER:
+                    kind = TRAVERSAL_DATA_KINDS.ONE
+                else: # kind == ResourceKinds.COLLECTION
+                    kind = TRAVERSAL_DATA_KINDS.MANY
+            else:
+                raise ValueError('Need MEMBER or COLLECTION data element; '
+                                 'found "%s".' % data)
         return kind
 
     def do_traverse(self, attribute, data):
@@ -476,13 +502,14 @@ class SourceTargetTraverser(object):
             impl = self._src_impl
         else:
             impl = self._tgt_impl
-        if impl.do_traverse(attribute, target):
-            if target is None and not source.id is None:
-                # Look up the target for UPDATE.
-                target = self._tgt_impl.get_matching(attribute, source)
-                if target is None:
-                    raise ValueError('If the source has an ID, a target with '
-                                     'the same ID must exist.')
+        if not(target is None and not impl.get_id(source) is None
+               or source is None and impl.get_id(target) is None) \
+            and impl.do_traverse(attribute, (source, target)):
+#                # Look up the target for UPDATE.
+#                target = self._tgt_impl.get_matching(attribute, source)
+#                if target is None:
+#                    raise ValueError('If the source has an ID, a target with '
+#                                     'the same ID must exist.')
             if not attribute is None:
                 trv_rc = attribute.attr_type
             else:
@@ -504,13 +531,13 @@ class SourceTargetTraverser(object):
                     continue
                 if target is None:
                     # CREATE
-                    do_dispatch = attr.cascade & CASCADES.ADD
+                    do_dispatch = bool(attr.cascade & CASCADES.ADD)
                 elif source is None:
                     # DELETE
-                    do_dispatch = attr.cascade & CASCADES.DELETE
+                    do_dispatch = bool(attr.cascade & CASCADES.DELETE)
                 else:
                     # UPDATE
-                    do_dispatch = attr.cascade & CASCADES.UPDATE
+                    do_dispatch = bool(attr.cascade & CASCADES.UPDATE)
                 if do_dispatch:
                     data = source_attr_value or target_attr_value
                     kind = impl.get_data_kind(attr, data)
@@ -522,7 +549,7 @@ class SourceTargetTraverser(object):
                     traverse_method(path[:], attr, source_attr_value,
                                     target_attr_value, visitor)
                     path.pop()
-            visitor.visit_one(path, attribute, source, target)
+        visitor.visit_one(path, attribute, source, target)
 
     def traverse_many(self, path, attribute, source_sequence,
                       target_sequence, visitor):
@@ -547,45 +574,48 @@ class SourceTargetTraverser(object):
         visitor.visit_many(path, attribute, source_sequence, target_sequence)
 
 
-class CrudVisitor(object):
+class AruVisitor(object):
+    def __init__(self, rc_class):
+        self._rc_class = rc_class
+        self.__result = None
+
+    def visit_one(self, path, attribute, source_data, target):
+        raise NotImplementedError('Abstract method.')
+
+    def visit_many(self, path, attr, source_data, target):
+        raise NotImplementedError('Abstract method.')
+
+    def _set_result(self, result):
+        self.__result = result
+
+    @property
+    def result(self):
+        return self.__result
+
+
+class AruDomainVisitor(AruVisitor):
     def __init__(self, rc_class,
-                 create_callback, update_callback, delete_callback):
-        self.__rc_class = rc_class
-        self.__create_callback = create_callback
+                 add_callback, update_callback, delete_callback):
+        AruVisitor.__init__(self, rc_class)
+        self.__add_callback = add_callback
         self.__update_callback = update_callback
         self.__delete_callback = delete_callback
-        self.__state_map = {}
-        self.__result = None
 
     def visit_one(self, path, attribute, source_data, target):
         if attribute is None:
             # Visiting the root.
-            rc_class = self.__rc_class
-            parent = None
+            rc_class = self._rc_class
         else:
             rc_class = attribute.attr_type
-            parent = path[-1][0]
-            parent_data = self.__state_map.get(parent)
-            if parent_data is None:
-                parent_data = self.__state_map.setdefault(parent, {})
         if source_data is None:
-            if not parent is None:
-                parent_data[attribute] = None
             self.__delete_callback(rc_class, target)
-            source = None
         else:
-            state_data = EntityStateManager.get_state_data(rc_class,
-                                                           source_data)
-
             if target is None:
-                source = self.__create_callback(rc_class, state_data)
+                self.__add_callback(rc_class, source_data)
             else:
-                source = self.__update_callback(rc_class,
-                                                source_data, target)
-            if not parent is None:
-                parent_data[attribute] = state_data
-            else:
-                self.__result = source
+                self.__update_callback(rc_class, source_data, target)
+        if attribute is None:
+            self._set_result(source_data)
 
     def visit_many(self, path, attr, source_data, target):
         pass
@@ -593,6 +623,26 @@ class CrudVisitor(object):
     @property
     def result(self):
         return self.__result
+
+
+class AruDataElementVisitor(AruDomainVisitor):
+    def __init__(self, rc_class,
+                 add_callback, update_callback, delete_callback):
+        AruDomainVisitor.__init__(self, rc_class, add_callback,
+                                  update_callback, delete_callback)
+        self.__state_map = {}
+
+    def visit_one(self, path, attribute, source_data, target):
+        if attribute is None:
+            pass
+        else:
+            parent = path[-1][0]
+            parent_data = self.__state_map.get(parent)
+            if parent_data is None:
+                parent_data = self.__state_map[parent] = OrderedDict()
+            if not parent is None:
+                parent_data[attribute] = None
+
 
 #    def __create(self, entity_class, entity, relationship=None):
 #                if not entity.id is None:

@@ -1,7 +1,7 @@
 """
 Resource data tree traversal.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 25, 2012.
@@ -62,7 +62,7 @@ class ResourceDataVisitor(object):
                      is_link_node, parent_data, index=None):
         """
         Visits a member node in a resource data tree.
-        
+
         :param tuple attribute_key: tuple containing the attribute tokens
           identifying the member node's position in the resource data tree.
         :param attribute: mapped attribute holding information about the
@@ -87,9 +87,9 @@ class ResourceDataVisitor(object):
                          collection_data, is_link_node, parent_data):
         """
         Visits a collection node in a resource data tree.
-        
+
         :param tuple attribute_key: tuple containing the attribute tokens
-          identifying the collection node's position in the resource data 
+          identifying the collection node's position in the resource data
           tree.
         :param attribute: mapped attribute holding information about the
           collection node's name (in the parent) and type etc.
@@ -111,7 +111,7 @@ class ResourceDataVisitor(object):
 class DataElementBuilderResourceDataVisitorBase(ResourceDataVisitor):
     """
     Abstract base class for visitors creating a data element from resource
-    data. 
+    data.
     """
     def __init__(self, mapping):
         ResourceDataVisitor.__init__(self)
@@ -423,8 +423,8 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
     """
     Traverser for data element trees.
-    
-    This traverser can be used both inbound during reading (data element 
+
+    This traverser can be used both inbound during reading (data element
     -> resource) and outbound during writing (resource -> data element).
     """
     def __init__(self, root, mapping,

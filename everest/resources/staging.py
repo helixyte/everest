@@ -6,7 +6,7 @@ Created on Feb 27, 2013.
 """
 from everest.entities.base import Aggregate
 from everest.entities.base import RelationshipAggregate
-from everest.entities.traversal import CrudVisitor
+from everest.entities.traversal import AruDomainVisitor
 from everest.entities.traversal import SourceTargetTraverser
 from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
@@ -34,10 +34,10 @@ class StagingAggregate(Aggregate):
         if cache is None:
             cache = EntityCacheMap()
         self.__cache = cache
-        self.__visitor = CrudVisitor(entity_class,
-                                     self.__cache.add,
-                                     self.__cache.remove,
-                                     self.__cache.replace)
+        self.__visitor = AruDomainVisitor(entity_class,
+                                          self.__cache.add,
+                                          self.__cache.remove,
+                                          self.__cache.replace)
 
     def get_by_id(self, id_key):
         return self.__cache[self.entity_class].get_by_id(id_key)
