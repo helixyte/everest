@@ -46,7 +46,7 @@ except ImportError:
             args = [quote(arg) for arg in args]
         return os.spawnl(os.P_WAIT, sys.executable, *args) == 0
 
-DEFAULT_VERSION = "0.6.24"
+DEFAULT_VERSION = "0.6.49"
 DEFAULT_URL = "http://pypi.python.org/packages/source/d/distribute/"
 SETUPTOOLS_FAKED_VERSION = "0.6c11"
 
@@ -157,7 +157,7 @@ def use_setuptools(version=DEFAULT_VERSION, download_base=DEFAULT_URL,
                 "\n\n(Currently using %r)\n" % (version, e.args[0]))
                 sys.exit(2)
             else:
-                del pkg_resources, sys.modules['pkg_resources']    # reload ok
+                del pkg_resources, sys.modules['pkg_resources'] # reload ok
                 return _do_download(version, download_base, to_dir,
                                     download_delay)
         except pkg_resources.DistributionNotFound:
@@ -187,7 +187,7 @@ def download_setuptools(version=DEFAULT_VERSION, download_base=DEFAULT_URL,
     url = download_base + tgz_name
     saveto = os.path.join(to_dir, tgz_name)
     src = dst = None
-    if not os.path.exists(saveto):  # Avoid repeated downloads
+    if not os.path.exists(saveto): # Avoid repeated downloads
         try:
             log.warn("Downloading %s", url)
             src = urlopen(url)
