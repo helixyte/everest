@@ -17,7 +17,8 @@ README = open(os.path.join(here, 'README.rst')).read()
 
 setup_requirements = []
 
-install_requirements = open('requirements.txt', 'rU').readlines()
+install_requirements = \
+    open(os.path.join(here, 'requirements.txt'), 'rU').readlines()
 
 tests_requirements = install_requirements + [
     'nose-cov',
