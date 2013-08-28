@@ -70,7 +70,7 @@ class DomainRelationship(Relationship):
         The remove operation is performed on both ends of the relationship if
         appropriate entity attribute declarations have been made.
         """
-        self.__action(related, CASCADES.DELETE)
+        self.__action(related, CASCADES.REMOVE)
 
     def update(self, related):
         """
@@ -84,7 +84,7 @@ class DomainRelationship(Relationship):
         crd = self.descriptor.cardinality
         if not self.descriptor.entity_attr is None:
             if crd.relatee == CARDINALITY_CONSTANTS.ONE:
-                if cascade_op & CASCADES.DELETE:
+                if cascade_op & CASCADES.REMOVE:
                     set_nested_attribute(self.relator,
                                          self.descriptor.entity_attr,
                                          None)
@@ -99,7 +99,7 @@ class DomainRelationship(Relationship):
             else:
                 relatee = get_nested_attribute(self.relator,
                                                self.descriptor.entity_attr)
-                if cascade_op == CASCADES.DELETE:
+                if cascade_op == CASCADES.REMOVE:
                     try:
                         # FIXME: Assuming a list here.
                         relatee.remove(related)
@@ -111,7 +111,7 @@ class DomainRelationship(Relationship):
                         relatee.append(related)
         if not self.descriptor.entity_backref is None:
             if crd.relator == CARDINALITY_CONSTANTS.ONE:
-                if cascade_op & CASCADES.DELETE:
+                if cascade_op & CASCADES.REMOVE:
                     set_nested_attribute(related,
                                          self.descriptor.entity_backref,
                                          None)
@@ -126,7 +126,7 @@ class DomainRelationship(Relationship):
             else:
                 seq = get_nested_attribute(related,
                                            self.descriptor.entity_backref)
-                if cascade_op == CASCADES.DELETE:
+                if cascade_op == CASCADES.REMOVE:
                     try:
                         # FIXME: Assuming a list here.
                         seq.remove(self.relator)

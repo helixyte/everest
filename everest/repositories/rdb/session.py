@@ -1,11 +1,14 @@
 """
 Session for the RDBMS backend.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from everest.entities.interfaces import IEntity
+from everest.entities.traversal import AruVisitor
+from everest.entities.traversal import SourceTargetDataTreeTraverser
 from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
@@ -14,6 +17,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session as SaSession
 from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
+from everest.entities.traversal import DataTraversalProxy
+from everest.repositories.state import EntityStateManager
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RdbSessionFactory',
@@ -31,14 +36,40 @@ class RdbSession(Session, SaSession):
             ent = None
         return ent
 
-    def add(self, entity_class, entity):
+    def add(self, entity_class, data):
+        if not IEntity.providedBy(data): # pylint: disable=E1101
+            entity = self.__run_traversal(entity_class, data, None)
+        else:
+            entity = data
         SaSession.add(self, entity)
 
-    def remove(self, entity_class, entity):
+    def remove(self, entity_class, data):
+        if not IEntity.providedBy(data): # pylint: disable=E1101
+            entity = self.__run_traversal(entity_class, None, data)
+        else:
+            entity = data
         SaSession.delete(self, entity)
 
-    def update(self, entity_class, entity):
-        return SaSession.merge(self, entity)
+    def update(self, entity_class, data):
+        if not IEntity.providedBy(data): # pylint: disable=E1101
+            target_id = DataTraversalProxy.make_proxy(data).get_id()
+        else:
+            target_id = data.id
+        target = self.get_by_id(data.id)
+        if target is None:
+            raise ValueError('Entity with ID %s to update not found.'
+                             % target_id)
+        return self.__run_traversal(entity_class, data, target)
+
+    def __run_traversal(self, entity_class, source, target):
+        trv = SourceTargetDataTreeTraverser.make_traverser(source, target)
+        vst = AruVisitor(entity_class, update_callback=self.__update)
+        trv.run(vst)
+        return vst.root
+
+    def __update(self, entity_class, target_entity, source_data):
+        EntityStateManager.set_state_data(entity_class, target_entity,
+                                          source_data)
 
     def query(self, entity_class):
         return SaSession.query(self, entity_class)

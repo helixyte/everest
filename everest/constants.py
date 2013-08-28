@@ -116,7 +116,7 @@ class CASCADES(object):
     Constants for cascading rules.
     """
     ADD = 1
-    DELETE = 2
+    REMOVE = 2
     UPDATE = 4
 
 

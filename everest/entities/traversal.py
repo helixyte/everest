@@ -4,10 +4,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 8, 2013.
 """
+from everest.attributes import AttributeValueMap
+from everest.attributes import get_attribute_cardinality
 from everest.attributes import is_terminal_attribute
+from everest.constants import CARDINALITY_CONSTANTS
 from everest.constants import CASCADES
 from everest.constants import DomainAttributeKinds
-from everest.constants import ResourceAttributeKinds
 from everest.constants import ResourceKinds
 from everest.entities.attributes import \
                         get_domain_class_domain_attribute_iterator
@@ -18,22 +20,28 @@ from everest.repositories.state import EntityStateManager
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
+from everest.resources.attributes import \
+                    get_resource_class_resource_attribute_iterator
 from everest.resources.attributes import get_resource_class_attribute_iterator
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from everest.url import is_url
+from everest.resources.staging import create_staging_collection
+from everest.resources.utils import as_member
+from everest.resources.utils import get_resource_class_for_relation
+from everest.resources.utils import url_to_resource
 from everest.utils import get_nested_attribute
+from everest.utils import set_nested_attribute
+from pyramid.compat import iteritems_
+from pyramid.compat import iterkeys_
+from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.resources.interfaces import IResource
-from everest.resources.utils import get_root_collection
-from everest.entities.utils import get_root_aggregate
-from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AddingDomainVisitor',
            'DomainTreeTraverser',
            'DomainVisitor',
            'RemovingDomainVisitor',
+           'SourceTargetDataTreeTraverser',
            ]
 
 
@@ -179,7 +187,7 @@ class RemovingDomainVisitor(DomainVisitor):
         if attr is None:
             # Visiting the root.
             self.__session.remove(get_entity_class(entity), entity)
-        elif attr.cascade & CASCADES.DELETE:
+        elif attr.cascade & CASCADES.REMOVE:
             ent_cls = get_entity_class(attr.attr_type)
             root_agg = self.__aggregate.get_root_aggregate(attr.attr_type)
             if not root_agg.get_by_id(entity.id) is None:
@@ -191,240 +199,433 @@ class RemovingDomainVisitor(DomainVisitor):
         pass
 
 
-class TRAVERSAL_DATA_KINDS(object):
-    ONE = 'ONE'
-    MANY = 'MANY'
+class DataTraversalProxy(object):
+    """
+    Abstract base class for data tree traversal proxies.
 
-
-class TraversalImplementation(object):
-    def __init__(self, root, accessor):
+    This proxy provides a uniform interface to the elements of data trees
+    encountered during tree traversal.
+    """
+    def __init__(self, data, accessor):
         """
-        :param root: root of the data tree to traverse.
-        :type root: entity, resource, or data element.
+        :param data: root of the data tree to traverse.
         """
-        self.root = root
-        self.accessor = accessor
-        self.__traversed = set()
+        self.cardinality = self._validate_data(data)
+        self.data = data
+        self._accessor = accessor
 
-    def get_id(self, data):
+    @classmethod
+    def make_proxy(cls, data):
+        if isinstance(data, AttributeValueMap):
+            prx_cls = AttributeValueMapDataTraversalProxy
+        else:
+            ifcs = provided_by(data)
+            if IEntity in ifcs or IAggregate in ifcs:
+                prx_cls = DomainDataTraversalProxy
+            elif IMemberResource in ifcs or ICollectionResource in ifcs:
+                prx_cls = ResourceDataTraversalProxy
+            elif IMemberDataElement in ifcs or ICollectionDataElement in ifcs:
+                prx_cls = DataElementDataTraversalProxy
+            else:
+                raise ValueError('Invalid data for traversal proxy "%s".'
+                                 % data)
+        return prx_cls(data, None)
+
+    def get_id(self):
         """
         Returns the given (source) data ID.
         """
         raise NotImplementedError('Abstract method.')
 
-    def get_iterator(self, data):
+    def get_value(self, attribute):
         """
-        Returns an element iterator for the given sequence (source) data.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def get_attribute_value(self, data, attribute):
-        """
-        Returns the value of the given attribute for the given (source)
-        data.
+        Returns a traversal proxy for the value of the given attribute for
+        the given data.
         """
         raise NotImplementedError('Abstract method.')
 
-    def get_attribute_iterator(self, data):
+    def set_value(self, attribute, value):
         """
-        Returns an attribute iterator for the given (source) data.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def get_data_kind(self, attribute, data):
-        """
-        Determines the traversal data kind for the given attribute and data.
+        Sets the given attribute on the proxied data to the given value.
         """
         raise NotImplementedError('Abstract method.')
 
-    def do_traverse(self, attribute, data):
+    def get_attribute_iterator(self):
+        """
+        Returns an attribute iterator for the given data.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def do_traverse(self, attribute):
         """
         Checks if the given combination of attribute and data object should
         be traversed.
         """
         raise NotImplementedError('Abstract method.')
 
-    def get_matching(self, attribute, data):
+    def get_matching(self, attribute):
         """
         Looks up matching (target) data for the given (source) data.
         """
         raise NotImplementedError('Abstract method.')
 
-    def _mark_as_traversed(self, key):
+    def get_type(self):
         """
-        Marks the given key as traversed.
-
-        Returns a Boolean indicating if the key had already been marked
-        before.
+        Returns the type of the proxied data.
         """
-        was_traversed_before = key in self.__traversed
-        if not was_traversed_before:
-            self.__traversed.add(key)
-        return was_traversed_before
+        raise NotImplementedError('Abstract method.')
+
+    def as_domain_object(self):
+        """
+        Returns the proxied data as a domain object.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def as_attribute_value_map(self):
+        """
+        Returns the proxied data as attribute value map.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def _validate_data(self, data):
+        """
+        Validates the data to be proxied.
+
+        :raises ValueError: If validation fails.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def as_resource_object(self):
+        """
+        Returns the proxied data as a resource object.
+        """
+        domain_obj = self.as_domain_object()
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            rc = as_member(domain_obj)
+        else:
+            rc = create_staging_collection(self.get_type())
+            for ent in domain_obj:
+                rc.create_member(ent)
+        return rc
 
 
-class DomainTraversalImplementation(TraversalImplementation):
-    def get_id(self, data):
-        return data.id
+class DomainDataTraversalProxy(DataTraversalProxy):
+    def get_id(self):
+        return self.data.id
 
-    def get_iterator(self, data):
-        return iter(data)
+    def get_value(self, attribute):
+        if self.cardinality == CARDINALITY_CONSTANTS:
+            attr_val = get_nested_attribute(self.data, attribute.entity_attr)
+            val = DomainDataTraversalProxy(attr_val)
+        else:
+            val = (DomainDataTraversalProxy(ent) for ent in iter(self.data))
+        return val
 
-    def get_attribute_value(self, data, attribute):
-        return get_nested_attribute(data, attribute.entity_attr)
+    def set_value(self, attribute, value):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            set_nested_attribute(self.data, attribute, value)
+        else:
+            self.data.append(value)
 
-    def do_traverse(self, attribute, data):
-        return not self._mark_as_traversed(data)
+    def do_traverse(self, attribute):
+        return True
 
-    def get_attribute_iterator(self, data):
-        for attr in get_domain_class_domain_attribute_iterator(data):
+    def get_attribute_iterator(self):
+        for attr in get_domain_class_domain_attribute_iterator(self.data):
             if attr.entity_attr is None:
                 continue
             yield attr
 
-    def get_data_kind(self, attribute, data):
+    def get_matching(self, attribute):
         if not attribute is None:
-            if attribute.kind == DomainAttributeKinds.ENTITY:
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif attribute.kind == DomainAttributeKinds.AGGREGATE:
-                kind = TRAVERSAL_DATA_KINDS.MANY
-            else:
-                raise ValueError('Can only traverse objects for non-terminal '
-                                 'domain attributes.')
+            agg = self._accessor.get_root_aggregate(attribute.attr_type)
         else:
-            # For the root node, we use the provided interface.
-            provided = provided_by(data)
-            if IEntity in provided:
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif IAggregate in provided:
-                kind = TRAVERSAL_DATA_KINDS.MANY
-            else:
-                raise ValueError('Can only traverse domain objects that '
-                                 'provide IEntity or IAggregate.')
-        return kind
+            agg = self._accessor
+        return agg.get_by_id(self.data.id)
 
-    def get_matching(self, attribute, data):
+    def get_type(self):
+        return type(self.data)
+
+    def as_domain_object(self):
+        return self.data
+
+    def as_attribute_value_map(self):
+        ent_cls = self.get_type()
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            av_map = EntityStateManager.get_state_data(ent_cls, self.data)
+            av_map['__class__'] = ent_cls
+            result = av_map
+        else:
+            result = []
+            for ent in self.data:
+                av_map = EntityStateManager.get_state_data(ent_cls, ent)
+                av_map['__class__'] = ent_cls
+                result.append(av_map)
+        return result
+
+    def _validate_data(self, data):
+        provided = provided_by(data)
+        if IEntity in provided:
+            card = CARDINALITY_CONSTANTS.ONE
+        elif IAggregate in provided:
+            card = CARDINALITY_CONSTANTS.MANY
+        else:
+            raise ValueError('Expected object providing IEntity or '
+                             'IAggregate, found %s.' % data)
+        return card
+
+
+class ResourceDataTraversalProxy(DataTraversalProxy):
+    def get_id(self):
+        return self.data.id
+
+    def get_value(self, attribute):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            attr_val = get_nested_attribute(self.data, attribute.name)
+            val = ResourceDataTraversalProxy(attr_val)
+        else:
+            val = (ResourceDataTraversalProxy(el) for el in iter(self.data))
+        return val
+
+    def set_value(self, attribute, value):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            set_nested_attribute(self.data, attribute, value)
+        else:
+            self.data.append(value)
+
+    def get_attribute_iterator(self):
+        return get_resource_class_resource_attribute_iterator(self.data)
+
+    def do_traverse(self, attribute):
+        return True
+
+    def get_matching(self, attribute):
         if not attribute is None:
-            agg = self.accessor.get_root_aggregate(attribute.attr_type)
+            coll = self._accessor.get_root_collection(attribute.attr_type)
         else:
-            agg = self.accessor
-        return agg.get_by_id(data.id)
+            coll = self._accessor
+        return coll[self.data.slug]
+
+    def as_domain_object(self):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            domain_obj = self.data.get_entity()
+        else:
+            domain_obj = [mb.get_entity() for mb in self.data]
+        return domain_obj
+
+    def as_attribute_value_map(self):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            av_map = self.__create_av_map(self.data)
+            av_map['__class__'] = self.get_type()
+            result = av_map
+        else:
+            result = []
+            for mb in self.data:
+                av_map = self.__create_av_map(mb)
+                av_map['__class__'] = self.get_type()
+                result.append(av_map)
+        return result
+
+    def __create_av_map(self, data):
+        av_map = {}
+        for attr in get_resource_class_attribute_iterator(data):
+            av_map[attr] = get_nested_attribute(self.data, attr.attr_name)
+        return av_map
+
+    def get_type(self):
+        return type(self.data)
+
+    def _validate_data(self, data):
+        provided = provided_by(data)
+        if IMemberResource in provided:
+            card = CARDINALITY_CONSTANTS.ONE
+        elif ICollectionResource in provided:
+            card = CARDINALITY_CONSTANTS.MANY
+        else:
+            raise ValueError('Expected object providing IMemberResource or '
+                             'ICollectionResource, found %s.' % data)
+        return card
 
 
-class ResourceTraversalImplementation(TraversalImplementation):
-    def get_id(self, data):
-        return data.id
+class AttributeValueMapDataTraversalProxy(DataTraversalProxy):
+    def get_id(self):
+        return self.data['id']
 
-    def get_iterator(self, data):
-        return iter(data)
+    def get_value(self, attribute):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            attr_val = self.data[attribute]
+            val = AttributeValueMapDataTraversalProxy(attr_val)
+        else:
+            val = (AttributeValueMapDataTraversalProxy(el)
+                   for el in iter(self.data))
+        return val
 
-    def get_attribute_value(self, data, attribute):
-        return getattr(data, attribute.name)
+    def set_value(self, attribute, value):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            self.data[attribute] = value
+        else:
+            self.data.append(value)
 
-    def get_attribute_iterator(self, data):
-        return get_resource_class_attribute_iterator(data)
+    def get_attribute_iterator(self):
+        for attr in iterkeys_(self.data):
+            if not is_terminal_attribute(attr):
+                yield attr
 
-    def get_data_kind(self, attribute, data):
-        if not attribute is None:
-            if attribute.kind == ResourceAttributeKinds.MEMBER:
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif attribute.kind == ResourceAttributeKinds.COLLECTION:
-                kind = TRAVERSAL_DATA_KINDS.MANY
+    def do_traverse(self, attribute):
+        return True
+
+    def get_matching(self, attribute):
+        # Not needed because we never want to update attribute value maps.
+        raise NotImplementedError('Not implemented.')
+
+    def get_type(self):
+        mb_cls = get_resource_class_for_relation(self.data['__class__'])
+        return get_entity_class(mb_cls)
+
+    def as_domain_object(self):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            domain_obj = self.__create_entity(self.data)
+        else:
+            domain_obj = [self.__create_entity(avm) for avm in self.data]
+        return domain_obj
+
+    def as_attribute_value_map(self):
+        return self.data
+
+    def _validate_data(self, data):
+        if isinstance(data, AttributeValueMap):
+            card = CARDINALITY_CONSTANTS.ONE
+        elif isinstance(data, list):
+            card = CARDINALITY_CONSTANTS.MANY
+        else:
+            raise ValueError('Expected AttributeValueMap object or list, '
+                             'found %s.' % data)
+        return card
+
+    def __create_entity(self, attr_value_map):
+        init_map = {}
+        nested_map = {}
+        for attr, value in iteritems_(attr_value_map):
+            if attr == '__class__':
+                continue
+            attr_name = attr.entity_name
+            if not '.' in attr_name:
+                init_map[attr_name] = value
             else:
-                raise ValueError('Can only traverse objects for non-terminal '
-                                 'resource attributes.')
+                nested_map[attr_name] = value
+        entity = self.get_type().create_from_data(init_map)
+        for nested_name, nested_value in iteritems_(nested_map):
+            set_nested_attribute(entity, nested_name, nested_value)
+        return entity
+
+
+class DataElementDataTraversalProxy(DataTraversalProxy):
+    def get_id(self):
+        id_attr = self.data.mapping.get_attribute_map()['id']
+        return self.data.get_terminal(id_attr)
+
+    def get_value(self, attribute):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            attr_val = self.data.get_nested(attribute)
+            val = DataElementDataTraversalProxy(attr_val)
         else:
-            # For the root node, we use the provided interface.
-            provided = provided_by(data)
-            if IMemberResource in provided:
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif ICollectionResource in provided:
-                kind = TRAVERSAL_DATA_KINDS.MANY
+            val = (DataElementDataTraversalProxy(el)
+                   for el in iter(self.data.get_members()))
+        return val
+
+    def set_value(self, attribute, value):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            if is_terminal_attribute(attribute):
+                self.data.set_terminal(attribute, value)
             else:
-                raise ValueError('Can only traverse resource objects that '
-                                 'provide IMemberResource or '
-                                 'ICollectionResource.')
-        return kind
-
-    def do_traverse(self, attribute, data):
-        was_traversed_before = self._mark_as_traversed(data)
-        if not was_traversed_before:
-            if not attribute is None:
-                is_rc_attr = attribute.kind != ResourceAttributeKinds.TERMINAL
-            else:
-                is_rc_attr = IResource in provided_by(data)
-            do_trv = is_rc_attr and not is_url(data)
+                self.data.set_nested(attribute, value)
         else:
-            do_trv = False
-        return do_trv
+            self.data.add_member(value)
 
-    def get_matching(self, attribute, data):
-        if not attribute is None:
-            coll = self.accessor.get_root_collection(attribute.attr_type)
-        else:
-            coll = self.accessor
-        return coll[data.slug]
+    def get_attribute_iterator(self):
+        for attr in self.data.mapping.attribute_iterator():
+            if not is_terminal_attribute(attr):
+                yield attr
 
+    def do_traverse(self, attribute):
+        return True
 
-class DataElementTraversalImplementation(TraversalImplementation):
-    def get_id(self, data):
-        return data.id
-
-    def get_iterator(self, data):
-        return data.get_members()
-
-    def get_attribute_value(self, data, attribute):
-        if is_terminal_attribute(attribute):
-            value = data.get_terminal(attribute)
-        else:
-            value = data.get_nested(attribute)
-        return value
-
-    def get_attribute_iterator(self, data):
-        return data.mapping.attribute_iterator()
-
-    def get_data_kind(self, attribute, data):
-        if not attribute is None:
-            if attribute.kind in (ResourceAttributeKinds.MEMBER,
-                                  DomainAttributeKinds.ENTITY):
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif attribute.kind in (ResourceAttributeKinds.COLLECTION,
-                                    DomainAttributeKinds.AGGREGATE):
-                kind = TRAVERSAL_DATA_KINDS.MANY
-            else:
-                raise ValueError('Can only traverse objects for non-terminal '
-                                 'attributes.')
-        else:
-            ifcs = provided_by(data)
-            if IMemberDataElement in ifcs:
-                kind = TRAVERSAL_DATA_KINDS.ONE
-            elif ICollectionDataElement in ifcs:
-                kind = TRAVERSAL_DATA_KINDS.MANY
-            elif ILinkedDataElement in ifcs:
-                link_kind = data.get_kind()
-                if link_kind == ResourceKinds.MEMBER:
-                    kind = TRAVERSAL_DATA_KINDS.ONE
-                else: # kind == ResourceKinds.COLLECTION
-                    kind = TRAVERSAL_DATA_KINDS.MANY
-            else:
-                raise ValueError('Need MEMBER or COLLECTION data element; '
-                                 'found "%s".' % data)
-        return kind
-
-    def do_traverse(self, attribute, data):
-        was_traversed_before = self._mark_as_traversed(data)
-        if not was_traversed_before:
-            do_trv = not ILinkedDataElement in provided_by(data)
-        else:
-            do_trv = False
-        return do_trv
-
-    def get_matching(self, attribute, data):
+    def get_matching(self, attribute):
         # Not needed because we never want to update data element trees.
         raise NotImplementedError('Not implemented.')
 
+    def get_type(self):
+        return self.data.mapping.mapped_class
 
-class SourceTargetTraverser(object):
+    def as_domain_object(self):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            domain_obj = self.__create_entity(self.data)
+        else:
+            domain_obj = [self.__create_entity(d_el)
+                          for d_el in self.data.get_members()]
+        return domain_obj
+
+    def as_attribute_value_map(self):
+        if self.cardinality == CARDINALITY_CONSTANTS.ONE:
+            av_map = self.__create_av_map(self.data)
+            result = av_map
+        else:
+            result = []
+            for el in self.data.get_members():
+                av_map = self.__create_av_map(el)
+                result.append(av_map)
+        return result
+
+    def _validate_data(self, data):
+        ifcs = provided_by(data)
+        if IMemberDataElement in ifcs:
+            card = CARDINALITY_CONSTANTS.ONE
+        elif ICollectionDataElement in ifcs:
+            card = CARDINALITY_CONSTANTS.MANY
+        elif ILinkedDataElement in ifcs:
+            link_kind = self.data.get_kind()
+            if link_kind == ResourceKinds.MEMBER:
+                card = CARDINALITY_CONSTANTS.ONE
+            else: # kind == ResourceKinds.COLLECTION
+                card = CARDINALITY_CONSTANTS.MANY
+        else:
+            raise ValueError('Expected MEMBER or COLLECTION data element; '
+                             'found "%s".' % data)
+        return card
+
+    def __create_entity(self, data_el):
+        if ILinkedDataElement in provided_by(data_el):
+            url = data_el.get_url()
+            rc = url_to_resource(url)
+            entity = rc.get_entity()
+        else:
+            init_map = {}
+            nested_map = {}
+            # Update state map with terminal attribute values.
+            for attr in data_el.mapping.attribute_iterator():
+                if is_terminal_attribute(attr):
+                    value = data_el.get_terminal(attr)
+                    attr_name = attr.entity_name
+                    if not '.' in attr_name:
+                        init_map[attr_name] = value
+                    else:
+                        nested_map[attr_name] = value
+            entity = self.get_type().create_from_data(init_map)
+            for nested_name, nested_value in iteritems_(nested_map):
+                set_nested_attribute(entity, nested_name, nested_value)
+        return entity
+
+    def __create_av_map(self, data):
+        av_map = {}
+        for attr in self.data.mapping.attribute_iterator():
+            if is_terminal_attribute(attr):
+                av_map[attr] = data.get_terminal(attr)
+            else:
+                av_map[attr] = data.get_nested(attr)
+        return av_map
+
+
+class SourceTargetDataTreeTraverser(object):
     """
     Traverser for synchronous traversal of a source and a target data tree.
 
@@ -434,54 +635,35 @@ class SourceTargetTraverser(object):
     the target. If the parent source or target data item is `None`, the
     corresponding child data item is also `None`.
 
-    A child nod is only traversed when the parent attribute corresponding
-    to it has the ADD (only target found), DELETE (only source found) or
-    UPDATE (both source and target found) cascade set.
+    A child node is traversed along the ADD cascade when only the source
+    was found, along the REMOVE cascade when only the target was found, and
+    along the UPDATE cascade when both source and target were found. Traversal
+    is suppressed when the parent attribute does not have the apprpriate
+    cascading flag set.
+
+    When traversing along the ADD or REMOVE cascade, child nodes are only
+    traversed when they also amount to an ADD or REMOVE traversal,
+    respectively (e.g., an UPDATE inside an ADD or REMOVE is not allowed).
     """
-    def __init__(self, source_implementation, target_implementation):
-        self._src_impl = source_implementation
-        self._tgt_impl = target_implementation
+    def __init__(self, source_proxy, target_proxy):
+        self._src_prx = source_proxy
+        self._tgt_prx = target_proxy
+        self.__traversed = set()
 
     @classmethod
     def make_traverser(cls, source_root, target_root=None):
-        src_ifcs = provided_by(source_root)
-        if IEntity in src_ifcs or IAggregate in src_ifcs:
-            src_trv_impl_cls = DomainTraversalImplementation
-        elif IMemberResource in src_ifcs or ICollectionResource in src_ifcs:
-            src_trv_impl_cls = ResourceTraversalImplementation
-        elif IMemberDataElement in src_ifcs \
-             or ICollectionDataElement in src_ifcs:
-            src_trv_impl_cls = DataElementTraversalImplementation
+        if isinstance(source_root, AttributeValueMap) and target_root is None:
+            raise ValueError('Must supply a target root when traversing '
+                             'with an attribute value map.')
+        if source_root is None:
+            source_proxy = DataTraversalProxy.make_proxy(source_root)
         else:
-            raise ValueError('')
-        source_implementation = src_trv_impl_cls(source_root, None)
-        tgt_ifcs = provided_by(target_root)
-        # Infer the required information from the source.
-        if src_trv_impl_cls is DataElementTraversalImplementation:
-            tgt_trv_impl_cls = ResourceTraversalImplementation
-            if not target_root is None \
-               and (not IMemberResource in tgt_ifcs
-                    or ICollectionResource in tgt_ifcs):
-                raise ValueError('')
-            tgt_acc = get_root_collection(source_root.mapped_class)
-        elif src_trv_impl_cls is DomainTraversalImplementation:
-            if not target_root is None \
-               and (not IEntity in tgt_ifcs or IAggregate in tgt_ifcs):
-                raise ValueError('')
-            tgt_trv_impl_cls = DomainTraversalImplementation
-            tgt_acc = get_root_aggregate(source_root)
-        elif src_trv_impl_cls is ResourceTraversalImplementation:
-            if not target_root is None \
-               and (not IMemberResource in tgt_ifcs
-                    or ICollectionResource in tgt_ifcs):
-                raise ValueError('')
-            tgt_trv_impl_cls = ResourceTraversalImplementation
-            tgt_acc = get_root_collection(source_root)
+            source_proxy = None
+        if not target_root is None:
+            target_proxy = DataTraversalProxy.make_proxy(target_root)
         else:
-            raise ValueError('')
-        target_implementation = tgt_trv_impl_cls(target_root, tgt_acc)
-        return SourceTargetTraverser(source_implementation,
-                                     target_implementation)
+            target_proxy = None
+        return cls(source_proxy, target_proxy)
 
     def run(self, visitor):
         """
@@ -489,159 +671,162 @@ class SourceTargetTraverser(object):
         :type visitor: subclass of
             :class:`everest.entities.traversal.DomainVisitor`
         """
-        kind = self._src_impl.get_data_kind(None, self._src_impl.root)
-        if kind == TRAVERSAL_DATA_KINDS.ONE:
+        if not self._src_prx is None:
+            card = self._src_prx.cardinality
+        else:
+            card = self._tgt_prx.cardinality
+        if card == CARDINALITY_CONSTANTS.ONE:
             traverse_method = self.traverse_one
         else:
             traverse_method = self.traverse_many
-        traverse_method([], None, self._src_impl.root, self._tgt_impl.root,
-                        visitor)
+        traverse_method([], None, self._src_prx, self._tgt_prx, visitor)
 
     def traverse_one(self, path, attribute, source, target, visitor):
-        if not source is None:
-            impl = self._src_impl
-        else:
-            impl = self._tgt_impl
-        if not(target is None and not impl.get_id(source) is None
-               or source is None and impl.get_id(target) is None) \
-            and impl.do_traverse(attribute, (source, target)):
+        """
+        :param source: source data proxy
+        :type source: instance of `DataTraversalProxy` or None
+        :param target: target data proxy
+        :type target: instance of `DataTraversalProxy` or None
+        """
+        # We do not follow nested UPDATEs unless the current operation is
+        # also an UPDATE.
+        key = (source.data, target.data)
+        was_traversed = key in self.__traversed
+        if not was_traversed:
+            self.__traversed.add(key)
+            if not(target is None and not source.get_id() is None
+                   or source is None and target.get_id() is None):
 #                # Look up the target for UPDATE.
-#                target = self._tgt_impl.get_matching(attribute, source)
+#                target = self._tgt_prx.get_matching(attribute, source)
 #                if target is None:
-#                    raise ValueError('If the source has an ID, a target with '
-#                                     'the same ID must exist.')
-            if not attribute is None:
-                trv_rc = attribute.attr_type
-            else:
-                trv_rc = source
-            for attr in impl.get_attribute_iterator(trv_rc):
-                if not source is None:
-                    source_attr_value = \
-                        self._src_impl.get_attribute_value(source, attr)
-                else:
-                    source_attr_value = None
-                if not target is None:
-                    target_attr_value = \
-                        self._tgt_impl.get_attribute_value(target, attr)
-                else:
-                    target_attr_value = None
-                if source_attr_value is None and target_attr_value is None:
-                    # If both source and target have None values, there is
-                    # nothing to do.
-                    continue
-                if target is None:
-                    # CREATE
-                    do_dispatch = bool(attr.cascade & CASCADES.ADD)
-                elif source is None:
-                    # DELETE
-                    do_dispatch = bool(attr.cascade & CASCADES.DELETE)
-                else:
-                    # UPDATE
-                    do_dispatch = bool(attr.cascade & CASCADES.UPDATE)
-                if do_dispatch:
-                    data = source_attr_value or target_attr_value
-                    kind = impl.get_data_kind(attr, data)
-                    path.append((source, target))
-                    if kind == TRAVERSAL_DATA_KINDS.ONE:
-                        traverse_method = self.traverse_one
+#                    raise ValueError('If the source has an ID, a target with'
+#                                     ' the same ID must exist.')
+                prx = source or target
+                for attr in prx.get_attribute_iterator():
+                    if not source is None:
+                        source_attr_proxy = source.get_value(attr)
                     else:
-                        traverse_method = self.traverse_many
-                    traverse_method(path[:], attr, source_attr_value,
-                                    target_attr_value, visitor)
-                    path.pop()
-        visitor.visit_one(path, attribute, source, target)
+                        source_attr_proxy = None
+                    if not target is None:
+                        target_attr_proxy = target.get_value(attr)
+                    else:
+                        target_attr_proxy = None
+                    if source_attr_proxy is None and target_attr_proxy is None:
+                        # If both source and target have None values, there is
+                        # nothing to do.
+                        continue
+                    if target is None:
+                        # CREATE
+                        do_dispatch = bool(attr.cascade & CASCADES.ADD)
+                    elif source is None:
+                        # REMOVE
+                        do_dispatch = bool(attr.cascade & CASCADES.REMOVE)
+                    else:
+                        # UPDATE
+                        do_dispatch = bool(attr.cascade & CASCADES.UPDATE)
+                    if do_dispatch:
+                        card = get_attribute_cardinality(attr)
+                        if card == CARDINALITY_CONSTANTS.ONE:
+                            traverse_method = self.traverse_one
+                        else:
+                            traverse_method = self.traverse_many
+                        path.append((source, target))
+                        traverse_method(path[:], attr, source_attr_proxy,
+                                        target_attr_proxy, visitor)
+                        path.pop()
+            visitor.visit_one(path, attribute, source, target)
 
     def traverse_many(self, path, attribute, source_sequence,
                       target_sequence, visitor):
-        source_ids = set()
+        """
+        :param source_sequence: iterable of source data proxies
+        :type source_sequence: iterable yielding instances of
+                               `DataTraversalProxy` or None
+        :param target_sequence: iterable of target data proxies
+        :type target_sequence: iterable yielding instances of
+                               `DataTraversalProxy` or None
+        """
+        target_map = {}
+        if not target_sequence is None:
+            for target in target_sequence.get_value(attribute):
+                target_map[target.get_id()] = target
         if not source_sequence is None:
-            for source in self._src_impl.get_iterator(source_sequence):
-                source_id = source.id
+            for source in source_sequence.get_value(attribute):
+                source_id = source.get_id()
                 if not source_id is None:
                     # All not-None IDs must have an existing target: UPDATE
-                    source_ids.add(source_id)
-                    target = self._tgt_impl.get(attribute, source)
+                    try:
+                        target = target_map.pop(source_id)
+                    except KeyError:
+                        raise ValueError('Trying to update non-existing '
+                                         'target with ID %s for attribute '
+                                         '%s.' % (source_id, attribute))
                 else:
                     # Target does not exist: ADD
                     target = None
                 self.traverse_one(path, attribute, source, target, visitor)
-        if not target_sequence is None:
-            for target in target_sequence:
-                if target.id in source_ids:
-                    continue
-                # Source does not exist: DELETE
-                self.traverse_one(path, attribute, None, target, visitor)
+        # All targets that are now still in the map where not present in the
+        # source and therefore need to be REMOVEd.
+        for target in itervalues_(target_map):
+            self.traverse_one(path, attribute, None, target, visitor)
         visitor.visit_many(path, attribute, source_sequence, target_sequence)
 
 
-class AruVisitor(object):
+class DataTreeVisitor(object):
     def __init__(self, rc_class):
         self._rc_class = rc_class
-        self.__result = None
 
-    def visit_one(self, path, attribute, source_data, target):
+    def visit_one(self, path, attribute, source, target):
         raise NotImplementedError('Abstract method.')
 
-    def visit_many(self, path, attr, source_data, target):
+    def visit_many(self, path, attr, source, target):
         raise NotImplementedError('Abstract method.')
 
-    def _set_result(self, result):
-        self.__result = result
 
-    @property
-    def result(self):
-        return self.__result
-
-
-class AruDomainVisitor(AruVisitor):
-    def __init__(self, rc_class,
-                 add_callback, update_callback, delete_callback):
-        AruVisitor.__init__(self, rc_class)
+class AruVisitor(DataTreeVisitor):
+    def __init__(self, rc_class, add_callback=None, remove_callback=None,
+                 update_callback=None):
+        DataTreeVisitor.__init__(self, rc_class)
         self.__add_callback = add_callback
+        self.__remove_callback = remove_callback
         self.__update_callback = update_callback
-        self.__delete_callback = delete_callback
+        #: The root of the new source tree (ADD) or of the updated target
+        #: tree (UPDATE) or None (REMOVE).
+        self.root = None
 
-    def visit_one(self, path, attribute, source_data, target):
+    def visit_one(self, path, attribute, source, target):
         if attribute is None:
             # Visiting the root.
-            rc_class = self._rc_class
+            ent_class = get_entity_class(self._rc_class)
         else:
-            rc_class = attribute.attr_type
-        if source_data is None:
-            self.__delete_callback(rc_class, target)
+            ent_class = get_entity_class(attribute.attr_type)
+        if source is None:
+            # No source - REMOVE.
+            if not self.__remove_callback is None:
+                self.__remove_callback(ent_class, target.as_domain_object())
         else:
             if target is None:
-                self.__add_callback(rc_class, source_data)
+                entity = source.as_domain_object()
+                # No target - ADD.
+                if not self.__add_callback is None:
+                    self.__add_callback(ent_class, entity)
+                if len(path) > 0:
+                    # When ADDing new entities, we have to update the
+                    # parent's attribute with the newly created entity.
+                    parent = path[-1][0]
+                    parent.set_value(attribute, entity)
             else:
-                self.__update_callback(rc_class, source_data, target)
-        if attribute is None:
-            self._set_result(source_data)
+                entity = target.as_domain_object()
+                # Both source and target - UPDATE.
+                if not self.__update_callback is None:
+                    self.__update_callback(ent_class,
+                                           entity,
+                                           source.as_attribute_value_map())
+            if attribute is None:
+                self.root = entity
 
-    def visit_many(self, path, attr, source_data, target):
+    def visit_many(self, path, attr, source, target):
         pass
-
-    @property
-    def result(self):
-        return self.__result
-
-
-class AruDataElementVisitor(AruDomainVisitor):
-    def __init__(self, rc_class,
-                 add_callback, update_callback, delete_callback):
-        AruDomainVisitor.__init__(self, rc_class, add_callback,
-                                  update_callback, delete_callback)
-        self.__state_map = {}
-
-    def visit_one(self, path, attribute, source_data, target):
-        if attribute is None:
-            pass
-        else:
-            parent = path[-1][0]
-            parent_data = self.__state_map.get(parent)
-            if parent_data is None:
-                parent_data = self.__state_map[parent] = OrderedDict()
-            if not parent is None:
-                parent_data[attribute] = None
 
 
 #    def __create(self, entity_class, entity, relationship=None):
@@ -663,7 +848,7 @@ class AruDataElementVisitor(AruDomainVisitor):
 #                set_nested_attribute(target_entity, attr.entity_attr,
 #                                     source_value)
 #
-#    def __delete(self, entity_class, entity, relationship=None):
+#    def __remove(self, entity_class, entity, relationship=None):
 #        if not relationship is None:
 #            # Visiting the root.
 #            self.__remove_callback(entity_class, entity)

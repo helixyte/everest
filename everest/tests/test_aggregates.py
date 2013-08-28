@@ -208,10 +208,10 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_equal(new_ent1.children, [new_child1])
         self.assert_equal(new_child1.parent, new_ent1)
         with patch.object(get_domain_class_attribute(MyEntity, 'children'),
-                          'cascade', DEFAULT_CASCADE | CASCADES.DELETE):
+                          'cascade', DEFAULT_CASCADE | CASCADES.REMOVE):
             with patch.object(get_domain_class_attribute(MyEntityChild,
                                                          'parent'),
-                              'cascade', DEFAULT_CASCADE | CASCADES.DELETE):
+                              'cascade', DEFAULT_CASCADE | CASCADES.REMOVE):
                 child_rel_agg.remove(new_child1)
                 self.assert_equal(new_ent1.children, [])
                 self.assert_is_none(new_child1.parent)

@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 8, 2013.
 """
 from everest.entities.traversal import AruVisitor
-from everest.entities.traversal import SourceTargetTraverser
+from everest.entities.traversal import SourceTargetDataTreeTraverser
 from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import SessionFactory
@@ -155,7 +155,8 @@ class MemorySession(object):
         return MemorySessionQuery(entity_class, self, self.__repository)
 
     def __traverse(self, entity_class, source_entity, target_entity):
-        trv = SourceTargetTraverser(source_entity, target_entity)
+        trv = SourceTargetDataTreeTraverser.make_traverser(source_entity,
+                                                           target_entity)
         vst = AruVisitor(entity_class,
                          self.__add, self.__remove, self.__update)
         trv.run(vst)
@@ -187,10 +188,9 @@ class MemorySession(object):
             cache = self.__get_cache(entity_class)
             cache.remove(entity)
 
-    def __update(self, entity_class, source_entity, target_entity):
-        EntityStateManager.transfer_state_data(entity_class,
-                                               source_entity, target_entity)
-        return source_entity
+    def __update(self, entity_class, target_entity, source_data):
+        EntityStateManager.set_state_data(entity_class,
+                                          target_entity, source_data)
 
     def __contains__(self, entity):
         cache = self.__cache_map.get(type(entity))

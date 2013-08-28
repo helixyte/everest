@@ -9,6 +9,7 @@ from everest.entities.attributes import get_domain_class_attribute_iterator
 from everest.entities.attributes import get_domain_class_attribute_names
 from everest.utils import get_nested_attribute
 from everest.utils import resolve_nested_attribute
+from pyramid.compat import iteritems_
 from weakref import ref
 
 __docformat__ = 'reStructuredText en'
@@ -148,7 +149,7 @@ class EntityStateManager(object):
     @classmethod
     def set_state_data(cls, entity_class, entity, data):
         attr_names = get_domain_class_attribute_names(entity_class)
-        for attr, new_attr_value in data.iteritems():
+        for attr, new_attr_value in iteritems_(data):
             if not attr.entity_attr in attr_names:
                 raise ValueError('Can not set attribute "%s" for entity '
                                  '"%s".' % (attr.entity_attr, entity_class))

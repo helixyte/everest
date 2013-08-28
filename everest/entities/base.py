@@ -458,7 +458,7 @@ class RelationshipAggregate(Aggregate):
             self._root_aggregate.add(entity)
 
     def remove(self, entity):
-        if self._relationship.descriptor.cascade & CASCADES.DELETE \
+        if self._relationship.descriptor.cascade & CASCADES.REMOVE \
            and (not entity.id is None
                 and not self._root_aggregate.get_by_id(entity.id) is None):
             self._root_aggregate.remove(entity)

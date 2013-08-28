@@ -1,7 +1,7 @@
 """
 Mapped resource attributes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on June 8, 2011.
@@ -23,8 +23,8 @@ __all__ = ['AttributeKey',
 class AttributeKey(object):
     """
     Value object used as a key during resource data tree traversal.
-    
-    Each key consists of a tuple of mapped attributes that uniquely 
+
+    Each key consists of a tuple of mapped attributes that uniquely
     determine a node's position in the resource data tree.
     """
     def __init__(self, data):
@@ -124,15 +124,15 @@ class MappedAttribute(object):
         """
         Checks if the given attribute key should be ignored for the given
         ignore option name.
-        
+
         Rules for ignoring attributes:
          * always ignore when IGNORE_ON_XXX_OPTION is set to True;
          * always include when IGNORE_ON_XXX_OPTION is set to False;
          * also ignore member attributes when the length of the attribute
            key is > 0;
-         * also ignore collection attributes when the cardinality is 
+         * also ignore collection attributes when the cardinality is
            not MANYTOMANY.
-           
+
         :ignore_option: configuration option value.
         :param attribute_key: :class:`AttributeKey` instance.
         """
@@ -164,6 +164,10 @@ class MappedAttribute(object):
     @property
     def cardinality(self):
         return getattr(self.__attr, 'cardinality', None)
+
+    @property
+    def resource_attribute(self):
+        return self.__attr
 
     def __getattr__(self, attr_name):
         if attr_name in self.options:

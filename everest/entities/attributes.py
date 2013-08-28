@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
 """
+from everest.attributes import AttributeValueMap
 from everest.constants import DEFAULT_CASCADE
 from everest.constants import DomainAttributeKinds
 from everest.entities.interfaces import IEntity
@@ -16,7 +17,8 @@ from pyramid.compat import itervalues_
 from zope.interface import implementedBy as implemented_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['aggregate_attribute',
+__all__ = ['DomainAttributeValueMap',
+           'aggregate_attribute',
            'attribute_base',
            'entity_attribute',
            'get_domain_class_attribute_iterator',
@@ -234,3 +236,8 @@ def get_domain_class_aggregate_attribute_iterator(ent):
     for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind == DomainAttributeKinds.AGGREGATE:
             yield attr
+
+
+class DomainAttributeValueMap(AttributeValueMap):
+    def _get_attribute_attribute(self, attr):
+        return attr.entity_attr

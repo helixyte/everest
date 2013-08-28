@@ -15,6 +15,7 @@ from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.resources.attributes import ResourceAttributeControllerMixin
+from everest.resources.attributes import ResourceAttributeValueMap
 from everest.resources.attributes import get_resource_class_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.interfaces import ICollectionResource
@@ -24,11 +25,11 @@ from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
+from pyramid.compat import iteritems_
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
 from zope.interface import implementer # pylint: disable=E0611,F0401
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import uuid
 
 __docformat__ = "reStructuredText en"
@@ -171,36 +172,24 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         return self.__entity
 
-    def update(self, **kw):
+    def update(self, data):
         """
-        Updates this member.
-        """
-        for attr_name, attr_value in kw.iteritems():
-            attr = getattr(self.__class__, attr_name)
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                setattr(self, attr_name, attr_value)
-            elif attr.kind == ResourceAttributeKinds.MEMBER:
-                rel = attr.make_relationship(self)
+        Updates this member from the given data.
 
-    def update_from_entity(self, entity):
+        See :method:`Collection.update`.
         """
-        Updates this member from the given entity.
-
-        See :method:`Collection.update_from_entity`.
-        """
-        self.__parent__.update_from_entity(entity)
-
-    def update_from_data(self, data_element):
-        """
-        Updates this member from the given data element.
-
-        :param data_element: data element (hierarchical) to create a resource
-            from
-        :type data_element: object implementing
-         `:class:everest.resources.representers.interfaces.IExplicitDataElement`
-        """
-        mp = data_element.mapping
-        mp.map_to_resource(data_element, resource=self)
+        if isinstance(data, dict):
+            # Build  an attribute -> value map from the data.
+            av_map = ResourceAttributeValueMap()
+            for attr_name, value in iteritems_(dict):
+                attr = get_resource_class_attribute(self.__class__, attr_name)
+                av_map[attr] = value
+            if not 'id' in data:
+                id_attr = get_resource_class_attribute(self.__class__, 'id')
+                av_map[id_attr] = self.id
+            self.__parent__.update(av_map)
+        else:
+            self.__parent__.update(data)
 
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
@@ -416,96 +405,14 @@ class Collection(Resource):
             rc = default
         return rc
 
-    def update_from_data(self, data_element):
+    def update(self, data):
         """
-        Updates this collection from the given data element.
+        Updates a member in this collection from the given data.
 
-        This iterates over the members of this collection and checks if
-        a member with the same ID exists in the given update data. If yes,
-        the existing member is updated with the update member; if no,
-        the member is removed. All data elements in the update data that
-        have no ID are added as new members. Data elements with an ID that
-        can not be found in this collection trigger an error.
-
-        :param data_element: data element (hierarchical) to create a resource
-            from
-        :type data_element: object implementing
-         `:class:everest.resources.interfaces.IExplicitDataElement`
-        :raises ValueError: when a data element with an ID that is not present
-          in this collection is encountered.
+        :param data: entity or data element or dictionary
+        :returns: new updated member.
         """
-        mp = data_element.mapping
-        mp.map_to_resource(data_element, resource=self)
-        return
-        attrs = data_element.mapping.get_attribute_map()
-        id_attr = attrs['id']
-        update_ids = set()
-        new_mb_els = []
-        self_id_map = dict([(self_mb.id, self_mb) for self_mb in iter(self)])
-        for member_el in data_element.get_members():
-#            if ILinkedDataElement in provided_by(member_el):
-#                # Found a link - do not do anything.
-#                mb_id = member_el.get_id()
-#            else:
-            mb_id = member_el.get_terminal(id_attr)
-            if mb_id is None:
-                # New data element without an ID - queue for adding.
-                new_mb_els.append(member_el)
-                continue
-            else:
-                self_mb = self_id_map.get(mb_id)
-                if not self_mb is None:
-                    # Found an existing member - update.
-                    self_mb.update_from_data(member_el)
-                    update_ids.add(mb_id)
-                else:
-                    # New data element with a new ID - queue for adding.
-                    new_mb_els.append(member_el)
-        # Before adding any new members, check for delete operations.
-        for self_id, self_mb in self_id_map.iteritems():
-            if not self_id in update_ids:
-                # Found an existing member ID that was not supplied with
-                # the update data - remove.
-                self.remove(self_mb)
-        # Now, add new members.
-        mb_cls = get_member_class(self.__class__)
-        for new_member_el in new_mb_els:
-            new_member = mb_cls.create_from_data(new_member_el)
-            self.add(new_member)
-
-    def update_from_entities(self, entities):
-        update_ids = set()
-        new_ents = []
-        self_ids = dict([(self_mb.id, self_mb) for self_mb in iter(self)])
-        for ent in entities:
-            if ent.id is None:
-                new_ents.append(ent)
-                continue
-            else:
-                if ent.id in self_ids:
-                    self.update_from_entity(ent)
-                    update_ids.add(ent.id)
-                else:
-                    new_ents.append(ent)
-        for self_id, self_mb in self_ids.iteritems():
-            if not self_id in update_ids:
-                self.remove(self_mb)
-        for new_ent in new_ents:
-            self.create_member(new_ent)
-
-    def update_from_entity(self, entity):
-        """
-        Updates the member corresponding to the ID of the given entity.
-
-        Unlike :method:`update_from_data`, this disregards all resource
-        attribute declarations and relies on the repository to perform the
-        state update.
-
-        :param member: Member resource to update.
-        :param source_entity: Entity (domain object) to use
-        :returns: Updated member.
-        """
-        updated_entity = self.__aggregate.update(entity)
+        updated_entity = self.__aggregate.update(data)
         return as_member(updated_entity, parent=self)
 
     def _get_filter(self):

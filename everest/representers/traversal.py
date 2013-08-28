@@ -610,7 +610,7 @@ class SourceTargetTreeTraverser(object):
             for target_node in target_set:
                 if target_node.id in source_ids:
                     continue
-                # DELETE
+                # REMOVE
                 self._traverse_node(path, attr_key, None, target_node,
                                     visitor)
         visitor.visit_set(path, attr_key, source_set, target_set)
