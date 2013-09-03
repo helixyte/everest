@@ -1,13 +1,13 @@
 """
 Mapping and mapping registry.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 4, 2012.
 """
 from collections import OrderedDict
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
@@ -43,7 +43,7 @@ class Mapping(object):
     """
     Performs configurable resource <-> data element tree <-> representation
     mappings.
-    
+
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
     """
@@ -83,7 +83,7 @@ class Mapping(object):
     def get_attribute_map(self, mapped_class=None, key=None):
         """
         Returns a map of all attributes of the given mapped class.
-        
+
         :param key: tuple of attribute names specifying a path to a nested
           attribute in a resource tree. If this is not given, all attributes
           in this mapping will be returned.
@@ -106,13 +106,13 @@ class Mapping(object):
 
     def terminal_attribute_iterator(self, mapped_class=None, key=None):
         for attr in self.attribute_iterator(mapped_class, key=key):
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def nonterminal_attribute_iterator(self, mapped_class=None, key=None):
         for attr in self.attribute_iterator(mapped_class=mapped_class,
                                             key=key):
-            if attr.kind != ResourceAttributeKinds.TERMINAL:
+            if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def create_data_element(self, mapped_class=None):
@@ -231,7 +231,7 @@ class MappingRegistry(object):
 
     def create_mapping(self, mapped_class, configuration=None):
         """
-        Creates a new mapping for the given mapped class and representer 
+        Creates a new mapping for the given mapped class and representer
         configuration.
 
         :param configuration: configuration for the new data element class.
@@ -272,7 +272,7 @@ class MappingRegistry(object):
     def find_mapping(self, mapped_class):
         """
         Returns the mapping registered for the given mapped class or any of
-        its base classes. Returns `None` if no mapping can be found. 
+        its base classes. Returns `None` if no mapping can be found.
 
         :param mapped_class: mapped type
         :type mapped_class: type
@@ -294,8 +294,8 @@ class MappingRegistry(object):
     def find_or_create_mapping(self, mapped_class):
         """
         First calls :meth:`find_mapping` to check if a mapping for the given
-        mapped class or any of its base classes has been created. If not, a 
-        new one is created with a default configuration, registered 
+        mapped class or any of its base classes has been created. If not, a
+        new one is created with a default configuration, registered
         automatically and returned.
         """
         mapping = self.find_mapping(mapped_class)
@@ -308,7 +308,7 @@ class MappingRegistry(object):
         """
         Returns an iterator over all registered mappings.
 
-        :returns: iterator yielding tuples containing a mapped class as the 
+        :returns: iterator yielding tuples containing a mapped class as the
           first and a :class:`Mapping` instance as the second item.
         """
         return itervalues_(self.__mappings)

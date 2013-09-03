@@ -6,13 +6,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 12, 2011.
 """
-from everest.constants import CASCADES
+from everest.constants import RELATIONSHIP_OPERATIONS
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.querying.utils import get_filter_specification_factory
+from everest.traversers import DataTraversalProxy
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from zope.interface import implementer # pylint: disable=E0611,F0401
+from everest.constants import RELATIONSHIP_DIRECTIONS
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -50,7 +52,8 @@ class Entity(object):
         return cls(**data)
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) \
+        return id(self) == id(other) \
+               or isinstance(other, self.__class__) \
                and self.id == other.id \
                and not (self.id is None and other.id is None)
 
@@ -355,23 +358,31 @@ class RootAggregate(Aggregate):
     def get_by_slug(self, slug):
         raise NotImplementedError('Abstract method.')
 
-    def add(self, entity):
-        if not isinstance(entity, self.entity_class):
-            raise ValueError('Can only add entities of type "%s" to this '
-                             'aggregate.' % self.entity_class)
-        self._session.add(self.entity_class, entity)
+    def add(self, data):
+#        if not isinstance(entity, self.entity_class):
+#            raise ValueError('Can only add entities of type "%s" to this '
+#                             'aggregate.' % self.entity_class)
+        self._session.add(self.entity_class, data)
 
-    def remove(self, entity):
-        if not isinstance(entity, self.entity_class):
-            raise ValueError('Can only remove entities of type "%s" from '
-                             'this aggregate.' % self.entity_class)
-        self._session.remove(self.entity_class, entity)
+    def remove(self, data):
+#        if not isinstance(entity, self.entity_class):
+#            raise ValueError('Can only remove entities of type "%s" from '
+#                             'this aggregate.' % self.entity_class)
+        self._session.remove(self.entity_class, data)
 
-    def update(self, entity):
-        if not isinstance(entity, self.entity_class):
-            raise ValueError('Can only update entities of type "%s" through '
-                             'this aggregate.' % self.entity_class)
-        self._session.update(self.entity_class, entity)
+    def update(self, data):
+#        if not isinstance(entity, self.entity_class):
+#            raise ValueError('Can only update entities of type "%s" through '
+#                             'this aggregate.' % self.entity_class)
+        if not IEntity.providedBy(data): # pylint: disable=E1101
+            target_id = DataTraversalProxy.make_source_proxy(data).get_id()
+        else:
+            target_id = data.id
+        target_entity = self.get_by_id(target_id)
+        if target_entity is None:
+            raise ValueError('Entity with ID %s to update not found.'
+                             % target_id)
+        return self._session.update(self.entity_class, data, target_entity)
 
     def query(self):
         return self._session.query(self.entity_class)
@@ -443,26 +454,41 @@ class RelationshipAggregate(Aggregate):
     def get_root_aggregate(self, rc):
         return self._root_aggregate.get_root_aggregate(rc)
 
+    def add(self, entity):
+        rel_drct = self._relationship.direction
+        self._relationship.add(
+                    entity,
+                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
+        csc = self._relationship.descriptor.cascade
+        add_to_root = csc & RELATIONSHIP_OPERATIONS.ADD and entity.id is None
+        if add_to_root:
+            self._root_aggregate.add(entity)
+        self._relationship.add(
+                    entity,
+                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.FORWARD)
+
+    def remove(self, entity):
+        rel_drct = self._relationship.direction
+        self._relationship.remove(
+                    entity,
+                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
+        csc = self._relationship.descriptor.cascade
+        remove_from_root = \
+            csc & RELATIONSHIP_OPERATIONS.REMOVE and not entity.id is None
+        if remove_from_root:
+            self._root_aggregate.remove(entity)
+        self._relationship.remove(
+                    entity,
+                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.FORWARD)
+
     def update(self, entity):
-        if self._relationship.descriptor.cascade & CASCADES.UPDATE:
+        csc = self._relationship.descriptor.cascade
+        if csc & RELATIONSHIP_OPERATIONS.UPDATE:
             upd_entity = self._root_aggregate.update(entity)
         else:
             upd_entity = entity
+        self._relationship.update(entity)
         return upd_entity
-
-    def add(self, entity):
-        self._relationship.add(entity)
-        if self._relationship.descriptor.cascade & CASCADES.ADD \
-           and (entity.id is None
-                or self._root_aggregate.get_by_id(entity.id) is None):
-            self._root_aggregate.add(entity)
-
-    def remove(self, entity):
-        if self._relationship.descriptor.cascade & CASCADES.REMOVE \
-           and (not entity.id is None
-                and not self._root_aggregate.get_by_id(entity.id) is None):
-            self._root_aggregate.remove(entity)
-        self._relationship.remove(entity)
 
     def _get_filter(self):
         # Overwrite to prepend relationship specification to filter spec.

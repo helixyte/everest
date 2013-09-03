@@ -6,8 +6,7 @@ Created on Jul 22, 2013.
 """
 from collections import OrderedDict
 from everest.constants import CARDINALITY_CONSTANTS
-from everest.constants import DomainAttributeKinds
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from pyramid.compat import itervalues_
 from pyramid.compat import string_types
 
@@ -23,22 +22,18 @@ def get_attribute_iterator(obj):
 
 
 def is_terminal_attribute(attribute):
-    return attribute.kind in (DomainAttributeKinds.TERMINAL,
-                              ResourceAttributeKinds.TERMINAL)
+    return attribute.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL
 
 
 def get_attribute_cardinality(attribute):
-    if attribute.kind in (ResourceAttributeKinds.MEMBER,
-                          DomainAttributeKinds.ENTITY):
+    if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
         card = CARDINALITY_CONSTANTS.ONE
-    elif attribute.kind in (ResourceAttributeKinds.COLLECTION,
-                            DomainAttributeKinds.AGGREGATE):
+    elif attribute.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
         card = CARDINALITY_CONSTANTS.MANY
     else:
         raise ValueError('Can not determine cardinality for non-terminal '
                          'attributes.')
     return card
-
 
 
 class AttributeValueMap(OrderedDict):

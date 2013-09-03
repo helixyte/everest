@@ -1,15 +1,18 @@
 """
 Attribute descriptors for resource classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 19, 2011.
 """
 from everest.constants import CARDINALITIES
 from everest.constants import DEFAULT_CASCADE
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.entities.interfaces import IEntity
+from everest.entities.relationship import DomainRelationship
 from everest.resources.interfaces import ICollectionResource
+from everest.resources.interfaces import IResource
 from everest.resources.relationship import ResourceRelationship
 from everest.resources.utils import get_member_class
 from everest.utils import get_nested_attribute
@@ -17,6 +20,7 @@ from everest.utils import id_generator
 from everest.utils import set_nested_attribute
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+from everest.relationship import RELATIONSHIP_DIRECTIONS
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -32,7 +36,7 @@ class attribute_base(object):
     Abstract base class for all attribute descriptors.
 
     :cvar kind: the resource attribute kind
-    :ivar attr_type: the type (or interface) of the controlled entity 
+    :ivar attr_type: the type (or interface) of the controlled entity
       attribute.
     :ivar entity_attr: the entity attribute the descriptor references. May
       be *None*.
@@ -41,7 +45,7 @@ class attribute_base(object):
       declared, it can be used to establish a well-defined sorting order on
       all attribute declarations of a resource.
     :ivar resource_attr: the resource attribute this descriptor is mapped to.
-      This is set after instantiation. 
+      This is set after instantiation.
     """
     __index_gen = id_generator()
 
@@ -73,7 +77,7 @@ class terminal_attribute(attribute_base):
     A terminal attribute is an attribute that the framework will not look
     into any further for querying or serialization.
     """
-    kind = ResourceAttributeKinds.TERMINAL
+    kind = RESOURCE_ATTRIBUTE_KINDS.TERMINAL
 
     def __init__(self, attr_type, entity_attr):
         if not isinstance(attr_type, type):
@@ -98,9 +102,9 @@ class _relation_attribute(attribute_base):
     Base class for relation resource descriptors (i.e., descriptors managing
     a related member or collection resource).
 
-    :ivar cardinality: indicates the cardinality of the relationship for 
-      non-terminal attributes. This is always `None` for terminal attributes. 
-    :ivar cascade: sets the cascading rules for this relation attribute. 
+    :ivar cardinality: indicates the cardinality of the relationship for
+      non-terminal attributes. This is always `None` for terminal attributes.
+    :ivar cascade: sets the cascading rules for this relation attribute.
     :ivar resource_backref: attribute of the related resource (relatee) which
       back-references the current resource (relator).
     """
@@ -126,8 +130,20 @@ class _relation_attribute(attribute_base):
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
 
-    def make_relationship(self, relator):
-        return ResourceRelationship(relator, self)
+    def make_relationship(self, relator,
+                          direction=
+                            RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL):
+        if IEntity.providedBy(relator): # pylint:disable=E1101
+            rel = DomainRelationship(relator, self,
+                                     direction=direction)
+        elif IResource.providedBy(relator): # pylint:disable=E1101
+            rel = ResourceRelationship(relator, self,
+                                       direction=direction)
+        else:
+            raise ValueError('Invalid relator argument "%s" for '
+                             'relationship; must provide IEntity or '
+                             'IResource.' % relator)
+        return rel
 
     @property
     def entity_backref(self):
@@ -156,7 +172,7 @@ class member_attribute(_relation_attribute):
     Descriptor for declaring member attributes of a resource as attributes
     of its underlying entity.
     """
-    kind = ResourceAttributeKinds.MEMBER
+    kind = RESOURCE_ATTRIBUTE_KINDS.MEMBER
 
     def __init__(self, attr_type, entity_attr=None,
                  cardinality=CARDINALITIES.MANYTOONE,
@@ -198,7 +214,7 @@ class collection_attribute(_relation_attribute):
     Descriptor for declaring collection attributes of a resource as attributes
     from its underlying entity.
     """
-    kind = ResourceAttributeKinds.COLLECTION
+    kind = RESOURCE_ATTRIBUTE_KINDS.COLLECTION
 
     def __init__(self, attr_type, entity_attr=None,
                  cardinality=CARDINALITIES.ONETOMANY,

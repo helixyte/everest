@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 7, 2012.
 """
 from collections import OrderedDict
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_KINDS
 from everest.representers.attributes import MappedAttribute
 from everest.representers.csv import CsvLinkedDataElement
 from everest.representers.dataelements import DataElementAttributeProxy
@@ -97,7 +97,7 @@ class DataElementsTestCase(ResourceTestCase):
         data_el = CsvLinkedDataElement.create_from_resource(rc)
         self.assert_equal(data_el.get_title(), 'Collection of MyEntityMember')
         self.assert_not_equal(data_el.get_url().find('/my-entities/'), -1)
-        self.assert_equal(data_el.get_kind(), ResourceKinds.COLLECTION)
+        self.assert_equal(data_el.get_kind(), RESOURCE_KINDS.COLLECTION)
         self.assert_equal(data_el.get_relation(),
                           'http://test.org/myentity-collection')
         # Can not use data element attribute proxy with a link.

@@ -8,10 +8,7 @@ Created on Dec 2, 2011.
 """
 from collections import OrderedDict
 from everest.attributes import AttributeValueMap
-from everest.constants import ResourceAttributeKinds
-from everest.entities.attributes import aggregate_attribute
-from everest.entities.attributes import entity_attribute
-from everest.entities.attributes import terminal_attribute
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute \
     as collection_resource_attribute
@@ -30,7 +27,6 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['MetaResourceAttributeCollector',
            'ResourceAttributeControllerMixin',
            'ResourceAttributeValueMap',
-           'domain_attributes_injector',
            'get_resource_class_attribute',
            'get_resource_class_attribute_iterator',
            'get_resource_class_attribute_names',
@@ -39,6 +35,7 @@ __all__ = ['MetaResourceAttributeCollector',
            'is_resource_class_member_attribute',
            'is_resource_class_resource_attribute',
            'is_resource_class_terminal_attribute',
+           'resource_attributes_injector',
            ]
 
 
@@ -114,7 +111,7 @@ def is_resource_class_terminal_attribute(rc, attr_name):
     registered resource.
     """
     attr = get_resource_class_attribute(rc, attr_name)
-    return attr.kind == ResourceAttributeKinds.TERMINAL
+    return attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL
 
 
 def is_resource_class_member_attribute(rc, attr_name):
@@ -123,7 +120,7 @@ def is_resource_class_member_attribute(rc, attr_name):
     registered resource.
     """
     attr = get_resource_class_attribute(rc, attr_name)
-    return attr.kind == ResourceAttributeKinds.MEMBER
+    return attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER
 
 
 def is_resource_class_collection_attribute(rc, attr_name):
@@ -132,7 +129,7 @@ def is_resource_class_collection_attribute(rc, attr_name):
     registered resource.
     """
     attr = get_resource_class_attribute(rc, attr_name)
-    return attr.kind == ResourceAttributeKinds.COLLECTION
+    return attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION
 
 
 def is_resource_class_resource_attribute(rc, attr_name):
@@ -141,7 +138,7 @@ def is_resource_class_resource_attribute(rc, attr_name):
     a member or a collection attribute) of the given registered resource.
     """
     attr = get_resource_class_attribute(rc, attr_name)
-    return attr != ResourceAttributeKinds.TERMINAL
+    return attr != RESOURCE_ATTRIBUTE_KINDS.TERMINAL
 
 
 @arg_to_member_class
@@ -186,18 +183,18 @@ def get_resource_class_terminal_attribute_iterator(rc):
     resource.
     """
     for attr in itervalues_(rc.__everest_attributes__):
-        if attr.kind == ResourceAttributeKinds.TERMINAL:
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
             yield attr
 
 
 @arg_to_member_class
-def get_resource_class_resource_attribute_iterator(rc):
+def get_resource_class_relationship_attribute_iterator(rc):
     """
     Returns an iterator over all terminal attributes in the given registered
     resource.
     """
     for attr in itervalues_(rc.__everest_attributes__):
-        if attr.kind != ResourceAttributeKinds.TERMINAL:
+        if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
             yield attr
 
 
@@ -208,7 +205,7 @@ def get_resource_class_member_attribute_iterator(rc):
     resource.
     """
     for attr in itervalues_(rc.__everest_attributes__):
-        if attr.kind == ResourceAttributeKinds.MEMBER:
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
             yield attr
 
 
@@ -219,40 +216,26 @@ def get_resource_class_collection_attribute_iterator(rc):
     resource.
     """
     for attr in itervalues_(rc.__everest_attributes__):
-        if attr.kind == ResourceAttributeKinds.COLLECTION:
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
             yield attr
 
 
-class domain_attributes_injector(object):
+class resource_attributes_injector(object):
     """
     Attribute injector.
 
-    This is used to inject the resource attribute declarations into the
-    corresponding entity class namespace. It is installed as
-    "__everest_atttributes__" attribute into the class namespace of all
-    entity classes that are registered with a resource.
+    This is used to inject the resource attribute descriptor map (using the
+    entity attribute name as key) as "__everest_atttributes__" attribute into
+    the namespace of the corresponding entity class.
     """
     def __get__(self, dummy, entity_class):
         mb_cls = get_member_class(entity_class)
-        entity_attr_map = OrderedDict()
-        for attr in mb_cls.__everest_attributes__.values():
-            args = (attr.attr_type, attr.index, attr.entity_attr,
-                    attr.resource_attr)
-            options = {}
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
-                attr_cls = terminal_attribute
-            else:
-                options['cardinality'] = attr.cardinality
-                options['cascade'] = attr.cascade
-                options['entity_backref'] = attr.entity_backref
-                options['resource_backref'] = attr.entity_backref
-                if attr.kind == ResourceAttributeKinds.MEMBER:
-                    attr_cls = entity_attribute
-                else:
-                    attr_cls = aggregate_attribute
-            entity_attr_map[attr.entity_attr] = attr_cls(*args, **options)
-        entity_class.__everest_attributes__ = entity_attr_map
-        return entity_attr_map
+        attr_map = OrderedDict()
+        for rc_attr in itervalues_(mb_cls.__everest_attributes__):
+            attr_map[rc_attr.entity_attr] = rc_attr
+        # This replaces the injector.
+        entity_class.__everest_attributes__ = attr_map
+        return attr_map
 
 
 class ResourceAttributeValueMap(AttributeValueMap):

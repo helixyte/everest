@@ -92,4 +92,4 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
 
 
 class _MyEntity(Entity):
-    pass
+    __everest_attributes__ = {}

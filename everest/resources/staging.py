@@ -7,11 +7,11 @@ Created on Feb 27, 2013.
 from everest.entities.base import Aggregate
 from everest.entities.base import RelationshipAggregate
 from everest.entities.traversal import AruVisitor
-from everest.entities.traversal import SourceTargetDataTreeTraverser
 from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
 from everest.repositories.memory.cache import EntityCacheMap
 from everest.resources.utils import get_collection_class
+from everest.traversers import SourceTargetDataTreeTraverser
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['StagingAggregate',
@@ -44,16 +44,21 @@ class StagingAggregate(Aggregate):
         return self.__cache[self.entity_class].get_by_slug(slug)
 
     def add(self, entity):
-        trv = SourceTargetDataTreeTraverser.make_traverser(entity, None)
+        trv = SourceTargetDataTreeTraverser.make_traverser(entity, None, self)
         trv.run(self.__visitor)
 
     def remove(self, entity):
-        trv = SourceTargetDataTreeTraverser.make_traverser(None, entity)
+        trv = SourceTargetDataTreeTraverser.make_traverser(None, entity, self)
         trv.run(self.__visitor)
 
     def update(self, entity):
         target_entity = self.__cache.get_by_id(self.entity_class, entity.id)
-        trv = SourceTargetDataTreeTraverser.make_traverser(entity, target_entity)
+        if target_entity is None:
+            raise ValueError('Entity with ID %s to update not found.'
+                             % entity.id)
+        trv = SourceTargetDataTreeTraverser.make_traverser(entity,
+                                                           target_entity,
+                                                           self)
         trv.run(self.__visitor)
 
     def query(self):

@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on June 8, 2011.
 """
 from everest.constants import CARDINALITIES
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
@@ -138,10 +138,10 @@ class MappedAttribute(object):
         """
         do_ignore = ignore_option
         if ignore_option is None:
-            if self.kind == ResourceAttributeKinds.MEMBER:
+            if self.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                 depth = len(attribute_key) + 1 - attribute_key.offset
                 do_ignore = depth > 1
-            elif self.kind == ResourceAttributeKinds.COLLECTION:
+            elif self.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 do_ignore = self.cardinality != CARDINALITIES.MANYTOMANY
         return do_ignore
 
@@ -179,5 +179,6 @@ class MappedAttribute(object):
         return attr_value
 
     def __str__(self):
-        return '%s(%s -> %s, type %s)' % \
-               (self.__class__.__name__, self.name, self.repr_name, self.kind)
+        return '%s %s %s->%s' % \
+               (self.__attr.attr_type.__name__, self.__attr.kind,
+                self.__attr.resource_attr, self.options[REPR_NAME_OPTION])

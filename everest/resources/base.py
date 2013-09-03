@@ -6,7 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import identifier_from_slug
 from everest.entities.utils import slug_from_identifier
@@ -379,8 +379,8 @@ class Collection(Resource):
                     :class:`everest.resources.interfaces.IMemberResource`
         :raise ValueError: if a member with the same name exists
         """
-        self.__aggregate.add(member.get_entity())
         member.__parent__ = self
+        self.__aggregate.add(member.get_entity())
 
     def remove(self, member):
         """
@@ -553,7 +553,7 @@ class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
                 raise ValueError('Resource attribute "%s" does not have a '
                                  'corresponding entity attribute.'
                                  % rc_attr.resource_attr)
-            if rc_attr.kind != ResourceAttributeKinds.TERMINAL:
+            if rc_attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 # Look up the member class for the specified member or
                 # collection resource interface.
                 rc_class = get_member_class(rc_attr.attr_type)

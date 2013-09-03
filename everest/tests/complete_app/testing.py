@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 23, 2012.
@@ -29,13 +29,21 @@ def create_entity(entity_id=0, entity_text=None):
     my_entity_grandchild = MyEntityGrandchild()
     my_entity_grandchild.id = entity_id
     my_entity_child.children.append(my_entity_grandchild)
+    # If we run with the SQLAlchemy backend, the back references are populated
+    # automatically.
+    if my_entity_child.parent is None:
+        my_entity_child.parent = my_entity
+    if my_entity_grandchild.parent is None:
+        my_entity_grandchild.parent = my_entity_child
     return my_entity
 
 
-def create_collection():
-    my_entity0 = create_entity(entity_id=0, entity_text='foo0')
-    my_entity1 = create_entity(entity_id=1, entity_text='too1')
+def create_collection(entity_id1=0, entity_id2=1):
+    my_entity1 = create_entity(entity_id=None, entity_text='foo0')
+    my_entity2 = create_entity(entity_id=None, entity_text='too1')
     coll = get_root_collection(IMyEntity)
-    coll.create_member(my_entity0)
     coll.create_member(my_entity1)
+    coll.create_member(my_entity2)
+    my_entity1.id = entity_id1
+    my_entity2.id = entity_id2
     return coll

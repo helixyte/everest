@@ -39,7 +39,7 @@ from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonResourceRepresenter
 from everest.representers.xml import XmlResourceRepresenter
-from everest.resources.attributes import domain_attributes_injector
+from everest.resources.attributes import resource_attributes_injector
 from everest.resources.base import Collection
 from everest.resources.base import Resource
 from everest.resources.interfaces import ICollectionResource
@@ -362,9 +362,10 @@ class Configurator(PyramidConfigurator):
                                provided=IRepository,
                                info=_info)
         # Install an attribute injector in the entity class. This will, on
-        # first access, convert all attributes declared on the resource class
-        # level to corresponding domain attributes.
-        entity.__everest_attributes__ = domain_attributes_injector()
+        # first access, replace the __everest_attributes__ class attribute
+        # with an ordered dictionary mapping entity attribute names to
+        # resource descriptors.
+        entity.__everest_attributes__ = resource_attributes_injector()
         # Expose (=register with the service) if requested.
         if expose:
             srvc = self.query_registered_utilities(IService)

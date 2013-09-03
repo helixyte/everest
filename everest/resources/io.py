@@ -1,7 +1,7 @@
 """
 Input/Output operations on resources.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 27, 2012.
@@ -81,8 +81,8 @@ def load_into_collection_from_file(collection, filename,
     """
     Loads resources from the specified file into the given collection
     resource.
-    
-    If no content type is provided, an attempt is made to look up the 
+
+    If no content type is provided, an attempt is made to look up the
     extension of the given filename in the MIME content type registry.
     """
     if content_type is None:
@@ -111,10 +111,10 @@ def load_into_collection_from_url(collection, url, content_type=None):
     """
     Loads resources from the representation contained in the given URL into
     the given collection resource.
-    
+
     :returns: collection resource
     """
-    parsed = urlparse(url)
+    parsed = urlparse.urlparse(url)
     scheme = parsed.scheme # pylint: disable=E1101
     if scheme == 'file':
         # Assume a local path.
@@ -138,12 +138,12 @@ def load_collection_from_url(resource, url, content_type=None):
 def load_into_collections_from_zipfile(collections, zipfile):
     """
     Loads resources contained in the given ZIP archive into each of the
-    given collections. 
-    
+    given collections.
+
     The ZIP file is expected to contain a list of file names obtained with
     the :func:`get_collection_filename` function, each pointing to a file
     of zipped collection resource data.
-    
+
     :param collections: sequence of collection resources
     :param str zipfile: ZIP file name
     """
@@ -185,10 +185,10 @@ def build_resource_dependency_graph(resource_classes,
     """
     Builds a graph of dependencies among the given resource classes.
 
-    The dependency graph is a directed graph with member resource classes as 
+    The dependency graph is a directed graph with member resource classes as
     nodes. An edge between two nodes represents a member or collection
     attribute.
-    
+
     :param resource_classes: resource classes to determine interdependencies
       of.
     :type resource_classes: sequence of registered resources.
@@ -225,16 +225,16 @@ def build_resource_dependency_graph(resource_classes,
 
 def build_resource_graph(resource, dependency_graph=None):
     """
-    Traverses the graph of resources that is reachable from the given 
+    Traverses the graph of resources that is reachable from the given
     resource.
-    
-    If a resource dependency graph is given, links to other resources are 
-    only followed if the dependency graph has an edge connecting the two 
+
+    If a resource dependency graph is given, links to other resources are
+    only followed if the dependency graph has an edge connecting the two
     corresponding resource classes; otherwise, a default graph is built
-    which ignores all direct cyclic resource references. 
+    which ignores all direct cyclic resource references.
 
     :resource: a :class:`everest.resources.MemberResource` instance.
-    :returns: a :class:`ResourceGraph` instance representing the graph of 
+    :returns: a :class:`ResourceGraph` instance representing the graph of
         resources reachable from the given resource.
     """
     def visit(rc, grph, dep_grph):
@@ -276,7 +276,7 @@ def build_resource_graph(resource, dependency_graph=None):
 
 def find_connected_resources(resource, dependency_graph=None):
     """
-    Collects all resources connected to the given resource and returns a 
+    Collects all resources connected to the given resource and returns a
     dictionary mapping member resource classes to new collections containing
     the members found.
     """
@@ -302,10 +302,10 @@ def find_connected_resources(resource, dependency_graph=None):
 
 class ResourceGraph(digraph):
     """
-    Specialized digraph for resource instances. 
-    
-    Nodes are resources, edges represent relationships between resources. 
-    Since resources are wrapper objects generated on the fly, the presence 
+    Specialized digraph for resource instances.
+
+    Nodes are resources, edges represent relationships between resources.
+    Since resources are wrapper objects generated on the fly, the presence
     of a resource in the graph is determined by its underlying entity, using
     the entity class and its ID as a key.
     """
@@ -338,7 +338,7 @@ class ConnectedResourcesSerializer(object):
     def __init__(self, content_type, dependency_graph=None):
         """
         :param content_type: MIME content type to use for representations
-        :type content_type: object implementing 
+        :type content_type: object implementing
             :class:`everest.interfaces.IMime`.
         :param dependency_graph: graph determining which resource connections
             to follow when the graph of connected resources for a given
@@ -360,11 +360,11 @@ class ConnectedResourcesSerializer(object):
 
     def to_strings(self, resource):
         """
-        Dumps the all resources reachable from the given resource to a map of 
+        Dumps the all resources reachable from the given resource to a map of
         string representations using the specified content_type (defaults
         to CSV).
-        
-        :returns: dictionary mapping resource member classes to string 
+
+        :returns: dictionary mapping resource member classes to string
             representations
         """
         collections = self.__collect(resource)
@@ -403,11 +403,11 @@ class ConnectedResourcesSerializer(object):
 
 def dump_resource_to_files(resource, content_type=None, directory=None):
     """
-    Convenience function. See 
-    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_files` for 
+    Convenience function. See
+    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_files` for
     details.
-    
-    If no directory is given, the current working directory is used. 
+
+    If no directory is given, the current working directory is used.
     The given context type defaults to CSV.
     """
     if directory is None:
@@ -420,10 +420,10 @@ def dump_resource_to_files(resource, content_type=None, directory=None):
 
 def dump_resource_to_zipfile(resource, zipfile, content_type=None):
     """
-    Convenience function. See 
-    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_zipfile` for 
+    Convenience function. See
+    :meth:`everest.resources.io.ConnectedResourcesSerializer.to_zipfile` for
     details.
-    
+
     The given context type defaults to CSV.
     """
     if content_type is None:

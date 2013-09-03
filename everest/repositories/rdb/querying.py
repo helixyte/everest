@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
 """
-from everest.constants import DomainAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.exceptions import MultipleResultsException
 from everest.exceptions import NoResultsException
 from everest.querying.filtering import RepositoryFilterSpecificationVisitor
@@ -127,10 +127,10 @@ class SqlFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
                     [val.get_entity() if IResource.providedBy(val) else val # pylint: disable=E1101
                      for val in values]
                 expr = getattr(entity_attr, sql_op)(*args)
-            elif kind == DomainAttributeKinds.ENTITY:
+            elif kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                 expr = entity_attr.has
                 exprs.insert(0, expr)
-            elif kind == DomainAttributeKinds.AGGREGATE:
+            elif kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 expr = entity_attr.any
                 exprs.insert(0, expr)
         return func_reduce(lambda g, h: h(g), exprs, expr)
@@ -199,7 +199,7 @@ class SqlOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
             kind, entity_attr = info
             if idx == count - 1:
                 expr = getattr(entity_attr, sql_op)()
-            elif kind != DomainAttributeKinds.TERMINAL:
+            elif kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 # FIXME: Avoid adding multiple attrs with the same target here.
                 self.__joins.add(entity_attr)
         return expr

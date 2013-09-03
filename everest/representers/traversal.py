@@ -7,8 +7,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012.
 """
 from collections import OrderedDict
-from everest.constants import ResourceAttributeKinds
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.entities.attributes import \
                         get_domain_class_terminal_attribute_iterator
 from everest.entities.utils import get_entity_class
@@ -128,7 +128,7 @@ class DataElementBuilderResourceDataVisitorBase(ResourceDataVisitor):
                                                           member_node)
             # Process attributes.
             for attr, value in iteritems_(member_data):
-                if attr.kind == ResourceAttributeKinds.TERMINAL:
+                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     self._set_terminal_attribute(mb_data_el, attr, value)
                 else:
                     mb_data_el.set_nested(attr, value)
@@ -192,11 +192,11 @@ class DataElementBuilderRepresentationDataVisitor(
         return self._mapping.create_data_element(mapped_class=coll_cls)
 
     def _create_link_data_element(self, attribute, member_node):
-        if attribute.kind == ResourceAttributeKinds.MEMBER:
-            kind = ResourceKinds.MEMBER
+        if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
+            kind = RESOURCE_KINDS.MEMBER
             rc_cls = get_member_class(attribute.value_type)
         else:
-            kind = ResourceKinds.COLLECTION
+            kind = RESOURCE_KINDS.COLLECTION
             rc_cls = get_collection_class(attribute.value_type)
         return self._mapping.create_linked_data_element(
                                                 member_node, kind,
@@ -269,7 +269,7 @@ class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
                 mapped_cls = member_node.mapping.mapped_class
                 self.__resource = mapped_cls.create_from_entity(entity)
             else:
-                self.__resource.update_from_entity(entity)
+                self.__resource.update(entity)
         else:
             # Nested member. Store in parent data with attribute as key.
             parent_data[attribute] = entity
@@ -375,7 +375,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                 ignore_opt = self._get_ignore_option(mb_attr)
                 if mb_attr.should_ignore(ignore_opt, attr_key):
                     continue
-                if mb_attr.kind == ResourceAttributeKinds.TERMINAL:
+                if mb_attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     # Terminal attribute - extract.
                     value = self._get_node_terminal(member_node, mb_attr)
                     if value is None and self.__ignore_none_values:
@@ -442,9 +442,9 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
             traverse_fn = self._traverse_collection
         elif ILinkedDataElement in ifcs:
             kind = node.get_kind()
-            if kind == ResourceKinds.MEMBER:
+            if kind == RESOURCE_KINDS.MEMBER:
                 traverse_fn = self._traverse_member
-            else: # kind == ResourceKinds.COLLECTION
+            else: # kind == RESOURCE_KINDS.COLLECTION
                 traverse_fn = self._traverse_collection
         else:
             raise ValueError('Need MEMBER or COLLECTION data element; found '
@@ -490,9 +490,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
             self._traverse_collection(attr_key, attr, node, parent_data,
                                       visitor)
         else:
-            raise ValueError('Can only traverse domain objects that '
-                             'provide IMember or ICollection (key: %s).'
-                             % str(attr_key))
+            raise ValueError('Can only traverse objects that provide'
+                             'IMemberResource or ICollectionResource '
+                             '(key: %s).' % str(attr_key))
 
     def _get_node_type(self, node):
         return type(node)

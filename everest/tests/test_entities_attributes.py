@@ -1,20 +1,20 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 11, 2013.
 """
-from everest.constants import DomainAttributeKinds
-from everest.entities.attributes import get_domain_class_aggregate_attribute_iterator
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.entities.attributes import get_domain_class_collection_attribute_iterator
 from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.attributes import get_domain_class_attribute_names
 from everest.entities.attributes import get_domain_class_attributes
-from everest.entities.attributes import get_domain_class_domain_attribute_iterator
-from everest.entities.attributes import get_domain_class_entity_attribute_iterator
+from everest.entities.attributes import get_domain_class_relationship_attribute_iterator
+from everest.entities.attributes import get_domain_class_member_attribute_iterator
 from everest.entities.attributes import get_domain_class_terminal_attribute_iterator
-from everest.entities.attributes import is_domain_class_aggregate_attribute
+from everest.entities.attributes import is_domain_class_collection_attribute
 from everest.entities.attributes import is_domain_class_domain_attribute
-from everest.entities.attributes import is_domain_class_entity_attribute
+from everest.entities.attributes import is_domain_class_member_attribute
 from everest.entities.attributes import is_domain_class_terminal_attribute
 from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.testing import EntityTestCase
@@ -45,25 +45,25 @@ class EntityAttributesTestCase(RdbTestCaseMixin, EntityTestCase):
         ent_attr = get_domain_class_attribute(obj, ent_attr_name)
         self.assert_equal(ent_attr.entity_attr, ent_attr_name)
         self.assert_true(
-                    is_domain_class_entity_attribute(obj, ent_attr_name))
+                    is_domain_class_member_attribute(obj, ent_attr_name))
         self.assert_true(
                     is_domain_class_domain_attribute(obj, ent_attr_name))
         agg_attr_name = 'children'
         agg_attr = get_domain_class_attribute(obj, agg_attr_name)
         self.assert_equal(agg_attr.entity_attr, agg_attr_name)
         self.assert_true(
-                    is_domain_class_aggregate_attribute(obj, agg_attr_name))
+                    is_domain_class_collection_attribute(obj, agg_attr_name))
         self.assert_true(
                     is_domain_class_domain_attribute(obj, agg_attr_name))
         for attr in get_domain_class_terminal_attribute_iterator(obj):
-            self.assert_equal(attr.kind, DomainAttributeKinds.TERMINAL)
-        for attr in get_domain_class_entity_attribute_iterator(obj):
-            self.assert_equal(attr.kind, DomainAttributeKinds.ENTITY)
-        for attr in get_domain_class_aggregate_attribute_iterator(obj):
-            self.assert_equal(attr.kind, DomainAttributeKinds.AGGREGATE)
-        for attr in get_domain_class_domain_attribute_iterator(obj):
-            self.assert_true(attr.kind in (DomainAttributeKinds.ENTITY,
-                                           DomainAttributeKinds.AGGREGATE))
+            self.assert_equal(attr.kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
+        for attr in get_domain_class_member_attribute_iterator(obj):
+            self.assert_equal(attr.kind, RESOURCE_ATTRIBUTE_KINDS.MEMBER)
+        for attr in get_domain_class_collection_attribute_iterator(obj):
+            self.assert_equal(attr.kind, RESOURCE_ATTRIBUTE_KINDS.COLLECTION)
+        for attr in get_domain_class_relationship_attribute_iterator(obj):
+            self.assert_true(attr.kind in (RESOURCE_ATTRIBUTE_KINDS.MEMBER,
+                                           RESOURCE_ATTRIBUTE_KINDS.COLLECTION))
 
     def test_accessors_with_interface(self):
         self._test_accessors(IMyEntity)

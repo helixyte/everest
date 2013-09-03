@@ -1,13 +1,13 @@
 """
 JSON representers.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Aug 29, 2012.
 """
 from __future__ import absolute_import # Makes the import below absolute
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.mime import JsonMime
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
@@ -75,9 +75,9 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
                 raise ValueError('Need dict (member), list (collection) '
                                  'or string (URL) type for JSON data, found '
                                  '"%s"' % type(node))
-            if attr.kind == ResourceAttributeKinds.MEMBER:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                 traverse_fn = self._traverse_member
-            elif attr.kind == ResourceAttributeKinds.COLLECTION:
+            elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 traverse_fn = self._traverse_collection
         traverse_fn(attr_key, attr, node, parent_data, visitor)
 
@@ -125,7 +125,7 @@ class JsonRepresentationParser(RepresentationParser):
 
 class JsonDataElementTreeVisitor(ResourceDataVisitor):
     """
-    Visitor creating JSON representations from data element nodes. 
+    Visitor creating JSON representations from data element nodes.
     """
     def __init__(self):
         ResourceDataVisitor.__init__(self)
@@ -138,7 +138,7 @@ class JsonDataElementTreeVisitor(ResourceDataVisitor):
         else:
             mb_data = {}
             for attr, value in iteritems_(member_data):
-#                if attr.kind == ResourceAttributeKinds.TERMINAL:
+#                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 mb_data[attr.repr_name] = value
             # Use the relation for class hinting.
             mb_cls = member_node.mapping.mapped_class

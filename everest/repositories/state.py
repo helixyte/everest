@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 14, 2013.
 """
-from everest.constants import DomainAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.attributes import get_domain_class_attribute_iterator
 from everest.entities.attributes import get_domain_class_attribute_names
 from everest.utils import get_nested_attribute
@@ -144,7 +144,8 @@ class EntityStateManager(object):
         attrs = get_domain_class_attribute_iterator(entity_class)
         return dict([(attr,
                       get_nested_attribute(entity, attr.entity_attr))
-                     for attr in attrs])
+                     for attr in attrs
+                     if not attr.entity_attr is None])
 
     @classmethod
     def set_state_data(cls, entity_class, entity, data):
@@ -155,7 +156,7 @@ class EntityStateManager(object):
                                  '"%s".' % (attr.entity_attr, entity_class))
             parent, parent_attr_name = \
                     resolve_nested_attribute(entity, attr.entity_attr)
-            if attr.kind == DomainAttributeKinds.TERMINAL:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 # Terminal attributes are set indiscriminately.
                 setattr(parent, parent_attr_name, new_attr_value)
             else:
@@ -163,13 +164,14 @@ class EntityStateManager(object):
                 # to do (check cardinality and backrefs). This is taken care
                 # of by a relationship object.
                 old_attr_value = getattr(parent, parent_attr_name)
-                rel = attr.make_relationship(entity)
-                if old_attr_value is None:
-                    rel.add(entity)
-                elif new_attr_value is None:
-                    rel.remove(entity)
-                else:
-                    rel.update(entity)
+                if new_attr_value != old_attr_value:
+                    rel = attr.make_relationship(entity)
+                    if old_attr_value is None:
+                        rel.add(new_attr_value)
+                    elif new_attr_value is None:
+                        rel.remove(old_attr_value)
+                    else:
+                        rel.update(new_attr_value)
 
 #            # Avoid calling setattr here as that might trigger custom
 #            # callbacks.

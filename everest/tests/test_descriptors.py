@@ -1,10 +1,10 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
-from everest.constants import ResourceAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb.querying import OrmAttributeInspector
@@ -18,7 +18,7 @@ from everest.resources.attributes import get_resource_class_attribute_names
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.attributes import get_resource_class_collection_attribute_iterator
 from everest.resources.attributes import get_resource_class_member_attribute_iterator
-from everest.resources.attributes import get_resource_class_resource_attribute_iterator
+from everest.resources.attributes import get_resource_class_relationship_attribute_iterator
 from everest.resources.attributes import get_resource_class_terminal_attribute_iterator
 from everest.resources.attributes import is_resource_class_collection_attribute
 from everest.resources.attributes import is_resource_class_member_attribute
@@ -52,7 +52,8 @@ import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',
-           'DescriptorsTestCase',
+           'MemoryDescriptorsTestCase',
+           'RdbDescriptorsTestCase'
            ]
 
 ATTRIBUTE_NAMES = ['id', 'parent', 'children', 'text',
@@ -66,51 +67,51 @@ class AttributesTestCase(Pep8CompliantTestCase):
 
     def test_terminal_iterator(self):
         it = get_resource_class_terminal_attribute_iterator(MyEntityMember)
-        self.assert_equal(set([attr.kind == ResourceAttributeKinds.TERMINAL
+        self.assert_equal(set([attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL
                               for attr in it]),
                           set([True]))
 
     def test_resource_iterator(self):
-        it = get_resource_class_resource_attribute_iterator(MyEntityMember)
+        it = get_resource_class_relationship_attribute_iterator(MyEntityMember)
         self.assert_equal(set([attr.kind in
-                               (ResourceAttributeKinds.MEMBER,
-                                ResourceAttributeKinds.COLLECTION)
+                               (RESOURCE_ATTRIBUTE_KINDS.MEMBER,
+                                RESOURCE_ATTRIBUTE_KINDS.COLLECTION)
                               for attr in it]),
                           set([True]))
 
     def test_member_iterator(self):
         it = get_resource_class_member_attribute_iterator(MyEntityMember)
-        self.assert_equal(set([attr.kind == ResourceAttributeKinds.MEMBER
+        self.assert_equal(set([attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER
                               for attr in it]),
                           set([True]))
 
     def test_collection_iterator(self):
         it = get_resource_class_collection_attribute_iterator(MyEntityMember)
-        self.assert_equal(set([attr.kind == ResourceAttributeKinds.COLLECTION
+        self.assert_equal(set([attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION
                               for attr in it]),
                           set([True]))
 
     def test_types(self):
         attrs = get_resource_class_attributes(MyEntityMember).values()
         self.assert_equal(attrs[0].resource_attr, ATTRIBUTE_NAMES[0])
-        self.assert_equal(attrs[0].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[0].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
         self.assert_equal(attrs[0].entity_attr, 'id')
         self.assert_equal(attrs[0].attr_type, int)
         self.assert_equal(attrs[1].resource_attr, ATTRIBUTE_NAMES[1])
-        self.assert_equal(attrs[1].kind, ResourceAttributeKinds.MEMBER)
+        self.assert_equal(attrs[1].kind, RESOURCE_ATTRIBUTE_KINDS.MEMBER)
         self.assert_equal(attrs[1].entity_attr, 'parent')
         self.assert_equal(attrs[1].attr_type, IMyEntityParent)
         self.assert_equal(attrs[2].resource_attr, ATTRIBUTE_NAMES[2])
         self.assert_equal(attrs[2].kind,
-                          ResourceAttributeKinds.COLLECTION)
+                          RESOURCE_ATTRIBUTE_KINDS.COLLECTION)
         self.assert_equal(attrs[2].entity_attr, 'children')
         self.assert_equal(attrs[2].attr_type, IMyEntityChild)
         self.assert_equal(attrs[3].resource_attr, ATTRIBUTE_NAMES[3])
-        self.assert_equal(attrs[3].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[3].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
         self.assert_equal(attrs[3].entity_attr, 'text')
         self.assert_equal(attrs[3].attr_type, str)
         self.assert_equal(attrs[5].resource_attr, ATTRIBUTE_NAMES[5])
-        self.assert_equal(attrs[5].kind, ResourceAttributeKinds.TERMINAL)
+        self.assert_equal(attrs[5].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
         self.assert_equal(attrs[5].entity_attr, 'number')
         self.assert_equal(attrs[5].attr_type, int)
         self.assert_true(is_resource_class_member_attribute(MyEntityMember,
@@ -129,7 +130,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
             text = terminal_attribute(int, 'text')
         attr = get_resource_class_attribute(MyEntityDerivedMember, 'text')
         self.assert_equal(attr.kind,
-                          ResourceAttributeKinds.TERMINAL)
+                          RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
         self.assert_equal(attr.entity_attr, 'text')
         self.assert_equal(attr.attr_type, int)
 
@@ -154,7 +155,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
         self.assert_is_none(attr.entity_backref)
 
 
-class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
+class _DescriptorsTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'
 
     TEST_TEXT = 'TEST TEXT'
@@ -215,7 +216,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.text, MyEntity.DEFAULT_TEXT)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(context.text, self.UPDATED_TEXT)
 
     def test_update_from_data_terminal_in_parent(self):
@@ -231,7 +232,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_from_data_terminal_in_child(self):
@@ -248,7 +249,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         context = coll.create_member(my_entity)
         self.assert_equal(next(iter(context.children)).text,
                           MyEntity.DEFAULT_TEXT)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(next(iter(context.children)).text,
                           self.UPDATED_TEXT)
 
@@ -268,7 +269,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_from_data_member_from_link(self):
@@ -294,7 +295,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(context.parent.text, MyEntity.DEFAULT_TEXT)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(context.parent.text, self.UPDATED_TEXT)
 
     def test_update_from_data_delete_child(self):
@@ -310,7 +311,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(context.children), 1)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(len(context.children), 0)
 
     def test_update_from_data_delete_grandchild(self):
@@ -327,7 +328,7 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         context = coll.create_member(my_entity)
         self.assert_equal(len(next(iter(context.children)).children),
                           1)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(len(next(iter(context.children)).children),
                           0)
 
@@ -335,6 +336,8 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         my_entity = create_entity()
         new_child = MyEntityChild()
         my_entity.children.append(new_child)
+        if new_child.parent is None:
+            new_child.parent = my_entity
         coll = create_staging_collection(IMyEntity)
         member = coll.create_member(my_entity)
         self.assert_equal(len(member.children), 2)
@@ -347,65 +350,8 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         coll = get_root_collection(IMyEntity)
         context = coll.create_member(my_entity)
         self.assert_equal(len(context.children), 1)
-        context.update_from_data(data_el)
+        context.update(data_el)
         self.assert_equal(len(context.children), 2)
-
-    def test_rdb_attribute_inspector(self):
-        with self.assert_raises(ValueError) as cm:
-            OrmAttributeInspector.inspect(MyEntity, 'text.something')
-        self.assert_true(str(cm.exception).endswith(
-                                    'references a terminal attribute.'))
-        with self.assert_raises(ValueError) as cm:
-            OrmAttributeInspector.inspect(MyEntity, 'DEFAULT_TEXT')
-        self.assert_true(str(cm.exception).endswith('not mapped.'))
-
-    def test_filter_specification_visitor(self):
-        coll = get_root_collection(IMyEntity)
-        mb_cls = get_member_class(coll)
-        my_entity = create_entity()
-        member = coll.create_member(my_entity)
-        spec_fac = FilterSpecificationFactory()
-        specs = [
-                # Terminal access.
-                spec_fac.create_equal_to('text', self.TEST_TEXT),
-                # Terminal access with different name in entity.
-                spec_fac.create_equal_to('text_rc', self.TEST_TEXT),
-                # Nested member access with different name in entity.
-                spec_fac.create_equal_to('parent.text_rc', self.TEST_TEXT),
-                # Nested collection access with different name in entity.
-                spec_fac.create_equal_to('children.text_rc', self.TEST_TEXT),
-                # Access with dotted entity name in rc attr declaration.
-                spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
-                # Access to member.
-                spec_fac.create_equal_to('parent', member.parent.get_entity()),
-                ]
-        expecteds = [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
-                     ('text_ent', MyEntity.text_ent.__eq__(
-                                                        self.TEST_TEXT)),
-                     ('parent.text_ent',
-                          MyEntity.parent.has(
-                                    MyEntityParent.text_ent.__eq__(
-                                                        self.TEST_TEXT))),
-                     ('children.text_ent',
-                          MyEntity.children.any(
-                                    MyEntityChild.text_ent.__eq__(
-                                                        self.TEST_TEXT))),
-                     ('parent.text_ent',
-                          MyEntity.parent.has(
-                                    MyEntityParent.text_ent.__eq__(
-                                                        self.TEST_TEXT))),
-                     ('parent',
-                          MyEntity.parent.__eq__(member.parent.get_entity())),
-                     ]
-        for spec, expected in zip(specs, expecteds):
-            new_attr_name, expr = expected
-            visitor = ResourceToEntityFilterSpecificationVisitor(mb_cls)
-            spec.accept(visitor)
-            new_spec = visitor.expression
-            self.assert_equal(new_spec.attr_name, new_attr_name)
-            visitor = SqlFilterSpecificationVisitor(MyEntity)
-            new_spec.accept(visitor)
-            self.assert_equal(str(visitor.expression), str(expr))
 
     def test_nested_get(self):
         my_entity = create_entity()
@@ -425,15 +371,16 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         exc_msg = 'may be None, but not both.'
         self.assert_true(str(cm.exception).endswith(exc_msg))
 
-    @patch('%s.resources.MyEntityChildMember.children.entity_attr'
-           % package_name, None)
     def test_backref_only_collection(self):
         coll = create_collection()
-        child_mb = iter(iter(coll).next().children).next()
-        self.assert_equal(len(child_mb.children), 1)
-        grandchild_mb = iter(child_mb.children).next()
-        grandchild_mb.parent = None
-        self.assert_equal(len(child_mb.children), 0)
+        mb = iter(coll).next()
+        child_mb = iter(mb.children).next()
+        with patch('%s.resources.MyEntityChildMember.children.entity_attr'
+                   % self.package_name, None):
+            self.assert_equal(len(child_mb.children), 1)
+            grandchild_mb = iter(child_mb.children).next()
+            grandchild_mb.parent = None
+            self.assert_equal(len(child_mb.children), 0)
 
     def test_basic_urls(self):
         my_entity = create_entity()
@@ -489,3 +436,66 @@ class DescriptorsTestCase(RdbTestCaseMixin, ResourceTestCase):
         mp = reg.create_mapping(MyEntityMember, conf)
         reg.set_mapping(mp)
         return mp
+
+
+class RdbDescriptorsTestCase(RdbTestCaseMixin, _DescriptorsTestCase):
+    def test_filter_specification_visitor(self):
+        coll = get_root_collection(IMyEntity)
+        mb_cls = get_member_class(coll)
+        my_entity = create_entity()
+        member = coll.create_member(my_entity)
+        spec_fac = FilterSpecificationFactory()
+        specs = [
+                # Terminal access.
+                spec_fac.create_equal_to('text', self.TEST_TEXT),
+                # Terminal access with different name in entity.
+                spec_fac.create_equal_to('text_rc', self.TEST_TEXT),
+                # Nested member access with different name in entity.
+                spec_fac.create_equal_to('parent.text_rc', self.TEST_TEXT),
+                # Nested collection access with different name in entity.
+                spec_fac.create_equal_to('children.text_rc', self.TEST_TEXT),
+                # Access with dotted entity name in rc attr declaration.
+                spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
+                # Access to member.
+                spec_fac.create_equal_to('parent', member.parent.get_entity()),
+                ]
+        expecteds = [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
+                     ('text_ent', MyEntity.text_ent.__eq__(
+                                                        self.TEST_TEXT)),
+                     ('parent.text_ent',
+                          MyEntity.parent.has(
+                                    MyEntityParent.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                     ('children.text_ent',
+                          MyEntity.children.any(
+                                    MyEntityChild.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                     ('parent.text_ent',
+                          MyEntity.parent.has(
+                                    MyEntityParent.text_ent.__eq__(
+                                                        self.TEST_TEXT))),
+                     ('parent',
+                          MyEntity.parent.__eq__(member.parent.get_entity())),
+                     ]
+        for spec, expected in zip(specs, expecteds):
+            new_attr_name, expr = expected
+            visitor = ResourceToEntityFilterSpecificationVisitor(mb_cls)
+            spec.accept(visitor)
+            new_spec = visitor.expression
+            self.assert_equal(new_spec.attr_name, new_attr_name)
+            visitor = SqlFilterSpecificationVisitor(MyEntity)
+            new_spec.accept(visitor)
+            self.assert_equal(str(visitor.expression), str(expr))
+
+    def test_rdb_attribute_inspector(self):
+        with self.assert_raises(ValueError) as cm:
+            OrmAttributeInspector.inspect(MyEntity, 'text.something')
+        self.assert_true(str(cm.exception).endswith(
+                                    'references a terminal attribute.'))
+        with self.assert_raises(ValueError) as cm:
+            OrmAttributeInspector.inspect(MyEntity, 'DEFAULT_TEXT')
+        self.assert_true(str(cm.exception).endswith('not mapped.'))
+
+
+class MemoryDescriptorsTestCase(_DescriptorsTestCase):
+    config_file_name = 'configure_no_rdb.zcml'

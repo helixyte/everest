@@ -1,7 +1,7 @@
 """
 Representer related utilities.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
@@ -93,6 +93,7 @@ def data_element_tree_to_string(data_element):
                     if not IResourceDataElement in provided_by(attr_value):
                         stream.write("%s=%s" % (attr_name, attr_value))
                     else:
+                        stream.write("%s=" % attr_name)
                         __dump(attr_value, stream, offset)
             stream.write(')')
     stream = NativeIO()

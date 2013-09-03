@@ -1,7 +1,7 @@
 """
 Aggregate for the in-memory and filesystem backends.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
@@ -10,9 +10,6 @@ from everest.entities.base import RootAggregate
 from everest.exceptions import NoResultsException
 from everest.querying.base import EXPRESSION_KINDS
 from functools import partial
-from everest.utils import get_filter_specification_visitor
-from everest.utils import get_order_specification_visitor
-from pyramid.compat import iteritems_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryAggregate',
@@ -21,7 +18,7 @@ __all__ = ['MemoryAggregate',
 
 class MemoryAggregate(RootAggregate):
     """
-    Root aggregate implementation for the in-memory repository. 
+    Root aggregate implementation for the in-memory repository.
 
     :note: When entities without a slug are added to a memory aggregate, they
            can not be retrieved using the :meth:`get_by_slug` method.

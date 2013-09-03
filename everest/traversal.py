@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 4, 2011.
 """
 from everest.resources.interfaces import IResource
+#from everest.resources.staging import create_staging_collection
 from pyramid.traversal import ResourceTreeTraverser
 
 __docformat__ = 'reStructuredText en'

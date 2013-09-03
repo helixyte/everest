@@ -7,14 +7,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 8, 2013.
 """
 from everest.entities.traversal import AruVisitor
-from everest.entities.traversal import SourceTargetDataTreeTraverser
-from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
+from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
 from everest.repositories.memory.cache import EntityCache
 from everest.repositories.memory.querying import MemorySessionQuery
 from everest.repositories.state import EntityStateManager
 from everest.repositories.uow import UnitOfWork
+from everest.traversers import SourceTargetDataTreeTraverser
 from threading import local
 from transaction.interfaces import IDataManager
 from zope.interface import implementer # pylint: disable=E0611,F0401
@@ -28,7 +28,7 @@ __all__ = ['DataManager',
            ]
 
 
-class MemorySession(object):
+class MemorySession(Session):
     """
     Session object.
 
@@ -42,6 +42,46 @@ class MemorySession(object):
         self.__repository = repository
         self.__unit_of_work = UnitOfWork()
         self.__cache_map = {}
+
+    def get_by_id(self, entity_class, entity_id):
+        """
+        Retrieves the entity for the specified entity class and ID.
+        """
+        cache = self.__get_cache(entity_class)
+        return cache.get_by_id(entity_id)
+
+    def add(self, entity_class, entity):
+        """
+        Adds the given entity of the given entity class to the session.
+
+        At the point an entity is added, it must not have an ID or a slug
+        of another entity that is already in the session. However, both the ID
+        and the slug may be ``None`` values.
+        """
+        self.__traverse(entity_class, entity, None)
+
+    def remove(self, entity_class, entity):
+        """
+        Removes the given entity of the given entity class from the session.
+
+        :raises ValueError: If the entity to remove does not have an ID
+            (unless it is marked NEW).
+        """
+        self.__traverse(entity_class, None, entity)
+
+    def update(self, entity_class, data, target_entity):
+        """
+        Updates the existing entity with the same ID as the given entity
+        with the state of the latter.
+
+        :raises ValueError: If the session does not contain an entity with
+            the same ID as the ID of the given :param:`entity`.
+        """
+        self.__traverse(entity_class, data, target_entity)
+        return target_entity
+
+    def query(self, entity_class):
+        return MemorySessionQuery(entity_class, self, self.__repository)
 
     def begin(self):
         self.__unit_of_work.reset()
@@ -79,53 +119,6 @@ class MemorySession(object):
                 cache.add(ent)
         return ent
 
-    def add(self, entity_class, entity):
-        """
-        Adds the given entity of the given entity class to the session.
-
-        At the point an entity is added, it must not have an ID or a slug
-        of another entity that is already in the session. However, both the ID
-        and the slug may be ``None`` values.
-        """
-        self.__traverse(entity_class, entity, None)
-
-    def remove(self, entity_class, entity):
-        """
-        Removes the given entity of the given entity class from the session.
-
-        :raises ValueError: If the entity to remove does not have an ID
-            (unless it is marked NEW).
-        """
-        self.__traverse(entity_class, None, entity)
-
-    def update(self, entity_class, entity):
-        """
-        Updates the existing entity with the same ID as the given entity
-        with the state of the latter.
-
-        :raises ValueError: If the session does not contain an entity with
-            the same ID as the ID of the given :param:`entity`.
-        """
-        target_entity = self.get_by_id(entity_class, entity)
-        if target_entity is None:
-            # Not loaded into the session; try reloading from repository.
-            try:
-                target_entity = \
-                    self.query(entity_class).filter_by(id=entity.id).one()
-            except NoResultsException:
-                pass
-            if target_entity is None:
-                raise ValueError('Entity with ID %s to update not found.'
-                                 % entity.id)
-        self.__traverse(entity_class, entity, target_entity)
-
-    def get_by_id(self, entity_class, entity_id):
-        """
-        Retrieves the entity for the specified entity class and ID.
-        """
-        cache = self.__get_cache(entity_class)
-        return cache.get_by_id(entity_id)
-
     def get_by_slug(self, entity_class, entity_slug):
         """
         Retrieves the entity for the specified entity class and slug.
@@ -151,12 +144,11 @@ class MemorySession(object):
     def deleted(self):
         return self.__unit_of_work.get_deleted()
 
-    def query(self, entity_class):
-        return MemorySessionQuery(entity_class, self, self.__repository)
-
     def __traverse(self, entity_class, source_entity, target_entity):
+        agg = self.__repository.get_aggregate(entity_class)
         trv = SourceTargetDataTreeTraverser.make_traverser(source_entity,
-                                                           target_entity)
+                                                           target_entity,
+                                                           agg)
         vst = AruVisitor(entity_class,
                          self.__add, self.__remove, self.__update)
         trv.run(vst)

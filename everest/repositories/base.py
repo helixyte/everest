@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 5, 2013.
@@ -36,13 +36,13 @@ class Session(object):
     def get_by_id(self, entity_class, id_key):
         raise NotImplementedError('Abstract method.')
 
-    def add(self, entity_class, entity):
+    def add(self, entity_class, data):
         raise NotImplementedError('Abstract method.')
 
-    def remove(self, entity_class, entity):
+    def remove(self, entity_class, data):
         raise NotImplementedError('Abstract method.')
 
-    def update(self, entity_class, entity):
+    def update(self, entity_class, source_data, target_entity):
         raise NotImplementedError('Abstract method.')
 
     def query(self, entity_class):
@@ -54,20 +54,20 @@ class AutocommittingSessionMixin(object):
     Mixin classes for sessions that wrap every add, remove, and update
     operation into a transaction.
     """
-    def add(self, entity_class, entity):
+    def add(self, entity_class, data):
         self.begin()
-        super(AutocommittingSessionMixin, self).add(entity_class, entity)
+        super(AutocommittingSessionMixin, self).add(entity_class, data)
         self.commit()
 
-    def remove(self, entity_class, entity):
+    def remove(self, entity_class, data):
         self.begin()
-        super(AutocommittingSessionMixin, self).remove(entity_class, entity)
+        super(AutocommittingSessionMixin, self).remove(entity_class, data)
         self.commit()
 
-    def update(self, entity_class, entity):
+    def update(self, entity_class, source_data, target_entity):
         self.begin()
         updated_entity = super(AutocommittingSessionMixin, self).update(
-                                                        entity_class, entity)
+                                    entity_class, source_data, target_entity)
         self.commit()
         return updated_entity
 
@@ -78,12 +78,12 @@ class Repository(object):
     Base class for repositories.
 
     A repository has the following responsibilities:
-     * Configure and initialize a storage backend for resource data; 
-     * Create and cache aggregate and collection accessors for registered 
+     * Configure and initialize a storage backend for resource data;
+     * Create and cache aggregate and collection accessors for registered
        resources;
-     * Create and hold a session factory which is used to create a 
-       (thread-local) session. The session is used by the accessors to 
-       load entities and resources from the repository. 
+     * Create and hold a session factory which is used to create a
+       (thread-local) session. The session is used by the accessors to
+       load entities and resources from the repository.
     """
 
     #: A list of key names which can be used by :method:`configure`.
@@ -93,11 +93,11 @@ class Repository(object):
                  join_transaction=False, autocommit=False):
         """
         Constructor.
-        
+
         :param name: Name for this repository (propagated to repository).
         :param aggregate_class: The aggregate class to use when creating new
           aggregates in this repository.
-        :param join_transaction: Indicates whether this repository should 
+        :param join_transaction: Indicates whether this repository should
           participate in the Zope transaction.
         :param autocommit: Indicates whether changes should be committed
           automatically.
@@ -124,7 +124,7 @@ class Repository(object):
     def get_aggregate(self, resource):
         """
         Get a clone of the root aggregate for the given registered resource.
-        
+
         :param resource: Registered resource.
         :raises RuntimeError: If the repository has not been initialized yet.
         """
@@ -155,7 +155,7 @@ class Repository(object):
         """
         Sets the parent of the specified root collection to the given
         object (typically a service object).
-        
+
         :param resource: Registered resource.
         :raises ValueError: If no root collection has been created for the
           given registered resource.
@@ -168,11 +168,11 @@ class Repository(object):
 
     def configure(self, **config):
         """
-        Apply the given configuration key:value map to the configuration of 
+        Apply the given configuration key:value map to the configuration of
         this repository.
-        
+
         :raises ValueError: If the configuration map contains keys which are
-          not declared in the `_configurables` class variable. 
+          not declared in the `_configurables` class variable.
         """
         for key, val in config.items():
             if not key in self._configurables:
@@ -242,7 +242,7 @@ class Query(object):
     def count(self):
         """
         Returns the count of the entities in this query.
-        
+
         :note: This does not take slicing into account.
         """
         raise NotImplementedError('Abstract method.')
@@ -257,7 +257,7 @@ class Query(object):
     def one(self):
         """
         Returns exactly one result from this query.
-        
+
         :raises NoResultsException: if no results were found.
         :raises MultipleResultsException: if more than one result was found.
         """
@@ -284,7 +284,7 @@ class Query(object):
         """
         Sets the order expression for this query. Generative (returns a
         clone).
-        
+
         :note: If the query already has an order expression, the returned
             query will use the conjunction of both expressions.
         """

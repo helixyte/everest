@@ -13,8 +13,8 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
-from everest.constants import ResourceAttributeKinds
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
 from everest.representers.attributes import MappedAttributeKey
 from everest.representers.base import MappingResourceRepresenter
@@ -251,7 +251,7 @@ class CsvRepresentationParser(RepresentationParser):
                                  'which is configured to be ignored.'
                                  % attribute.repr_name)
         else:
-            if attribute.kind == ResourceAttributeKinds.TERMINAL:
+            if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 if not attribute_value is None:
                     data_el.set_terminal_converted(attribute, attribute_value)
             else:
@@ -266,7 +266,7 @@ class CsvRepresentationParser(RepresentationParser):
                     nested_attr_key = attribute_key + (attribute,)
                     # We recursively look for nested resource attributes in
                     # other fields.
-                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                    if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                         # For polymorphic classes, this lookup will only work
                         # if a representer (and a mapping) was initialized
                         # for each derived class.
@@ -290,7 +290,7 @@ class CsvRepresentationParser(RepresentationParser):
                     nested_data_el = \
                         self.__process_row(row_data, nested_rc_cls,
                                            nested_attr_key)
-                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                    if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                         if len(nested_data_el.data) > 0:
                             data_el.set_nested(attribute, nested_data_el)
                     elif len(nested_data_el) > 0:
@@ -308,11 +308,11 @@ class CsvRepresentationParser(RepresentationParser):
         if not self.__is_link(link):
             raise ValueError('Value for nested attribute "%s" '
                              'is not a link.' % attr.repr_name)
-        if attr.kind == ResourceAttributeKinds.MEMBER:
-            kind = ResourceKinds.MEMBER
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
+            kind = RESOURCE_KINDS.MEMBER
             rc_cls = get_member_class(attr.value_type)
         else:
-            kind = ResourceKinds.COLLECTION
+            kind = RESOURCE_KINDS.COLLECTION
             rc_cls = get_collection_class(attr.value_type)
         return self._mapping.create_linked_data_element(link,
                                                         kind,

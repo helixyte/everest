@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 29, 2013.
@@ -8,15 +8,15 @@ Created on Mar 29, 2013.
 __docformat__ = 'reStructuredText en'
 __all__ = ['CARDINALITIES',
            'CARDINALITY_CONSTANTS',
-           'CASCADES',
+           'RELATIONSHIP_DIRECTIONS',
+           'RELATIONSHIP_OPERATIONS',
            'DEFAULT_CASCADE',
-           'DomainAttributeKinds',
-           'ResourceAttributeKinds',
-           'ResourceKinds',
+           'RESOURCE_ATTRIBUTE_KINDS',
+           'RESOURCE_KINDS',
            ]
 
 
-class ResourceKinds(object):
+class RESOURCE_KINDS(object):
     """
     Static container for resource kind constants.
 
@@ -30,24 +30,7 @@ class ResourceKinds(object):
     COLLECTION = 'COLLECTION'
 
 
-class DomainAttributeKinds(object):
-    """
-    Static container for domain attribute kind constants.
-    
-    We have three kinds of managed domain attribute:
-        ENTITY :
-            an entity attribute
-        AGGREGATE :
-            an aggregate attribute
-        TERMINAL :
-            an attribute that is not a domain object
-    """
-    ENTITY = 'ENTITY'
-    AGGREGATE = 'AGGREGATE'
-    TERMINAL = 'TERMINAL'
-
-
-class ResourceAttributeKinds(object):
+class RESOURCE_ATTRIBUTE_KINDS(object):
     """
     Static container for resource attribute kind constants.
 
@@ -59,8 +42,8 @@ class ResourceAttributeKinds(object):
         TERMINAL :
             an attribute that is not a resource
     """
-    MEMBER = ResourceKinds.MEMBER
-    COLLECTION = ResourceKinds.COLLECTION
+    MEMBER = RESOURCE_KINDS.MEMBER
+    COLLECTION = RESOURCE_KINDS.COLLECTION
     TERMINAL = 'TERMINAL'
 
 
@@ -111,14 +94,27 @@ class CARDINALITIES(object):
                              CARDINALITY_CONSTANTS.MANY)
 
 
-class CASCADES(object):
+class RELATIONSHIP_OPERATIONS(object):
     """
-    Constants for cascading rules.
+    Constants for relationship operations.
     """
     ADD = 1
     REMOVE = 2
     UPDATE = 4
 
+    @staticmethod
+    def check(source, target):
+        return RELATIONSHIP_OPERATIONS.ADD if target is None \
+               else RELATIONSHIP_OPERATIONS.REMOVE if source is None \
+               else RELATIONSHIP_OPERATIONS.UPDATE
+
 
 #: The cascade chains enabled by default are "save-update" and "merge"
-DEFAULT_CASCADE = CASCADES.ADD | CASCADES.UPDATE
+DEFAULT_CASCADE = RELATIONSHIP_OPERATIONS.ADD | RELATIONSHIP_OPERATIONS.UPDATE
+
+
+class RELATIONSHIP_DIRECTIONS(object):
+    NONE = 0
+    FORWARD = 1
+    REVERSE = 2
+    BIDIRECTIONAL = 3

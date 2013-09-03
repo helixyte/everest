@@ -6,8 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 19, 2011.
 """
-from everest.constants import ResourceAttributeKinds
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.mime import XmlMime
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
@@ -262,13 +262,13 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         if not attr.namespace is None:
             q_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
         else:
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 xml_ns = \
                   self.mapping.configuration.get_option(XML_NAMESPACE_OPTION)
             else:
-                if attr.kind == ResourceAttributeKinds.MEMBER:
+                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                     attr_type = get_member_class(attr.value_type)
-                elif attr.kind == ResourceAttributeKinds.COLLECTION:
+                elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                     attr_type = get_collection_class(attr.value_type)
                 mp = self.mapping.mapping_registry.find_mapping(attr_type)
                 if not mp is None:
@@ -324,7 +324,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
         rc_data_el = mp.create_data_element_from_resource(resource)
         if provides_member_resource(resource):
             link_el = cls.create(resource_to_url(resource),
-                                 ResourceKinds.MEMBER,
+                                 RESOURCE_KINDS.MEMBER,
                                  relation=resource.relation,
                                  title=resource.title,
                                  **options)
@@ -334,7 +334,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
             # Collection links only get an actual link element if they
             # contain any members.
             link_el = cls.create(resource_to_url(resource),
-                                 ResourceKinds.COLLECTION,
+                                 RESOURCE_KINDS.COLLECTION,
                                  relation=resource.relation,
                                  title=resource.title,
                                  **options)

@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 12, 2013.
 """
-from everest.constants import DomainAttributeKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from sqlalchemy.orm.interfaces import MANYTOMANY
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
@@ -59,13 +59,13 @@ class OrmAttributeInspector(object):
                 pass
                 # We are at the last name token - this must be a TERMINAL
                 # or an ENTITY.
-#                if kind == DomainAttributeKinds.AGGREGATE:
+#                if kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
 #                    raise ValueError('Invalid attribute name "%s": the '
 #                                     'last element (%s) references an '
 #                                     'aggregate attribute.'
 #                                     % (attribute_name, ent_attr_token))
             else:
-                if kind == DomainAttributeKinds.TERMINAL:
+                if kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     # We should not get here - the last attribute was a
                     # terminal.
                     raise ValueError('Invalid attribute name "%s": the '
@@ -87,18 +87,19 @@ class OrmAttributeInspector(object):
         # We detect terminals by the absence of an "argument" attribute of
         # the attribute's property.
         if not hasattr(attr.property, 'argument'):
-            kind = DomainAttributeKinds.TERMINAL
+            kind = RESOURCE_ATTRIBUTE_KINDS.TERMINAL
             target_type = None
         else: # We have a relationship.
             target_type = attr.property.argument
             if attr.property.direction in (ONETOMANY, MANYTOMANY):
                 if not attr.property.uselist:
                     # 1:1
-                    kind = DomainAttributeKinds.ENTITY
+                    kind = RESOURCE_ATTRIBUTE_KINDS.MEMBER
                 else:
-                    kind = DomainAttributeKinds.AGGREGATE
+                    # 1:n or n:m
+                    kind = RESOURCE_ATTRIBUTE_KINDS.COLLECTION
             elif attr.property.direction == MANYTOONE:
-                kind = DomainAttributeKinds.ENTITY
+                kind = RESOURCE_ATTRIBUTE_KINDS.MEMBER
             else:
                 raise ValueError('Unsupported relationship direction "%s".' # pragma: no cover
                                  % attr.property.direction)

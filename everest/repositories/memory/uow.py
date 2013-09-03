@@ -40,7 +40,7 @@ class UnitOfWork(object):
 
     def register_clean(self, entity_class, entity):
         """
-        Registers the given entixty for the given class as CLEAN.
+        Registers the given entity for the given class as CLEAN.
 
         :returns: Cloned entity.
         """

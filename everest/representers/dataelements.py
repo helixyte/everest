@@ -7,8 +7,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012
 """
 from collections import OrderedDict
-from everest.constants import ResourceAttributeKinds
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
@@ -295,9 +295,9 @@ class SimpleLinkedDataElement(LinkedDataElement):
     @classmethod
     def create_from_resource(cls, resource):
         if provides_member_resource(resource):
-            kind = ResourceKinds.MEMBER
+            kind = RESOURCE_KINDS.MEMBER
         elif provides_collection_resource(resource):
-            kind = ResourceKinds.COLLECTION
+            kind = RESOURCE_KINDS.COLLECTION
         else:
             raise ValueError('"%s" is not a resource.' % resource)
         return cls.create(resource_to_url(resource), kind,
@@ -353,7 +353,7 @@ class DataElementAttributeProxy(object):
         except KeyError:
             raise AttributeError(name)
         else:
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 value = self.__data_element.get_terminal(attr)
             else:
                 nested_data_el = self.__data_element.get_nested(attr)
@@ -361,7 +361,7 @@ class DataElementAttributeProxy(object):
                     value = None
                 elif ILinkedDataElement in provided_by(nested_data_el):
                     value = nested_data_el # links are returned as-is.
-                elif attr.kind == ResourceAttributeKinds.MEMBER:
+                elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                     value = DataElementAttributeProxy(nested_data_el)
                 else:
                     value = [DataElementAttributeProxy(mb_el)
@@ -379,7 +379,7 @@ class DataElementAttributeProxy(object):
             except KeyError:
                 raise AttributeError(name)
             else:
-                if attr.kind == ResourceAttributeKinds.TERMINAL:
+                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     self.__data_element.set_terminal(attr, value)
                 else:
                     if not (isinstance(value, DataElement) or value is None):

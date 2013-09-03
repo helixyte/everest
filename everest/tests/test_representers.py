@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Mar 2, 2012.
 """
 from collections import OrderedDict
-from everest.constants import ResourceKinds
+from everest.constants import RESOURCE_KINDS
 from everest.mime import AtomMime
 from everest.mime import CsvMime
 from everest.mime import JsonMime
@@ -561,7 +561,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         mp = mp_reg.find_mapping(Link)
         de = mp.data_element_class.create_from_resource(coll)
         link_el = next(de.iterchildren())
-        self.assert_equal(link_el.get_kind(), ResourceKinds.COLLECTION)
+        self.assert_equal(link_el.get_kind(), RESOURCE_KINDS.COLLECTION)
         self.assert_not_equal(link_el.get_relation().find('myentity'), -1)
         self.assert_true(link_el.get_title().startswith('Collection of'))
         self.assert_true(link_el.get_id() is None)

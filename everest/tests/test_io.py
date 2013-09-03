@@ -53,15 +53,24 @@ __all__ = ['ConnectedResourcesTestCase',
 
 
 def _make_test_entity_member():
-    parent = MyEntityParent(id=0)
-    entity = MyEntity(id=0, parent=parent)
-    parent.child = entity
-    child = MyEntityChild(id=0, parent=entity)
+    parent = MyEntityParent()
+    entity = MyEntity(parent=parent)
+    if parent.child is None:
+        parent.child = entity
+    child = MyEntityChild()
     entity.children.append(child)
-    grandchild = MyEntityGrandchild(id=0, parent=child)
+    if child.parent is None:
+        child.parent = entity
+    grandchild = MyEntityGrandchild()
     child.children.append(grandchild)
+    if grandchild.parent is None:
+        grandchild.parent = child
     coll = create_staging_collection(IMyEntity)
-    return coll.create_member(entity)
+    mb = coll.create_member(entity)
+    parent.id = 0
+    entity.id = 0
+    child.id = 0
+    return mb
 
 
 class ResourceGraphTestCase(ResourceTestCase):

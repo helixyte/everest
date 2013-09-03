@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
@@ -87,6 +87,7 @@ class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):
         _MemorySessionTestCaseBase.set_up(self)
         self._repository = Repository('DUMMY', Aggregate,
                                       join_transaction=True)
+        self._repository.initialize()
         self._session = Session(self._repository)
 
 
@@ -94,6 +95,7 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
     def set_up(self):
         _MemorySessionTestCaseBase.set_up(self)
         self._repository = Repository('DUMMY', Aggregate)
+        self._repository.initialize()
         self._session = Session(self._repository)
 
     def test_references(self):
