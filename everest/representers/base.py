@@ -56,7 +56,7 @@ class ResourceRepresenter(Representer):
         self.resource_class = resource_class
 
     @classmethod
-    def create_from_resource(cls, rc):
+    def create_from_resource_class(cls, rc):
         """
         Factory method creating a new representer from the given registered
         resource.
@@ -72,7 +72,7 @@ class ResourceRepresenter(Representer):
     def data_from_representation(self, representation):
         """
         Converts the given representation to resource data.
-        
+
         :returns: resource data object which can be passed to the *_from_data
             methods
         """
@@ -81,7 +81,7 @@ class ResourceRepresenter(Representer):
     def representation_from_data(self, data):
         """
         Creates a representation from the given resource data.
-        
+
         :returns: string representation (using the MIME content type
             configured for this representer)
         """
@@ -116,10 +116,10 @@ class MappingResourceRepresenter(ResourceRepresenter):
     """
     Base class for resource representers that use configurable attribute
     mappings to perform conversions from resource representations and back.
-    
+
     The conversion is performed using four independent and highly customizable
     helper objects:
-    
+
      1. The *representation parser* responsible for converting the
         representation into a data element tree;
      2. The *data element parser* responsible for converting a data element
@@ -134,11 +134,10 @@ class MappingResourceRepresenter(ResourceRepresenter):
         self._mapping = mapping
 
     @classmethod
-    def create_from_resource(cls, rc):
+    def create_from_resource_class(cls, resource_class):
         mp_reg = get_mapping_registry(cls.content_type)
-        rc_cls = type(rc)
-        mp = mp_reg.find_or_create_mapping(rc_cls)
-        return cls(rc_cls, mp)
+        mp = mp_reg.find_or_create_mapping(resource_class)
+        return cls(resource_class, mp)
 
     @classmethod
     def make_mapping_registry(cls):
@@ -158,8 +157,8 @@ class MappingResourceRepresenter(ResourceRepresenter):
     def data_from_stream(self, stream):
         """
         Creates a data element reading a representation from the given stream.
-        
-        :returns: object implementing 
+
+        :returns: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         parser = self._make_representation_parser(stream, self.resource_class,
@@ -169,8 +168,8 @@ class MappingResourceRepresenter(ResourceRepresenter):
     def data_from_representation(self, representation):
         """
         Creates a data element from the given representation.
-        
-        :returns: object implementing 
+
+        :returns: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         stream = NativeIO(representation)
@@ -179,8 +178,8 @@ class MappingResourceRepresenter(ResourceRepresenter):
     def representation_from_data(self, data_element):
         """
         Converts the given data element into a representation.
-        
-        :param data_element: object implementing 
+
+        :param data_element: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         stream = NativeIO()
@@ -194,7 +193,7 @@ class MappingResourceRepresenter(ResourceRepresenter):
         """
         Converts the given data element into a resource.
 
-        :param data_element: object implementing 
+        :param data_element: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
         return self._mapping.map_to_resource(data_element)
@@ -222,7 +221,7 @@ class MappingResourceRepresenter(ResourceRepresenter):
         """
         Configures the options and attribute options for the mapping
         associated with this representer.
-        
+
         :param dict options: configuration options for the mapping associated
           with this representer.
         :param dict attribute_options: attribute options for the mapping
@@ -280,10 +279,10 @@ class RepresenterRegistry(object):
         """
         Registers a representer factory for the given combination of resource
         class and content type.
-        
+
         :param configuration: representer configuration. A default instance
           will be created if this is not given.
-        :type configuration: 
+        :type configuration:
             :class:`everest.representers.config.RepresenterConfiguration`
         """
         if not issubclass(resource_class, Resource):
@@ -296,7 +295,7 @@ class RepresenterRegistry(object):
         # of resource class and content type.
         rpr_cls = self.__rpr_classes[content_type]
         self.__rpr_factories[(resource_class, content_type)] = \
-                                            rpr_cls.create_from_resource
+                                            rpr_cls.create_from_resource_class
         if issubclass(rpr_cls, MappingResourceRepresenter):
             # Create or update an attribute mapping.
             mp_reg = self.__mp_regs[content_type]
@@ -328,22 +327,32 @@ class RepresenterRegistry(object):
                 # Store the new (or updated) mapping.
                 mp_reg.set_mapping(new_mp)
 
-    def create(self, resource, content_type):
+    def create(self, resource_class, content_type):
         """
-        Creates a representer for the given combination of resource and 
+        Creates a representer for the given combination of resource and
         content type. This will also find representer factories that were
         registered for a base class of the given resource.
         """
-        rc_cls = type(resource)
-        for base_rc_cls in rc_cls.__mro__:
+        rpr_fac = self.__find_representer_factory(resource_class,
+                                                  content_type)
+        if rpr_fac is None:
+            # Register a representer with default configuration on the fly
+            # and look again.
+            self.register(resource_class, content_type)
+            rpr_fac = self.__find_representer_factory(resource_class,
+                                                      content_type)
+        return rpr_fac(resource_class)
+
+    def __find_representer_factory(self, resource_class, content_type):
+        rpr_fac = None
+        for base_rc_cls in resource_class.__mro__:
             try:
                 rpr_fac = self.__rpr_factories[(base_rc_cls, content_type)]
             except KeyError:
-                rpr = None
+                pass
             else:
-                rpr = rpr_fac(resource)
                 break
-        return rpr
+        return rpr_fac
 
 
 class _RepresentationHandler(object):
