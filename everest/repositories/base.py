@@ -42,7 +42,7 @@ class Session(object):
     def remove(self, entity_class, data):
         raise NotImplementedError('Abstract method.')
 
-    def update(self, entity_class, source_data, target_entity):
+    def update(self, entity_class, data):
         raise NotImplementedError('Abstract method.')
 
     def query(self, entity_class):

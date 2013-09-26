@@ -4,11 +4,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 14, 2013.
 """
-from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.attributes import get_domain_class_attribute_iterator
 from everest.entities.attributes import get_domain_class_attribute_names
 from everest.utils import get_nested_attribute
-from everest.utils import resolve_nested_attribute
+from everest.utils import set_nested_attribute
 from pyramid.compat import iteritems_
 from weakref import ref
 
@@ -61,15 +60,6 @@ class EntityStateManager(object):
         self.__uow_ref = ref(unit_of_work)
         self.__state = None
         self.__last_state = self.get_state_data(entity_class, entity)
-
-    @classmethod
-    def clone(cls, entity_class, entity):
-        """
-        Returns a clone (=copy with identical state) of the given entity.
-        """
-        clone = object.__new__(entity.__class__)
-        cls.transfer_state_data(entity_class, entity, clone)
-        return clone
 
     @classmethod
     def manage(cls, entity_class, entity, unit_of_work):
@@ -150,32 +140,22 @@ class EntityStateManager(object):
     @classmethod
     def set_state_data(cls, entity_class, entity, data):
         attr_names = get_domain_class_attribute_names(entity_class)
+        nested_items = []
         for attr, new_attr_value in iteritems_(data):
             if not attr.entity_attr in attr_names:
                 raise ValueError('Can not set attribute "%s" for entity '
                                  '"%s".' % (attr.entity_attr, entity_class))
-            parent, parent_attr_name = \
-                    resolve_nested_attribute(entity, attr.entity_attr)
-            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
-                # Terminal attributes are set indiscriminately.
-                setattr(parent, parent_attr_name, new_attr_value)
+            if '.' in attr.entity_attr:
+                nested_items.append((attr, new_attr_value))
+                continue
             else:
-                # With relationship attributes, we have a little more work
-                # to do (check cardinality and backrefs). This is taken care
-                # of by a relationship object.
-                old_attr_value = getattr(parent, parent_attr_name)
-                if new_attr_value != old_attr_value:
-                    rel = attr.make_relationship(entity)
-                    if old_attr_value is None:
-                        rel.add(new_attr_value)
-                    elif new_attr_value is None:
-                        rel.remove(old_attr_value)
-                    else:
-                        rel.update(new_attr_value)
-
-#            # Avoid calling setattr here as that might trigger custom
-#            # callbacks.
-#            parent.__dict__[attr_name] = attr_value
+                setattr(entity, attr.entity_attr, new_attr_value)
+        for attr, new_attr_value in nested_items:
+            try:
+                set_nested_attribute(entity, attr.entity_attr, new_attr_value)
+            except AttributeError, exc:
+                if not new_attr_value is None:
+                    raise exc
 
     def __get_state(self):
         state = self.__state

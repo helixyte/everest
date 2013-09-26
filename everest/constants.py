@@ -9,7 +9,7 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['CARDINALITIES',
            'CARDINALITY_CONSTANTS',
            'RELATIONSHIP_DIRECTIONS',
-           'RELATIONSHIP_OPERATIONS',
+           'RELATION_OPERATIONS',
            'DEFAULT_CASCADE',
            'RESOURCE_ATTRIBUTE_KINDS',
            'RESOURCE_KINDS',
@@ -94,9 +94,9 @@ class CARDINALITIES(object):
                              CARDINALITY_CONSTANTS.MANY)
 
 
-class RELATIONSHIP_OPERATIONS(object):
+class RELATION_OPERATIONS(object):
     """
-    Constants for relationship operations.
+    Constants for relation operations.
     """
     ADD = 1
     REMOVE = 2
@@ -104,13 +104,13 @@ class RELATIONSHIP_OPERATIONS(object):
 
     @staticmethod
     def check(source, target):
-        return RELATIONSHIP_OPERATIONS.ADD if target is None \
-               else RELATIONSHIP_OPERATIONS.REMOVE if source is None \
-               else RELATIONSHIP_OPERATIONS.UPDATE
+        return RELATION_OPERATIONS.ADD if target is None \
+               else RELATION_OPERATIONS.REMOVE if source is None \
+               else RELATION_OPERATIONS.UPDATE
 
 
 #: The cascade chains enabled by default are "save-update" and "merge"
-DEFAULT_CASCADE = RELATIONSHIP_OPERATIONS.ADD | RELATIONSHIP_OPERATIONS.UPDATE
+DEFAULT_CASCADE = RELATION_OPERATIONS.ADD | RELATION_OPERATIONS.UPDATE
 
 
 class RELATIONSHIP_DIRECTIONS(object):

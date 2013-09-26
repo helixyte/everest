@@ -4,6 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 27, 2013.
 """
+from everest.constants import RELATION_OPERATIONS
 from everest.entities.base import Aggregate
 from everest.entities.base import RelationshipAggregate
 from everest.entities.traversal import AruVisitor
@@ -44,21 +45,24 @@ class StagingAggregate(Aggregate):
         return self.__cache[self.entity_class].get_by_slug(slug)
 
     def add(self, entity):
-        trv = SourceTargetDataTreeTraverser.make_traverser(entity, None, self)
+        trv = SourceTargetDataTreeTraverser.make_traverser(
+                                                entity,
+                                                RELATION_OPERATIONS.ADD,
+                                                self)
         trv.run(self.__visitor)
 
     def remove(self, entity):
-        trv = SourceTargetDataTreeTraverser.make_traverser(None, entity, self)
+        trv = SourceTargetDataTreeTraverser.make_traverser(
+                                                entity,
+                                                RELATION_OPERATIONS.REMOVE,
+                                                self)
         trv.run(self.__visitor)
 
     def update(self, entity):
-        target_entity = self.__cache.get_by_id(self.entity_class, entity.id)
-        if target_entity is None:
-            raise ValueError('Entity with ID %s to update not found.'
-                             % entity.id)
-        trv = SourceTargetDataTreeTraverser.make_traverser(entity,
-                                                           target_entity,
-                                                           self)
+        trv = SourceTargetDataTreeTraverser.make_traverser(
+                                                entity,
+                                                RELATION_OPERATIONS.UPDATE,
+                                                self)
         trv.run(self.__visitor)
 
     def query(self):

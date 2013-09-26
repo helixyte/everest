@@ -5,15 +5,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Aug 28, 2013.
 """
 from collections import OrderedDict
-from everest.attributes import AttributeValueMap
 from everest.attributes import get_attribute_cardinality
 from everest.attributes import is_terminal_attribute
 from everest.constants import CARDINALITY_CONSTANTS
 from everest.constants import RELATIONSHIP_DIRECTIONS
-from everest.constants import RELATIONSHIP_OPERATIONS
+from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.entities.attributes import get_domain_class_attribute_iterator
+from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.entities.relationship import DomainRelationship
 from everest.entities.utils import get_entity_class
@@ -21,6 +21,7 @@ from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.resources.attributes import get_resource_class_attribute_iterator
+from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import url_to_resource
@@ -86,6 +87,14 @@ class LazyDomainRelationship(DomainRelationship):
 #            self.relatee.append(related)
 
 
+class DataSequenceTraversalProxy(object):
+    def __init__(self, sequence_data):
+        self.__sequence_data = sequence_data
+
+    def __iter__(self):
+        return iter(self.__sequence_data)
+
+
 class DataTraversalProxy(object):
     """
     Abstract base class for data tree traversal proxies.
@@ -136,29 +145,45 @@ class DataTraversalProxy(object):
 
         :param data: source data node to traverse
         """
-        if isinstance(data, AttributeValueMap):
+        if isinstance(data, dict) or isinstance(data, list):
             prx_cls = AttributeValueMapDataTraversalProxy
-            args = (data,)
             rel_drct = RELATIONSHIP_DIRECTIONS.REVERSE
+            args = (rel_drct,)
+            is_sequence = isinstance(data, list)
+            if is_sequence:
+                item_iterator = iter(data)
         else:
             ifcs = provided_by(data)
-            if IEntity in ifcs:
+            if IEntity in ifcs or IAggregate in ifcs:
                 prx_cls = DomainDataTraversalProxy
-                args = (data, None)
                 rel_drct = RELATIONSHIP_DIRECTIONS.NONE
-            elif IMemberResource in ifcs:
+                args = (None, rel_drct)
+                is_sequence = IAggregate in ifcs
+                if is_sequence:
+                    item_iterator = iter(data)
+            elif IMemberResource in ifcs or ICollectionResource in ifcs:
                 prx_cls = ResourceDataTraversalProxy
-                args = (data, None)
                 rel_drct = RELATIONSHIP_DIRECTIONS.NONE
-            elif IMemberDataElement in ifcs:
+                args = (None, rel_drct)
+                is_sequence = ICollectionResource in ifcs
+                if is_sequence:
+                    item_iterator = iter(data)
+            elif IMemberDataElement in ifcs or ICollectionDataElement in ifcs:
                 prx_cls = DataElementDataTraversalProxy
-                args = (data,)
                 rel_drct = RELATIONSHIP_DIRECTIONS.REVERSE
+                args = (rel_drct,)
+                is_sequence = ICollectionDataElement in ifcs
+                if is_sequence:
+                    item_iterator = iter(data.get_members())
             else:
                 raise ValueError('Invalid data for source traversal proxy for '
                                  '"%s".' % data)
-        args += (rel_drct,)
-        return prx_cls(*args)
+        if is_sequence:
+            prx = DataSequenceTraversalProxy([prx_cls(item, *args)
+                                              for item in item_iterator])
+        else:
+            prx = prx_cls(data, *args)
+        return prx
 
     @classmethod
     def make_target_proxy(cls, data, accessor, manage_back_references=True):
@@ -173,19 +198,29 @@ class DataTraversalProxy(object):
           `True`.
         """
         ifcs = provided_by(data)
-        if IEntity in ifcs:
+        if IEntity in ifcs or IAggregate in ifcs:
             prx_cls = DomainDataTraversalProxy
-        elif IMemberResource in ifcs:
+            is_sequence = IAggregate in ifcs
+            if is_sequence:
+                item_iterator = iter(data)
+        elif IMemberResource in ifcs or ICollectionResource in ifcs:
             prx_cls = ResourceDataTraversalProxy
+            is_sequence = ICollectionResource in ifcs
+            if is_sequence:
+                item_iterator = iter(data)
         else:
             raise ValueError('Invalid data for target traversal proxy for '
                              '"%s".' % data)
-        args = (data, accessor)
         rel_drct = RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL
         if not manage_back_references:
             rel_drct &= ~RELATIONSHIP_DIRECTIONS.REVERSE
-        args += (rel_drct,)
-        return prx_cls(*args)
+        args = (accessor, rel_drct)
+        if is_sequence:
+            prx = DataSequenceTraversalProxy([prx_cls(item, *args)
+                                              for item in item_iterator])
+        else:
+            prx = prx_cls(data, *args)
+        return prx
 
     def make_relationship(self, attribute, direction):
         """
@@ -297,13 +332,6 @@ class AccessorDataTraversalProxyMixin(object):
     def get_matching(self, source_id):
         return self._accessor.get_by_id(source_id)
 
-    def _make_proxy_for_value(self, value):
-        if self._accessor is None:
-            acc = None
-        else:
-            acc = self._accessor.get_root_aggregate(value)
-        return self.__class__(value, acc, self.relationship_direction)
-
 
 class DomainDataTraversalProxy(AccessorDataTraversalProxyMixin,
                                DataTraversalProxy):
@@ -331,6 +359,13 @@ class DomainDataTraversalProxy(AccessorDataTraversalProxyMixin,
     def _get_proxied_attribute_value(self, attribute):
         return get_nested_attribute(self._data, attribute.entity_attr)
 
+    def _make_proxy_for_value(self, value):
+        if self._accessor is None:
+            acc = None
+        else:
+            acc = self._accessor.get_root_aggregate(value)
+        return self.__class__(value, acc, self.relationship_direction)
+
 
 class ResourceDataTraversalProxy(AccessorDataTraversalProxyMixin,
                                  DataTraversalProxy):
@@ -354,6 +389,13 @@ class ResourceDataTraversalProxy(AccessorDataTraversalProxyMixin,
 
     def _get_proxied_attribute_value(self, attribute):
         return get_nested_attribute(self._data, attribute.resource_attr)
+
+    def _make_proxy_for_value(self, value):
+        if self._accessor is None:
+            acc = None
+        else:
+            acc = self._accessor.get_root_collection(value)
+        return self.__class__(value, acc, self.relationship_direction)
 
 
 class ConvertingDataTraversalProxyMixin(object):
@@ -560,13 +602,10 @@ class SourceTargetDataTreeTraverser(object):
 
     When traversing along the UPDATE cascade,
     """
-    def __init__(self, source_proxy, target_proxy):
-        if not source_proxy is None and not target_proxy is None \
-           and source_proxy.get_id() != target_proxy.get_id():
-            raise ValueError('When both source and target root nodes are '
-                             'given, they both need to have the same ID.')
+    def __init__(self, source_proxy, target_proxy, root_is_sequence):
         self._src_prx = source_proxy
         self._tgt_prx = target_proxy
+        self.__root_is_sequence = root_is_sequence
         self.__traversed = set()
         if __debug__:
             self.__logger = get_logger('everest')
@@ -574,24 +613,86 @@ class SourceTargetDataTreeTraverser(object):
             self.__logger = None
 
     @classmethod
-    def make_traverser(cls, source_root, target_root, accessor,
+    def make_traverser(cls, data, rel_op, accessor, target=None,
                        manage_back_references=True):
 #        if isinstance(source_root, AttributeValueMap) and target_root is None:
 #            raise ValueError('Must supply a target root when traversing '
 #                             'with an attribute value map.')
-        if not source_root is None:
-            source_proxy = DataTraversalProxy.make_source_proxy(source_root)
+        if rel_op == RELATION_OPERATIONS.ADD \
+           or rel_op == RELATION_OPERATIONS.UPDATE:
+            if rel_op == RELATION_OPERATIONS.ADD and not target is None:
+                raise ValueError('Must not provide target data with '
+                                 'relation operation ADD.')
+            source_proxy = DataTraversalProxy.make_source_proxy(data)
+            source_is_sequence = isinstance(source_proxy,
+                                            DataSequenceTraversalProxy)
+            if not source_is_sequence:
+                source_id = source_proxy.get_id()
         else:
             source_proxy = None
-        if not target_root is None:
-            target_proxy = \
-                DataTraversalProxy.make_target_proxy(target_root,
+            source_is_sequence = False
+        if rel_op == RELATION_OPERATIONS.REMOVE \
+           or rel_op == RELATION_OPERATIONS.UPDATE:
+            mk_tgt_prx = DataTraversalProxy.make_target_proxy
+            if rel_op == RELATION_OPERATIONS.REMOVE:
+                if not target is None:
+                    raise ValueError('Must not provide target data with '
+                                     'relation operation REMOVE.')
+                target_proxy = mk_tgt_prx(data, accessor,
+                                          manage_back_references=
+                                                       manage_back_references)
+            else:
+                if accessor is None:
+                    raise ValueError('Need to provide an accessor when '
+                                     'performing UPDATE operations.')
+                if not target is None:
+                    target_proxy = mk_tgt_prx(target, accessor,
+                                              manage_back_references=
+                                                       manage_back_references)
+                elif not source_is_sequence:
+                    # Look up the (single) target.
+                    target_root = accessor.get_by_id(source_id)
+                    if target_root is None:
+                        raise ValueError('Entity with ID %s to update not '
+                                         'found.' % source_id)
+                    target_proxy = mk_tgt_prx(target_root, accessor,
+                                              manage_back_references=
+                                                       manage_back_references)
+                else:
+                    # Look up each element target and form a sequence
+                    # traversal proxy.
+                    tgt_ent_proxies = []
+                    for src_ent_prx in source_proxy:
+                        src_id = src_ent_prx.get_id()
+                        if src_id is None:
+                            continue
+                        tgt_ent = accessor.get_by_id(src_id)
+                        if not tgt_ent is None:
+                            tgt_ent_prx = mk_tgt_prx(target_root,
                                                      accessor,
                                                      manage_back_references=
                                                        manage_back_references)
+                            tgt_ent_proxies.append(tgt_ent_prx)
+                    target_proxy = DataSequenceTraversalProxy(tgt_ent_proxies)
+            target_is_sequence = isinstance(target_proxy,
+                                            DataSequenceTraversalProxy)
+            if not target_is_sequence:
+                target_id = target_proxy.get_id()
         else:
             target_proxy = None
-        return cls(source_proxy, target_proxy)
+            target_is_sequence = False
+        if not source_proxy is None and not target_proxy is None:
+            # Check for source/target consistency.
+            if not ((source_is_sequence and target_is_sequence) or
+                    (not source_is_sequence and not target_is_sequence)):
+                raise ValueError('When both source and target root nodes are '
+                                 'given, they can either both be sequences '
+                                 'or both not be sequences.')
+            if not source_is_sequence and source_id != target_id:
+                raise ValueError('When both source and target root nodes are '
+                                 'given, they both need to have the same ID.')
+        return cls(source_proxy, target_proxy,
+                   source_is_sequence or target_is_sequence)
 
     def run(self, visitor):
         """
@@ -602,7 +703,11 @@ class SourceTargetDataTreeTraverser(object):
         if __debug__:
             self.__log_run(visitor)
         visitor.prepare()
-        self.traverse_one([], None, self._src_prx, self._tgt_prx, visitor)
+        if not self.__root_is_sequence:
+            self.traverse_one([], None, self._src_prx, self._tgt_prx, visitor)
+        else:
+            self.traverse_many([], None, iter(self._src_prx),
+                               iter(self._tgt_prx), visitor)
         visitor.finalize()
 
     def traverse_one(self, path, attribute, source, target, visitor):
@@ -621,7 +726,7 @@ class SourceTargetDataTreeTraverser(object):
 #                raise ValueError('If the source has an ID, a target with'
 #                                 ' the same ID must exist.')
         prx = source or target
-        rel_op = RELATIONSHIP_OPERATIONS.check(source, target)
+        rel_op = RELATION_OPERATIONS.check(source, target)
         for attr in prx.relationship_attributes:
             # Check cascade settings.
             do_traverse = bool(attr.cascade & rel_op) \
@@ -635,14 +740,14 @@ class SourceTargetDataTreeTraverser(object):
                     attr_target = target.get_proxy(attr)
                 else:
                     attr_target = None
-                attr_rel_op = RELATIONSHIP_OPERATIONS.check(attr_source,
+                attr_rel_op = RELATION_OPERATIONS.check(attr_source,
                                                             attr_target)
-                if attr_rel_op == RELATIONSHIP_OPERATIONS.ADD:
-                    if rel_op == RELATIONSHIP_OPERATIONS.ADD:
+                if attr_rel_op == RELATION_OPERATIONS.ADD:
+                    if rel_op == RELATION_OPERATIONS.ADD:
                         parent = source
                     else:
                         parent = target
-                elif attr_rel_op == RELATIONSHIP_OPERATIONS.REMOVE:
+                elif attr_rel_op == RELATION_OPERATIONS.REMOVE:
                     parent = target
                 else: # UPDATE
                     parent = target
@@ -657,13 +762,13 @@ class SourceTargetDataTreeTraverser(object):
                     key = (attr_target, attr_target)
                     if key in self.__traversed:
                         continue
-                    if attr_rel_op == RELATIONSHIP_OPERATIONS.ADD:
+                    if attr_rel_op == RELATION_OPERATIONS.ADD:
 #                        if not attr_source.get_id() is None:
 #                            # We only ADD new items.
 #                            continue
                         src_items = [attr_source]
                         tgt_items = None
-                    elif attr_rel_op == RELATIONSHIP_OPERATIONS.REMOVE:
+                    elif attr_rel_op == RELATION_OPERATIONS.REMOVE:
                         src_items = None
                         tgt_items = [attr_target]
                     else: # UPDATE

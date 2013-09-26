@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 14, 2012.
@@ -18,8 +18,7 @@ from everest.tests.simple_app.resources import FooMember
 from mock import patch
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RelatedResourcesTestCase',
-           'ResourcesFilteringTestCase',
+__all__ = ['ResourcesFilteringTestCase',
            'ResourcesTestCase',
            ]
 
@@ -49,7 +48,7 @@ class ResourcesTestCase(ResourceTestCase):
         foo = FooEntity(id=0)
         mb = coll.create_member(foo)
         self.assert_true(mb in coll)
-        mb.delete()
+        coll.remove(mb)
         self.assert_false(mb in coll)
 
     def test__getitem__with_invalid_key_raises_error(self):
@@ -78,18 +77,8 @@ class ResourcesTestCase(ResourceTestCase):
         foo1 = FooEntity(id=0)
         foo1.name = 'foo1'
         # update_from_entity directly updates the entity.
-        mb0.update_from_entity(foo1)
+        mb0.update(foo1)
         self.assert_equal(mb0.get_entity().name, 'foo1')
-
-    def test_update_from_entities(self):
-        foo0 = FooEntity(id=0)
-        coll = get_root_collection(IFoo)
-        mb = coll.create_member(foo0)
-        self.assert_equal(set([mb.id for mb in coll]), set([0]))
-        #
-        ents = [FooEntity(id=1), FooEntity(id=2), FooEntity()]
-        coll.update_from_entities(ents)
-        self.assert_equal(set([mb.id for mb in coll]), set([1, 2, None]))
 
     def test_str(self):
         coll = get_root_collection(IFoo)
@@ -97,15 +86,15 @@ class ResourcesTestCase(ResourceTestCase):
         self.assert_true(coll_str.startswith('<FooCollection'))
 
 
-class RelatedResourcesTestCase(ResourceTestCase):
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_no_rdb.zcml'
-
-    def test_delete_related_member(self):
-        coll = create_collection()
-        mb = coll['0']
-        parent = mb.parent
-        parent.delete()
+#class RelatedResourcesTestCase(ResourceTestCase):
+#    package_name = 'everest.tests.complete_app'
+#    config_file_name = 'configure_no_rdb.zcml'
+#
+#    def test_delete_related_member(self):
+#        coll = create_collection()
+#        mb = coll['0']
+#        parent = mb.parent
+#        parent.remove(mb)
 
 
 class ResourcesFilteringTestCase(ResourceTestCase):

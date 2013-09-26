@@ -45,11 +45,9 @@ class UnitOfWork(object):
 
         :returns: Cloned entity.
         """
-        clone = EntityStateManager.clone(entity_class, entity)
-        EntityStateManager.manage(entity_class, clone, self)
-        EntityStateManager.set_state(clone, ENTITY_STATES.CLEAN)
-        self.__entity_set_map[entity_class].add(clone)
-        return clone
+        EntityStateManager.manage(entity_class, entity, self)
+        EntityStateManager.set_state(entity, ENTITY_STATES.CLEAN)
+        self.__entity_set_map[entity_class].add(entity)
 
     def register_deleted(self, entity_class, entity):
         """

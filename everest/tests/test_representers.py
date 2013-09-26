@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 2, 2012.
@@ -752,7 +752,7 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
         attribute_options = {('parent',):{WRITE_AS_LINK_OPTION:False}, }
         rpr.configure(attribute_options=attribute_options)
         de = rpr.data_from_resource(upd_mb)
-        mb.update_from_data(de)
+        mb.update(de)
         self.assert_equal(mb.parent.id, parent.id)
 
     def test_update_nested_collection_from_data(self):
@@ -776,7 +776,7 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
         rpr.configure(attribute_options=attribute_options)
         de = rpr.data_from_resource(upd_mb)
         #
-        mb.update_from_data(de)
+        mb.update(de)
         self.assert_equal(set([mb.id for mb in mb.children]), set([1, 2]))
 
 

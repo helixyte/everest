@@ -7,7 +7,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.entities.traversal import AruVisitor
 from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
@@ -28,6 +30,7 @@ from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
+from everest.traversers import SourceTargetDataTreeTraverser
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -138,11 +141,36 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resource=None):
-        trv = DataElementTreeTraverser(data_element, self,
-                                       direction=PROCESSING_DIRECTIONS.READ)
-        visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
-        trv.run(visitor)
-        return visitor.resource
+        if resource is None:
+            trv = DataElementTreeTraverser(data_element, self,
+                                           direction=
+                                                PROCESSING_DIRECTIONS.READ)
+            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
+            trv.run(visitor)
+            result = visitor.resource
+        else:
+            ifcs = provided_by(resource)
+            if IMemberResource in ifcs:
+                acc = resource.__parent__
+                is_sequence = False
+            elif ICollectionResource in ifcs:
+                acc = resource
+                is_sequence = True
+            else:
+                raise ValueError('"resource" argument must provide '
+                                 'IMemberResource or ICollectionResource.')
+            trv = SourceTargetDataTreeTraverser.make_traverser(
+                        data_element,
+                        RELATION_OPERATIONS.UPDATE,
+                        acc,
+                        target=resource)
+            visitor = AruVisitor(type(resource), root_is_sequence=is_sequence)
+            trv.run(visitor)
+            if is_sequence:
+                for ent in visitor.root:
+                    resource.create_member(ent)
+            result = resource
+        return result
 
     def map_to_data_element(self, resource):
         trv = ResourceTreeTraverser(resource, self,

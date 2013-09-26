@@ -185,11 +185,12 @@ class DataTreeVisitor(object):
 
 class AruVisitor(DataTreeVisitor):
     def __init__(self, rc_class, add_callback=None, remove_callback=None,
-                 update_callback=None):
+                 update_callback=None, root_is_sequence=False):
         DataTreeVisitor.__init__(self, rc_class)
         self.__add_callback = add_callback
         self.__remove_callback = remove_callback
         self.__update_callback = update_callback
+        self.__root_is_sequence = root_is_sequence
         self.root = None
         self.relationship_operations = None
 
@@ -255,7 +256,12 @@ class AruVisitor(DataTreeVisitor):
 #                                direction=tgt_parent.relationship_direction)
 #                    rel.update(entity)
         if is_root:
-            self.root = entity
+            if not self.__root_is_sequence:
+                self.root = entity
+            else:
+                if self.root is None:
+                    self.root = []
+                self.root.append(entity)
         elif not rel is None:
             self.relationship_operations.append(rel)
 

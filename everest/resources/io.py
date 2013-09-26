@@ -10,7 +10,6 @@ from collections import OrderedDict
 from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
-from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.memory.cache import EntityCacheMap
 from everest.representers.utils import as_representer
 from everest.resources.attributes import get_resource_class_attribute_names
@@ -22,7 +21,6 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
-from everest.utils import get_repository_manager
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
 from pyramid.compat import NativeIO
@@ -284,20 +282,29 @@ def find_connected_resources(resource, dependency_graph=None):
     resource_graph = \
                 build_resource_graph(resource,
                                      dependency_graph=dependency_graph)
-    # Build an ordered dictionary of collections.
-    collections = OrderedDict()
-    repo_mgr = get_repository_manager()
-    repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
-    repo.initialize()
+    entity_map = OrderedDict()
     for mb in topological_sorting(resource_graph):
         mb_cls = get_member_class(mb)
-        coll = collections.get(mb_cls)
-        if coll is None:
-            # Create new collection.
-            coll = repo.get_collection(mb)
-            collections[mb_cls] = coll
-        coll.add(mb)
-    return collections
+        ents = entity_map.get(mb_cls)
+        if ents is None:
+            ents = []
+            entity_map[mb_cls] = ents
+        ents.append(mb.get_entity())
+    return entity_map
+#    # Build an ordered dictionary of collections.
+#    collections = OrderedDict()
+#    repo_mgr = get_repository_manager()
+#    repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
+#    repo.initialize()
+#    for mb in topological_sorting(resource_graph):
+#        mb_cls = get_member_class(mb)
+#        coll = collections.get(mb_cls)
+#        if coll is None:
+#            # Create new collection.
+#            coll = repo.get_collection(mb)
+#            collections[mb_cls] = coll
+#        coll.add(mb)
+#    return collections
 
 
 class ResourceGraph(digraph):

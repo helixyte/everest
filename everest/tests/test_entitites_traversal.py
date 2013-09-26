@@ -4,15 +4,16 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 12, 2013.
 """
+from everest.constants import RELATION_OPERATIONS
 from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.base import Entity
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.testing import create_entity
+from everest.traversers import DomainDataTraversalProxy
 from everest.traversers import SourceTargetDataTreeTraverser
 from mock import MagicMock
-from everest.traversers import DomainDataTraversalProxy
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['SourceTargetDataTraverserTestCase',
@@ -26,7 +27,10 @@ class SourceTargetDataTraverserTestCase(EntityTestCase):
     def test_traverse_with_add(self):
         mock_vst = MagicMock()
         ent = create_entity(entity_id=None)
-        trv = SourceTargetDataTreeTraverser.make_traverser(ent, None, None)
+        trv = SourceTargetDataTreeTraverser.make_traverser(
+                                                    ent,
+                                                    RELATION_OPERATIONS.ADD,
+                                                    None)
         trv.run(mock_vst)
         parent_attr = get_domain_class_attribute(MyEntity, 'parent')
         children_attr = get_domain_class_attribute(MyEntity, 'children')

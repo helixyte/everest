@@ -4,8 +4,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 31, 2012.
 """
-from everest.constants import RELATIONSHIP_OPERATIONS
 from everest.constants import DEFAULT_CASCADE
+from everest.constants import RELATION_OPERATIONS
 from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.utils import get_root_aggregate
 from everest.querying.specifications import AscendingOrderSpecification
@@ -218,7 +218,7 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(self._aggregate.iterator())), 1)
         self.assert_equal(new_ent1.children, [new_child1])
         self.assert_equal(new_child1.parent, new_ent1)
-        csc = DEFAULT_CASCADE | RELATIONSHIP_OPERATIONS.REMOVE
+        csc = DEFAULT_CASCADE | RELATION_OPERATIONS.REMOVE
         with patch.object(get_domain_class_attribute(MyEntity, 'children'),
                           'cascade', csc):
             with patch.object(get_domain_class_attribute(MyEntityChild,

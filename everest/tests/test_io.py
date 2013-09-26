@@ -106,26 +106,26 @@ class ConnectedResourcesTestCase(ResourceGraphTestCase):
 
     def test_find_connected_with_member(self):
         member = _make_test_entity_member()
-        coll_map = find_connected_resources(member)
-        for coll in itervalues_(coll_map):
-            self.assert_equal(len(coll), 1)
+        ent_map = find_connected_resources(member)
+        for ents in itervalues_(ent_map):
+            self.assert_equal(len(ents), 1)
 
     def test_find_connected_with_collection(self):
         member = _make_test_entity_member()
-        coll_map = find_connected_resources(member.__parent__)
-        for coll in itervalues_(coll_map):
-            self.assert_equal(len(coll), 1)
+        ent_map = find_connected_resources(member.__parent__)
+        for ents in itervalues_(ent_map):
+            self.assert_equal(len(ents), 1)
 
     def test_find_connected_with_deps(self):
         member = _make_test_entity_member()
         dep_grph = \
             build_resource_dependency_graph(self._interfaces,
                                             include_backrefs=True)
-        coll_map = find_connected_resources(member,
+        ent_map = find_connected_resources(member,
                                             dependency_graph=dep_grph)
         # Backrefs should not make a difference since we check for duplicates.
-        for coll in itervalues_(coll_map):
-            self.assert_equal(len(coll), 1)
+        for ents in itervalues_(ent_map):
+            self.assert_equal(len(ents), 1)
 
     def test_convert_to_strings(self):
         member = _make_test_entity_member()

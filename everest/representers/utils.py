@@ -20,6 +20,7 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['as_representer',
            'data_element_tree_to_string',
            'get_mapping_registry',
+           'get_representer',
            ]
 
 
@@ -28,12 +29,21 @@ def as_representer(resource, content_type):
     Adapts the given resource and content type to a representer.
 
     :param resource: resource to adapt.
-    :param str content_type: content (MIME) type to create a
-        representer for.
+    :param str content_type: content (MIME) type to obtain a representer for.
     """
     reg = get_current_registry()
     rpr_reg = reg.queryUtility(IRepresenterRegistry)
     return rpr_reg.create(type(resource), content_type)
+
+
+def get_representer(resource_class, content_type):
+    """
+    :param resource_class: resource class to obtain a representer for.
+    :param str content_type: content (MIME) type to obtain a representer for.
+    """
+    reg = get_current_registry()
+    rpr_reg = reg.queryUtility(IRepresenterRegistry)
+    return rpr_reg.create(resource_class, content_type)
 
 
 def get_mapping_registry(content_type):

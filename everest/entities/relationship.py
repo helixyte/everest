@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 12, 2013.
 """
 from everest.constants import CARDINALITY_CONSTANTS
-from everest.constants import RELATIONSHIP_OPERATIONS
+from everest.constants import RELATION_OPERATIONS
 from everest.relationship import RELATIONSHIP_DIRECTIONS
 from everest.relationship import Relationship
 from everest.utils import get_nested_attribute
@@ -27,7 +27,7 @@ class DomainRelationship(Relationship):
         The add operation is performed on both ends of the relationship if
         appropriate entity attribute declarations have been made.
         """
-        self.__action(related, RELATIONSHIP_OPERATIONS.ADD, direction,
+        self.__action(related, RELATION_OPERATIONS.ADD, direction,
                       check_existing)
 
     def remove(self, related, direction=None, check_existing=False):
@@ -37,7 +37,7 @@ class DomainRelationship(Relationship):
         The remove operation is performed on both ends of the relationship if
         appropriate entity attribute declarations have been made.
         """
-        self.__action(related, RELATIONSHIP_OPERATIONS.REMOVE,
+        self.__action(related, RELATION_OPERATIONS.REMOVE,
                       direction, check_existing)
 
     def update(self, related, direction=None):
@@ -46,7 +46,7 @@ class DomainRelationship(Relationship):
 
         An update only affects attributes with cardinality one.
         """
-        self.__action(related, RELATIONSHIP_OPERATIONS.UPDATE,
+        self.__action(related, RELATION_OPERATIONS.UPDATE,
                       direction, None)
 
     def _get_specification_attributes(self):
@@ -71,27 +71,27 @@ class DomainRelationship(Relationship):
     def __action_one_direction(self, cardinality_relatee, rel_op,
                                relator, related, attr_name, check_existing):
         if cardinality_relatee == CARDINALITY_CONSTANTS.ONE:
-            if rel_op == RELATIONSHIP_OPERATIONS.UPDATE:
+            if rel_op == RELATION_OPERATIONS.UPDATE:
                 set_nested_attribute(relator, attr_name, related)
             else:
                 if check_existing:
                     rel_val = get_nested_attribute(relator, attr_name)
-                if rel_op == RELATIONSHIP_OPERATIONS.ADD:
+                if rel_op == RELATION_OPERATIONS.ADD:
                     if not (check_existing and rel_val is None):
                         set_nested_attribute(relator, attr_name, related)
-                elif rel_op == RELATIONSHIP_OPERATIONS.REMOVE:
+                elif rel_op == RELATION_OPERATIONS.REMOVE:
                     if not (check_existing and not rel_val is None):
                         set_nested_attribute(relator, attr_name, None)
         else:
-            if rel_op == RELATIONSHIP_OPERATIONS.UPDATE:
+            if rel_op == RELATION_OPERATIONS.UPDATE:
                 set_nested_attribute(relator, attr_name, related)
             else:
                 relatee = get_nested_attribute(relator, attr_name)
-                if rel_op == RELATIONSHIP_OPERATIONS.ADD:
+                if rel_op == RELATION_OPERATIONS.ADD:
                     if not (check_existing and related in relatee):
                         # FIXME: Assuming a list here.
                         relatee.append(related)
-                elif rel_op == RELATIONSHIP_OPERATIONS.REMOVE:
+                elif rel_op == RELATION_OPERATIONS.REMOVE:
                     if check_existing:
                         # FIXME: Assuming a list here.
                         relatee.remove(related)

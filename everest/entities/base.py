@@ -6,15 +6,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 12, 2011.
 """
-from everest.constants import RELATIONSHIP_OPERATIONS
+from everest.constants import RELATIONSHIP_DIRECTIONS
+from everest.constants import RELATION_OPERATIONS
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.querying.utils import get_filter_specification_factory
-from everest.traversers import DataTraversalProxy
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from zope.interface import implementer # pylint: disable=E0611,F0401
-from everest.constants import RELATIONSHIP_DIRECTIONS
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Aggregate',
@@ -374,15 +374,7 @@ class RootAggregate(Aggregate):
 #        if not isinstance(entity, self.entity_class):
 #            raise ValueError('Can only update entities of type "%s" through '
 #                             'this aggregate.' % self.entity_class)
-        if not IEntity.providedBy(data): # pylint: disable=E1101
-            target_id = DataTraversalProxy.make_source_proxy(data).get_id()
-        else:
-            target_id = data.id
-        target_entity = self.get_by_id(target_id)
-        if target_entity is None:
-            raise ValueError('Entity with ID %s to update not found.'
-                             % target_id)
-        return self._session.update(self.entity_class, data, target_entity)
+        return self._session.update(self.entity_class, data)
 
     def query(self):
         return self._session.query(self.entity_class)
@@ -460,7 +452,7 @@ class RelationshipAggregate(Aggregate):
                     entity,
                     direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
-        add_to_root = csc & RELATIONSHIP_OPERATIONS.ADD and entity.id is None
+        add_to_root = csc & RELATION_OPERATIONS.ADD and entity.id is None
         if add_to_root:
             self._root_aggregate.add(entity)
         self._relationship.add(
@@ -474,7 +466,7 @@ class RelationshipAggregate(Aggregate):
                     direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
         remove_from_root = \
-            csc & RELATIONSHIP_OPERATIONS.REMOVE and not entity.id is None
+            csc & RELATION_OPERATIONS.REMOVE and not entity.id is None
         if remove_from_root:
             self._root_aggregate.remove(entity)
         self._relationship.remove(
@@ -483,7 +475,7 @@ class RelationshipAggregate(Aggregate):
 
     def update(self, entity):
         csc = self._relationship.descriptor.cascade
-        if csc & RELATIONSHIP_OPERATIONS.UPDATE:
+        if csc & RELATION_OPERATIONS.UPDATE:
             upd_entity = self._root_aggregate.update(entity)
         else:
             upd_entity = entity

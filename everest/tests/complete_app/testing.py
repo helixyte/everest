@@ -45,5 +45,9 @@ def create_collection(entity_id1=0, entity_id2=1):
     coll.create_member(my_entity1)
     coll.create_member(my_entity2)
     my_entity1.id = entity_id1
+    my_entity1.parent.id = entity_id1
+    my_entity1.children[0].id = entity_id1
     my_entity2.id = entity_id2
+    my_entity2.parent.id = entity_id2
+    my_entity2.children[0].id = entity_id2
     return coll

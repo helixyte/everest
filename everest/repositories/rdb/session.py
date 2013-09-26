@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from everest.constants import RELATION_OPERATIONS
 from everest.entities.interfaces import IEntity
 from everest.entities.traversal import AruVisitor
 from everest.exceptions import NoResultsException
@@ -44,29 +45,31 @@ class RdbSession(Session, SaSession):
 
     def add(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            entity = self.__run_traversal(entity_class, data, None)
+            entity = self.__run_traversal(entity_class, data,
+                                          RELATION_OPERATIONS.ADD)
         else:
             entity = data
         SaSession.add(self, entity)
 
     def remove(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            entity = self.__run_traversal(entity_class, None, data)
+            entity = self.__run_traversal(entity_class, data,
+                                          RELATION_OPERATIONS.REMOVE)
         else:
             entity = data
         SaSession.delete(self, entity)
 
-    def update(self, entity_class, source_data, target_entity):
-        self.__run_traversal(entity_class, source_data, target_entity)
-        return target_entity
+    def update(self, entity_class, data):
+        return self.__run_traversal(entity_class, data,
+                                    RELATION_OPERATIONS.UPDATE)
 
     def query(self, entity_class):
         return SaSession.query(self, entity_class)
 
-    def __run_traversal(self, entity_class, source, target):
+    def __run_traversal(self, entity_class, data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)
         trv = SourceTargetDataTreeTraverser.make_traverser(
-                                    source, target, agg,
+                                    data, rel_op, agg,
                                     manage_back_references=False)
         vst = AruVisitor(entity_class, update_callback=self.__update)
         trv.run(vst)

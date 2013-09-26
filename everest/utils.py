@@ -61,6 +61,8 @@ def get_nested_attribute(obj, attribute):
     """
     Returns the value of the given (possibly dotted) attribute for the given
     object.
+
+    If any of the
     """
     parent, attr = resolve_nested_attribute(obj, attribute)
     if not parent is None:
