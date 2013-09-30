@@ -32,6 +32,8 @@ class RdbSession(Session, SaSession):
     """
     Special session class adapting the SQLAlchemy session for everest.
     """
+    IS_MANAGING_BACKREFERENCES = False
+
     def __init__(self, *args, **options):
         self.__repository = options.pop('repository')
         SaSession.__init__(self, *args, **options)

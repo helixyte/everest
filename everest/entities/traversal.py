@@ -196,7 +196,7 @@ class AruVisitor(DataTreeVisitor):
 
     def prepare(self):
         #: The root of the new source tree (ADD) or of the updated target
-        #: tree (UPDATE) or None (REMOVE).
+        #: tree (UPDATE) or the removed entity (REMOVE).
         self.root = None
         #:
         self.relationship_operations = []

@@ -27,17 +27,14 @@ class Relationship(object):
         self.relator = relator
         self.descriptor = descriptor
         self.direction = direction
-        self.__specification = None
 
     @property
     def specification(self):
         """
-        Returns a filter specification for the objects defined by this
-        relationship.
+        Returns a dynamically generated filter specification for the objects
+        defined by this relationship.
         """
-        if self.__specification is None:
-            self.__specification = self.__make_specification()
-        return self.__specification
+        return self.__make_specification()
 
     def _get_specification_attributes(self):
         raise NotImplementedError('Abstract method.')

@@ -168,7 +168,7 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(self._child_aggregate.iterator())), 1)
         self.assert_equal(len(list(self._aggregate.iterator())), 1)
         self.assert_equal(len(list(child_rel_agg.iterator())), 0)
-        self.assert_equal(new_ent1.children, [])
+#        self.assert_equal(new_ent1.children, [])
 #        self.assert_is_none(new_child1.parent)
         # Adding to a relationship aggregate .....
         child_rel_agg.add(new_child1)

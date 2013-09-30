@@ -74,14 +74,10 @@ class DomainRelationship(Relationship):
             if rel_op == RELATION_OPERATIONS.UPDATE:
                 set_nested_attribute(relator, attr_name, related)
             else:
-                if check_existing:
-                    rel_val = get_nested_attribute(relator, attr_name)
                 if rel_op == RELATION_OPERATIONS.ADD:
-                    if not (check_existing and rel_val is None):
-                        set_nested_attribute(relator, attr_name, related)
+                    set_nested_attribute(relator, attr_name, related)
                 elif rel_op == RELATION_OPERATIONS.REMOVE:
-                    if not (check_existing and not rel_val is None):
-                        set_nested_attribute(relator, attr_name, None)
+                    set_nested_attribute(relator, attr_name, None)
         else:
             if rel_op == RELATION_OPERATIONS.UPDATE:
                 set_nested_attribute(relator, attr_name, related)

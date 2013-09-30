@@ -70,16 +70,6 @@ class ResourcesTestCase(ResourceTestCase):
         exc_msg = 'Collection must have a title.'
         self.assert_equal(str(cm.exception), exc_msg)
 
-    def test_update_from_entity(self):
-        foo0 = FooEntity(id=0, name='foo0')
-        coll = get_root_collection(IFoo)
-        mb0 = coll.create_member(foo0)
-        foo1 = FooEntity(id=0)
-        foo1.name = 'foo1'
-        # update_from_entity directly updates the entity.
-        mb0.update(foo1)
-        self.assert_equal(mb0.get_entity().name, 'foo1')
-
     def test_str(self):
         coll = get_root_collection(IFoo)
         coll_str = str(coll)

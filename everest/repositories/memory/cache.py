@@ -8,6 +8,7 @@ Created on Feb 26, 2013.
 """
 from collections import defaultdict
 from everest.repositories.memory.querying import MemoryQuery
+from everest.repositories.state import EntityStateManager
 from itertools import islice
 from weakref import WeakValueDictionary
 
@@ -89,7 +90,7 @@ class EntityCache(object):
         # The slug can be a lazy attribute depending on the
         # value of other (possibly not yet initialized) attributes which is
         # why we can not always assume it is available at this point.
-        if not entity.slug is None:
+        if hasattr(entity, 'slug') and not entity.slug is None:
             if entity.slug in self.__slug_map:
                 raise ValueError('Duplicate entity slug "%s".' % entity.slug)
             self.__slug_map[entity.slug] = entity
@@ -178,9 +179,13 @@ class EntityCacheMap(object):
         cache = self.__cache_map[entity_class]
         cache.remove(entity)
 
-    def replace(self, entity_class, source_entity, target_entity): # pylint: disable=W0613
+    def replace(self, entity_class, entity):
         cache = self.__cache_map[entity_class]
-        cache.remove(source_entity)
+        cache.replace(entity)
+
+    def update(self, entity_class, target_entity, source_data):
+        EntityStateManager.set_state_data(entity_class,
+                                          target_entity, source_data)
 
     def query(self, entity_class):
         return MemoryQuery(entity_class,

@@ -9,7 +9,6 @@ from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
-from everest.repositories.memory import Session
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from mock import patch
@@ -78,13 +77,6 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         self._session.remove(MyEntity, ent)
         self._session.add(MyEntity, ent)
 
-    def test_update_entity_not_in_session_raises_error(self):
-        ent = MyEntity()
-        self.assert_raises(ValueError, self._session.update, MyEntity, ent)
-
-    def test_get_entity_not_in_session(self):
-        self.assert_is_none(self._session.get_by_id(MyEntity, '-1'))
-
 
 class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):
     def set_up(self):
@@ -92,7 +84,7 @@ class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):
         self._repository = Repository('DUMMY', Aggregate,
                                       join_transaction=True)
         self._repository.initialize()
-        self._session = Session(self._repository)
+        self._session = self._repository.session_factory()
 
 
 class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
@@ -100,7 +92,14 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         _MemorySessionTestCaseBase.set_up(self)
         self._repository = Repository('DUMMY', Aggregate)
         self._repository.initialize()
-        self._session = Session(self._repository)
+        self._session = self._repository.session_factory()
+
+    def test_update_entity_not_in_session_raises_error(self):
+        ent = MyEntity()
+        self.assert_raises(ValueError, self._session.update, MyEntity, ent)
+
+    def test_get_entity_not_in_session(self):
+        self.assert_is_none(self._session.get_by_id(MyEntity, '-1'))
 
     def test_references(self):
         ent = MyEntity()
@@ -275,9 +274,9 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         ent2 = MyEntity()
         ent2.id = ent1.id
         my_attr_value = 1
-        ent2.my_attr = my_attr_value
+        ent2.number = my_attr_value
         self._session.update(MyEntity, ent2)
         ent3 = self._session.get_by_id(MyEntity, ent1.id)
         self.assert_is_not_none(ent3)
         self.assert_equal(ent3.id, ent1.id)
-        self.assert_equal(ent3.my_attr, my_attr_value)
+        self.assert_equal(ent3.number, my_attr_value)

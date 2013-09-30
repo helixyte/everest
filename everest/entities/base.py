@@ -394,6 +394,8 @@ class RootAggregate(Aggregate):
           :class:`everest.relationship.ReferencedRelateeRelationship` or
           :class:`everest.relationship.BackreferencedRelatorRelationship`
         """
+        if not self._session.IS_MANAGING_BACKREFERENCES:
+            relationship.direction &= ~RELATIONSHIP_DIRECTIONS.REVERSE
         return RelationshipAggregate(self, relationship)
 
     def _query_by_id(self, id_key):
@@ -450,6 +452,7 @@ class RelationshipAggregate(Aggregate):
         rel_drct = self._relationship.direction
         self._relationship.add(
                     entity,
+                    check_existing=True,
                     direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
         add_to_root = csc & RELATION_OPERATIONS.ADD and entity.id is None
@@ -457,6 +460,7 @@ class RelationshipAggregate(Aggregate):
             self._root_aggregate.add(entity)
         self._relationship.add(
                     entity,
+                    check_existing=True,
                     direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.FORWARD)
 
     def remove(self, entity):
@@ -479,7 +483,6 @@ class RelationshipAggregate(Aggregate):
             upd_entity = self._root_aggregate.update(entity)
         else:
             upd_entity = entity
-        self._relationship.update(entity)
         return upd_entity
 
     def _get_filter(self):

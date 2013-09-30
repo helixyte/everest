@@ -190,18 +190,14 @@ class _DescriptorsTestCase(ResourceTestCase):
         self.assert_true(member.parent.get_entity() is parent)
 
     def test_collection_access(self):
-        parent = MyEntityParent()
-        entity = MyEntity(parent=parent)
+        parent = MyEntityParent(id=0)
+        entity = MyEntity(id=0, parent=parent)
         coll = get_root_collection(IMyEntity)
         member = coll.create_member(entity)
         self.assert_true(isinstance(member.children, Collection))
-        i = 0
-        n = 5
-        while i < n:
-            child_entity = MyEntityChild()
-            member.children.create_member(child_entity)
-            i += 1
-        self.assert_equal(len(member.children), n)
+        child_entity = MyEntityChild()
+        member.children.create_member(child_entity)
+        self.assert_equal(len(member.children), 1)
 
     def test_update_from_data_terminal(self):
         my_entity = create_entity()

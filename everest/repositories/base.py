@@ -33,6 +33,10 @@ class Session(object):
     """
     Abstract base class for session objects.
     """
+    #: Flag to indicate whether session operations need to update back
+    #: references.
+    IS_MANAGING_BACKREFERENCES = None
+
     def get_by_id(self, entity_class, id_key):
         raise NotImplementedError('Abstract method.')
 
@@ -64,10 +68,10 @@ class AutocommittingSessionMixin(object):
         super(AutocommittingSessionMixin, self).remove(entity_class, data)
         self.commit()
 
-    def update(self, entity_class, source_data, target_entity):
+    def update(self, entity_class, data):
         self.begin()
-        updated_entity = super(AutocommittingSessionMixin, self).update(
-                                    entity_class, source_data, target_entity)
+        spr = super(AutocommittingSessionMixin, self)
+        updated_entity = spr.update(entity_class, data)
         self.commit()
         return updated_entity
 

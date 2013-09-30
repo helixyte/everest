@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 13, 2013.
@@ -55,7 +55,7 @@ class DomainRelationshipTestCase(EntityTestCase):
         self.assert_equal(rel.specification.attr_name, backref_attr_name)
         self.assert_equal(rel.specification.attr_value, my_ent)
         # Without a backref, the spec references the relatee.
-        with patch.object(attr, 'entity_backref', None):
+        with patch.object(attr.__class__, 'entity_backref', None):
             self.assert_true(isinstance(rel.specification,
                                         ValueEqualToFilterSpecification))
             self.assert_equal(rel.specification.attr_name, 'id')

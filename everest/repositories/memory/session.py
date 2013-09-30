@@ -42,6 +42,8 @@ class MemorySession(Session):
      * Performs synchronized commit on repository;
      * Sets up data manager to hook into transaction.
     """
+    IS_MANAGING_BACKREFERENCES = True
+
     def __init__(self, repository):
         self.__repository = repository
         self.__unit_of_work = UnitOfWork()
@@ -196,11 +198,13 @@ class MemorySession(Session):
         vst = AruVisitor(entity_class,
                          self.__add, self.__remove, self.__update)
         trv.run(vst)
+        return vst.root
 
     def __add(self, entity_class, entity):
         cache = self.__get_cache(entity_class)
-        # Do not add entities that were already loaded into the session again.
-        if not (not entity.id is None and entity in cache):
+        # We allow adding the same entity multiple times.
+        if not (not entity.id is None
+                and cache.get_by_id(entity.id) is entity):
             if not self.__unit_of_work.is_marked_deleted(entity):
                 self.__unit_of_work.register_new(entity_class, entity)
                 if not entity.id is None and cache.has_id(entity.id):
@@ -214,21 +218,17 @@ class MemorySession(Session):
 
     def __remove(self, entity_class, entity):
         if not self.__unit_of_work.is_registered(entity):
-            raise ValueError('Can not remove un-registered entity %s.' %
-                             entity)
+            if entity.id is None:
+                raise ValueError('Can not remove un-registered entity '
+                                 'without an ID')
+            self.__unit_of_work.register_deleted(entity_class, entity)
+        elif not self.__unit_of_work.is_marked_new(entity):
+            self.__unit_of_work.mark_deleted(entity)
+        else:
+            self.__unit_of_work.mark_clean(entity)
         cache = self.__get_cache(entity_class)
         if entity in cache:
-            if self.__unit_of_work.is_registered(entity):
-                if not self.__unit_of_work.is_marked_new(entity):
-                    self.__unit_of_work.mark_deleted(entity)
-                else:
-                    self.__unit_of_work.mark_clean(entity)
-                cache.remove(entity)
-#                if entity.id is None:
-#                    raise ValueError('Can not remove un-registered entity '
-#                                     'without an ID')
-#                else:
-#                    self.__unit_of_work.register_deleted(entity_class, entity)
+            cache.remove(entity)
 
     def __update(self, entity_class, target_entity, source_data):
         EntityStateManager.set_state_data(entity_class,

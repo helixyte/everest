@@ -110,7 +110,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
         mp_attr = MappedAttribute(rc_attr)
         self.assert_equal(mp_attr.repr_name, rc_attr.entity_attr)
         self.assert_raises(AttributeError, getattr, mp_attr, 'foo')
-        self.assert_true(str(mp_attr).startswith(mp_attr.__class__.__name__))
+        self.assert_true(str(mp_attr).startswith(mp_attr.attr_type.__name__))
 
     def test_ignore(self):
         rc_attr = get_resource_class_attribute(MyEntityMember, 'number')
@@ -742,8 +742,9 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
 
     def test_update_nested_member_from_data(self):
         # Set up member that does not have a parent.
+        root_coll = get_root_collection(IMyEntity)
         ent = MyEntity(id=1)
-        mb = MyEntityMember.create_from_entity(ent)
+        mb = root_coll.create_member(ent)
         # Set up second member with same ID that does have a parent.
         parent = MyEntityParent(id=0)
         upd_ent = MyEntity(id=1, parent=parent)

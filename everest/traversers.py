@@ -87,14 +87,6 @@ class LazyDomainRelationship(DomainRelationship):
 #            self.relatee.append(related)
 
 
-class DataSequenceTraversalProxy(object):
-    def __init__(self, sequence_data):
-        self.__sequence_data = sequence_data
-
-    def __iter__(self):
-        return iter(self.__sequence_data)
-
-
 class DataTraversalProxy(object):
     """
     Abstract base class for data tree traversal proxies.
@@ -575,6 +567,17 @@ class AttributeValueMapDataTraversalProxy(ConvertingDataTraversalProxyMixin,
         for nested_name, nested_value in iteritems_(nested_map):
             set_nested_attribute(entity, nested_name, nested_value)
         return entity
+
+
+class DataSequenceTraversalProxy(object):
+    """
+    Simple wrapper for a sequence of data traversal proxies.
+    """
+    def __init__(self, sequence_data):
+        self.__sequence_data = sequence_data
+
+    def __iter__(self):
+        return iter(self.__sequence_data)
 
 
 class SourceTargetDataTreeTraverser(object):

@@ -36,7 +36,7 @@ class StagingAggregate(Aggregate):
             cache = EntityCacheMap()
         self.__cache = cache
         self.__visitor = AruVisitor(entity_class, self.__cache.add,
-                                    self.__cache.remove, self.__cache.replace)
+                                    self.__cache.remove, self.__cache.update)
 
     def get_by_id(self, id_key):
         return self.__cache[self.entity_class].get_by_id(id_key)
