@@ -8,6 +8,7 @@ Created on Mar 29, 2013.
 __docformat__ = 'reStructuredText en'
 __all__ = ['CARDINALITIES',
            'CARDINALITY_CONSTANTS',
+           'MAPPING_DIRECTIONS',
            'RELATIONSHIP_DIRECTIONS',
            'RELATION_OPERATIONS',
            'DEFAULT_CASCADE',
@@ -118,3 +119,15 @@ class RELATIONSHIP_DIRECTIONS(object):
     FORWARD = 1
     REVERSE = 2
     BIDIRECTIONAL = 3
+
+
+class MAPPING_DIRECTIONS(object):
+    """
+    Constants specifying the direction resource data are mapped.
+    """
+    #: Resource data are being read (i.e., a representation is converted
+    #: to a resource.
+    READ = 'READ'
+    #: Resource data are being written (i.e., a resource is converted
+    #: to a representation.
+    WRITE = 'WRITE'

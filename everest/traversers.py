@@ -17,6 +17,7 @@ from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.entities.relationship import DomainRelationship
 from everest.entities.utils import get_entity_class
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
@@ -104,24 +105,21 @@ class DataTraversalProxy(object):
         self._data = data
         self.__relationships = {}
 
-    @property
-    def attributes(self):
-        return self._attribute_iterator()
+    def get_attributes(self, path=None):
+        return self._attribute_iterator(path)
 
-    @property
-    def relationship_attributes(self):
-        for attr in self._attribute_iterator():
+    def get_relationship_attributes(self, path=None):
+        for attr in self._attribute_iterator(path):
             if not is_terminal_attribute(attr):
                 yield attr
 
-    @property
-    def attribute_value_items(self):
-        for attr in self._attribute_iterator():
+    def get_attribute_value_items(self, path=None):
+        for attr in self._attribute_iterator(path):
             yield (attr, self._get_proxied_attribute_value(attr))
 
     @property
     def update_attribute_value_items(self):
-        for attr in self._attribute_iterator():
+        for attr in self._attribute_iterator(None):
             if attr.kind != RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 try:
                     attr_val = self._get_proxied_attribute_value(attr)
@@ -279,9 +277,10 @@ class DataTraversalProxy(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def _attribute_iterator(self):
+    def _attribute_iterator(self, path):
         """
-        Returns a dictionary mapping attribute names to attributes.
+        Returns a dictionary mapping attribute names to attributes for the
+        given traversal path.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -339,7 +338,7 @@ class DomainDataTraversalProxy(AccessorDataTraversalProxyMixin,
     def get_entity(self):
         return self._data
 
-    def _attribute_iterator(self):
+    def _attribute_iterator(self, path):
         it = get_domain_class_attribute_iterator(self._data)
         for attr in it:
             if not attr.entity_attr is None:
@@ -373,7 +372,7 @@ class ResourceDataTraversalProxy(AccessorDataTraversalProxyMixin,
     def get_entity(self):
         return self._data.get_entity()
 
-    def _attribute_iterator(self):
+    def _attribute_iterator(self, path):
         return get_resource_class_attribute_iterator(self._data)
 
     def _get_attribute_value(self, attribute):
@@ -453,9 +452,14 @@ class DataElementDataTraversalProxy(ConvertingDataTraversalProxyMixin,
             data_type = self._data.mapping.mapped_class
         return data_type
 
-    def _attribute_iterator(self):
+    def _attribute_iterator(self, path):
+        if path is None:
+            key = MappedAttributeKey(())
+        else:
+            key = path.attribute_key
         return self._data.mapping.attribute_iterator(
-                                            mapped_class=self.get_type())
+                                            mapped_class=self.get_type(),
+                                            key=key)
 
     def _get_attribute_value(self, attribute):
         data_el = self._data.get_nested(attribute)
@@ -527,7 +531,7 @@ class AttributeValueMapDataTraversalProxy(ConvertingDataTraversalProxyMixin,
 #        mb_cls = get_resource_class_for_relation(self._data['__class__'])
 #        return get_entity_class(mb_cls)
 
-    def _attribute_iterator(self):
+    def _attribute_iterator(self, path):
         raise NotImplementedError('Not implemented.')
 #        mb_cls = get_resource_class_for_relation(self._data['__class__'])
 #        return get_resource_class_attribute_iterator(mb_cls)
@@ -580,6 +584,45 @@ class DataSequenceTraversalProxy(object):
         return iter(self.__sequence_data)
 
 
+class TraversalPath(object):
+    """
+    Value object tracking a path taken by a data tree traverser.
+    """
+    def __init__(self, nodes=None, attributes=None):
+        if nodes is None:
+            nodes = []
+        if attributes is None:
+            attributes = []
+        self.nodes = nodes
+        self.attributes = attributes
+
+    def push(self, node, attribute):
+        self.nodes.append(node)
+        self.attributes.append(attribute)
+
+    def pop(self):
+        self.nodes.pop()
+        self.attributes.pop()
+
+    def __len__(self):
+        return len(self.nodes)
+
+    def clone(self):
+        return TraversalPath(self.nodes[:], self.attributes[:])
+
+    @property
+    def attribute_key(self):
+        return MappedAttributeKey(self.attributes)
+
+    @property
+    def parent(self):
+        if len(self.nodes) > 0:
+            parent = self.nodes[-1]
+        else:
+            parent = None
+        return parent
+
+
 class SourceTargetDataTreeTraverser(object):
     """
     Traverser for synchronous traversal of a source and a target data tree.
@@ -603,7 +646,6 @@ class SourceTargetDataTreeTraverser(object):
     When traversing along the REMOVE cascade, a child node of a node that is
     being removed when it has an ID (i.e., ID is not None).
 
-    When traversing along the UPDATE cascade,
     """
     def __init__(self, source_proxy, target_proxy, root_is_sequence):
         self._src_prx = source_proxy
@@ -707,9 +749,10 @@ class SourceTargetDataTreeTraverser(object):
             self.__log_run(visitor)
         visitor.prepare()
         if not self.__root_is_sequence:
-            self.traverse_one([], None, self._src_prx, self._tgt_prx, visitor)
+            self.traverse_one(TraversalPath(), None, self._src_prx,
+                              self._tgt_prx, visitor)
         else:
-            self.traverse_many([], None, iter(self._src_prx),
+            self.traverse_many(TraversalPath(), None, iter(self._src_prx),
                                iter(self._tgt_prx), visitor)
         visitor.finalize()
 
@@ -730,7 +773,7 @@ class SourceTargetDataTreeTraverser(object):
 #                                 ' the same ID must exist.')
         prx = source or target
         rel_op = RELATION_OPERATIONS.check(source, target)
-        for attr in prx.relationship_attributes:
+        for attr in prx.get_relationship_attributes(path):
             # Check cascade settings.
             do_traverse = bool(attr.cascade & rel_op) \
                           & prx.do_traverse(attr)
@@ -762,7 +805,7 @@ class SourceTargetDataTreeTraverser(object):
                         continue
                     # Check if we have already traversed this combination of
                     # source and target (circular references).
-                    key = (attr_target, attr_target)
+                    key = (attr_source, attr_target)
                     if key in self.__traversed:
                         continue
                     if attr_rel_op == RELATION_OPERATIONS.ADD:
@@ -786,8 +829,8 @@ class SourceTargetDataTreeTraverser(object):
                 else:
                     src_items = attr_source
                     tgt_items = attr_target
-                path.append(parent)
-                self.traverse_many(path[:], attr, src_items, tgt_items,
+                path.push(parent, attr)
+                self.traverse_many(path.clone(), attr, src_items, tgt_items,
                                    visitor)
                 path.pop()
         visitor.visit(path, attribute, source, target)
@@ -795,6 +838,8 @@ class SourceTargetDataTreeTraverser(object):
     def traverse_many(self, path, attribute, source_sequence,
                       target_sequence, visitor):
         """
+
+
         :param source_sequence: iterable of source data proxies
         :type source_sequence: iterator yielding instances of
                                `DataTraversalProxy` or None
@@ -833,7 +878,7 @@ class SourceTargetDataTreeTraverser(object):
 
     def __log_traverse_one(self, path, attribute, source, target):
         if not attribute is None:
-            parent = "(%s)" % path[-1]
+            parent = "(%s)" % path.parent
             if target is None:
                 mode = 'ADD'
                 data = '%s,None' % source

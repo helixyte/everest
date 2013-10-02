@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012.
 """
 from collections import OrderedDict
+from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.entities.attributes import \
@@ -41,20 +42,7 @@ __all__ = ['DataElementBuilderResourceTreeVisitor',
            'ResourceBuilderDataElementTreeVisitor',
            'ResourceDataVisitor',
            'ResourceTreeTraverser',
-           'PROCESSING_DIRECTIONS',
            ]
-
-
-class PROCESSING_DIRECTIONS(object):
-    """
-    Constants specifying the direction resource data are processed.
-    """
-    #: Resource data are being read (i.e., a representation is converted
-    #: to a resource.
-    READ = 'READ'
-    #: Resource data are being written (i.e., a resource is converted
-    #: to a representation.
-    WRITE = 'WRITE'
 
 
 class ResourceDataVisitor(object):
@@ -350,7 +338,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     def __init__(self, root, mapping, direction, ignore_none_values=True):
         """
         :param direction: processing direction (read or write). One of the
-            :class:`PROCESSING_DIRECTIONS` constant attributes.
+            :class:`MAPPING_DIRECTIONS` constant attributes.
         """
         DataTreeTraverser.__init__(self, root)
         self._mapping = mapping
@@ -373,7 +361,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
                 ignore_opt = self._get_ignore_option(mb_attr)
-                if mb_attr.should_ignore(ignore_opt, attr_key):
+                if mb_attr.should_ignore(self._direction, attr_key):
                     continue
                 if mb_attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     # Terminal attribute - extract.
@@ -413,7 +401,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         raise NotImplementedError('Abstract method.')
 
     def _get_ignore_option(self, attr):
-        if self._direction == PROCESSING_DIRECTIONS.READ:
+        if self._direction == MAPPING_DIRECTIONS.READ:
             opt = attr.options.get(IGNORE_ON_READ_OPTION)
         else:
             opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
@@ -428,7 +416,7 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     -> resource) and outbound during writing (resource -> data element).
     """
     def __init__(self, root, mapping,
-                 direction=PROCESSING_DIRECTIONS.READ,
+                 direction=MAPPING_DIRECTIONS.READ,
                  ignore_none_values=True):
         ResourceDataTreeTraverser.__init__(
                                     self, root, mapping, direction,
@@ -461,7 +449,7 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
         return node.mapping.mapped_class
 
     def _get_node_terminal(self, node, attr):
-        if self._direction == PROCESSING_DIRECTIONS.READ:
+        if self._direction == MAPPING_DIRECTIONS.READ:
             value = node.get_terminal(attr)
         else:
             value = node.get_terminal_converted(attr)
@@ -476,7 +464,7 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
     Mapping traverser for resource trees.
     """
     def __init__(self, root, mapping,
-                 direction=PROCESSING_DIRECTIONS.WRITE,
+                 direction=MAPPING_DIRECTIONS.WRITE,
                  ignore_none_values=True):
         ResourceDataTreeTraverser.__init__(
                                     self, root, mapping, direction,
@@ -618,7 +606,7 @@ class SourceTargetTreeTraverser(object):
 
 class SourceTargetDataElementTreeTraverser(SourceTargetTreeTraverser):
     def __init__(self, source, target, mapping,
-                 direction=PROCESSING_DIRECTIONS.READ,
+                 direction=MAPPING_DIRECTIONS.READ,
                  **kw):
         SourceTargetTreeTraverser.__init__(self, source, target, **kw)
         self._mapping = mapping
@@ -639,8 +627,7 @@ class SourceTargetDataElementTreeTraverser(SourceTargetTreeTraverser):
         return self._is_link_node(attr_key[-1])
 
     def _do_dispatch(self, attr_key, source_node, target_node):
-        ignore_opt = self._get_ignore_option(attr_key[-1])
-        return not attr_key[-1].should_ignore(ignore_opt, attr_key)
+        return not attr_key[-1].should_ignore(self._direction, attr_key)
 
     def _lookup_target(self, source_node):
         coll = source_node.get_root_collection()
@@ -668,7 +655,7 @@ class SourceTargetDataElementTreeTraverser(SourceTargetTreeTraverser):
                not attr.options.get(WRITE_AS_LINK_OPTION) is False
 
     def _get_ignore_option(self, attr):
-        if self._direction == PROCESSING_DIRECTIONS.READ:
+        if self._direction == MAPPING_DIRECTIONS.READ:
             opt = attr.options.get(IGNORE_ON_READ_OPTION)
         else:
             opt = attr.options.get(IGNORE_ON_WRITE_OPTION)

@@ -13,6 +13,7 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
+from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
@@ -20,7 +21,6 @@ from everest.representers.attributes import MappedAttributeKey
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
-from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -32,7 +32,6 @@ from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.interfaces import IRepresentationConverter
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
@@ -244,8 +243,7 @@ class CsvRepresentationParser(RepresentationParser):
         # fields we found from the set of all field names.
         if self.__is_first_row:
             self.__first_row_field_names.discard(attribute.repr_name)
-        ignore_opt = attribute.options.get(IGNORE_ON_READ_OPTION)
-        if attribute.should_ignore(ignore_opt, attribute_key):
+        if attribute.should_ignore(MAPPING_DIRECTIONS.READ, attribute_key):
             if not attribute_value in (None, ''):
                 raise ValueError('Value for attribute "%s" found '
                                  'which is configured to be ignored.'
@@ -494,7 +492,7 @@ class CsvRepresentationGenerator(RepresentationGenerator):
         # We also emit None values to make sure every data row has the same
         # number of fields.
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       direction=PROCESSING_DIRECTIONS.WRITE,
+                                       direction=MAPPING_DIRECTIONS.WRITE,
                                        ignore_none_values=False)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)

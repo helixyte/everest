@@ -20,9 +20,9 @@ from everest.representers.converters import NoOpConverter
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.mapping import MAPPING_DIRECTIONS
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataTreeTraverser
 from everest.representers.traversal import ResourceDataVisitor
 from everest.representers.traversal import \
@@ -62,7 +62,7 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
     Specialized traverser that extracts resource data from a tree of JSON data.
     """
     def __init__(self, root, mapping,
-                 direction=PROCESSING_DIRECTIONS.READ):
+                 direction=MAPPING_DIRECTIONS.READ):
         ResourceDataTreeTraverser.__init__(self, root, mapping, direction)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
@@ -174,7 +174,7 @@ class JsonRepresentationGenerator(RepresentationGenerator):
 
     def run(self, data_element):
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       direction=PROCESSING_DIRECTIONS.WRITE)
+                                       direction=MAPPING_DIRECTIONS.WRITE)
         vst = JsonDataElementTreeVisitor()
         trv.run(vst)
         rpr_string = dumps(vst.json_data)

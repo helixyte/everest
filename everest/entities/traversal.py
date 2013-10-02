@@ -216,7 +216,7 @@ class AruVisitor(DataTreeVisitor):
             ent_class = get_entity_class(self._rc_class)
         else:
             ent_class = get_entity_class(attribute.attr_type)
-            parent = path[-1]
+            parent = path.parent
         if source is None:
             # No source - REMOVE.
             entity = target.get_entity()

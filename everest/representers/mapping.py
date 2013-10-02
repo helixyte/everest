@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.traversal import AruVisitor
@@ -19,7 +20,6 @@ from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
 from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import get_resource_class_attributes
@@ -50,6 +50,8 @@ class Mapping(object):
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
     """
+    #: The mapping direction to use (READ or WRITE).
+    direction = None
 
     def __init__(self, mapping_registry, mapped_class, data_element_class,
                  configuration):
@@ -66,6 +68,10 @@ class Mapping(object):
         self.__mapped_attr_cache = {}
 
     def clone(self, options=None, attribute_options=None):
+        """
+        Returns a clone of this mapping that is configured with the given
+        option and attribute option dictionaries.
+        """
         copied_cfg = self.__configuration.copy()
         upd_cfg = type(copied_cfg)(options=options,
                                    attribute_options=attribute_options)
@@ -85,40 +91,53 @@ class Mapping(object):
 
     def get_attribute_map(self, mapped_class=None, key=None):
         """
-        Returns a map of all attributes of the given mapped class.
+        Returns an ordered map of all mapped attributes for the given mapped
+        class and attribute key.
 
         :param key: tuple of attribute names specifying a path to a nested
-          attribute in a resource tree. If this is not given, all attributes
+          attribute in a resource tree. If this is not given, the attributes
           in this mapping will be returned.
         """
         if mapped_class is None:
             mapped_class = self.__mapped_cls
-        if key is None:
-            key = MappedAttributeKey(()) # Top level access.
-        # FIXME: Investigate caching of mapped attributes.
-        attrs = None # self.__mapped_attr_cache.get((mapped_class, key))
-        if attrs is None:
-            attrs = self.__collect_mapped_attributes(mapped_class, key)
-#            self.__mapped_attr_cache[(mapped_class, key)] = attrs
-        return attrs
+        return OrderedDict([(attr.resource_attr, attr)
+                            for attr in self._attribute_iterator(mapped_class,
+                                                                 key)])
 
     def attribute_iterator(self, mapped_class=None, key=None):
-        attr_map = self.get_attribute_map(mapped_class=mapped_class, key=key)
-        for attr in itervalues_(attr_map):
+        """
+        Returns an iterator over all mapped attributes for the given mapped
+        class and attribute key. See :method:`get_attribute_map` for details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
             yield attr
 
     def terminal_attribute_iterator(self, mapped_class=None, key=None):
-        for attr in self.attribute_iterator(mapped_class, key=key):
+        """
+        Returns an iterator over all terminal mapped attributes for the given
+        mapped class and attribute key. See :method:`get_attribute_map` for
+        details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
             if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def nonterminal_attribute_iterator(self, mapped_class=None, key=None):
-        for attr in self.attribute_iterator(mapped_class=mapped_class,
-                                            key=key):
+        """
+        Returns an iterator over all non-terminal mapped attributes for the
+        given mapped class and attribute key. See :method:`get_attribute_map`
+        for details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
             if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def create_data_element(self, mapped_class=None):
+        """
+        Returns a new data element for the given mapped class.
+
+        :returns: object implementing :class:`IResourceDataElement`.
+        """
         if not mapped_class is None and mapped_class != self.__mapped_cls:
             mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             data_el = mp.create_data_element()
@@ -128,15 +147,33 @@ class Mapping(object):
 
     def create_linked_data_element(self, url, kind,
                                    relation=None, title=None):
+        """
+        Returns a new linked data element for the given url and kind.
+
+        :param str url: URL to assign to the linked data element.
+        :param str kind: kind of the resource that is linked. One of the
+          constantes defined by :class:`everest.constants.RESOURCE_KINDS`.
+        :returns: object implementing :class:`ILinkedDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create(url, kind,
                                             relation=relation, title=title)
 
     def create_data_element_from_resource(self, resource):
+        """
+        Returns a new data element for the given resource object.
+
+        :returns: object implementing :class:`IResourceDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(type(resource))
         return mp.data_element_class.create_from_resource(resource)
 
     def create_linked_data_element_from_resource(self, resource):
+        """
+        Returns a new linked data element for the given resource object.
+
+        :returns: object implementing :class:`ILinkedDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
@@ -144,7 +181,7 @@ class Mapping(object):
         if resource is None:
             trv = DataElementTreeTraverser(data_element, self,
                                            direction=
-                                                PROCESSING_DIRECTIONS.READ)
+                                                MAPPING_DIRECTIONS.READ)
             visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
             trv.run(visitor)
             result = visitor.resource
@@ -174,11 +211,18 @@ class Mapping(object):
 
     def map_to_data_element(self, resource):
         trv = ResourceTreeTraverser(resource, self,
-                                    direction=PROCESSING_DIRECTIONS.WRITE)
+                                    direction=MAPPING_DIRECTIONS.WRITE)
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
 
+    def as_reader(self):
+        return ReadMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
+                           self.__configuration)
+
+    def as_writer(self):
+        return WriteMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
+                            self.__configuration)
     @property
     def mapped_class(self):
         return self.__mapped_cls
@@ -190,6 +234,23 @@ class Mapping(object):
     @property
     def mapping_registry(self):
         return self.__mp_reg
+
+    def _attribute_iterator(self, mapped_class, key):
+        if mapped_class is None:
+            mapped_class = self.__mapped_cls
+        if key is None:
+            key = MappedAttributeKey(()) # Top level access.
+        attr_map = None # self.__mapped_attr_cache.get((mapped_class, key))
+        if attr_map is None:
+            attr_map = self.__collect_mapped_attributes(mapped_class, key)
+#            self.__mapped_attr_cache[(mapped_class, key)] = attr_map
+        for attr in itervalues_(attr_map):
+            if self.direction is None:
+                do_ignore = False
+            else:
+                do_ignore = attr.should_ignore(self.direction, key)
+            if not do_ignore:
+                yield attr
 
     def __collect_mapped_attributes(self, mapped_class, key):
         if isinstance(key, AttributeKey):
@@ -207,7 +268,7 @@ class Mapping(object):
                 attr_mp_opts = \
                         self.__configuration.get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
-                collected_mp_attrs[rc_attr.resource_attr] = new_mp_attr
+                collected_mp_attrs[new_mp_attr.resource_attr] = new_mp_attr
         else:
             # Indirect access - fetch mapped attributes from some other
             # class' mapping and clone.
@@ -235,6 +296,14 @@ class Mapping(object):
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.name] = clnd_mp_attr
         return collected_mp_attrs
+
+
+class ReadMapping(Mapping):
+    direction = MAPPING_DIRECTIONS.READ
+
+
+class WriteMapping(Mapping):
+    direction = MAPPING_DIRECTIONS.WRITE
 
 
 class MappingRegistry(object):

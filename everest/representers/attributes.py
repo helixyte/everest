@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on June 8, 2011.
 """
 from everest.constants import CARDINALITIES
+from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import IGNORE_ON_WRITE_OPTION
@@ -16,7 +17,10 @@ from itertools import izip
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
+           'DomainAttributeKey',
            'MappedAttribute',
+           'MappedAttributeKey',
+           'ResourceAttributeKey',
            ]
 
 
@@ -27,16 +31,16 @@ class AttributeKey(object):
     Each key consists of a tuple of mapped attributes that uniquely
     determine a node's position in the resource data tree.
     """
-    def __init__(self, data):
-        self.__data = list(data)
-        self.names = self._make_names(data)
+    def __init__(self, attributes):
+        self.attributes = list(attributes)
+        self.names = self._make_names(attributes)
 
-    def append(self, item):
-        self.__data.append(item)
-        self.names = self.names + self._make_names((item,))
+    def append(self, attribute):
+        self.attributes.append(attribute)
+        self.names = self.names + self._make_names((attribute,))
 
     def pop(self):
-        attr = self.__data.pop()
+        attr = self.attributes.pop()
         self.names = self.names[:-1]
         return attr
 
@@ -48,42 +52,34 @@ class AttributeKey(object):
                     in izip(self.names, other)))
 
     def __getitem__(self, index):
-        return self.__data.__getitem__(index)
+        return self.attributes.__getitem__(index)
 
     def __len__(self):
-        return len(self.__data)
+        return len(self.attributes)
 
     def __add__(self, other):
-        return self.__class__(self.__data + list(other))
+        return self.__class__(self.attributes + list(other))
 
     def __str__(self):
-        return 'AttributeKey(%s)' % '.'.join(self.names)
+        return '%s(%s)' % (self.__class__.__name__, '.'.join(self.names))
 
     def _make_names(self, data):
         raise NotImplementedError('Abstract method.')
 
 
 class MappedAttributeKey(AttributeKey):
-    def __init__(self, data):
-        AttributeKey.__init__(self, data)
-        self.offset = 0
-
-    def _make_names(self, data):
-        return tuple([attr.resource_attr for attr in data])
-
-    def __str__(self):
-        return 'MappedAttributeKey(%s, %d)' % ('.'.join(self.names),
-                                               self.offset)
+    def _make_names(self, attributes):
+        return tuple([attr.resource_attr for attr in attributes])
 
 
 class ResourceAttributeKey(AttributeKey):
-    def _make_names(self, data):
-        return tuple([attr.resource_attr for attr in data])
+    def _make_names(self, attributes):
+        return tuple([attr.resource_attr for attr in attributes])
 
 
 class DomainAttributeKey(AttributeKey):
-    def _make_names(self, data):
-        return tuple([attr.entity_attr for attr in data])
+    def _make_names(self, attributes):
+        return tuple([attr.entity_attr for attr in attributes])
 
 
 class MappedAttribute(object):
@@ -120,10 +116,10 @@ class MappedAttribute(object):
         new_options.update(options)
         return MappedAttribute(self.__attr, options=new_options)
 
-    def should_ignore(self, ignore_option, attribute_key):
+    def should_ignore(self, direction, attribute_key):
         """
-        Checks if the given attribute key should be ignored for the given
-        ignore option name.
+        Checks if this attribute should be ignored for the given
+        mapping direction and attribute key.
 
         Rules for ignoring attributes:
          * always ignore when IGNORE_ON_XXX_OPTION is set to True;
@@ -133,14 +129,31 @@ class MappedAttribute(object):
          * also ignore collection attributes when the cardinality is
            not MANYTOMANY.
 
-        :ignore_option: configuration option value.
-        :param attribute_key: :class:`AttributeKey` instance.
+        :direction: mapping direction (READ or WRITE).
+        :param attribute_key: mapped attribute key.
         """
-        do_ignore = ignore_option
-        if ignore_option is None:
+        if direction is None:
+            ignore_attr_value = None
+        else:
+            if direction == MAPPING_DIRECTIONS.READ:
+                ignore_attr_name = IGNORE_ON_READ_OPTION
+            else:
+                ignore_attr_name = IGNORE_ON_WRITE_OPTION
+            ignore_attr_value = getattr(self, ignore_attr_name)
+        do_ignore = ignore_attr_value
+        if ignore_attr_value is None:
+            # If an IGNORE option was not set, we determine the "net"
+            # nestedness of the attribute (distance to the nearest parent
+            # attribute that was set to IGNORE=False).
+            depth = len(attribute_key.attributes)
+            offset = -1
+            for offset, key_attr in enumerate(attribute_key.attributes[:-1]):
+                key_ignore_attr_value = getattr(key_attr, ignore_attr_name)
+                if not key_ignore_attr_value is False:
+                    break
+            net_depth = depth + 1 - (offset + 1)
             if self.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
-                depth = len(attribute_key) + 1 - attribute_key.offset
-                do_ignore = depth > 1
+                do_ignore = net_depth > 1
             elif self.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 do_ignore = self.cardinality != CARDINALITIES.MANYTOMANY
         return do_ignore

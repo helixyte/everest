@@ -153,6 +153,12 @@ class MappingResourceRepresenter(ResourceRepresenter):
 
     @classmethod
     def create_from_resource_class(cls, resource_class):
+        """
+        Creates a new representer for the given resource class.
+
+        The representer obtains a reference to the (freshly created or looked
+        up) mapping for the resource class.
+        """
         mp_reg = get_mapping_registry(cls.content_type)
         mp = mp_reg.find_or_create_mapping(resource_class)
         return cls(resource_class, mp)
@@ -239,8 +245,8 @@ class MappingResourceRepresenter(ResourceRepresenter):
 
     def configure(self, options=None, attribute_options=None): # pylint: disable=W0221
         """
-        Configures the options and attribute options for the mapping
-        associated with this representer.
+        Clones the mapping associated with this representer and configures
+        its options and attribute options with the given dictionaries.
 
         :param dict options: configuration options for the mapping associated
           with this representer.
