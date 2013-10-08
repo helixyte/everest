@@ -115,6 +115,9 @@ class JsonDataTreeTraverser(ResourceDataTreeTraverser):
 
 
 class JsonRepresentationParser(RepresentationParser):
+    """
+    Implementation of a representation parser for JSON.
+    """
     def run(self):
         json_data = loads(self._stream.read())
         trv = JsonDataTreeTraverser(json_data, self._mapping)
@@ -171,7 +174,6 @@ class JsonRepresentationGenerator(RepresentationGenerator):
     """
     A JSON generator for resource data.
     """
-
     def run(self, data_element):
         trv = DataElementTreeTraverser(data_element, self._mapping,
                                        direction=MAPPING_DIRECTIONS.WRITE)
@@ -182,7 +184,9 @@ class JsonRepresentationGenerator(RepresentationGenerator):
 
 
 class JsonResourceRepresenter(MappingResourceRepresenter):
-
+    """
+    Resource representer implementation for JSON.
+    """
     content_type = JsonMime
 
     @classmethod

@@ -487,7 +487,6 @@ class CsvRepresentationGenerator(RepresentationGenerator):
            dynamically. By default, column names for nested member attributes
            are built as dot-concatenation of the corresponding attribute key.
     """
-
     def run(self, data_element):
         # We also emit None values to make sure every data row has the same
         # number of fields.
@@ -506,9 +505,10 @@ class CsvRepresentationGenerator(RepresentationGenerator):
 
 
 class CsvResourceRepresenter(MappingResourceRepresenter):
-
+    """
+    Resource representer implementation for CSV.
+    """
     content_type = CsvMime
-
     #: The CSV dialect to use for exporting CSV data.
     CSV_EXPORT_DIALECT = 'export'
     #: The CSV dialect to use for importing CSV data.

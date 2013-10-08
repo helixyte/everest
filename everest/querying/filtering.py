@@ -1,7 +1,7 @@
 """
 Filter specification builder, visitor, director classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
@@ -205,7 +205,7 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         if isinstance(value, string_types):
             result = '"%s"' % value
         elif IResource.providedBy(value): # pylint: disable=E1101
-            result = resource_to_url(value)
+            result = "'%s'" % resource_to_url(value)
         else:
             result = str(value)
         return result

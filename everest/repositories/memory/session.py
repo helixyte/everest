@@ -129,8 +129,8 @@ class MemorySession(Session):
 
     def __clone(self, entity_class, entity, cache):
         clone = object.__new__(entity.__class__)
-        # We add the clone to the cache *before* we load it so that
-        # circular references will work. We need to set the ID
+        # We add the clone with its ID set to the cache *before* we load it
+        # so that circular references will work.
         clone.id = entity.id
         cache.add(clone)
         state = EntityStateManager.get_state_data(entity_class, entity)

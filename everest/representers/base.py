@@ -26,7 +26,7 @@ class Representer(object):
     A representer knows how to convert an object into a representation of a
     particular MIME type (content type) and vice versa.
     """
-
+    #: The registered MIME content type this representer is handling.
     content_type = None
 
     def from_string(self, string_representation):
@@ -66,7 +66,6 @@ class ResourceRepresenter(Representer):
     Abstract basee class for resource representers which know how to convert
     resource representations into resources and back.
     """
-
     def __init__(self, resource_class):
         Representer.__init__(self)
         self.resource_class = resource_class
@@ -277,14 +276,21 @@ class MappingResourceRepresenter(ResourceRepresenter):
 class RepresenterRegistry(object):
     """
     Registry for representer classes and representer factories.
-    """
 
+    For representers deriving from :class:`MappingResourceRepresenter`, a
+    mapping registry is created which then can be retrieved using the
+    :method:`get_mapping_registry` method.
+    """
     def __init__(self):
         self.__rpr_classes = {}
         self.__mp_regs = {}
         self.__rpr_factories = {}
 
     def register_representer_class(self, representer_class):
+        """
+        Registers the given representer class with this registry, using
+        its MIME content type as the key.
+        """
         if representer_class in self.__rpr_classes.values():
             raise ValueError('The representer class "%s" has already been '
                              'registered.' % representer_class)
@@ -296,9 +302,22 @@ class RepresenterRegistry(object):
             self.__mp_regs[representer_class.content_type] = mp_reg
 
     def is_registered_representer_class(self, representer_class):
+        """
+        Checks if the given representer class has been registered with this
+        registry.
+
+        :returns: Boolean check result.
+        """
         return representer_class in self.__rpr_classes.values()
 
     def get_mapping_registry(self, content_type):
+        """
+        Returns the mapping registry for the given MIME content type.
+
+        :param content_type: registered MIME content type (see
+          :class:`everest.mime.MimeTypeRegistry`).
+        :returns: instance of :class:`everest.mapping.MappingRegistry`.
+        """
         return self.__mp_regs.get(content_type)
 
     def register(self, resource_class, content_type, configuration=None):
@@ -383,23 +402,40 @@ class RepresenterRegistry(object):
 
 class _RepresentationHandler(object):
     """
-    Base class for objects handling a representation stream.
+    Base class for classes handling a representation stream.
     """
     def __init__(self, stream, resource_class, mapping):
+        """
+        :param stream: stream object for the representation data.
+        :param resource_class: registered member or collection resource
+          class.
+        :param mapping: attribute mapping for the given resource class,
+          instance of :class:`everest.representers.mapping.Mapping`.
+        """
         self._stream = stream
         self._resource_class = resource_class
         self._mapping = mapping
         self.__config = {}
 
     def get_option(self, option, default=None):
+        """
+        Returns the specified representer configuration option or the given
+        default, if the option was not configured.
+        """
         return self.__config.get(option, default)
 
     def set_option(self, option, value):
+        """
+        Sets the specified representer configuration option to the given
+        value.
+        """
         self.__config[option] = value
 
 
 class RepresentationParser(_RepresentationHandler):
-
+    """
+    Abstract base class for classes that parse representations.
+    """
     def run(self):
         """
         :return: The data element tree parsed from the handled stream.
@@ -408,7 +444,9 @@ class RepresentationParser(_RepresentationHandler):
 
 
 class RepresentationGenerator(_RepresentationHandler):
-
+    """
+    Abstract base class for classes that generate representations.
+    """
     def run(self, data_element):
         """
         :param data_element: The data element tree to be serialized.

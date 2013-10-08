@@ -344,13 +344,10 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
 
     def test_csv_member_to_data_roundtrip_in_place(self):
         mb = self._collection['0']
+        parent = mb.parent
         data_el = self._representer.data_from_resource(mb)
-        # Reload from data, ignoring the parent.
-        attribute_options = {('parent',):{IGNORE_OPTION:True, },
-                             ('parent_text',):{IGNORE_OPTION:True, }}
-        self._representer.configure(attribute_options=attribute_options)
         self._representer.resource_from_data(data_el, resource=mb)
-        self.assert_true(mb.parent is None)
+        self.assert_true(mb.parent.get_entity() is parent.get_entity())
 
     def test_csv_with_two_collections_expanded(self):
         def check_string(rpr_str):

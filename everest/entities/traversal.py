@@ -4,8 +4,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 8, 2013.
 """
-from everest.entities.utils import get_entity_class
 from everest.constants import RELATIONSHIP_DIRECTIONS
+from everest.entities.utils import get_entity_class
+from everest.resources.utils import get_member_class
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AruVisitor',
@@ -193,6 +194,12 @@ class AruVisitor(DataTreeVisitor):
         self.__root_is_sequence = root_is_sequence
         self.root = None
         self.relationship_operations = None
+
+    @classmethod
+    def make_visitor(cls, data, relation_operation, target=None,
+                     add_callback=None, remove_callback=None,
+                     update_callback=None):
+        pass
 
     def prepare(self):
         #: The root of the new source tree (ADD) or of the updated target

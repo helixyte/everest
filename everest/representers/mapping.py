@@ -18,6 +18,8 @@ from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.interfaces import ICollectionDataElement
+from everest.representers.interfaces import IMemberDataElement
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
@@ -34,6 +36,8 @@ from everest.traversers import SourceTargetDataTreeTraverser
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.resources.staging import create_staging_collection
+from everest.resources.utils import get_root_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -45,7 +49,7 @@ __all__ = ['Mapping',
 class Mapping(object):
     """
     Performs configurable resource <-> data element tree <-> representation
-    mappings.
+    attribute mappings.
 
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
@@ -178,39 +182,58 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resource=None):
-        if resource is None:
-            trv = DataElementTreeTraverser(data_element, self,
-                                           direction=
-                                                MAPPING_DIRECTIONS.READ)
-            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
-            trv.run(visitor)
-            result = visitor.resource
+        ifcs = provided_by(data_element)
+        if IMemberDataElement in ifcs:
+            is_sequence = False
+        elif ICollectionDataElement in ifcs:
+            is_sequence = True
         else:
+            raise ValueError('"data_element" argument must provide '
+                             'IMemberResource or ICollectionResource.')
+        if resource is None:
+#            trv = DataElementTreeTraverser(data_element, self.as_reader(),
+#                                           direction=
+#                                                MAPPING_DIRECTIONS.READ)
+#            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
+#            trv.run(visitor)
+#            result = visitor.resource
+            rel_op = RELATION_OPERATIONS.ADD
+            acc = None
+            coll = create_staging_collection(data_element.mapping.mapped_class)
+        else:
+            rel_op = RELATION_OPERATIONS.UPDATE
             ifcs = provided_by(resource)
             if IMemberResource in ifcs:
-                acc = resource.__parent__
-                is_sequence = False
+                coll = resource.__parent__
             elif ICollectionResource in ifcs:
-                acc = resource
-                is_sequence = True
+                coll = resource
             else:
                 raise ValueError('"resource" argument must provide '
                                  'IMemberResource or ICollectionResource.')
-            trv = SourceTargetDataTreeTraverser.make_traverser(
-                        data_element,
-                        RELATION_OPERATIONS.UPDATE,
-                        acc,
-                        target=resource)
-            visitor = AruVisitor(type(resource), root_is_sequence=is_sequence)
-            trv.run(visitor)
+            acc = get_root_collection(resource)
+        trv = SourceTargetDataTreeTraverser.make_traverser(
+                    data_element,
+                    rel_op,
+                    accessor=acc,
+                    target=resource,
+                    source_proxy_options=dict(mapping=self.as_reader()))
+        sess = coll.get_aggregate()
+        visitor = AruVisitor(data_element.mapping.mapped_class,
+                             root_is_sequence=is_sequence,
+                             add_callback=lambda ent_cls, ent:
+                                sess.get_root_aggregate(ent_cls).add(ent),
+                             remove_callback=lambda ent_cls, ent:
+                                sess.get_root_aggregate(ent_cls).remove(ent))
+        trv.run(visitor)
+        if resource is None:
             if is_sequence:
-                for ent in visitor.root:
-                    resource.create_member(ent)
-            result = resource
-        return result
+                resource = coll
+            else:
+                resource = data_element.mapping.mapped_class.create_from_entity(visitor.root)
+        return resource
 
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(resource, self,
+        trv = ResourceTreeTraverser(resource, self.as_writer(),
                                     direction=MAPPING_DIRECTIONS.WRITE)
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
@@ -307,7 +330,10 @@ class WriteMapping(Mapping):
 
 
 class MappingRegistry(object):
-
+    """
+    The mapping registry manages resource attribute mappings by resource
+    class.
+    """
     member_data_element_base_class = None
     collection_data_element_base_class = None
     linked_data_element_base_class = None

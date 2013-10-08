@@ -140,14 +140,13 @@ class MappedAttribute(object):
             else:
                 ignore_attr_name = IGNORE_ON_WRITE_OPTION
             ignore_attr_value = getattr(self, ignore_attr_name)
-        do_ignore = ignore_attr_value
         if ignore_attr_value is None:
-            # If an IGNORE option was not set, we determine the "net"
+            # If an IGNORE option was not set, we decide based on the "net"
             # nestedness of the attribute (distance to the nearest parent
             # attribute that was set to IGNORE=False).
             depth = len(attribute_key.attributes)
             offset = -1
-            for offset, key_attr in enumerate(attribute_key.attributes[:-1]):
+            for offset, key_attr in enumerate(attribute_key.attributes):
                 key_ignore_attr_value = getattr(key_attr, ignore_attr_name)
                 if not key_ignore_attr_value is False:
                     break
@@ -156,6 +155,13 @@ class MappedAttribute(object):
                 do_ignore = net_depth > 1
             elif self.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
                 do_ignore = self.cardinality != CARDINALITIES.MANYTOMANY
+            elif self.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
+                do_ignore = False
+            else:
+                raise ValueError('Invalid resource attribute kind "%s".'
+                                 % self.kind)
+        else:
+            do_ignore = ignore_attr_value
         return do_ignore
 
     @property

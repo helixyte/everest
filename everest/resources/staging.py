@@ -48,21 +48,21 @@ class StagingAggregate(Aggregate):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 entity,
                                                 RELATION_OPERATIONS.ADD,
-                                                self)
+                                                accessor=self)
         trv.run(self.__visitor)
 
     def remove(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 entity,
                                                 RELATION_OPERATIONS.REMOVE,
-                                                self)
+                                                accessor=self)
         trv.run(self.__visitor)
 
     def update(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 entity,
                                                 RELATION_OPERATIONS.UPDATE,
-                                                self)
+                                                accessor=self)
         trv.run(self.__visitor)
 
     def query(self):

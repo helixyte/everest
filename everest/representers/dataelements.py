@@ -43,7 +43,6 @@ class DataElement(object):
     Implementations may need to be adapted to the format of the external
     representation they manage.
     """
-
     #: Static attribute mapping.
     mapping = None
 
@@ -195,9 +194,9 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
 
     def get_terminal_converted(self, attr):
         """
-        Returns the value of the specified attribute converted to a 
+        Returns the value of the specified attribute converted to a
         representation value.
-        
+
         :param attr: attribute to retrieve.
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
         :returns: representation string
@@ -209,8 +208,8 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
 
     def set_terminal_converted(self, attr, repr_value):
         """
-        Converts the given representation value and sets the specified 
-        attribute value to the converted value. 
+        Converts the given representation value and sets the specified
+        attribute value to the converted value.
 
         :param attr: attribute to set.
         :param str repr_value: string value of the attribute to set.
@@ -320,12 +319,12 @@ class SimpleLinkedDataElement(LinkedDataElement):
 class DataElementAttributeProxy(object):
     """
     Convenience proxy for accessing data from data elements.
-    
+
     The proxy allows you to transparently access terminal, member, and
     collection attributes. Nested access is also supported.
-    
+
     Example: ::
-    
+
        prx = DataElementAttributeProxy(data_element)
        de_id = prx.id                              # terminal access
        de_parent = prx.parent                      # member access

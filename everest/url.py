@@ -57,12 +57,12 @@ class ResourceUrlConverter(object):
 
     def url_to_resource(self, url):
         """
-        Converts the given url into a resource.
+        Returns the resource that is addressed by the given URL.
 
         :param str url: URL to convert
         :return: member or collection resource
 
-        ::note : If the query string in the URL has multiple values for a
+        :note: If the query string in the URL has multiple values for a
           query parameter, the last definition in the query string wins.
         """
         parsed = urlparse.urlparse(url)
@@ -91,6 +91,8 @@ class ResourceUrlConverter(object):
 
     def resource_to_url(self, resource):
         """
+        Returns the URL for the given resource.
+
         :raises ValueError: If the given resource is floating (i.e., has
           the parent attribute set to `None`)
         """
