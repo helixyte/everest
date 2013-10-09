@@ -64,6 +64,7 @@ class StagingAggregate(Aggregate):
                                                 RELATION_OPERATIONS.UPDATE,
                                                 accessor=self)
         trv.run(self.__visitor)
+        return self.__visitor.root
 
     def query(self):
         return self.__cache.query(self.entity_class)

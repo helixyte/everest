@@ -1,13 +1,12 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 9, 2012.
 """
 from everest.mime import CsvMime
 from everest.mime import XmlMime
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.dataelements import DataElementAttributeProxy
 from everest.representers.dataelements import LinkedDataElement
@@ -35,31 +34,22 @@ class MappingTestCase(ResourceTestCase):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         attrs = mp.get_attribute_map()
-        self.assert_true(
-            attrs['text'].options.get(IGNORE_ON_READ_OPTION) is None)
-        self.assert_true(
-            attrs['text'].options.get(IGNORE_ON_WRITE_OPTION) is None)
-        self.assert_true(
-            attrs['parent'].options.get(IGNORE_ON_READ_OPTION) is None)
-        self.assert_true(
-            attrs['parent'].options.get(IGNORE_ON_WRITE_OPTION) is None)
+        self.assert_true(attrs['text'].options.get(IGNORE_OPTION) is None)
+        self.assert_true(attrs['parent'].options.get(IGNORE_OPTION) is None)
         key = ('parent',)
         parent_attrs = mp.get_attribute_map(key=key)
         self.assert_true(
-            parent_attrs['text'].options.get(IGNORE_ON_READ_OPTION) is None)
-        self.assert_true(
-            parent_attrs['text'].options.get(IGNORE_ON_WRITE_OPTION) is None)
+            parent_attrs['text'].options.get(IGNORE_OPTION) is None)
 
     def test_clone_with_options(self):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
-                attribute_options={('parent', 'text'):
-                                        {IGNORE_ON_READ_OPTION:True}})
+                attribute_options={('parent', 'text'):{IGNORE_OPTION:True}})
         key = ('parent',)
         parent_attrs = mp1.get_attribute_map(key=key)
         self.assert_true(
-            parent_attrs['text'].options.get(IGNORE_ON_READ_OPTION) is True)
+            parent_attrs['text'].options.get(IGNORE_OPTION) is True)
 
     def test_map_to_data_element(self):
         def _test(mb, cnt_type, parent_repr_name, children_repr_name):
@@ -125,10 +115,10 @@ class MappingTestCase(ResourceTestCase):
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)
         mp1 = mp.clone(
-            attribute_options={('children',):{IGNORE_ON_WRITE_OPTION:False,
+            attribute_options={('children',):{IGNORE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False},
                              ('children', 'children'):
-                                        {IGNORE_ON_WRITE_OPTION:False,
+                                        {IGNORE_OPTION:False,
                                          WRITE_AS_LINK_OPTION:False}
                              })
         de = mp1.map_to_data_element(mb)
@@ -198,5 +188,4 @@ class MappingTestCase(ResourceTestCase):
                 if attr.name == 'parent':
                     break
             self.assert_is_not_none(attr)
-            self.assert_equal(attr.ignore_on_write, True)
-            self.assert_equal(attr.ignore_on_read, True)
+            self.assert_equal(getattr(attr, IGNORE_OPTION), True)

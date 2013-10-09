@@ -7,10 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on June 8, 2011.
 """
 from everest.constants import CARDINALITIES
-from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
 from itertools import izip
@@ -99,12 +96,6 @@ class MappedAttribute(object):
         # Make sure we have a valid representation name.
         if options.get(REPR_NAME_OPTION) is None:
             options[REPR_NAME_OPTION] = attr.resource_attr
-        # Process the "ignore" option..
-        do_ignore = options.get(IGNORE_OPTION)
-        if not do_ignore is None:
-            # The IGNORE option always overrides settings for IGNORE_ON_XXX.
-            options[IGNORE_ON_READ_OPTION] = do_ignore
-            options[IGNORE_ON_WRITE_OPTION] = do_ignore
         self.options = options
         #
         self.__attr = attr
@@ -116,30 +107,22 @@ class MappedAttribute(object):
         new_options.update(options)
         return MappedAttribute(self.__attr, options=new_options)
 
-    def should_ignore(self, direction, attribute_key):
+    def should_ignore(self, attribute_key):
         """
-        Checks if this attribute should be ignored for the given
-        mapping direction and attribute key.
+        Checks if this attribute should be ignored for the given attribute
+        key.
 
         Rules for ignoring attributes:
-         * always ignore when IGNORE_ON_XXX_OPTION is set to True;
-         * always include when IGNORE_ON_XXX_OPTION is set to False;
+         * always ignore when IGNORE_OPTION is set to True;
+         * always include when IGNORE_OPTION is set to False;
          * also ignore member attributes when the length of the attribute
            key is > 0;
          * also ignore collection attributes when the cardinality is
            not MANYTOMANY.
 
-        :direction: mapping direction (READ or WRITE).
         :param attribute_key: mapped attribute key.
         """
-        if direction is None:
-            ignore_attr_value = None
-        else:
-            if direction == MAPPING_DIRECTIONS.READ:
-                ignore_attr_name = IGNORE_ON_READ_OPTION
-            else:
-                ignore_attr_name = IGNORE_ON_WRITE_OPTION
-            ignore_attr_value = getattr(self, ignore_attr_name)
+        ignore_attr_value = getattr(self, IGNORE_OPTION)
         if ignore_attr_value is None:
             # If an IGNORE option was not set, we decide based on the "net"
             # nestedness of the attribute (distance to the nearest parent
@@ -147,7 +130,7 @@ class MappedAttribute(object):
             depth = len(attribute_key.attributes)
             offset = -1
             for offset, key_attr in enumerate(attribute_key.attributes):
-                key_ignore_attr_value = getattr(key_attr, ignore_attr_name)
+                key_ignore_attr_value = getattr(key_attr, IGNORE_OPTION)
                 if not key_ignore_attr_value is False:
                     break
             net_depth = depth + 1 - (offset + 1)

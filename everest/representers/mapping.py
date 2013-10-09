@@ -8,9 +8,7 @@ Created on May 4, 2012.
 """
 from collections import OrderedDict
 from everest.constants import MAPPING_DIRECTIONS
-from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
-from everest.entities.traversal import AruVisitor
 from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
@@ -18,11 +16,7 @@ from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
-from everest.representers.interfaces import ICollectionDataElement
-from everest.representers.interfaces import IMemberDataElement
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
-from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.interfaces import ICollectionResource
@@ -32,12 +26,10 @@ from everest.resources.link import Link
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
-from everest.traversers import SourceTargetDataTreeTraverser
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from everest.resources.staging import create_staging_collection
-from everest.resources.utils import get_root_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -54,8 +46,9 @@ class Mapping(object):
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
     """
-    #: The mapping direction to use (READ or WRITE).
-    direction = None
+    #: Flag indicating if this mapping should prune the attribute tree
+    #: according to the IGNORE settings.
+    is_pruning = False
 
     def __init__(self, mapping_registry, mapped_class, data_element_class,
                  configuration):
@@ -95,7 +88,7 @@ class Mapping(object):
 
     def get_attribute_map(self, mapped_class=None, key=None):
         """
-        Returns an ordered map of all mapped attributes for the given mapped
+        Returns an ordered map of the mapped attributes for the given mapped
         class and attribute key.
 
         :param key: tuple of attribute names specifying a path to a nested
@@ -107,6 +100,13 @@ class Mapping(object):
         return OrderedDict([(attr.resource_attr, attr)
                             for attr in self._attribute_iterator(mapped_class,
                                                                  key)])
+
+    def get_attribute(self, attribute_name, mapped_class=None, key=None):
+        """
+        Returns the specified attribute from the map of all mapped attributes
+        for the given mapped class and attribute key.
+        """
+        return self.__get_attribute_map(mapped_class, key)[attribute_name]
 
     def attribute_iterator(self, mapped_class=None, key=None):
         """
@@ -182,70 +182,77 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resource=None):
-        ifcs = provided_by(data_element)
-        if IMemberDataElement in ifcs:
-            is_sequence = False
-        elif ICollectionDataElement in ifcs:
-            is_sequence = True
-        else:
-            raise ValueError('"data_element" argument must provide '
-                             'IMemberResource or ICollectionResource.')
         if resource is None:
-#            trv = DataElementTreeTraverser(data_element, self.as_reader(),
-#                                           direction=
-#                                                MAPPING_DIRECTIONS.READ)
-#            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
-#            trv.run(visitor)
-#            result = visitor.resource
-            rel_op = RELATION_OPERATIONS.ADD
-            acc = None
-            coll = create_staging_collection(data_element.mapping.mapped_class)
+            resource = \
+                create_staging_collection(data_element.mapping.mapped_class)
+            agg = resource.get_aggregate()
+            agg.add(data_element)
         else:
-            rel_op = RELATION_OPERATIONS.UPDATE
-            ifcs = provided_by(resource)
-            if IMemberResource in ifcs:
-                coll = resource.__parent__
-            elif ICollectionResource in ifcs:
-                coll = resource
-            else:
-                raise ValueError('"resource" argument must provide '
-                                 'IMemberResource or ICollectionResource.')
-            acc = get_root_collection(resource)
-        trv = SourceTargetDataTreeTraverser.make_traverser(
-                    data_element,
-                    rel_op,
-                    accessor=acc,
-                    target=resource,
-                    source_proxy_options=dict(mapping=self.as_reader()))
-        sess = coll.get_aggregate()
-        visitor = AruVisitor(data_element.mapping.mapped_class,
-                             root_is_sequence=is_sequence,
-                             add_callback=lambda ent_cls, ent:
-                                sess.get_root_aggregate(ent_cls).add(ent),
-                             remove_callback=lambda ent_cls, ent:
-                                sess.get_root_aggregate(ent_cls).remove(ent))
-        trv.run(visitor)
-        if resource is None:
-            if is_sequence:
-                resource = coll
-            else:
-                resource = data_element.mapping.mapped_class.create_from_entity(visitor.root)
+            resource.update(data_element)
         return resource
 
+#    def map_to_resource(self, data_element, resource=None):
+#        ifcs = provided_by(data_element)
+#        if IMemberDataElement in ifcs:
+#            is_sequence = False
+#        elif ICollectionDataElement in ifcs:
+#            is_sequence = True
+#        else:
+#            raise ValueError('"data_element" argument must provide '
+#                             'IMemberResource or ICollectionResource.')
+#        if resource is None:
+##            trv = DataElementTreeTraverser(data_element, self,
+##                                           direction=
+##                                                MAPPING_DIRECTIONS.READ)
+##            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
+##            trv.run(visitor)
+##            result = visitor.resource
+#            rel_op = RELATION_OPERATIONS.ADD
+#            acc = None
+#            coll = create_staging_collection(data_element.mapping.mapped_class)
+#        else:
+#            rel_op = RELATION_OPERATIONS.UPDATE
+#            ifcs = provided_by(resource)
+#            if IMemberResource in ifcs:
+#                coll = resource.__parent__
+#            elif ICollectionResource in ifcs:
+#                coll = resource
+#            else:
+#                raise ValueError('"resource" argument must provide '
+#                                 'IMemberResource or ICollectionResource.')
+#            acc = get_root_collection(resource)
+#        trv = SourceTargetDataTreeTraverser.make_traverser(
+#                    data_element,
+#                    rel_op,
+#                    accessor=acc,
+#                    target=resource,
+#                    source_proxy_options=dict(mapping=self))
+#        sess = coll.get_aggregate()
+#        visitor = AruVisitor(data_element.mapping.mapped_class,
+#                             root_is_sequence=is_sequence,
+#                             add_callback=lambda ent_cls, ent:
+#                                sess.get_root_aggregate(ent_cls).add(ent),
+#                             remove_callback=lambda ent_cls, ent:
+#                                sess.get_root_aggregate(ent_cls).remove(ent))
+#        trv.run(visitor)
+#        if resource is None:
+#            if is_sequence:
+#                resource = coll
+#            else:
+#                resource = data_element.mapping.mapped_class.create_from_entity(visitor.root)
+#        return resource
+
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(resource, self.as_writer(),
+        trv = ResourceTreeTraverser(resource, self.as_pruning(),
                                     direction=MAPPING_DIRECTIONS.WRITE)
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
 
-    def as_reader(self):
-        return ReadMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
-                           self.__configuration)
+    def as_pruning(self):
+        return PruningMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
+                              self.__configuration)
 
-    def as_writer(self):
-        return WriteMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
-                            self.__configuration)
     @property
     def mapped_class(self):
         return self.__mapped_cls
@@ -259,21 +266,32 @@ class Mapping(object):
         return self.__mp_reg
 
     def _attribute_iterator(self, mapped_class, key):
+        """
+        Returns an iterator over the attributes in this mapping for the
+        given mapped class and attribute key.
+
+        If this is a pruning mapping, the default behavior for ignoring
+        nested attributes are applied as well as the configured ignore
+        options.
+        """
+        for attr in itervalues_(self.__get_attribute_map(mapped_class, key)):
+            if self.is_pruning:
+                do_ignore = attr.should_ignore(key)
+            else:
+                do_ignore = False
+            if not do_ignore:
+                yield attr
+
+    def __get_attribute_map(self, mapped_class, key):
         if mapped_class is None:
             mapped_class = self.__mapped_cls
         if key is None:
             key = MappedAttributeKey(()) # Top level access.
-        attr_map = None # self.__mapped_attr_cache.get((mapped_class, key))
+        attr_map = self.__mapped_attr_cache.get((mapped_class, key))
         if attr_map is None:
             attr_map = self.__collect_mapped_attributes(mapped_class, key)
-#            self.__mapped_attr_cache[(mapped_class, key)] = attr_map
-        for attr in itervalues_(attr_map):
-            if self.direction is None:
-                do_ignore = False
-            else:
-                do_ignore = attr.should_ignore(self.direction, key)
-            if not do_ignore:
-                yield attr
+            self.__mapped_attr_cache[(mapped_class, key)] = attr_map
+        return attr_map
 
     def __collect_mapped_attributes(self, mapped_class, key):
         if isinstance(key, AttributeKey):
@@ -321,12 +339,8 @@ class Mapping(object):
         return collected_mp_attrs
 
 
-class ReadMapping(Mapping):
-    direction = MAPPING_DIRECTIONS.READ
-
-
-class WriteMapping(Mapping):
-    direction = MAPPING_DIRECTIONS.WRITE
+class PruningMapping(Mapping):
+    is_pruning = True
 
 
 class MappingRegistry(object):

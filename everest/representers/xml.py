@@ -32,6 +32,8 @@ from lxml import objectify
 from pkg_resources import resource_filename # pylint: disable=E0611
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import datetime
+from everest.representers.interfaces import IDataElement
+from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['XmlCollectionDataElement',
@@ -195,15 +197,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 # This should never happen.
                 raise ValueError('More than one child for member '
                                  'attribute "%s" found.' % attr) # pragma: no cover
-            # Link handling: look for wrapper tag with *one* link child.
-            if child.countchildren() == 1:
-                grand_child = child.getchildren()[0]
-                if ILinkedDataElement in provided_by(grand_child):
-                    # We inject the id attribute from the wrapper element.
-                    str_xml = child.get('id')
-                    if not str_xml is None:
-                        grand_child.set('id', str_xml)
-                    child = grand_child
+            child = self.__check_for_link(child)
         return child
 
     def set_nested(self, attr, data_element):
@@ -248,17 +242,25 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
 
     @property
     def data(self):
-        data_map = {}
+        data_map = OrderedDict()
         for child in self.iterchildren():
             idx = child.tag.find('}')
             if idx != -1:
                 tag = child.tag[idx + 1:]
             else:
                 tag = child.tag
-            data_map[tag] = child.text
+            if IDataElement.providedBy(child): # pylint:disable=E1101
+                value = self.__check_for_link(child)
+            else:
+                attr = self.mapping.get_attribute(tag)
+                value = XmlConverterRegistry.convert_from_representation(
+                                                            child.text,
+                                                            attr.value_type)
+            data_map[tag] = value
         return data_map
 
     def __get_q_tag(self, attr):
+        # FIXME: We should cache the namespace for each attribute.
         if not attr.namespace is None:
             q_tag = '{%s}%s' % (attr.namespace, attr.repr_name)
         else:
@@ -282,6 +284,18 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             else:
                 q_tag = attr.repr_name
         return q_tag
+
+    def __check_for_link(self, child):
+        # Link handling: look for wrapper tag with *one* link child.
+        if child.countchildren() == 1:
+            grand_child = child.getchildren()[0]
+            if ILinkedDataElement in provided_by(grand_child):
+                # We inject the id attribute from the wrapper element.
+                str_xml = child.get('id')
+                if not str_xml is None:
+                    grand_child.set('id', str_xml)
+                child = grand_child
+        return child
 
 
 class XmlCollectionDataElement(objectify.ObjectifiedElement,

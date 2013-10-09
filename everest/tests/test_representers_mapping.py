@@ -7,7 +7,7 @@ Created on Jun 7, 2012.
 from everest.mime import CsvMime
 from everest.representers.attributes import MappedAttributeKey
 from everest.representers.attributes import ResourceAttributeKey
-from everest.representers.config import IGNORE_ON_READ_OPTION
+from everest.representers.config import IGNORE_OPTION
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.resources import MyEntityChildMember
@@ -54,7 +54,7 @@ class MappingTestCase(ResourceTestCase):
         key = MappedAttributeKey(())
         self.assert_true(str(key).startswith(key.__class__.__name__))
         attr_map = self.mapping.get_attribute_map(key=key)
-        self.assert_true(attr_map['children'].options[IGNORE_ON_READ_OPTION]
+        self.assert_true(attr_map['children'].options[IGNORE_OPTION]
                          is False)
 
 

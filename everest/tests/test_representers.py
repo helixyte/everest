@@ -13,12 +13,13 @@ from everest.mime import XmlMime
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
 from everest.representers.attributes import MappedAttribute
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.csv import CsvData
 from everest.representers.csv import CsvResourceRepresenter
+from everest.representers.interfaces import ILinkedDataElement
+from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonDataTreeTraverser
 from everest.representers.traversal import \
@@ -116,8 +117,7 @@ class AttributesTestCase(Pep8CompliantTestCase):
         rc_attr = get_resource_class_attribute(MyEntityMember, 'number')
         mp_attr = MappedAttribute(rc_attr,
                                   options={IGNORE_OPTION:False})
-        self.assert_true(mp_attr.ignore_on_read is False)
-        self.assert_true(mp_attr.ignore_on_write is False)
+        self.assert_true(getattr(mp_attr, IGNORE_OPTION) is False)
 
     def test_clone(self):
         rc_attr = get_resource_class_attribute(MyEntityMember, 'number')
@@ -334,11 +334,10 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         self._test_with_collection_expanded(check_string)
 
     def test_csv_collection_to_data_roundtrip(self):
-        data_el = self._representer.data_from_resource(self._collection)
-        # Reload from data, ignoring the parent.
         attribute_options = {('parent',):{IGNORE_OPTION:True, },
                              ('parent_text',):{IGNORE_OPTION:True, }}
         self._representer.configure(attribute_options=attribute_options)
+        data_el = self._representer.data_from_resource(self._collection)
         loaded_coll = self._representer.resource_from_data(data_el)
         self.assert_true(iter(loaded_coll).next().parent is None)
 
@@ -490,9 +489,19 @@ class XmlRepresenterTestCase(ResourceTestCase):
         coll = create_collection()
         mb = next(iter(coll))
         mp = self.__get_member_mapping_and_representer()[0]
-        de = mp.map_to_data_element(mb)
-        self.assert_equal(de.data.keys(),
-                          ['text', 'date_time', 'myentityparent', 'number'])
+        mp.configuration.set_attribute_option(('parent',),
+                                              WRITE_AS_LINK_OPTION, False)
+        de1 = mp.map_to_data_element(mb)
+        self.assert_equal(de1.data.keys(),
+                          ['myentityparent', 'text', 'number', 'date_time'])
+        self.assert_equal(de1.data['number'], 1)
+        self.assert_true(
+            IMemberDataElement.providedBy(de1.data['myentityparent'])) # pylint:disable=E1101
+        mp.configuration.set_attribute_option(('parent',),
+                                              WRITE_AS_LINK_OPTION, True)
+        de2 = mp.map_to_data_element(mb)
+        self.assert_true(
+            ILinkedDataElement.providedBy(de2.data['myentityparent'])) # pylint:disable=E1101
 
     def test_create(self):
         mp = self.__get_collection_mapping_and_representer()[0]
@@ -769,7 +778,7 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
         upd_ent.children.append(child2)
         upd_mb = stg_coll.create_member(upd_ent)
         rpr = as_representer(mb, CsvMime)
-        attribute_options = {('children',):{IGNORE_ON_WRITE_OPTION:False,
+        attribute_options = {('children',):{IGNORE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False}, }
         rpr.configure(attribute_options=attribute_options)
         de = rpr.data_from_resource(upd_mb)

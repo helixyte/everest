@@ -14,8 +14,7 @@ from everest.entities.attributes import \
                         get_domain_class_terminal_attribute_iterator
 from everest.entities.utils import get_entity_class
 from everest.representers.attributes import MappedAttributeKey
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
+from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
@@ -361,7 +360,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
                 ignore_opt = self._get_ignore_option(mb_attr)
-                if mb_attr.should_ignore(self._direction, attr_key):
+                if mb_attr.should_ignore(attr_key):
                     continue
                 if mb_attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     # Terminal attribute - extract.
@@ -401,11 +400,7 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
         raise NotImplementedError('Abstract method.')
 
     def _get_ignore_option(self, attr):
-        if self._direction == MAPPING_DIRECTIONS.READ:
-            opt = attr.options.get(IGNORE_ON_READ_OPTION)
-        else:
-            opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
-        return opt
+        return attr.options.get(IGNORE_OPTION)
 
 
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
@@ -655,11 +650,7 @@ class SourceTargetDataElementTreeTraverser(SourceTargetTreeTraverser):
                not attr.options.get(WRITE_AS_LINK_OPTION) is False
 
     def _get_ignore_option(self, attr):
-        if self._direction == MAPPING_DIRECTIONS.READ:
-            opt = attr.options.get(IGNORE_ON_READ_OPTION)
-        else:
-            opt = attr.options.get(IGNORE_ON_WRITE_OPTION)
-        return opt
+        return attr.options.get(IGNORE_OPTION)
 
 
 class CrudResourceVisitor(object):

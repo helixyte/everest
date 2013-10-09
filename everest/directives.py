@@ -8,8 +8,6 @@ Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
 from everest.repositories.constants import REPOSITORY_TYPES
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
@@ -469,8 +467,7 @@ def option(_context, name, value, type=None): # pylint: disable=W0622
     if not type is None:
         field = type()
         value = field.fromUnicode(value)
-    elif name in (IGNORE_OPTION, IGNORE_ON_READ_OPTION,
-                  IGNORE_ON_WRITE_OPTION, WRITE_AS_LINK_OPTION,
+    elif name in (IGNORE_OPTION, WRITE_AS_LINK_OPTION,
                   WRITE_MEMBERS_AS_LINK_OPTION):
         field = Bool()
         value = field.fromUnicode(value)
