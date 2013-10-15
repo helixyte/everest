@@ -155,7 +155,8 @@ class _RepresenterTestCase(ResourceTestCase):
     def test_member_representer(self):
         mb = next(iter(self._collection))
         rpr = as_representer(mb, self.content_type)
-        mb_reloaded = rpr.from_string(rpr.to_string(mb))
+        rpr_str = rpr.to_string(mb)
+        mb_reloaded = rpr.from_string(rpr_str)
         self.assert_equal(mb.id, mb_reloaded.id)
 
     def _test_with_defaults(self, check_string, do_roundtrip=True):
@@ -177,7 +178,7 @@ class _RepresenterTestCase(ResourceTestCase):
         attribute_options = {('children',):{IGNORE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False}}
         self._test_rpr(attribute_options, check_string,
-                    self._check_nested_collection if do_roundtrip else None)
+                  self._check_nested_collection if do_roundtrip else None)
 
     def _test_with_two_collections_expanded(self, check_string,
                                             do_roundtrip=True):
@@ -186,8 +187,6 @@ class _RepresenterTestCase(ResourceTestCase):
                             WRITE_AS_LINK_OPTION:False},
              ('children', 'children'):{IGNORE_OPTION:False,
                                        WRITE_AS_LINK_OPTION:False},
-             ('children', 'no_backref_children'):{IGNORE_OPTION:False,
-                                                  WRITE_AS_LINK_OPTION:False},
              }
         self._test_rpr(attribute_options, check_string,
                     self._check_nested_collection if do_roundtrip else None)
@@ -352,7 +351,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         def check_string(rpr_str):
             lines = rpr_str.split(os.linesep)
             row_data = lines[1].split(',')
-            # Sixth field should be "children.children.id".
+            #  field should be "children.children.id".
             self.assert_equal(row_data[4], '0')
         self._test_with_two_collections_expanded(check_string,
                                                  do_roundtrip=False)
@@ -551,7 +550,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         self.assert_equal(attr.namespace, ns)
         de = mp.map_to_data_element(mb)
         self.assert_equal(de.data.keys(),
-                          ['text', 'date_time', 'myentityparent', 'number'])
+                          ['myentityparent', 'text', 'number', 'date_time'])
         parent_de = de.get_nested(attr)
         self.assert_equal(parent_de.tag.find('{'), -1)
 
@@ -752,28 +751,31 @@ class UpdateResourceFromDataTestCase(ResourceTestCase):
         ent = MyEntity(id=1)
         mb = root_coll.create_member(ent)
         # Set up second member with same ID that does have a parent.
+        coll = create_staging_collection(IMyEntity)
         parent = MyEntityParent(id=0)
         upd_ent = MyEntity(id=1, parent=parent)
-        upd_mb = MyEntityMember.create_from_entity(upd_ent)
+        upd_mb = coll.create_member(upd_ent)
         rpr = as_representer(mb, CsvMime)
-        attribute_options = {('parent',):{WRITE_AS_LINK_OPTION:False}, }
+        attribute_options = {('parent',):{WRITE_AS_LINK_OPTION:False}}
         rpr.configure(attribute_options=attribute_options)
         de = rpr.data_from_resource(upd_mb)
         mb.update(de)
         self.assert_equal(mb.parent.id, parent.id)
 
     def test_update_nested_collection_from_data(self):
-        # Set up member that does not have one child.
+        # Set up member that has one child.
         root_coll = get_root_collection(IMyEntity)
         ent = MyEntity(id=1)
         child0 = MyEntityChild(id=0)
         ent.children.append(child0)
         mb = root_coll.create_member(ent)
-        #
+        # Set up another member with two children with different IDs.
         stg_coll = create_staging_collection(IMyEntity)
         upd_ent = MyEntity(id=1)
         child1 = MyEntityChild(id=1)
+        child1.parent = upd_ent
         child2 = MyEntityChild(id=2)
+        child2.parent = upd_ent
         upd_ent.children.append(child1)
         upd_ent.children.append(child2)
         upd_mb = stg_coll.create_member(upd_ent)

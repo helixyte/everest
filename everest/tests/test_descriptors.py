@@ -426,7 +426,6 @@ class _DescriptorsTestCase(ResourceTestCase):
                                   IGNORE_OPTION:False},
                    ('children', 'children'):{WRITE_AS_LINK_OPTION:False,
                                              IGNORE_OPTION:False},
-                   ('children', 'no_backref_children'):{IGNORE_OPTION:True},
                    }
         conf = RepresenterConfiguration(attribute_options=mp_opts)
         mp = reg.create_mapping(MyEntityMember, conf)

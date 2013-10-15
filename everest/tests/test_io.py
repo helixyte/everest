@@ -70,6 +70,7 @@ def _make_test_entity_member():
     parent.id = 0
     entity.id = 0
     child.id = 0
+    grandchild.id = 0
     return mb
 
 

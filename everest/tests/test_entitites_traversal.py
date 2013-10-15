@@ -7,12 +7,12 @@ Created on Apr 12, 2013.
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.base import Entity
+from everest.entities.traversal import DomainDataTraversalProxy
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.testing import create_entity
-from everest.traversers import DomainDataTraversalProxy
-from everest.traversers import SourceTargetDataTreeTraverser
+from everest.traversal import SourceTargetDataTreeTraverser
 from mock import MagicMock
 
 __docformat__ = 'reStructuredText en'

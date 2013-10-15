@@ -17,7 +17,7 @@ from everest.repositories.memory.cache import EntityCache
 from everest.repositories.memory.querying import MemorySessionQuery
 from everest.repositories.state import EntityStateManager
 from everest.repositories.uow import UnitOfWork
-from everest.traversers import SourceTargetDataTreeTraverser
+from everest.traversal import SourceTargetDataTreeTraverser
 from pyramid.compat import iteritems_
 from threading import local
 from transaction.interfaces import IDataManager
@@ -200,7 +200,7 @@ class MemorySession(Session):
         trv.run(vst)
         return vst.root
 
-    def __add(self, entity_class, entity):
+    def __add(self, entity_class, entity, path): # pylint: disable=W0613
         cache = self.__get_cache(entity_class)
         # We allow adding the same entity multiple times.
         if not (not entity.id is None
@@ -216,7 +216,7 @@ class MemorySession(Session):
                 self.__unit_of_work.mark_clean(entity)
             cache.add(entity)
 
-    def __remove(self, entity_class, entity):
+    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
         if not self.__unit_of_work.is_registered(entity):
             if entity.id is None:
                 raise ValueError('Can not remove un-registered entity '
@@ -230,7 +230,7 @@ class MemorySession(Session):
         if entity in cache:
             cache.remove(entity)
 
-    def __update(self, entity_class, target_entity, source_data):
+    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
         EntityStateManager.set_state_data(entity_class,
                                           target_entity, source_data)
 

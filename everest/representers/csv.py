@@ -243,7 +243,7 @@ class CsvRepresentationParser(RepresentationParser):
         # fields we found from the set of all field names.
         if self.__is_first_row:
             self.__first_row_field_names.discard(attribute.repr_name)
-        if attribute.should_ignore(MAPPING_DIRECTIONS.READ, attribute_key):
+        if attribute.should_ignore(attribute_key):
             if not attribute_value in (None, ''):
                 raise ValueError('Value for attribute "%s" found '
                                  'which is configured to be ignored.'

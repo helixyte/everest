@@ -252,9 +252,11 @@ class MappingResourceRepresenter(ResourceRepresenter):
         :param dict attribute_options: attribute options for the mapping
           associated with this representer.
         """
-        self._mapping = \
-                self._mapping.clone(options=options,
-                                    attribute_options=attribute_options)
+        self._mapping.update(options=options,
+                             attribute_options=attribute_options)
+#        self._mapping = \
+#                self._mapping.clone(options=options,
+#                                    attribute_options=attribute_options)
 
     def _make_representation_parser(self, stream, resource_class, mapping):
         """

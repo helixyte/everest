@@ -131,15 +131,15 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         self.assert_equal(mb.__name__, '0')
-        req_body = '"id","text","number"\n1,"abc",2\n'
+        req_body = '"id","text","number"\n0,"abc",2\n'
         res = self.app.put("%s/0" % self.path,
                            params=req_body,
                            content_type=CsvMime.mime_type_string,
                            status=200)
         self.assert_is_not_none(res)
         mb = next(iter(coll))
-        self.assert_equal(mb.__name__, '1')
         self.assert_equal(mb.text, 'abc')
+        self.assert_equal(mb.number, 2)
 
     def test_post_collection(self):
         req_body = '"id","text","number"\n0,"abc",2\n'

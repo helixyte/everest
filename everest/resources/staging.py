@@ -12,7 +12,7 @@ from everest.entities.utils import get_entity_class
 from everest.querying.base import EXPRESSION_KINDS
 from everest.repositories.memory.cache import EntityCacheMap
 from everest.resources.utils import get_collection_class
-from everest.traversers import SourceTargetDataTreeTraverser
+from everest.traversal import SourceTargetDataTreeTraverser
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['StagingAggregate',
@@ -35,8 +35,8 @@ class StagingAggregate(Aggregate):
         if cache is None:
             cache = EntityCacheMap()
         self.__cache = cache
-        self.__visitor = AruVisitor(entity_class, self.__cache.add,
-                                    self.__cache.remove, self.__cache.update)
+        self.__visitor = AruVisitor(entity_class, self.__add,
+                                    self.__remove, self.__update)
 
     def get_by_id(self, id_key):
         return self.__cache[self.entity_class].get_by_id(id_key)
@@ -68,6 +68,15 @@ class StagingAggregate(Aggregate):
 
     def query(self):
         return self.__cache.query(self.entity_class)
+
+    def __add(self, entity_class, entity, path): # pylint: disable=W0613
+        self.__cache.add(entity_class, entity)
+
+    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
+        self.__cache.remove(entity_class, entity)
+
+    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
+        self.__cache.update(entity_class, target_entity, source_data)
 
     @property
     def expression_kind(self):

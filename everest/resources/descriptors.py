@@ -11,16 +11,18 @@ from everest.constants import DEFAULT_CASCADE
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.interfaces import IEntity
 from everest.entities.relationship import DomainRelationship
+from everest.relationship import RELATIONSHIP_DIRECTIONS
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
+from everest.resources.interfaces import IResourceAttribute
 from everest.resources.relationship import ResourceRelationship
 from everest.resources.utils import get_member_class
 from everest.utils import get_nested_attribute
 from everest.utils import id_generator
 from everest.utils import set_nested_attribute
+from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-from everest.relationship import RELATIONSHIP_DIRECTIONS
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -31,6 +33,7 @@ __all__ = ['attribute_alias',
            ]
 
 
+@implementer(IResourceAttribute)
 class attribute_base(object):
     """
     Abstract base class for all attribute descriptors.

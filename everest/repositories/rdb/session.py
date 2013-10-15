@@ -13,9 +13,8 @@ from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
-from everest.traversers import SourceTargetDataTreeTraverser
-from everest.utils import set_nested_attribute
-from pyramid.compat import iteritems_
+from everest.repositories.state import EntityStateManager
+from everest.traversal import SourceTargetDataTreeTraverser
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session as SaSession
@@ -47,19 +46,16 @@ class RdbSession(Session, SaSession):
 
     def add(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            entity = self.__run_traversal(entity_class, data,
-                                          RELATION_OPERATIONS.ADD)
+            self.__run_traversal(entity_class, data, RELATION_OPERATIONS.ADD)
         else:
-            entity = data
-        SaSession.add(self, entity)
+            SaSession.add(self, data)
 
     def remove(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            entity = self.__run_traversal(entity_class, data,
-                                          RELATION_OPERATIONS.REMOVE)
+            self.__run_traversal(entity_class, data,
+                                 RELATION_OPERATIONS.REMOVE)
         else:
-            entity = data
-        SaSession.delete(self, entity)
+            SaSession.delete(self, data)
 
     def update(self, entity_class, data):
         return self.__run_traversal(entity_class, data,
@@ -73,16 +69,24 @@ class RdbSession(Session, SaSession):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                     data, rel_op, agg,
                                     manage_back_references=False)
-        vst = AruVisitor(entity_class, update_callback=self.__update)
+        vst = AruVisitor(entity_class,
+                         add_callback=self.__add,
+                         remove_callback=self.__remove,
+                         update_callback=self.__update)
         trv.run(vst)
         return vst.root
 
-    def __update(self, entity_class, target_entity, source_data): # pylint: disable=W0613
-        for attribute, attr_value in iteritems_(source_data):
-            set_nested_attribute(target_entity, attribute.entity_attr,
-                                 attr_value)
-#        EntityStateManager.set_state_data(entity_class, target_entity,
-#                                          source_data)
+    def __add(self, entity_class, entity, path): # pylint: disable=W0613
+        if len(path) == 0:
+            SaSession.add(self, entity)
+
+    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
+        if len(path) == 0:
+            SaSession.delete(self, entity)
+
+    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
+        EntityStateManager.set_state_data(entity_class, target_entity,
+                                          source_data)
 
 
 class RdbAutocommittingSession(AutocommittingSessionMixin, RdbSession):

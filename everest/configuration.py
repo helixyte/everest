@@ -8,6 +8,9 @@ Created on Jun 22, 2011.
 """
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
+from everest.entities.traversal import DomainDataTraversalProxyAdapter
+from everest.interfaces import IDataTraversalProxyAdapter
+from everest.interfaces import IDataTraversalProxyFactory
 from everest.interfaces import IResourceUrlConverter
 from everest.interfaces import IUserMessage
 from everest.interfaces import IUserMessageNotifier
@@ -36,8 +39,11 @@ from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
+from everest.representers.interfaces import ICollectionDataElement
+from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonResourceRepresenter
+from everest.representers.traversal import DataElementDataTraversalProxyAdapter
 from everest.representers.xml import XmlResourceRepresenter
 from everest.resources.attributes import resource_attributes_injector
 from everest.resources.base import Collection
@@ -48,7 +54,9 @@ from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IService
 from everest.resources.service import Service
 from everest.resources.system import UserMessageMember
+from everest.resources.traversal import ResourceDataTraversalProxyAdapter
 from everest.resources.utils import provides_member_resource
+from everest.traversal import DataTraversalProxyFactory
 from everest.url import ResourceUrlConverter
 from everest.views.base import RepresentingResourceView
 from everest.views.deletemember import DeleteMemberView
@@ -71,7 +79,8 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-#from pyramid.configuration import Configurator as PyramidConfigurator
+from everest.entities.traversal import LinkedDomainDataTraversalProxyAdapter
+from everest.representers.interfaces import ILinkedDataElement
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -560,6 +569,27 @@ class Configurator(PyramidConfigurator):
             if not isinstance(rnd, RendererFactory):
                 PyramidConfigurator.add_renderer(self, reg_rnd_name,
                                                  RendererFactory)
+        # Register data traversal proxy factory and adapters.
+        trv_prx_fac = DataTraversalProxyFactory()
+        self._register_utility(trv_prx_fac, IDataTraversalProxyFactory)
+        self._register_adapter(DomainDataTraversalProxyAdapter,
+                               (IEntity,), IDataTraversalProxyAdapter)
+        self._register_adapter(ResourceDataTraversalProxyAdapter,
+                               (IMemberResource,),
+                               IDataTraversalProxyAdapter)
+        self._register_adapter(ResourceDataTraversalProxyAdapter,
+                               (ICollectionResource,),
+                               IDataTraversalProxyAdapter)
+        self._register_adapter(DataElementDataTraversalProxyAdapter,
+                               (IMemberDataElement,),
+                               IDataTraversalProxyAdapter)
+        self._register_adapter(DataElementDataTraversalProxyAdapter,
+                               (ICollectionDataElement,),
+                               IDataTraversalProxyAdapter)
+        self._register_adapter(LinkedDomainDataTraversalProxyAdapter,
+                               (ILinkedDataElement,),
+                               IDataTraversalProxyAdapter)
+        #
         if not filter_specification_factory is None:
             self._set_filter_specification_factory(
                                                 filter_specification_factory)

@@ -1,7 +1,7 @@
 """
 Interfaces for resources.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
@@ -26,7 +26,7 @@ class ILocationAware(Interface):
     ILocationAware Interface
 
     Applications which use traversal to locate the context of a view must
-    ensure that the model instances that make up the model graph are 
+    ensure that the model instances that make up the model graph are
     "location aware".
 
     In order for location, security, URL-generation, and traversal functions
@@ -216,5 +216,23 @@ class IRelation(Interface):
     """
     Marker interface for relations.
     """
+
+
+class IResourceAttribute(Interface):
+    """
+    Interface for resource attributes.
+    """
+    kind = Attribute('The resource attribute kind. One of the constants '
+                     'defined in everest.constants.RESOURCE_ATTRIBUTE_KINDS.')
+    attr_type = Attribute('The type of the resource attribute. This is '
+                          'typically')
+    entity_attr = Attribute('The name of the resource attribute in the '
+                            'entity. May be *None*.')
+    index = Attribute('Unique sequential numeric ID for this resource '
+                      'attribute. Used to maintain the order in which '
+                      'resource attributes are iterated over.')
+    resource_attr = Attribute('The name of the resource attribute in the '
+                              'resource.')
+
 
 # pylint: enable=W0232,E0213,E0211

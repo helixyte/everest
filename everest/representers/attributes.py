@@ -10,7 +10,9 @@ from everest.constants import CARDINALITIES
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
+from everest.resources.interfaces import IResourceAttribute
 from itertools import izip
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributeKey',
@@ -79,6 +81,7 @@ class DomainAttributeKey(AttributeKey):
         return tuple([attr.entity_attr for attr in attributes])
 
 
+@implementer(IResourceAttribute)
 class MappedAttribute(object):
     """
     Represents an attribute mapped from a class into a representation.

@@ -40,19 +40,19 @@ class EntityStateManager(object):
     Not all state transitions are allowed.
     """
     # FIXME: Need a proper state diagram here or drop tracking alltogether.
-    __allowed_transitions = ((None, ENTITY_STATES.NEW),
-                             (None, ENTITY_STATES.CLEAN),
-                             (None, ENTITY_STATES.DELETED),
-                             (ENTITY_STATES.NEW, ENTITY_STATES.CLEAN),
-                             (ENTITY_STATES.NEW, ENTITY_STATES.DELETED),
-                             (ENTITY_STATES.DELETED, ENTITY_STATES.CLEAN),
-                             (ENTITY_STATES.DELETED, ENTITY_STATES.NEW),
-                             (ENTITY_STATES.CLEAN, ENTITY_STATES.DIRTY),
-                             (ENTITY_STATES.CLEAN, ENTITY_STATES.DELETED),
-                             (ENTITY_STATES.CLEAN, ENTITY_STATES.NEW),
-                             (ENTITY_STATES.DIRTY, ENTITY_STATES.CLEAN),
-                             (ENTITY_STATES.DIRTY, ENTITY_STATES.DELETED),
-                             )
+    __allowed_transitions = set([(None, ENTITY_STATES.NEW),
+                                 (None, ENTITY_STATES.CLEAN),
+                                 (None, ENTITY_STATES.DELETED),
+                                 (ENTITY_STATES.NEW, ENTITY_STATES.CLEAN),
+                                 (ENTITY_STATES.NEW, ENTITY_STATES.DELETED),
+                                 (ENTITY_STATES.DELETED, ENTITY_STATES.CLEAN),
+                                 (ENTITY_STATES.DELETED, ENTITY_STATES.NEW),
+                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.DIRTY),
+                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.DELETED),
+                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.NEW),
+                                 (ENTITY_STATES.DIRTY, ENTITY_STATES.CLEAN),
+                                 (ENTITY_STATES.DIRTY, ENTITY_STATES.DELETED),
+                                 ])
 
     def __init__(self, entity_class, entity, unit_of_work):
         self.__entity_class = entity_class
@@ -134,8 +134,7 @@ class EntityStateManager(object):
         attrs = get_domain_class_attribute_iterator(entity_class)
         return dict([(attr,
                       get_nested_attribute(entity, attr.entity_attr))
-                     for attr in attrs
-                     if not attr.entity_attr is None])
+                     for attr in attrs])
 
     @classmethod
     def set_state_data(cls, entity_class, entity, data):

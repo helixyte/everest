@@ -13,6 +13,7 @@ from everest.utils import set_nested_attribute
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DomainRelationship',
+           'LazyDomainRelationship',
            ]
 
 
@@ -96,3 +97,64 @@ class DomainRelationship(Relationship):
                             relatee.remove(related)
                         except ValueError:
                             pass
+
+
+class LazyDomainRelationship(DomainRelationship):
+    """
+    Lazy version of a domain relationship.
+
+    Operations are stored and only executed when the relationship is called.
+    A lazy relationship can only be used repeatedly for the same operation
+    with the same options.
+    """
+    __relator_proxy = None
+    __action = None
+    __kw = None
+
+    #: This is the relatee set dynamically through calls to .add and .update.
+    relatee = None
+
+    def _set_relator(self, relator):
+        self.__relator_proxy = relator
+
+    def _get_relator(self):
+        return self.__relator_proxy.get_entity()
+
+    relator = property(_get_relator, _set_relator)
+
+    def add(self, related, direction=None, check_existing=False):
+        self.__lazy_action(DomainRelationship.add, related,
+                           dict(direction=direction,
+                                check_existing=check_existing))
+
+    def remove(self, related, direction=None, check_existing=False):
+        self.__lazy_action(DomainRelationship.remove, related,
+                           dict(direction=direction,
+                                check_existing=check_existing))
+
+    def update(self, related, direction=None):
+        self.__lazy_action(DomainRelationship.update, related,
+                           dict(direction=direction))
+
+    def __call__(self):
+        if self.descriptor.cardinality.relatee == CARDINALITY_CONSTANTS.ONE:
+            self.__action(self, self.relatee, **self.__kw)
+        else:
+            for entity in self.relatee:
+                self.__action(self, entity, **self.__kw)
+
+    def __lazy_action(self, method, related, kw):
+#        if not self.__action is None and method != self.__action:
+#            raise ValueError('Must use the same action for repeated use '
+#                             'of a lazy relationship.')
+        self.__action = method
+#        if not self.__kw is None and kw != self.__kw:
+#            raise ValueError('Must use the same options for repeated use '
+#                             'of a lazy relationship.')
+        self.__kw = kw
+        if self.descriptor.cardinality.relatee == CARDINALITY_CONSTANTS.ONE:
+            self.relatee = related
+        else:
+            if self.relatee is None:
+                self.relatee = []
+            self.relatee.append(related)

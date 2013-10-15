@@ -16,6 +16,8 @@ from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.interfaces import IDataElement
+from everest.representers.interfaces import IMemberDataElement
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
 from everest.resources.attributes import get_resource_class_attributes
@@ -23,13 +25,13 @@ from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.resources.staging import create_staging_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -75,6 +77,11 @@ class Mapping(object):
         copied_cfg.update(upd_cfg)
         return self.__class__(self.__mp_reg, self.__mapped_cls,
                               self.__de_cls, copied_cfg)
+
+    def update(self, options=None, attribute_options=None):
+        cfg = RepresenterConfiguration(options=options,
+                                       attribute_options=attribute_options)
+        self.configuration.update(cfg)
 
     @property
     def configuration(self):
@@ -182,65 +189,29 @@ class Mapping(object):
         return mp.data_element_class.create_from_resource(resource)
 
     def map_to_resource(self, data_element, resource=None):
+        """
+        Maps the given data element to a new resource or updates the given
+        resource.
+
+        :raises ValueError: If :param:`data_element` does not provide
+          :class:`everest.representers.interfaces.IDataElement`.
+        """
+        if not IDataElement.providedBy(data_element): # pylint:disable=E1101
+            raise ValueError('Expected data element, got %s.' % data_element)
         if resource is None:
-            resource = \
+            coll = \
                 create_staging_collection(data_element.mapping.mapped_class)
-            agg = resource.get_aggregate()
+            agg = coll.get_aggregate()
             agg.add(data_element)
+            if IMemberDataElement.providedBy(data_element): # pylint: disable=E1101
+                ent = next(iter(agg))
+                resource = \
+                    data_element.mapping.mapped_class.create_from_entity(ent)
+            else:
+                resource = coll
         else:
             resource.update(data_element)
         return resource
-
-#    def map_to_resource(self, data_element, resource=None):
-#        ifcs = provided_by(data_element)
-#        if IMemberDataElement in ifcs:
-#            is_sequence = False
-#        elif ICollectionDataElement in ifcs:
-#            is_sequence = True
-#        else:
-#            raise ValueError('"data_element" argument must provide '
-#                             'IMemberResource or ICollectionResource.')
-#        if resource is None:
-##            trv = DataElementTreeTraverser(data_element, self,
-##                                           direction=
-##                                                MAPPING_DIRECTIONS.READ)
-##            visitor = ResourceBuilderDataElementTreeVisitor(resource=resource)
-##            trv.run(visitor)
-##            result = visitor.resource
-#            rel_op = RELATION_OPERATIONS.ADD
-#            acc = None
-#            coll = create_staging_collection(data_element.mapping.mapped_class)
-#        else:
-#            rel_op = RELATION_OPERATIONS.UPDATE
-#            ifcs = provided_by(resource)
-#            if IMemberResource in ifcs:
-#                coll = resource.__parent__
-#            elif ICollectionResource in ifcs:
-#                coll = resource
-#            else:
-#                raise ValueError('"resource" argument must provide '
-#                                 'IMemberResource or ICollectionResource.')
-#            acc = get_root_collection(resource)
-#        trv = SourceTargetDataTreeTraverser.make_traverser(
-#                    data_element,
-#                    rel_op,
-#                    accessor=acc,
-#                    target=resource,
-#                    source_proxy_options=dict(mapping=self))
-#        sess = coll.get_aggregate()
-#        visitor = AruVisitor(data_element.mapping.mapped_class,
-#                             root_is_sequence=is_sequence,
-#                             add_callback=lambda ent_cls, ent:
-#                                sess.get_root_aggregate(ent_cls).add(ent),
-#                             remove_callback=lambda ent_cls, ent:
-#                                sess.get_root_aggregate(ent_cls).remove(ent))
-#        trv.run(visitor)
-#        if resource is None:
-#            if is_sequence:
-#                resource = coll
-#            else:
-#                resource = data_element.mapping.mapped_class.create_from_entity(visitor.root)
-#        return resource
 
     def map_to_data_element(self, resource):
         trv = ResourceTreeTraverser(resource, self.as_pruning(),

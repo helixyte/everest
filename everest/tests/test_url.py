@@ -81,7 +81,7 @@ class _UrlBaseTestCase(ResourceTestCase):
         self.coll.filter = flt_spec
         self.__check_url(resource_to_url(self.coll),
                          schema='http', path='/my-entities/', params='',
-                         query='q=parent:equal-to:%s' % parent_url)
+                         query="q=parent:equal-to:'%s'" % parent_url)
 
     def test_resource_to_url_with_order(self):
         ord_spec_fac = get_order_specification_factory()

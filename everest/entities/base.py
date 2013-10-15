@@ -455,7 +455,7 @@ class RelationshipAggregate(Aggregate):
                     check_existing=True,
                     direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
-        add_to_root = csc & RELATION_OPERATIONS.ADD and entity.id is None
+        add_to_root = csc & RELATION_OPERATIONS.ADD # and entity.id is None
         if add_to_root:
             self._root_aggregate.add(entity)
         self._relationship.add(

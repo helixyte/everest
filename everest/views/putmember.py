@@ -1,7 +1,7 @@
 """
 Put member view.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
@@ -27,7 +27,7 @@ class PutMemberView(PutOrPostResourceView):
     """
     def _process_request_data(self, data):
         initial_name = self.context.__name__
-        self.context.update_from_data(data)
+        self.context.update(data)
         current_name = self.context.__name__
         self.request.response.status = self._status(HTTPOk)
         # FIXME: add conflict detection

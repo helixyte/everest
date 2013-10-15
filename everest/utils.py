@@ -62,7 +62,11 @@ def get_nested_attribute(obj, attribute):
     Returns the value of the given (possibly dotted) attribute for the given
     object.
 
-    If any of the
+    If any of the parents on the nested attribute's name path are `None`, the
+    value of the nested attribute is also assumed as `None`.
+
+    :raises AttributeError: If any attribute access along the attribute path
+      fails with an `AttributeError`.
     """
     parent, attr = resolve_nested_attribute(obj, attribute)
     if not parent is None:
@@ -76,6 +80,9 @@ def set_nested_attribute(obj, attribute, value):
     """
     Sets the value of the given (possibly dotted) attribute for the given
     object to the given value.
+
+    :raises AttributeError: If any of the parents on the nested attribute's
+      name path are `None`.
     """
     parent, attr = resolve_nested_attribute(obj, attribute)
     if parent is None:

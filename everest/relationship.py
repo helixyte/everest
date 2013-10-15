@@ -8,13 +8,16 @@ Created on Sep 30, 2011.
 """
 from everest.constants import CARDINALITY_CONSTANTS
 from everest.constants import RELATIONSHIP_DIRECTIONS
+from everest.interfaces import IRelationship
 from everest.querying.utils import get_filter_specification_factory
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Relationship',
            ]
 
 
+@implementer(IRelationship)
 class Relationship(object):
     """
     Abstract base class for resource and domain relationships.
@@ -76,3 +79,12 @@ class Relationship(object):
 
     def update(self, related, direction=None):
         raise NotImplementedError('Abstract method.')
+
+    def __str__(self):
+        rel_char = '-'
+        if self.direction & RELATIONSHIP_DIRECTIONS.FORWARD:
+            rel_char += '>'
+        if self.direction & RELATIONSHIP_DIRECTIONS.REVERSE:
+            rel_char = '<' + rel_char
+        return "%s %s%s%s" % (self.__class__.__name__, self.relator,
+                              rel_char, self.descriptor.resource_attr)

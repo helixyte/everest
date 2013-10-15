@@ -87,7 +87,7 @@ class _RootAggregateTestCase(EntityTestCase):
         self.assert_is_none(agg.get_by_slug('0'))
         with self.assert_raises(ValueError) as cm:
             agg.add(object())
-        exp_msg = 'Invalid data for source traversal'
+        exp_msg = 'Invalid data type for traversal'
         self.assert_true(cm.exception.message.startswith(exp_msg))
 
     def test_nested_attribute(self):
@@ -168,8 +168,6 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(self._child_aggregate.iterator())), 1)
         self.assert_equal(len(list(self._aggregate.iterator())), 1)
         self.assert_equal(len(list(child_rel_agg.iterator())), 0)
-#        self.assert_equal(new_ent1.children, [])
-#        self.assert_is_none(new_child1.parent)
         # Adding to a relationship aggregate .....
         child_rel_agg.add(new_child1)
         # ....... adds to root aggregates:
@@ -178,8 +176,6 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(self._aggregate.iterator())), 2)
         # ....... appends to children:
         self.assert_equal(new_ent1.children, [new_child1])
-        # ....... sets parent:
-#        self.assert_equal(new_child1.parent, new_ent1)
         # get by ID and slug, filtering.
         self.assert_equal(child_rel_agg.get_by_id(new_child1.id).id,
                           new_child1.id)
