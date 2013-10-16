@@ -6,7 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
 """
-from everest.attributes import AttributeValueMap
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.interfaces import IEntity
 from everest.entities.utils import get_entity_class
@@ -15,8 +14,7 @@ from pyramid.compat import itervalues_
 from zope.interface import implementedBy as implemented_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['DomainAttributeValueMap',
-           'get_domain_class_attribute_iterator',
+__all__ = ['get_domain_class_attribute_iterator',
            'get_domain_class_attribute',
            'get_domain_class_attribute_iterator',
            'get_domain_class_attribute_names',
@@ -156,8 +154,3 @@ def get_domain_class_collection_attribute_iterator(ent):
     for attr in itervalues_(ent.__everest_attributes__):
         if attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION:
             yield attr
-
-
-class DomainAttributeValueMap(AttributeValueMap):
-    def _get_attribute_attribute(self, attr):
-        return attr.entity_attr

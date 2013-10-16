@@ -171,6 +171,10 @@ class EntityCacheMap(object):
         cache = self.__cache_map[entity_class]
         return cache.get_by_id(entity_id)
 
+    def get_by_slug(self, entity_class, slug):
+        cache = self.__cache_map[entity_class]
+        return cache.get_by_slug(slug)
+
     def add(self, entity_class, entity):
         cache = self.__cache_map[entity_class]
         cache.add(entity)
@@ -179,13 +183,9 @@ class EntityCacheMap(object):
         cache = self.__cache_map[entity_class]
         cache.remove(entity)
 
-    def replace(self, entity_class, entity):
-        cache = self.__cache_map[entity_class]
-        cache.replace(entity)
-
-    def update(self, entity_class, target_entity, source_data):
+    def update(self, entity_class, source_data, target_entity):
         EntityStateManager.set_state_data(entity_class,
-                                          target_entity, source_data)
+                                          source_data, target_entity)
 
     def query(self, entity_class):
         return MemoryQuery(entity_class,

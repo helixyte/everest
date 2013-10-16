@@ -33,19 +33,15 @@ class ResourceRelationship(Relationship):
                     self.descriptor.make_relationship(ent)
         return self.__domain_relationship
 
-    def add(self, related, direction=None, check_existing=False):
+    def add(self, related, direction=None, safe=False):
         self.domain_relationship.add(related.get_entity(),
                                      direction=direction,
-                                     check_existing=check_existing)
+                                     safe=safe)
 
-    def remove(self, related, direction=None, check_existing=False):
+    def remove(self, related, direction=None, safe=False):
         self.domain_relationship.remove(related.get_entity(),
                                         direction=direction,
-                                        check_existing=check_existing)
-
-    def update(self, related, direction=None):
-        self.domain_relationship.update(related.get_entity(),
-                                        direction=direction)
+                                        safe=safe)
 
     def _get_specification_attributes(self):
         return self.descriptor.resource_attr, self.descriptor.resource_backref

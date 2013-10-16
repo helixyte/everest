@@ -15,7 +15,6 @@ from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.resources.attributes import ResourceAttributeControllerMixin
-from everest.resources.attributes import ResourceAttributeValueMap
 from everest.resources.attributes import get_resource_class_attribute
 from everest.resources.descriptors import terminal_attribute
 from everest.resources.interfaces import ICollectionResource
@@ -25,7 +24,6 @@ from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from pyramid.compat import iteritems_
 from pyramid.security import Allow
 from pyramid.security import Authenticated
 from pyramid.traversal import model_path
@@ -103,18 +101,6 @@ class Resource(object):
         """
         return uuid.uuid5(uuid.NAMESPACE_URL, self.path).urn
 
-    @classmethod
-    def create_from_data(cls, data_element):
-        """
-        Creates a resource instance from the given data element (tree).
-
-        :param data_element: data element (hierarchical) to create a resource
-            from
-        :type data_element: object implementing
-         :class:`everest.resources.representers.interfaces.IExplicitDataElement`
-        """
-        return data_element.mapping.map_to_resource(data_element)
-
 
 @implementer(IMemberResource)
 class Member(ResourceAttributeControllerMixin, Resource):
@@ -178,18 +164,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
 
         See :method:`Collection.update`.
         """
-        if isinstance(data, dict):
-            # Build  an attribute -> value map from the data.
-            av_map = ResourceAttributeValueMap()
-            for attr_name, value in iteritems_(dict):
-                attr = get_resource_class_attribute(self.__class__, attr_name)
-                av_map[attr] = value
-            if not 'id' in data:
-                id_attr = get_resource_class_attribute(self.__class__, 'id')
-                av_map[id_attr] = self.id
-            self.__parent__.update(av_map)
-        else:
-            self.__parent__.update(data)
+        self.__parent__.update(data, target=self)
 
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
@@ -379,8 +354,12 @@ class Collection(Resource):
                     :class:`everest.resources.interfaces.IMemberResource`
         :raise ValueError: if a member with the same name exists
         """
-        member.__parent__ = self
-        self.__aggregate.add(member.get_entity())
+        if IMemberResource.providedBy(member): #pylint: disable=E1101
+            member.__parent__ = self
+            data = member.get_entity()
+        else:
+            data = member
+        self.__aggregate.add(data)
 
     def remove(self, member):
         """
@@ -391,8 +370,14 @@ class Collection(Resource):
                     :class:`everest.resources.interfaces.IMemberResource`
         :raise ValueError: if the member can not be found in this collection
         """
-        self.__aggregate.remove(member.get_entity())
-        member.__parent__ = None
+        is_member = IMemberResource.providedBy(member) #pylint: disable=E1101
+        if is_member:
+            data = member.get_entity()
+        else:
+            data = member
+        self.__aggregate.remove(data)
+        if is_member:
+            member.__parent__ = None
 
     def get(self, key, default=None):
         """
@@ -405,14 +390,16 @@ class Collection(Resource):
             rc = default
         return rc
 
-    def update(self, data):
+    def update(self, data, target=None):
         """
         Updates a member in this collection from the given data.
 
         :param data: entity or data element or dictionary
         :returns: new updated member.
         """
-        updated_entity = self.__aggregate.update(data)
+        if not target is None:
+            target = target.get_entity()
+        updated_entity = self.__aggregate.update(data, target=target)
         return as_member(updated_entity, parent=self)
 
     def _get_filter(self):

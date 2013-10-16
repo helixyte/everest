@@ -150,6 +150,8 @@ class UnitOfWork(object):
         return self.__object_iterator(ENTITY_STATES.DIRTY, entity_class)
 
     def iterator(self):
+        # FIXME: There is no dependency tracking; objects are iterated in
+        #        random order.
         for ent_cls in self.__entity_set_map.keys():
             for ent in self.__entity_set_map[ent_cls]:
                 yield ent_cls, ent, EntityStateManager.get_state(ent)

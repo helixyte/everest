@@ -97,7 +97,7 @@ class Aggregate(object):
         Returns a clone of this aggregate.
         """
         clone = self.__class__.__new__(self.__class__)
-        # access protected member pylint: disable=W0212
+        # Access protected member pylint: disable=W0212
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
@@ -111,7 +111,7 @@ class Aggregate(object):
 
         If specified, filter, order, and slice settings are applied.
 
-        :returns: an iterator for the aggregate entities
+        :returns: An iterator for the aggregate entities.
         """
         return iter(self._get_data_query())
 
@@ -124,7 +124,7 @@ class Aggregate(object):
         If specified, filter specs are applied. A specified slice key is
         ignored.
 
-        :returns: number of aggregate members (:class:`int`)
+        :returns: Number of aggregate members (:class:`int`).
         """
         return self._get_filtered_query(None).count()
 
@@ -132,13 +132,13 @@ class Aggregate(object):
         """
         Returns an entity by ID  or `None` if the entity is not found.
 
-        :note: if a filter is set which matches the requested entity, it
+        :note: If a filter is set which matches the requested entity, it
           will not be found.
         :param id_key: ID value to look up
         :type id_key: `int` or `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one entity is found for the given ID value.
-        :returns: specified entity or `None`
+        :returns: Specified entity or `None`.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -146,54 +146,52 @@ class Aggregate(object):
         """
         Returns an entity by slug or `None` if the entity is not found.
 
-        :note: if a filter is set which matches the requested entity, it
+        :note: If a filter is set which matches the requested entity, it
           will not be found.
-        :param slug: slug value to look up
+        :param slug: Slug value to look up
         :type slug: `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one entity is found for the given ID value.
-        :returns: entity or `None`
+        :returns: Entity or `None`
         """
         raise NotImplementedError('Abstract method.')
 
-    def add(self, entity):
+    def add(self, data):
         """
-        Adds an entity to the aggregate.
+        Adds the given entity data to the aggregate.
 
         If the entity has an ID, it must be unique within the aggregate.
 
-        :param entity: entity (domain object) to add
-        :type entity: object implementing
-          :class:`everest.entities.interfaces.IEntity`
-        :raise ValueError: if an entity with the same ID exists
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter`.
+        :type entity: Object implementing
+          :class:`everest.entities.interfaces.IEntity`.
+        :raise ValueError: if an entity with the same ID exists.
         """
         raise NotImplementedError('Abstract method.')
 
-    def remove(self, entity):
+    def remove(self, data):
         """
-        Removes an entity from the aggregate.
+        Removes the given entity data from the aggregate.
 
-        :param entity: entity (domain object) to remove.
-        :type entity: object implementing
-          :class:`everest.entities.interfaces.IEntity`
-        :raise ValueError: entity was not found
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter`.
+        :raise ValueError: Entity was not found.
         """
         raise NotImplementedError('Abstract method.')
 
-    def update(self, entity):
+    def update(self, data, target=None):
         """
-        Updates the existing entity with the same ID as the given entity
-        with the state of the latter.
+        Updates an existing entity data with the given data.
 
         Relies on the underlying repository for the implementation of the
         state update.
 
-        :param entity: entity (domain object) to transfer state to.
-        :type entity: object implementing
-          :class:`everest.entities.interfaces.IEntity`
-        :param source_entity: source entity to transfer state from.
-        :type source_entity: object implementing
-          :class:`everest.entities.interfaces.IEntity`
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter`.
+        :param target: Target entity to transfer state to.
+        :type source_entity: Object implementing
+          :class:`everest.entities.interfaces.IEntity`.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -257,8 +255,8 @@ class Aggregate(object):
 
         This default implementation just returns the given query as is.
 
-        :param query: query to optimize as returned from the data source.
-        :param key: slice key to use for the query or `None`, if no slicing
+        :param query: Query to optimize as returned from the data source.
+        :param key: Slice key to use for the query or `None`, if no slicing
           was applied.
         """
         return query
@@ -370,11 +368,11 @@ class RootAggregate(Aggregate):
 #                             'this aggregate.' % self.entity_class)
         self._session.remove(self.entity_class, data)
 
-    def update(self, data):
+    def update(self, data, target=None):
 #        if not isinstance(entity, self.entity_class):
 #            raise ValueError('Can only update entities of type "%s" through '
 #                             'this aggregate.' % self.entity_class)
-        return self._session.update(self.entity_class, data)
+        return self._session.update(self.entity_class, data, target=target)
 
     def query(self):
         return self._session.query(self.entity_class)
@@ -390,9 +388,8 @@ class RootAggregate(Aggregate):
         """
         Returns a new relationship aggregate for the given relationship.
 
-        :param relationship: instance of
-          :class:`everest.relationship.ReferencedRelateeRelationship` or
-          :class:`everest.relationship.BackreferencedRelatorRelationship`
+        :param relationship: Instance of
+          :class:`everest.entities.relationship.DomainRelationship`.
         """
         if not self._session.IS_MANAGING_BACKREFERENCES:
             relationship.direction &= ~RELATIONSHIP_DIRECTIONS.REVERSE
@@ -449,38 +446,24 @@ class RelationshipAggregate(Aggregate):
         return self._root_aggregate.get_root_aggregate(rc)
 
     def add(self, entity):
-        rel_drct = self._relationship.direction
-        self._relationship.add(
-                    entity,
-                    check_existing=True,
-                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
-        add_to_root = csc & RELATION_OPERATIONS.ADD # and entity.id is None
+        add_to_root = csc & RELATION_OPERATIONS.ADD
         if add_to_root:
             self._root_aggregate.add(entity)
-        self._relationship.add(
-                    entity,
-                    check_existing=True,
-                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.FORWARD)
+        self._relationship.add(entity, safe=True)
 
     def remove(self, entity):
-        rel_drct = self._relationship.direction
-        self._relationship.remove(
-                    entity,
-                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.REVERSE)
         csc = self._relationship.descriptor.cascade
         remove_from_root = \
             csc & RELATION_OPERATIONS.REMOVE and not entity.id is None
         if remove_from_root:
             self._root_aggregate.remove(entity)
-        self._relationship.remove(
-                    entity,
-                    direction=rel_drct & ~RELATIONSHIP_DIRECTIONS.FORWARD)
+        self._relationship.remove(entity, safe=True)
 
-    def update(self, entity):
+    def update(self, entity, target=None):
         csc = self._relationship.descriptor.cascade
         if csc & RELATION_OPERATIONS.UPDATE:
-            upd_entity = self._root_aggregate.update(entity)
+            upd_entity = self._root_aggregate.update(entity, target=target)
         else:
             upd_entity = entity
         return upd_entity

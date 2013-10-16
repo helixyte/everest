@@ -147,18 +147,22 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         child_agg = get_root_aggregate(attr.attr_type)
         return child_agg.make_relationship_aggregate(rel)
 
+    def _make_child(self, child_id=0):
+        new_parent = MyEntityParent()
+        new_ent = MyEntity()
+        new_ent.parent = new_parent
+        new_child = MyEntityChild()
+        new_ent.children.append(new_child)
+        if new_child.parent is None:
+            new_child.parent = new_ent
+        self._child_aggregate.add(new_child)
+        new_parent.id = child_id
+        new_ent.id = child_id
+        new_child.id = child_id
+        return new_child
+
     def test_basics(self):
-        new_parent0 = MyEntityParent()
-        new_ent0 = MyEntity()
-        new_ent0.parent = new_parent0
-        new_child0 = MyEntityChild()
-        new_ent0.children.append(new_child0)
-        if new_child0.parent is None:
-            new_child0.parent = new_ent0
-        self._child_aggregate.add(new_child0)
-        new_parent0.id = 0
-        new_ent0.id = 0
-        new_child0.id = 0
+        new_child0 = self._make_child()
         new_parent1 = MyEntityParent()
         new_ent1 = MyEntity()
         new_ent1.parent = new_parent1
@@ -186,10 +190,24 @@ class _RelationshipAggregateTestCase(EntityTestCase):
         self.assert_is_none(child_rel_agg.get_by_slug(new_child1.slug))
         # update.
         upd_child0 = MyEntityChild(id=0)
-        upd_child0.text = 'FROBNIC'
+        txt = 'FROBNIC'
+        upd_child0.text = txt
         child_rel_agg.update(upd_child0)
-        self.assert_equal(new_child0.text, 'FROBNIC')
+        self.assert_equal(new_child0.text, txt)
         self.assert_is_none(new_child0.parent)
+
+    def test_update_cascade(self):
+        csc = DEFAULT_CASCADE & ~RELATION_OPERATIONS.UPDATE
+        new_child = self._make_child()
+        child_rel_agg = self._make_rel_agg(new_child.parent)
+        with patch.object(get_domain_class_attribute(MyEntity, 'children'),
+                          'cascade', csc):
+            upd_child = MyEntityChild(id=0)
+            txt = 'FROBNIC'
+            upd_child.text = txt
+            child_rel_agg.update(upd_child)
+            self.assert_not_equal(new_child.text, txt)
+            self.assert_is_not_none(new_child.parent)
 
     def test_add_one_to_one(self):
         new_parent1 = MyEntityParent(id=1)

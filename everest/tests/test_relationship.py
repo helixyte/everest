@@ -5,16 +5,22 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 13, 2013.
 """
 from everest.entities.attributes import get_domain_class_attribute
+from everest.entities.relationship import DomainRelationship
+from everest.querying.specifications import ValueContainedFilterSpecification
 from everest.querying.specifications import ValueContainsFilterSpecification
 from everest.querying.specifications import ValueEqualToFilterSpecification
+from everest.resources.attributes import get_resource_class_attribute
+from everest.resources.relationship import ResourceRelationship
+from everest.resources.utils import get_root_collection
 from everest.testing import EntityTestCase
+from everest.testing import ResourceTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityParent
 from mock import patch
-from everest.querying.specifications import ValueContainedFilterSpecification
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DomainRelationshipTestCase',
@@ -44,6 +50,12 @@ class DomainRelationshipTestCase(EntityTestCase):
                        ValueEqualToFilterSpecification,
                        ValueContainedFilterSpecification, [0])
 
+    def test_string_representation(self):
+        attr = get_domain_class_attribute(IMyEntity, 'children')
+        my_child = MyEntityChild(id=0)
+        rel = attr.make_relationship(my_child)
+        self.assert_true('<->' in str(rel))
+
     def _run_test(self, attr, relatee, backref_attr_name,
                   backref_relatee_spec_class,
                   ref_relatee_spec_class, relatee_spec_value):
@@ -68,3 +80,26 @@ class DomainRelationshipTestCase(EntityTestCase):
             self.assert_equal(rel.specification.attr_value,
                               relatee_spec_value)
 
+
+class ResourceRelationshipTestCase(ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
+
+    def test_make_relationship(self):
+        ent = MyEntity(id=0)
+        coll = get_root_collection(IMyEntity)
+        mb = coll.create_member(ent)
+        attr = get_resource_class_attribute(IMyEntity, 'parent')
+        rel = attr.make_relationship(mb)
+        self.assert_true(isinstance(rel, ResourceRelationship))
+        parent = MyEntityParent(id=0)
+        parent_coll = get_root_collection(IMyEntityParent)
+        parent_mb = parent_coll.create_member(parent)
+        self.assert_true(ent.parent is None)
+        rel.add(parent_mb)
+        self.assert_true(ent.parent is parent)
+        rel.remove(parent_mb)
+        self.assert_true(ent.parent is None)
+        rel = attr.make_relationship(ent)
+        self.assert_true(isinstance(rel, DomainRelationship))
+        self.assert_raises(ValueError, attr.make_relationship, None)

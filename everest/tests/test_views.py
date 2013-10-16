@@ -140,6 +140,13 @@ class BasicViewTestCase(FunctionalTestCase):
         mb = next(iter(coll))
         self.assert_equal(mb.text, 'abc')
         self.assert_equal(mb.number, 2)
+        req_body = '"id","text","number"\n2,"abc",2\n'
+        res = self.app.put("%s/0" % self.path,
+                           params=req_body,
+                           content_type=CsvMime.mime_type_string,
+                           status=200)
+        self.assert_equal(mb.id, 2)
+        self.assert_true(res.headers['Location'].endswith('2/'))
 
     def test_post_collection(self):
         req_body = '"id","text","number"\n0,"abc",2\n'

@@ -6,6 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from collections import MutableSequence
+from collections import MutableSet
 from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.traversal import AruVisitor
@@ -64,7 +66,7 @@ class MemorySession(Session):
         of another entity that is already in the session. However, both the ID
         and the slug may be ``None`` values.
         """
-        self.__traverse(entity_class, data, RELATION_OPERATIONS.ADD)
+        self.__traverse(entity_class, data, None, RELATION_OPERATIONS.ADD)
 
     def remove(self, entity_class, data):
         """
@@ -73,9 +75,9 @@ class MemorySession(Session):
         :raises ValueError: If the entity to remove does not have an ID
             (unless it is marked NEW).
         """
-        self.__traverse(entity_class, data, RELATION_OPERATIONS.REMOVE)
+        self.__traverse(entity_class, None, data, RELATION_OPERATIONS.REMOVE)
 
-    def update(self, entity_class, data):
+    def update(self, entity_class, data, target=None):
         """
         Updates the existing entity with the same ID as the given entity
         with the state of the latter.
@@ -83,7 +85,8 @@ class MemorySession(Session):
         :raises ValueError: If the session does not contain an entity with
             the same ID as the ID of the given :param:`entity`.
         """
-        return self.__traverse(entity_class, data, RELATION_OPERATIONS.UPDATE)
+        return self.__traverse(entity_class, data, target,
+                               RELATION_OPERATIONS.UPDATE)
 
     def query(self, entity_class):
         return MemorySessionQuery(entity_class, self, self.__repository)
@@ -145,12 +148,11 @@ class MemorySession(Session):
                 state[attr] = new_value
             elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION \
                  and len(value) > 0:
-                # FIXME: Assuming list-like here.
-                if isinstance(value, list):
-                    new_value = []
+                value_type = type(value)
+                new_value = value_type.__new__(value_type)
+                if issubclass(value_type, MutableSequence):
                     add_op = new_value.append
-                elif isinstance(value, set):
-                    new_value = set()
+                elif issubclass(value_type, MutableSet):
                     add_op = new_value.add
                 else:
                     raise ValueError('Do not know how to clone value of type '
@@ -164,7 +166,7 @@ class MemorySession(Session):
         # We set the ID already above.
         if not id_attr is None:
             del state[id_attr]
-        EntityStateManager.set_state_data(entity_class, clone, state)
+        EntityStateManager.set_state_data(entity_class, state, clone)
         return clone
 
     def get_by_slug(self, entity_class, entity_slug):
@@ -192,15 +194,18 @@ class MemorySession(Session):
     def deleted(self):
         return self.__unit_of_work.get_deleted()
 
-    def __traverse(self, entity_class, data, rel_op):
+    def __traverse(self, entity_class, source_data, target_data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)
-        trv = SourceTargetDataTreeTraverser.make_traverser(data, rel_op, agg)
+        trv = SourceTargetDataTreeTraverser.make_traverser(source_data,
+                                                           target_data,
+                                                           rel_op,
+                                                           accessor=agg)
         vst = AruVisitor(entity_class,
                          self.__add, self.__remove, self.__update)
         trv.run(vst)
         return vst.root
 
-    def __add(self, entity_class, entity, path): # pylint: disable=W0613
+    def __add(self, entity_class, entity):
         cache = self.__get_cache(entity_class)
         # We allow adding the same entity multiple times.
         if not (not entity.id is None
@@ -216,7 +221,7 @@ class MemorySession(Session):
                 self.__unit_of_work.mark_clean(entity)
             cache.add(entity)
 
-    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
+    def __remove(self, entity_class, entity):
         if not self.__unit_of_work.is_registered(entity):
             if entity.id is None:
                 raise ValueError('Can not remove un-registered entity '
@@ -230,9 +235,9 @@ class MemorySession(Session):
         if entity in cache:
             cache.remove(entity)
 
-    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
+    def __update(self, entity_class, source_data, target_entity):
         EntityStateManager.set_state_data(entity_class,
-                                          target_entity, source_data)
+                                          source_data, target_entity)
 
     def __contains__(self, entity):
         cache = self.__cache_map.get(type(entity))

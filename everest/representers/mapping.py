@@ -7,9 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
-from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
-from everest.representers.attributes import AttributeKey
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
 from everest.representers.config import RepresenterConfiguration
@@ -214,8 +212,7 @@ class Mapping(object):
         return resource
 
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(resource, self.as_pruning(),
-                                    direction=MAPPING_DIRECTIONS.WRITE)
+        trv = ResourceTreeTraverser(resource, self.as_pruning())
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
@@ -265,7 +262,7 @@ class Mapping(object):
         return attr_map
 
     def __collect_mapped_attributes(self, mapped_class, key):
-        if isinstance(key, AttributeKey):
+        if isinstance(key, MappedAttributeKey):
             names = key.names
         else:
             names = key

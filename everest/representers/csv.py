@@ -13,7 +13,6 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
-from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
@@ -491,7 +490,6 @@ class CsvRepresentationGenerator(RepresentationGenerator):
         # We also emit None values to make sure every data row has the same
         # number of fields.
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       direction=MAPPING_DIRECTIONS.WRITE,
                                        ignore_none_values=False)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)

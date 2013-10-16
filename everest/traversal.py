@@ -6,6 +6,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
+from collections import MutableSequence
+from collections import MutableSet
 from everest.attributes import get_attribute_cardinality
 from everest.attributes import is_terminal_attribute
 from everest.constants import CARDINALITY_CONSTANTS
@@ -100,15 +102,6 @@ class DataTraversalProxy(object):
         self._accessor = accessor
         self._relationships = {}
 
-    def get_attributes(self):
-        """
-        Returns an iterator over all attributes of the proxied data.
-
-        :returns: iterator yielding objects implementing
-          :class:`everest.resources.interfaces.IResourceAttribute`.
-        """
-        return self._attribute_iterator()
-
     def get_relationship_attributes(self):
         """
         Returns an iterator over the relationship attributes (i.e.,
@@ -127,9 +120,11 @@ class DataTraversalProxy(object):
         """
         value = self._accessor.get_by_id(source_id)
         if not value is None:
-            prx = self.__class__(value,
-                                 self._accessor,
-                                 self.relationship_direction)
+            reg = get_current_registry()
+            prx_fac = reg.getUtility(IDataTraversalProxyFactory)
+            prx = prx_fac.make_proxy(value,
+                                     self._accessor,
+                                     self.relationship_direction)
         else:
             prx = None
         return prx
@@ -307,6 +302,9 @@ class DataTraversalProxyFactory(object):
 
         This is a convenience factory function to use when manually setting
         up a data traversal proxy for source data.
+
+        :raises ValueError: If there is no adapter for the given traversal
+          data and the data is not iterable.
         """
         return self.__make_proxy('make_source_proxy', data, (),
                                  dict(options=options))
@@ -318,6 +316,9 @@ class DataTraversalProxyFactory(object):
 
         This is a convenience factory function to use when manually setting
         up a data traversal proxy for target data.
+
+        :raises ValueError: If there is no adapter for the given traversal
+          data and the data is not iterable.
         """
         return self.__make_proxy('make_target_proxy', data, (accessor,),
                                  dict(manage_back_references=
@@ -331,29 +332,37 @@ class DataTraversalProxyFactory(object):
 
         This is the generic factory function that can be used to create
         both source and target data traversal proxies.
+
+        :raises ValueError: If there is no adapter for the given traversal
+          data and the data is not iterable.
         """
         return self.__make_proxy('make_proxy', data,
                                  (accessor, relationship_direction),
                                  dict(options=options))
 
     def __make_proxy(self, method_name, data, args, options):
+        # We first check if we have a registered adapter for the given data;
+        # if not, we assume it is a mutable sequence or set; if that fails,
+        # we raise a ValueError.
         reg = get_current_registry()
-        if isinstance(data, list):
-            prxs = []
-            for item in data:
-                adp = reg.queryAdapter(item, IDataTraversalProxyAdapter)
-                if adp is None:
-                    raise ValueError('Invalid data type for traversal: %s.'
-                                     % type(item))
-                prx = getattr(adp, method_name)(*args, **options)
-                prxs.append(prx)
-            prx = DataSequenceTraversalProxy(prxs)
+        adp = reg.queryAdapter(data, IDataTraversalProxyAdapter)
+        if not adp is None:
+            prx = getattr(adp, method_name)(*args, **options)
         else:
-            adp = reg.queryAdapter(data, IDataTraversalProxyAdapter)
-            if adp is None:
+            if not isinstance(data, (MutableSequence, MutableSet)):
+                # Assuming an iterable is not enough here.
                 raise ValueError('Invalid data type for traversal: %s.'
                                  % type(data))
-            prx = getattr(adp, method_name)(*args, **options)
+            else:
+                prxs = []
+                for item in data:
+                    adp = reg.queryAdapter(item, IDataTraversalProxyAdapter)
+                    if adp is None:
+                        raise ValueError('Invalid data type for traversal: '
+                                         '%s.' % type(item))
+                    prx = getattr(adp, method_name)(*args, **options)
+                    prxs.append(prx)
+                prx = DataSequenceTraversalProxy(prxs)
         return prx
 
 
@@ -405,8 +414,15 @@ class ConvertingDataTraversalProxyMixin(object):
         """
         Returns the entity converted from the proxied data.
         """
-        if self.__converted_entity is None:
-            self.__converted_entity = self._convert_to_entity()
+        if self._accessor is None:
+            if self.__converted_entity is None:
+                self.__converted_entity = self._convert_to_entity()
+        else:
+            # If we have an accessor, we can get the proxied entity by ID.
+            # FIXME: This is a hack that is only used for REMOVE operations
+            #        with data elements.
+            self.__converted_entity = \
+                self.get_matching(self.get_id()).get_entity()
         return self.__converted_entity
 
     def _convert_to_entity(self):
@@ -452,31 +468,32 @@ class SourceTargetDataTreeTraverser(object):
             self.__logger = None
 
     @classmethod
-    def make_traverser(cls, data, relation_operation, accessor=None,
-                       target=None, manage_back_references=True,
+    def make_traverser(cls, source_data, target_data, relation_operation,
+                       accessor=None, manage_back_references=True,
                        source_proxy_options=None, target_proxy_options=None):
         """
         Factory method to create a tree traverser depending on the input
         source and target data combination.
 
-        :param data: source data.
-        :param target: target data.
-        :param str relation_operation: relation operation. On of the constants
+        :param source_data: Source data.
+        :param target_target: Target data.
+        :param str relation_operation: Relation operation. On of the constants
           defined in :class:`everest.constants.RELATION_OPERATIONS`.
-        :param accessor: accessor for looking up target nodes for update
+        :param accessor: Accessor for looking up target nodes for update
           operations.
-        :param bool manage_back_references: flag passed to the target proxy.
+        :param bool manage_back_references: Flag passed to the target proxy.
         """
         reg = get_current_registry()
         prx_fac = reg.getUtility(IDataTraversalProxyFactory)
         if relation_operation == RELATION_OPERATIONS.ADD \
            or relation_operation == RELATION_OPERATIONS.UPDATE:
             if relation_operation == RELATION_OPERATIONS.ADD \
-               and not target is None:
+               and not target_data is None:
                 raise ValueError('Must not provide target data with '
                                  'relation operation ADD.')
             source_proxy = \
-                prx_fac.make_source_proxy(data, options=source_proxy_options)
+                    prx_fac.make_source_proxy(source_data,
+                                              options=source_proxy_options)
             source_is_sequence = \
                 source_proxy.proxy_for == RESOURCE_KINDS.COLLECTION
             if not source_is_sequence:
@@ -489,11 +506,11 @@ class SourceTargetDataTreeTraverser(object):
             if target_proxy_options is None:
                 target_proxy_options = {}
             if relation_operation == RELATION_OPERATIONS.REMOVE:
-                if not target is None:
-                    raise ValueError('Must not provide target data with '
+                if not source_data is None:
+                    raise ValueError('Must not provide source data with '
                                      'relation operation REMOVE.')
                 target_proxy = prx_fac.make_target_proxy(
-                                            data,
+                                            target_data,
                                             accessor,
                                             manage_back_references=
                                                      manage_back_references,
@@ -502,8 +519,8 @@ class SourceTargetDataTreeTraverser(object):
                 if accessor is None:
                     raise ValueError('Need to provide an accessor when '
                                      'performing UPDATE operations.')
-                if not target is None:
-                    target_root = target
+                if not target_data is None:
+                    target_root = target_data
                 elif not source_is_sequence:
                     # Look up the (single) target to update.
                     target_root = accessor.get_by_id(source_id)
@@ -529,8 +546,6 @@ class SourceTargetDataTreeTraverser(object):
                                             options=target_proxy_options)
             target_is_sequence = \
                     target_proxy.proxy_for == RESOURCE_KINDS.COLLECTION
-            if not target_is_sequence:
-                target_id = target_proxy.get_id() # pylint:disable=E1103
         else:
             target_proxy = None
             target_is_sequence = False
@@ -541,9 +556,6 @@ class SourceTargetDataTreeTraverser(object):
                 raise ValueError('When both source and target root nodes are '
                                  'given, they can either both be sequences '
                                  'or both not be sequences.')
-            if not source_is_sequence and source_id != target_id:
-                raise ValueError('When both source and target root nodes are '
-                                 'given, they both need to have the same ID.')
         return cls(source_proxy, target_proxy)
 
     def run(self, visitor):

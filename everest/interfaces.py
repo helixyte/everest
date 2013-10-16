@@ -183,43 +183,39 @@ class IRelationship(Interface):
     specification = Attribute('Filter specification for the objects '
                               'defined by this relationship.')
 
-    def add(related, direction=None, check_existing=False):
+    def add(related, direction=None, safe=False):
         """
         Adds the given related object to the relationship.
+
+        The add operation is performed on both ends of the relationship if
+        appropriate entity attribute declarations have been made.
 
         :param related: object to ADD.
         :param direction: One of the constants defined in
           :class:`everest.constants.RELATIONSHIP_DIRECTIONS`. Indicates if
           the attribute of the relator (FORWARD), of the relatee (REVERSE),
           or both (BIDIRECTIONAL) should be updated.
-        :param check_existing: Flag indicating if the ADD operation should
-          check first if the object to add is already contained in the
+        :param safe: Flag indicating if the ADD operation should
+          only proceed if the object to add is not already in the
           relationship.
         """
 
-    def remove(related, direction=None, check_existing=False):
+    def remove(related, direction=None, safe=False):
         """
         Removes the given related object from the relationship.
+
+        The remove operation is performed on both ends of the relationship if
+        appropriate entity attribute declarations have been made.
 
         :param related: object to REMOVE.
         :param direction: One of the constants defined in
           :class:`everest.constants.RELATIONSHIP_DIRECTIONS`. Indicates if
           the attribute of the relator (FORWARD), of the relatee (REVERSE),
           or both (BIDIRECTIONAL) should be updated.
-        :param check_existing: Flag indicating if the REMOVE operation should
-          check first if the object to add is already contained in the
-          relationship.
-        """
-
-    def update(related, direction=None):
-        """
-        Updates the given related object in the relationship.
-
-        :param related: object to UPDATE.
-        :param direction: One of the constants defined in
-          :class:`everest.constants.RELATIONSHIP_DIRECTIONS`. Indicates if
-          the attribute of the relator (FORWARD), of the relatee (REVERSE),
-          or both (BIDIRECTIONAL) should be updated.
+        :param safe: Flag indicating if the REMOVE operation should succeed
+          even when the object being removed is not in the relationship.
+        :raises ValueError: If :param:`related` is not in the relationship
+          and :param:`safe` is not set.
         """
 
 # pylint: enable=E0213,W0232,E0211

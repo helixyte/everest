@@ -9,7 +9,6 @@ Created on Jun 28, 2011.
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
-from everest.querying.filterparser import url_protocol
 from everest.querying.orderparser import parse_order
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
@@ -18,7 +17,6 @@ from everest.resources.utils import get_root_collection
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from pyparsing import ParseException
-from pyramid.compat import string_types
 from pyramid.compat import url_unquote
 from pyramid.compat import urlparse
 from pyramid.traversal import find_resource
@@ -30,16 +28,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
            'UrlPartsConverter',
-           'is_url',
            ]
-
-
-def is_url(obj):
-    """
-    Checks if the given object is a URL string.
-    """
-    return isinstance(obj, string_types) \
-           and len(url_protocol.searchString(obj)) > 0
 
 
 @implementer(IResourceUrlConverter)

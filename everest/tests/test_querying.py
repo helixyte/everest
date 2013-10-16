@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
@@ -88,7 +88,7 @@ class EvalExpressionTestCase(Pep8CompliantTestCase):
         self.assert_equal(list(not_expr(ents)), [ent1])
 
 
-class _BaseMemorySessionTestCase(EntityTestCase):
+class _BaseQueryTestCase(EntityTestCase):
     package_name = 'everest.tests.complete_app'
 
     def set_up(self):
@@ -112,7 +112,7 @@ class _BaseMemorySessionTestCase(EntityTestCase):
         self.assert_true(self._query.filter_by(id=1).one() is self._ent1)
         self.assert_raises(MultipleResultsException, self._query.one)
         self.assert_raises(NoResultsException,
-                           self._query.filter_by(id= -1).one)
+                           self._query.filter_by(id=-1).one)
 
     def test_filter(self):
         q = self._query.filter_by(id=1).filter_by(text='foo1')
@@ -130,7 +130,7 @@ class _BaseMemorySessionTestCase(EntityTestCase):
         self.assert_true(q.all()[-1] is ent2)
 
 
-class MemorySessionQueryTestCase(_BaseMemorySessionTestCase):
+class MemorySessionQueryTestCase(_BaseQueryTestCase):
     config_file_name = 'configure_no_rdb.zcml'
 
     def test_order(self):
@@ -141,7 +141,7 @@ class MemorySessionQueryTestCase(_BaseMemorySessionTestCase):
         self._test_order(txt_expr, id_expr)
 
 
-class RdbSessionQueryTestCase(RdbTestCaseMixin, _BaseMemorySessionTestCase):
+class RdbSessionQueryTestCase(RdbTestCaseMixin, _BaseQueryTestCase):
     def test_order(self):
         txt_expr = MyEntity.text.asc()
         id_expr = MyEntity.id.desc()
@@ -154,8 +154,8 @@ class MemoryQueryTestCase(EntityTestCase):
 
     def test_basics(self):
         agg = StagingAggregate(MyEntity)
-        ent0 = MyEntity(id=0, text='text')
-        ent1 = MyEntity(id=1, text='text')
+        ent0 = MyEntity(id=0, text='text0')
+        ent1 = MyEntity(id=1, text='text1')
         agg.add(ent0)
         agg.add(ent1)
         q = agg.query()
@@ -164,3 +164,6 @@ class MemoryQueryTestCase(EntityTestCase):
         self.assert_equal(q.filter(filter_expr).all(), [ent0])
         self.assert_equal(len(q.slice(1, 2).all()), 1)
         self.assert_equal(q.slice(1, 2).count(), 2)
+        order_expr = EvalOrderExpression(AscendingOrderSpecification('text'))
+        q = q.order_by(order_expr)
+        self.assert_equal(q.all()[0].text, 'text0')

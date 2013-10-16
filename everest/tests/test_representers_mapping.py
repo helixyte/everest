@@ -6,12 +6,13 @@ Created on Jun 7, 2012.
 """
 from everest.mime import CsvMime
 from everest.representers.attributes import MappedAttributeKey
-from everest.representers.attributes import ResourceAttributeKey
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.testing import ResourceTestCase
-from everest.tests.complete_app.resources import MyEntityChildMember
 from everest.tests.complete_app.resources import MyEntityMember
+from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
+from everest.representers.interfaces import IDataElement
+from everest.representers.traversal import DataElementTreeTraverser
 
 
 __docformat__ = 'reStructuredText en'
@@ -50,6 +51,13 @@ class MappingTestCase(ResourceTestCase):
         self.assert_raises(ValueError, self.mapping.map_to_resource,
                            non_de)
 
+    def test_mapping_invalid_dataelement_raises_error(self):
+        invalid_de = InvalidKindDataElement()
+        invalid_de.mapping = self.mapping # pylint: disable=W0201
+        also_provides(invalid_de, IDataElement)
+        trv = DataElementTreeTraverser(invalid_de, self.mapping.as_pruning())
+        self.assert_raises(ValueError, trv.run, None)
+
     def test_mapping_access(self):
         key = MappedAttributeKey(())
         self.assert_true(str(key).startswith(key.__class__.__name__))
@@ -58,42 +66,14 @@ class MappingTestCase(ResourceTestCase):
                          is False)
 
 
-class AttributeKeyTestCase(ResourceTestCase):
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_rpr.zcml'
-
-    def set_up(self):
-        ResourceTestCase.set_up(self)
-        self.data = {('children',) : True,
-                     ('children', 'children') : True}
-
-    def test_iteration(self):
-        key = ResourceAttributeKey((MyEntityMember.children,
-                                    MyEntityChildMember.children))
-        self.assert_true(iter(key).next() is MyEntityMember.children)
-        self.assert_true(key[1] is MyEntityChildMember.children)
-        self.assert_equal(len(key), 2)
-
-    def test_attribute_key_pop(self):
-        key = ResourceAttributeKey((MyEntityMember.children,))
-        attr = key.pop()
-        self.assert_equal(attr.resource_attr, 'children')
-        self.assert_raises(KeyError, self.data.__getitem__, key)
-
-    def test_attribute_key_append(self):
-        key = ResourceAttributeKey((MyEntityMember.children,))
-        key.append(MyEntityChildMember.children)
-        self.assert_true(self.data[key] is True)
-
-    def test_add(self):
-        key = ResourceAttributeKey((MyEntityMember.children,)) \
-              + (MyEntityChildMember.children,)
-        self.assert_true(self.data[key] is True)
-
-
 class NonResource(object):
     pass
 
 
 class NonDataElement(object):
     pass
+
+
+class InvalidKindDataElement(object):
+    def __init__(self):
+        self.kind = None

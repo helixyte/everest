@@ -8,7 +8,6 @@ Created on Apr 25, 2012.
 """
 from collections import OrderedDict
 from everest.attributes import is_terminal_attribute
-from everest.constants import MAPPING_DIRECTIONS
 from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
@@ -23,15 +22,12 @@ from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
-from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from everest.resources.utils import url_to_resource
 from everest.traversal import ConvertingDataTraversalProxyMixin
 from everest.traversal import DataTraversalProxy
 from everest.traversal import DataTraversalProxyAdapter
 from everest.utils import set_nested_attribute
-from functools import reduce as func_reduce
 from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -44,7 +40,6 @@ __all__ = ['DataElementBuilderResourceTreeVisitor',
            'DataTreeTraverser',
            'DataElementTreeTraverser',
            'ResourceDataTreeTraverser',
-           'ResourceBuilderDataElementTreeVisitor',
            'ResourceDataVisitor',
            'ResourceTreeTraverser',
            ]
@@ -217,82 +212,6 @@ class DataElementBuilderResourceTreeVisitor(
         data_element.set_terminal(attribute, value)
 
 
-class ResourceBuilderDataElementTreeVisitor(ResourceDataVisitor):
-    def __init__(self, resource=None):
-        ResourceDataVisitor.__init__(self)
-        self.__resource = resource
-        self.__updating = not resource is None
-
-    def visit_member(self, attribute_key, attribute, member_node, member_data,
-                     is_link_node, parent_data, index=None):
-        if is_link_node:
-            url = member_node.get_url()
-            rc = url_to_resource(url)
-            entity = rc.get_entity()
-        else:
-            entity_cls = get_entity_class(member_node.mapping.mapped_class)
-            entity_data = {}
-            nested_entity_data = {}
-            for attr, value in iteritems_(member_data):
-                if '.' in attr.entity_name:
-                    nested_entity_data[attr.entity_name] = value
-                else:
-                    entity_data[attr.entity_name] = value
-#            if not self.__updating:
-            entity = entity_cls.create_from_data(entity_data)
-#            else:
-#                entity = reduce(getattr, tuple(attribute_key),
-#                                self.__resource).get_entity()
-#                for attr, value in entity_data.iteritems():
-#                    setattr(entity, attr, value)
-            # Set nested attribute values.
-            # FIXME: lazy loading of nested attributes is not supported.
-            for nested_attr, value in iteritems_(nested_entity_data):
-                tokens = nested_attr.split('.')
-                parent = func_reduce(getattr, tokens[:-1], entity)
-                if not parent is None:
-                    setattr(parent, tokens[-1], value)
-        if not index is None:
-            # Collection member. Store in parent data with index as key.
-            parent_data[index] = entity
-        elif len(attribute_key) == 0:
-            # Top level.
-            if not self.__updating:
-                # Store root entity and create resource.
-                mapped_cls = member_node.mapping.mapped_class
-                self.__resource = mapped_cls.create_from_entity(entity)
-            else:
-                self.__resource.update(entity)
-        else:
-            # Nested member. Store in parent data with attribute as key.
-            parent_data[attribute] = entity
-
-    def visit_collection(self, attribute_key, attribute, collection_node,
-                         collection_data, is_link_node, parent_data):
-        if is_link_node:
-            url = collection_node.get_url()
-            coll = url_to_resource(url)
-            entities = [mb.get_entity() for mb in coll]
-        else:
-            entities = []
-            for item in sorted(collection_data.items()):
-                entities.append(item[1])
-        if len(attribute_key) == 0: # Top level.
-            if not self.__updating:
-                mapped_cls = collection_node.mapping.mapped_class
-                self.__resource = create_staging_collection(mapped_cls)
-                for ent in entities:
-                    self.__resource.create_member(ent)
-            else:
-                self.__resource.update_from_entities(entities)
-        else:
-            parent_data[attribute] = entities
-
-    @property
-    def resource(self):
-        return self.__resource
-
-
 class DataTreeTraverser(object):
     """
     Abstract base class for data tree traversers.
@@ -340,14 +259,9 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     """
     Abstract base class for resource data tree traversers.
     """
-    def __init__(self, root, mapping, direction, ignore_none_values=True):
-        """
-        :param direction: processing direction (read or write). One of the
-            :class:`MAPPING_DIRECTIONS` constant attributes.
-        """
+    def __init__(self, root, mapping, ignore_none_values=True):
         DataTreeTraverser.__init__(self, root)
         self._mapping = mapping
-        self._direction = direction
         self.__ignore_none_values = ignore_none_values
 
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
@@ -413,14 +327,13 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     """
     Traverser for data element trees.
 
-    This traverser can be used both inbound during reading (data element
-    -> resource) and outbound during writing (resource -> data element).
+    This legacy traverser is only needed to generate a representation from
+    a data element tree.
     """
     def __init__(self, root, mapping,
-                 direction=MAPPING_DIRECTIONS.READ,
                  ignore_none_values=True):
         ResourceDataTreeTraverser.__init__(
-                                    self, root, mapping, direction,
+                                    self, root, mapping,
                                     ignore_none_values=ignore_none_values)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
@@ -450,11 +363,7 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
         return node.mapping.mapped_class
 
     def _get_node_terminal(self, node, attr):
-        if self._direction == MAPPING_DIRECTIONS.READ:
-            value = node.get_terminal(attr)
-        else:
-            value = node.get_terminal_converted(attr)
-        return value
+        return node.get_terminal_converted(attr)
 
     def _get_node_nested(self, node, attr):
         return node.get_nested(attr)
@@ -464,11 +373,9 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
     """
     Mapping traverser for resource trees.
     """
-    def __init__(self, root, mapping,
-                 direction=MAPPING_DIRECTIONS.WRITE,
-                 ignore_none_values=True):
+    def __init__(self, root, mapping, ignore_none_values=True):
         ResourceDataTreeTraverser.__init__(
-                                    self, root, mapping, direction,
+                                    self, root, mapping,
                                     ignore_none_values=ignore_none_values)
 
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
@@ -591,7 +498,10 @@ class DataElementDataTraversalProxyAdapter(DataTraversalProxyAdapter):
 
     def make_target_proxy(self, accessor,
                           manage_back_references=True, options=None):
-        raise NotImplementedError('Not implemented.')
+        rel_drct = RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL
+        if not manage_back_references:
+            rel_drct &= ~RELATIONSHIP_DIRECTIONS.REVERSE
+        return self.make_proxy(accessor, rel_drct, options=options)
 
     def make_proxy(self, accessor, relationship_direction, options=None):
         if ICollectionDataElement.providedBy(self._data): # pylint:disable=E1101

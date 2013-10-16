@@ -14,6 +14,8 @@ from everest.tests.complete_app.entities import MyEntity
 from mock import patch
 from pyramid.threadlocal import get_current_registry
 import gc
+from everest.tests.complete_app.entities import MyEntityParent
+from everest.tests.complete_app.entities import MyEntityChild
 
 
 __docformat__ = 'reStructuredText en'
@@ -76,6 +78,45 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         self._session.commit()
         self._session.remove(MyEntity, ent)
         self._session.add(MyEntity, ent)
+
+    def test_nested(self):
+        ent = MyEntity()
+        parent = MyEntityParent()
+        ent.parent = parent
+        child = MyEntityChild()
+        ent.children.append(child)
+        self._session.add(MyEntity, ent)
+        self._session.commit()
+        self.assert_equal(len(self._session.query(MyEntityChild).all()), 1)
+        self.assert_equal(len(self._session.query(MyEntityParent).all()), 1)
+        fetched_ent = self._session.query(MyEntity).one()
+        self.assert_is_not_none(fetched_ent.parent)
+        self.assert_equal(len(fetched_ent.children), 1)
+
+    def test_nested_with_set_collection_type(self):
+        ent = MyEntity()
+        child = MyEntityChild()
+        ent.children = set([child])
+        self._session.add(MyEntity, ent)
+        self._session.commit()
+        fetched_ent = self._session.query(MyEntity).one()
+        self.assert_true(isinstance(fetched_ent.children, set))
+
+    def test_nested_with_invalid_collection_type(self):
+        ent = MyEntity()
+        child = MyEntityChild()
+        ent.children = (child,)
+        self.assert_raises(ValueError, self._session.add, MyEntity, ent)
+        ent.id = 0
+        child.id = 0
+        with self.assert_raises(ValueError) as cm:
+            self._session.load(MyEntity, ent)
+        self.assert_true(cm.exception.message.startswith('Do not know'))
+
+    def test_nested_with_invalid_collection_data(self):
+        ent = MyEntity()
+        ent.children = [None]
+        self.assert_raises(ValueError, self._session.add, MyEntity, ent)
 
 
 class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):

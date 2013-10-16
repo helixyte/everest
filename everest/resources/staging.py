@@ -39,28 +39,31 @@ class StagingAggregate(Aggregate):
                                     self.__remove, self.__update)
 
     def get_by_id(self, id_key):
-        return self.__cache[self.entity_class].get_by_id(id_key)
+        return self.__cache.get_by_id(self.entity_class, id_key)
 
     def get_by_slug(self, slug):
-        return self.__cache[self.entity_class].get_by_slug(slug)
+        return self.__cache.get_by_slug(self.entity_class, slug)
 
     def add(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 entity,
+                                                None,
                                                 RELATION_OPERATIONS.ADD,
                                                 accessor=self)
         trv.run(self.__visitor)
 
     def remove(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
+                                                None,
                                                 entity,
                                                 RELATION_OPERATIONS.REMOVE,
                                                 accessor=self)
         trv.run(self.__visitor)
 
-    def update(self, entity):
+    def update(self, entity, target=None):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 entity,
+                                                target,
                                                 RELATION_OPERATIONS.UPDATE,
                                                 accessor=self)
         trv.run(self.__visitor)
@@ -69,14 +72,14 @@ class StagingAggregate(Aggregate):
     def query(self):
         return self.__cache.query(self.entity_class)
 
-    def __add(self, entity_class, entity, path): # pylint: disable=W0613
+    def __add(self, entity_class, entity):
         self.__cache.add(entity_class, entity)
 
-    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
+    def __remove(self, entity_class, entity):
         self.__cache.remove(entity_class, entity)
 
-    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
-        self.__cache.update(entity_class, target_entity, source_data)
+    def __update(self, entity_class, source_data, target_entity):
+        self.__cache.update(entity_class, source_data, target_entity)
 
     @property
     def expression_kind(self):

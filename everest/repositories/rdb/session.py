@@ -46,33 +46,36 @@ class RdbSession(Session, SaSession):
 
     def add(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            self.__run_traversal(entity_class, data, RELATION_OPERATIONS.ADD)
+            self.__run_traversal(entity_class, data, None,
+                                 RELATION_OPERATIONS.ADD)
         else:
             SaSession.add(self, data)
 
     def remove(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
-            self.__run_traversal(entity_class, data,
+            self.__run_traversal(entity_class, None, data,
                                  RELATION_OPERATIONS.REMOVE)
         else:
             SaSession.delete(self, data)
 
-    def update(self, entity_class, data):
-        return self.__run_traversal(entity_class, data,
+    def update(self, entity_class, data, target=None):
+        return self.__run_traversal(entity_class, data, target,
                                     RELATION_OPERATIONS.UPDATE)
 
     def query(self, entity_class):
         return SaSession.query(self, entity_class)
 
-    def __run_traversal(self, entity_class, data, rel_op):
+    def __run_traversal(self, entity_class, source_data, target_data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)
         trv = SourceTargetDataTreeTraverser.make_traverser(
-                                    data, rel_op, agg,
+                                    source_data, target_data, rel_op,
+                                    accessor=agg,
                                     manage_back_references=False)
         vst = AruVisitor(entity_class,
                          add_callback=self.__add,
                          remove_callback=self.__remove,
-                         update_callback=self.__update)
+                         update_callback=self.__update,
+                         pass_path_to_callbacks=True)
         trv.run(vst)
         return vst.root
 
@@ -84,9 +87,9 @@ class RdbSession(Session, SaSession):
         if len(path) == 0:
             SaSession.delete(self, entity)
 
-    def __update(self, entity_class, target_entity, source_data, path): # pylint: disable=W0613
-        EntityStateManager.set_state_data(entity_class, target_entity,
-                                          source_data)
+    def __update(self, entity_class, source_data, target_entity, path): # pylint: disable=W0613
+        EntityStateManager.set_state_data(entity_class, source_data,
+                                          target_entity)
 
 
 class RdbAutocommittingSession(AutocommittingSessionMixin, RdbSession):

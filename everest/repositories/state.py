@@ -127,17 +127,30 @@ class EntityStateManager(object):
         given target entity.
         """
         state = cls.get_state_data(entity_class, source_entity)
-        cls.set_state_data(entity_class, target_entity, state)
+        cls.set_state_data(entity_class, state, target_entity)
 
     @classmethod
     def get_state_data(cls, entity_class, entity):
+        """
+        Returns state data for the given entity of the given class.
+
+        :param entity: Entity to obtain the state data from.
+        :returns: Dictionary mapping attributes to attribute values.
+        """
         attrs = get_domain_class_attribute_iterator(entity_class)
         return dict([(attr,
                       get_nested_attribute(entity, attr.entity_attr))
                      for attr in attrs])
 
     @classmethod
-    def set_state_data(cls, entity_class, entity, data):
+    def set_state_data(cls, entity_class, data, entity):
+        """
+        Sets the given state data on the given entity of the given class.
+
+        :param data: State data to set.
+        :type data: Dictionary mapping attributes to attribute values.
+        :param entity: Entity to receive the state data.
+        """
         attr_names = get_domain_class_attribute_names(entity_class)
         nested_items = []
         for attr, new_attr_value in iteritems_(data):

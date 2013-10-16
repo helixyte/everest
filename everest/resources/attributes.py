@@ -7,7 +7,6 @@ Resource attribute handling classes.
 Created on Dec 2, 2011.
 """
 from collections import OrderedDict
-from everest.attributes import AttributeValueMap
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.resources.descriptors import attribute_base
 from everest.resources.descriptors import collection_attribute \
@@ -26,7 +25,6 @@ from zope.interface import implementedBy as implemented_by # pylint: disable=E06
 __docformat__ = 'reStructuredText en'
 __all__ = ['MetaResourceAttributeCollector',
            'ResourceAttributeControllerMixin',
-           'ResourceAttributeValueMap',
            'get_resource_class_attribute',
            'get_resource_class_attribute_iterator',
            'get_resource_class_attribute_names',
@@ -236,8 +234,3 @@ class resource_attributes_injector(object):
         # This replaces the injector.
         entity_class.__everest_attributes__ = attr_map
         return attr_map
-
-
-class ResourceAttributeValueMap(AttributeValueMap):
-    def _get_attribute_attribute(self, attr):
-        return attr.resource_attr

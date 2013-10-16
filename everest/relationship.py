@@ -71,13 +71,10 @@ class Relationship(object):
                 spec = spec_fac.create_equal_to(backref_attr, self.relator)
         return spec
 
-    def add(self, related, direction=None, check_existing=False):
+    def add(self, related, direction=None, safe=False):
         raise NotImplementedError('Abstract method.')
 
-    def remove(self, related, direction=None, check_existing=False):
-        raise NotImplementedError('Abstract method.')
-
-    def update(self, related, direction=None):
+    def remove(self, related, direction=None, safe=False):
         raise NotImplementedError('Abstract method.')
 
     def __str__(self):

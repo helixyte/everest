@@ -47,8 +47,6 @@ class MemoryRepository(Repository):
                               slice_expression=slice_expression)
 
     def commit(self, unit_of_work):
-        # FIXME: There is no dependency tracking; objects are committed in
-        #        random order.
         for ent_cls, ent, state in unit_of_work.iterator():
             cache = self.__get_cache(ent_cls)
             if state == ENTITY_STATES.DELETED:

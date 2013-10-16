@@ -15,15 +15,12 @@ from itertools import izip
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AttributeKey',
-           'DomainAttributeKey',
-           'MappedAttribute',
+__all__ = ['MappedAttribute',
            'MappedAttributeKey',
-           'ResourceAttributeKey',
            ]
 
 
-class AttributeKey(object):
+class MappedAttributeKey(object):
     """
     Value object used as a key during resource data tree traversal.
 
@@ -62,23 +59,8 @@ class AttributeKey(object):
     def __str__(self):
         return '%s(%s)' % (self.__class__.__name__, '.'.join(self.names))
 
-    def _make_names(self, data):
-        raise NotImplementedError('Abstract method.')
-
-
-class MappedAttributeKey(AttributeKey):
     def _make_names(self, attributes):
         return tuple([attr.resource_attr for attr in attributes])
-
-
-class ResourceAttributeKey(AttributeKey):
-    def _make_names(self, attributes):
-        return tuple([attr.resource_attr for attr in attributes])
-
-
-class DomainAttributeKey(AttributeKey):
-    def _make_names(self, attributes):
-        return tuple([attr.entity_attr for attr in attributes])
 
 
 @implementer(IResourceAttribute)
@@ -169,10 +151,6 @@ class MappedAttribute(object):
     @property
     def cardinality(self):
         return getattr(self.__attr, 'cardinality', None)
-
-    @property
-    def resource_attribute(self):
-        return self.__attr
 
     def __getattr__(self, attr_name):
         if attr_name in self.options:

@@ -38,15 +38,45 @@ class Session(object):
     IS_MANAGING_BACKREFERENCES = None
 
     def get_by_id(self, entity_class, id_key):
+        """
+        Adds the given entity data to the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
         raise NotImplementedError('Abstract method.')
 
     def add(self, entity_class, data):
+        """
+        Adds the given entity data to the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
         raise NotImplementedError('Abstract method.')
 
     def remove(self, entity_class, data):
+        """
+        Removes the given entity data from the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
         raise NotImplementedError('Abstract method.')
 
-    def update(self, entity_class, data):
+    def update(self, entity_class, data, target=None):
+        """
+        Updates an existing entity with the given entity data. If
+        :param:`target_data` not given, the target entity will be determined
+        through the ID supplied with the data.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
         raise NotImplementedError('Abstract method.')
 
     def query(self, entity_class):
@@ -68,10 +98,10 @@ class AutocommittingSessionMixin(object):
         super(AutocommittingSessionMixin, self).remove(entity_class, data)
         self.commit()
 
-    def update(self, entity_class, data):
+    def update(self, entity_class, data, target=None):
         self.begin()
         spr = super(AutocommittingSessionMixin, self)
-        updated_entity = spr.update(entity_class, data)
+        updated_entity = spr.update(entity_class, data, target=target)
         self.commit()
         return updated_entity
 

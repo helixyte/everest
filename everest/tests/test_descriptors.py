@@ -14,6 +14,7 @@ from everest.representers.config import RepresenterConfiguration
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.resources.attributes import get_resource_class_attribute
+from everest.resources.attributes import get_resource_class_attribute_iterator
 from everest.resources.attributes import get_resource_class_attribute_names
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.attributes import get_resource_class_collection_attribute_iterator
@@ -161,6 +162,13 @@ class _DescriptorsTestCase(ResourceTestCase):
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
 
+    PARENT_MAPPING_OPTIONS = {WRITE_AS_LINK_OPTION:False,
+                              IGNORE_OPTION:False}
+    CHILDREN_MAPPING_OPTIONS = {WRITE_AS_LINK_OPTION:False,
+                                IGNORE_OPTION:False}
+    GRANDCHILDREN_MAPPING_OPTIONS = {WRITE_AS_LINK_OPTION:False,
+                                     IGNORE_OPTION:False}
+
     def test_attribute_checkers(self):
         self.assert_true(is_resource_class_terminal_attribute(IMyEntity,
                                                               'text'))
@@ -174,6 +182,9 @@ class _DescriptorsTestCase(ResourceTestCase):
                                                               'children'))
         attr_names = get_resource_class_attribute_names(MyEntityMember)
         self.assert_equal(attr_names, ATTRIBUTE_NAMES)
+        it = get_resource_class_attribute_iterator(MyEntityMember)
+        self.assert_equal([attr.resource_attr for attr in it],
+                          ATTRIBUTE_NAMES)
 
     def test_terminal_access(self):
         entity = MyEntity()
@@ -349,6 +360,29 @@ class _DescriptorsTestCase(ResourceTestCase):
         context.update(data_el)
         self.assert_equal(len(context.children), 2)
 
+    def test_add_with_data_element(self):
+        my_entity = MyEntity()
+        my_entity_parent = MyEntityParent()
+        my_entity.parent = my_entity_parent
+        coll = create_staging_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
+        del member
+        root_coll = get_root_collection(IMyEntity)
+        root_coll.add(data_el)
+        self.assert_equal(len(coll), 1)
+
+    def test_remove_with_data_element(self):
+        my_entity = create_entity()
+        coll = get_root_collection(IMyEntity)
+        member = coll.create_member(my_entity)
+        mp = self._make_mapping()
+        data_el = mp.map_to_data_element(member)
+        del member
+        coll.remove(data_el)
+        self.assert_equal(len(coll), 0)
+
     def test_nested_get(self):
         my_entity = create_entity()
         coll = create_staging_collection(IMyEntity)
@@ -418,14 +452,24 @@ class _DescriptorsTestCase(ResourceTestCase):
         mb.text_alias = 'altered text'
         self.assert_equal(mb.text, mb.text_alias)
 
+    def test_set_member(self):
+        my_entity = create_entity()
+        coll = get_root_collection(IMyEntity)
+        mb = coll.create_member(my_entity)
+        txt = 'FROBNIC'
+        new_parent = MyEntityParent(text=txt)
+        parent_coll = get_root_collection(IMyEntityParent)
+        parent_mb = parent_coll.create_member(new_parent)
+        self.assert_not_equal(mb.parent.text, txt)
+        mb.parent = parent_mb
+        self.assert_equal(mb.parent.text, txt)
+
     def _make_mapping(self):
         reg = SimpleMappingRegistry()
-        mp_opts = {('parent',):{WRITE_AS_LINK_OPTION:False,
-                                IGNORE_OPTION:False},
-                   ('children',):{WRITE_AS_LINK_OPTION:False,
-                                  IGNORE_OPTION:False},
-                   ('children', 'children'):{WRITE_AS_LINK_OPTION:False,
-                                             IGNORE_OPTION:False},
+        mp_opts = {('parent',): self.PARENT_MAPPING_OPTIONS,
+                   ('children',): self.CHILDREN_MAPPING_OPTIONS,
+                   ('children', 'children'):
+                                self.GRANDCHILDREN_MAPPING_OPTIONS,
                    }
         conf = RepresenterConfiguration(attribute_options=mp_opts)
         mp = reg.create_mapping(MyEntityMember, conf)

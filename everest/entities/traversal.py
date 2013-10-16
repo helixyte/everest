@@ -41,7 +41,7 @@ class ResourceDataTreeVisitor(object):
         Called by the traverser; override to implement functionality needed
         to prepare the visitor for a new resource tree traversal operation.
         """
-        pass
+        pass #pragma: no cover
 
     def finalize(self):
         """
@@ -51,7 +51,7 @@ class ResourceDataTreeVisitor(object):
         visitor needs to run ''after'' traversal of the full resource tree
         has finished.
         """
-        pass
+        pass #pragma: no cover
 
     def visit(self, path, attribute, source, target):
         """
@@ -86,7 +86,7 @@ class AruVisitor(ResourceDataTreeVisitor):
 
         def __str__(self):
             return "%s: %s (%d)" \
-                   % (self.operation, self.args[1], len(self.args[-1]))
+                   % (self.operation, self.args[1], len(self.args[-1])) #pragma: no cover
 
     class AddCallback(Callback):
         operation = 'ADD'
@@ -98,12 +98,12 @@ class AruVisitor(ResourceDataTreeVisitor):
         operation = 'UPDATE'
 
     def __init__(self, rc_class, add_callback=None, remove_callback=None,
-                 update_callback=None, root_is_sequence=False):
+                 update_callback=None, pass_path_to_callbacks=False):
         ResourceDataTreeVisitor.__init__(self, rc_class)
         self.__add_callback = add_callback
         self.__remove_callback = remove_callback
         self.__update_callback = update_callback
-        self.__root_is_sequence = root_is_sequence
+        self.__pass_path_to_callbacks = pass_path_to_callbacks
         self.__commands = None
         self.root = None
 
@@ -129,8 +129,11 @@ class AruVisitor(ResourceDataTreeVisitor):
                 rel = self.__get_relationship(parent, attribute)
                 rel.remove(entity)
             if not self.__remove_callback is None:
-                cmd = self.RemoveCallback(self.__remove_callback,
-                                          (ent_class, entity, path))
+                if self.__pass_path_to_callbacks:
+                    args = (ent_class, entity, path)
+                else:
+                    args = (ent_class, entity)
+                cmd = self.RemoveCallback(self.__remove_callback, args)
                 self.__commands.append(cmd)
         else:
             if target is None:
@@ -140,23 +143,28 @@ class AruVisitor(ResourceDataTreeVisitor):
                     if path.relation_operation == RELATION_OPERATIONS.ADD:
                         # If the parent is created new, the constructor
                         # will most likely set the child attribute.
-                        add_opts = dict(check_existing=True)
+                        add_opts = dict(safe=True)
                     else:
                         add_opts = dict()
                     rel = self.__get_relationship(parent, attribute)
                     rel.add(entity, **add_opts)
                 if not self.__add_callback is None:
-                    cmd = self.AddCallback(self.__add_callback,
-                                           (ent_class, entity, path))
+                    if self.__pass_path_to_callbacks:
+                        args = (ent_class, entity, path)
+                    else:
+                        args = (ent_class, entity)
+                    cmd = self.AddCallback(self.__add_callback, args)
                     self.__commands.append(cmd)
             else:
                 # Both source and target - UPDATE.
                 entity = target.get_entity()
                 if not self.__update_callback is None:
                     upd_av_map = dict(source.update_attribute_value_items)
-                    cmd = self.UpdateCallback(self.__update_callback,
-                                              (ent_class, entity, upd_av_map,
-                                               path))
+                    if self.__pass_path_to_callbacks:
+                        args = (ent_class, upd_av_map, entity, path)
+                    else:
+                        args = (ent_class, upd_av_map, entity)
+                    cmd = self.UpdateCallback(self.__update_callback, args)
                     self.__commands.append(cmd)
                 if not is_root:
                     # The relationship with the old value has already been
@@ -164,13 +172,7 @@ class AruVisitor(ResourceDataTreeVisitor):
                     rel = self.__get_relationship(parent, attribute)
                     rel.add(entity)
         if is_root:
-            if not self.__root_is_sequence:
-                self.root = entity
-            else:
-                if self.root is None:
-                    self.root = []
-                if not source is None:
-                    self.root.append(entity)
+            self.root = entity
         else:
             self.__commands.append(rel)
 
