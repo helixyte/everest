@@ -70,6 +70,14 @@ class ResourceRepresenter(Representer):
         Representer.__init__(self)
         self.resource_class = resource_class
 
+    def from_stream(self, stream, resource=None):
+        data_el = self.data_from_stream(stream)
+        return self.resource_from_data(data_el, resource=resource)
+
+    def to_stream(self, resource, stream):
+        data_el = self.data_from_resource(resource)
+        self.data_to_stream(data_el, stream)
+
     @classmethod
     def create_from_resource_class(cls, rc):
         """
@@ -84,23 +92,34 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
+    def data_to_stream(self, data_element, stream):
+        """
+        Extracts resource data from the given stream.
+        """
+        raise NotImplementedError('Abstract method.')
+
     def data_from_representation(self, representation):
         """
         Converts the given representation to resource data.
 
-        :returns: resource data object which can be passed to the *_from_data
-            methods
+        :returns: object implementing
+            :class:`everest.representers.interfaces.IExplicitDataElement`
         """
-        raise NotImplementedError('Abstract method.')
+        stream = NativeIO(representation)
+        return self.data_from_stream(stream)
 
-    def representation_from_data(self, data):
+    def representation_from_data(self, data_element):
         """
-        Creates a representation from the given resource data.
+        Converts the given data element into a representation.
 
+        :param data_element: object implementing
+            :class:`everest.representers.interfaces.IExplicitDataElement`
         :returns: string representation (using the MIME content type
             configured for this representer)
         """
-        raise NotImplementedError('Abstract method.')
+        stream = NativeIO()
+        self.data_to_stream(data_element, stream)
+        return stream.getvalue()
 
     def resource_from_data(self, data, resource=None):
         """
@@ -166,19 +185,6 @@ class MappingResourceRepresenter(ResourceRepresenter):
     def make_mapping_registry(cls):
         raise NotImplementedError('Abstract method.')
 
-    def from_stream(self, stream, resource=None):
-        parser = self._make_representation_parser(stream, self.resource_class,
-                                                  self._mapping)
-        data_el = parser.run()
-        return self.resource_from_data(data_el, resource=resource)
-
-    def to_stream(self, resource, stream):
-        data_el = self.data_from_resource(resource)
-        generator = \
-            self._make_representation_generator(stream, self.resource_class,
-                                                self._mapping)
-        generator.run(data_el)
-
     def data_from_stream(self, stream):
         """
         Creates a data element reading a representation from the given stream.
@@ -190,29 +196,14 @@ class MappingResourceRepresenter(ResourceRepresenter):
                                                   self._mapping)
         return parser.run()
 
-    def data_from_representation(self, representation):
+    def data_to_stream(self, data_element, stream):
         """
-        Creates a data element from the given representation.
-
-        :returns: object implementing
-            :class:`everest.representers.interfaces.IExplicitDataElement`
+        Writes the given data element to the given stream.
         """
-        stream = NativeIO(representation)
-        return self.data_from_stream(stream)
-
-    def representation_from_data(self, data_element):
-        """
-        Converts the given data element into a representation.
-
-        :param data_element: object implementing
-            :class:`everest.representers.interfaces.IExplicitDataElement`
-        """
-        stream = NativeIO()
         generator = \
             self._make_representation_generator(stream, self.resource_class,
                                                 self._mapping)
         generator.run(data_element)
-        return stream.getvalue()
 
     def resource_from_data(self, data_element, resource=None):
         """
