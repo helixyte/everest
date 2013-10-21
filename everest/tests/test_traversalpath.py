@@ -19,12 +19,14 @@ class TraversalPathTestCase(Pep8CompliantTestCase):
         self.assert_is_none(tp.parent)
         self.assert_is_none(tp.relation_operation)
         parent = 'proxy'
+        attr = 'attribute'
+        key = ('source', 'target')
         rel_op = 'relation_operation'
-        tp.push(parent, 'attribute', rel_op)
+        tp.push(parent, key, attr, rel_op)
         self.assert_equal(len(tp), 1)
+        self.assert_true(key in tp)
         self.assert_equal(tp.parent, parent)
         self.assert_equal(tp.relation_operation, rel_op)
-        tp1 = tp.clone()
         tp.pop()
         self.assert_equal(len(tp), 0)
-        self.assert_equal(len(tp1), 1)
+        self.assert_false(key in tp)

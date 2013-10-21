@@ -81,10 +81,15 @@ class EntityCache(object):
         """
         # For certain use cases (e.g., staging), we do not want the entity to
         # be added to have an ID yet.
+        do_append = True
         if not entity.id is None:
             if entity.id in self.__id_map:
-                raise ValueError('Duplicate entity ID "%s".' % entity.id)
-            self.__id_map[entity.id] = entity
+                if not self.__id_map[entity.id] is entity:
+                    raise ValueError('Duplicate entity ID "%s".' % entity.id)
+                else:
+                    do_append = False
+            else:
+                self.__id_map[entity.id] = entity
         elif not self.__allow_none_id:
             raise ValueError('Entity ID must not be None.')
         # The slug can be a lazy attribute depending on the
@@ -92,9 +97,13 @@ class EntityCache(object):
         # why we can not always assume it is available at this point.
         if hasattr(entity, 'slug') and not entity.slug is None:
             if entity.slug in self.__slug_map:
-                raise ValueError('Duplicate entity slug "%s".' % entity.slug)
-            self.__slug_map[entity.slug] = entity
-        self.__entities.append(entity)
+                if not self.__slug_map[entity.slug] is entity:
+                    raise ValueError('Duplicate entity slug "%s".'
+                                     % entity.slug)
+            else:
+                self.__slug_map[entity.slug] = entity
+        if do_append:
+            self.__entities.append(entity)
 
     def remove(self, entity):
         """

@@ -15,7 +15,7 @@ class TraversalPathNode(object):
     """
     Value object representing a node in a traversal path.
     """
-    def __init__(self, proxy, attribute, relation_operation):
+    def __init__(self, proxy, key, attribute, relation_operation):
         """
         :param proxy: Data traversal proxy for this node.
         :param attribute: Resource attribute for this node.
@@ -24,6 +24,7 @@ class TraversalPathNode(object):
           :class:`everest.constants.RELATION_OPERATIONS`.
         """
         self.proxy = proxy
+        self.key = key
         self.attribute = attribute
         self.relation_operation = relation_operation
 
@@ -36,29 +37,29 @@ class TraversalPath(object):
         if nodes is None:
             nodes = []
         self.nodes = nodes
+        self.__keys = set()
 
-    def push(self, proxy, attribute, relation_operation):
+    def push(self, proxy, key, attribute, relation_operation):
         """
         Adds a new :class:`TraversalPathNode` constructed from the given
         arguments to this traversal path.
         """
-        node = TraversalPathNode(proxy, attribute, relation_operation)
+        node = TraversalPathNode(proxy, key, attribute, relation_operation)
         self.nodes.append(node)
+        self.__keys.add(key)
 
     def pop(self):
         """
         Removes the last traversal path node from this traversal path.
         """
-        self.nodes.pop()
+        node = self.nodes.pop()
+        self.__keys.remove(node.key)
 
     def __len__(self):
         return len(self.nodes)
 
-    def clone(self):
-        """
-        Returns a copy of this traversal path.
-        """
-        return TraversalPath(self.nodes[:])
+    def __contains__(self, key):
+        return key in self.__keys
 
     @property
     def parent(self):

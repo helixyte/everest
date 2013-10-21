@@ -140,7 +140,8 @@ class EntityStateManager(object):
         attrs = get_domain_class_attribute_iterator(entity_class)
         return dict([(attr,
                       get_nested_attribute(entity, attr.entity_attr))
-                     for attr in attrs])
+                     for attr in attrs
+                     if not attr.entity_attr is None])
 
     @classmethod
     def set_state_data(cls, entity_class, data, entity):

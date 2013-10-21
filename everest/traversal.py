@@ -456,7 +456,7 @@ class SourceTargetDataTreeTraverser(object):
     def __init__(self, source_proxy, target_proxy):
         self._src_prx = source_proxy
         self._tgt_prx = target_proxy
-        self.__traversed = set()
+        self.__trv_path = TraversalPath()
         self.__root_is_sequence = \
             (not source_proxy is None and
              source_proxy.proxy_for == RESOURCE_KINDS.COLLECTION) \
@@ -567,7 +567,6 @@ class SourceTargetDataTreeTraverser(object):
         if __debug__:
             self.__log_run(visitor)
         visitor.prepare()
-        path = TraversalPath()
         if self.__root_is_sequence:
             if not self._tgt_prx is None:
                 tgts = iter(self._tgt_prx)
@@ -577,13 +576,12 @@ class SourceTargetDataTreeTraverser(object):
                 srcs = iter(self._src_prx)
             else:
                 srcs = None
-            self.traverse_many(path, None, srcs, tgts, visitor)
+            self.traverse_many(None, srcs, tgts, visitor)
         else:
-            self.traverse_one(path, None, self._src_prx, self._tgt_prx,
-                              visitor)
+            self.traverse_one(None, self._src_prx, self._tgt_prx, visitor)
         visitor.finalize()
 
-    def traverse_one(self, path, attribute, source, target, visitor):
+    def traverse_one(self, attribute, source, target, visitor):
         """
         :param source: source data proxy
         :type source: instance of `DataTraversalProxy` or None
@@ -591,8 +589,7 @@ class SourceTargetDataTreeTraverser(object):
         :type target: instance of `DataTraversalProxy` or None
         """
         if __debug__:
-            self.__log_traverse_one(path, attribute, source, target)
-        self.__traversed.add((source, target))
+            self.__log_traverse_one(self.__trv_path, attribute, source, target)
         prx = source or target
         if prx.do_traverse():
             rel_op = RELATION_OPERATIONS.check(source, target)
@@ -625,11 +622,6 @@ class SourceTargetDataTreeTraverser(object):
                         # If both source and target have None values, there is
                         # nothing to do.
                         continue
-                    # Check if we have already traversed this combination of
-                    # source and target (circular references).
-                    key = (attr_source, attr_target)
-                    if key in self.__traversed:
-                        continue
                     if attr_rel_op == RELATION_OPERATIONS.ADD:
 #                        if not attr_source.get_id() is None:
 #                            # We only ADD new items.
@@ -651,14 +643,13 @@ class SourceTargetDataTreeTraverser(object):
                 else:
                     src_items = attr_source
                     tgt_items = attr_target
-                path.push(parent, attr, rel_op)
-                self.traverse_many(path.clone(), attr, src_items, tgt_items,
-                                   visitor)
-                path.pop()
-        visitor.visit(path, attribute, source, target)
+                self.__trv_path.push(parent, (source, target), attr, rel_op)
+                self.traverse_many(attr, src_items, tgt_items, visitor)
+                self.__trv_path.pop() # path.pop()
+        visitor.visit(self.__trv_path, attribute, source, target)
 
-    def traverse_many(self, path, attribute, source_sequence,
-                      target_sequence, visitor):
+    def traverse_many(self, attribute, source_sequence, target_sequence,
+                      visitor):
         """
         Traverses the given source and target sequences and makes appropriate
         calls to :method:`traverse_one`.
@@ -701,12 +692,12 @@ class SourceTargetDataTreeTraverser(object):
         # All targets that are now still in the map where not present in the
         # source and therefore need to be REMOVEd.
         for target in itervalues_(target_map):
-            if not (None, target) in self.__traversed:
-                self.traverse_one(path, attribute, None, target, visitor)
+            if not (None, target) in self.__trv_path:
+                self.traverse_one(attribute, None, target, visitor)
         #
         for source, target in src_tgt_pairs:
-            if not (source, target) in self.__traversed:
-                self.traverse_one(path, attribute, source, target, visitor)
+            if not (source, target) in self.__trv_path:
+                self.traverse_one(attribute, source, target, visitor)
 
     def __log_run(self, visitor):
         self.__logger.debug('Traversing %s->%s with %s'

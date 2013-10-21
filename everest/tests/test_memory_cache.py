@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 13, 2013.
@@ -42,6 +42,12 @@ class EntityCacheTestCase(Pep8CompliantTestCase):
         self.assert_true(cache.has_id(ent.id))
         self.assert_true(cache.get_by_slug(ent.slug) is ent)
         self.assert_true(cache.has_slug(ent.slug))
+        self.assert_equal(len(cache.get_all()), 1)
+        # Adding the same entity twices should not have any effect.
+        cache.add(ent)
+        self.assert_true(cache.get_by_id(ent.id) is ent)
+        self.assert_equal(len(cache.get_all()), 1)
+        #
         ent1 = MyEntity(id=0)
         txt = 'FROBNIC'
         ent1.text = txt
