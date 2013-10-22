@@ -27,11 +27,11 @@ tests_requirements = install_requirements + [
     ]
 
 setup(name='everest',
-      version='1.0b2',
+      version='1.0',
       description='everest',
       long_description=README,
       classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Framework :: Pyramid",
         "Intended Audience :: Developers",
