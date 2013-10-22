@@ -1,0 +1,13 @@
+.stats span.exc {
+    background: #e5e5e8;
+}
+
+.text p.exc {
+    background: #e5e5e8;
+    border-left: 2px solid #808080;
+}
+
+.text p.hide_run, .text p.hide_exc, .text p.hide_mis, .text p.hide_par,
+.text p.hide_run.hide_par {
+    background: inherit;
+    }

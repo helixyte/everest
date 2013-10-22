@@ -12,6 +12,8 @@ from everest.querying.filterparser import parse_filter
 from everest.querying.orderparser import parse_order
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
+from everest.resources.interfaces import IResource
+from everest.resources.utils import get_root_collection
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from pyparsing import ParseException
@@ -19,7 +21,6 @@ from pyramid.compat import url_unquote
 from pyramid.compat import urlparse
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
-from pyramid.url import model_url
 from urlparse import parse_qsl
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
@@ -45,12 +46,12 @@ class ResourceUrlConverter(object):
 
     def url_to_resource(self, url):
         """
-        Converts the given url into a resource.
+        Returns the resource that is addressed by the given URL.
 
         :param str url: URL to convert
         :return: member or collection resource
 
-        ::note : If the query string in the URL has multiple values for a
+        :note: If the query string in the URL has multiple values for a
           query parameter, the last definition in the query string wins.
         """
         parsed = urlparse.urlparse(url)
@@ -77,10 +78,22 @@ class ResourceUrlConverter(object):
             raise ValueError('Traversal found non-resource object "%s".' % rc)
         return rc
 
-    def resource_to_url(self, resource, **kw):
-        if ICollectionResource in provided_by(resource):
+    def resource_to_url(self, resource):
+        """
+        Returns the URL for the given resource.
+
+        :raises ValueError: If the given resource is floating (i.e., has
+          the parent attribute set to `None`)
+        """
+        ifc = provided_by(resource)
+        if not IResource in ifc:
+            raise TypeError('Can not generate URL for non-resource "%s".'
+                            % resource)
+        elif resource.__parent__ is None:
+            raise ValueError('Can not generate URL for floating resource '
+                             '"%s".' % resource)
+        if ICollectionResource in ifc:
             query = {}
-            query.update(kw)
             if not resource.filter is None:
                 query['q'] = \
                     UrlPartsConverter.make_filter_string(resource.filter)
@@ -90,18 +103,24 @@ class ResourceUrlConverter(object):
             if not resource.slice is None:
                 query['start'], query['size'] = \
                     UrlPartsConverter.make_slice_strings(resource.slice)
-            if query != {}:
-                url = model_url(resource, self.__request, query=query)
+            if not resource.is_root_collection:
+                root_coll = get_root_collection(resource)
             else:
-                url = model_url(resource, self.__request)
-        elif not IMemberResource in provided_by(resource):
-            raise ValueError('Can not convert non-resource object "%s to '
-                             'URL".' % resource)
+                root_coll = resource
+            if query != {}:
+                url = self.__request.resource_url(root_coll, query=query)
+            else:
+                url = self.__request.resource_url(root_coll)
         else:
-            if resource.__parent__ is None:
-                raise ValueError('Can not generate URL for floating member '
-                                 '"%s".' % resource)
-            url = model_url(resource, self.__request)
+#            if resource.__parent__.__parent__ is None:
+#                raise ValueError('Can not generate URL for member of '
+#                                 'floating collection.')
+            if not resource.is_root_member:
+                root_coll = get_root_collection(resource)
+                url = "%s%s/" % (self.__request.resource_url(root_coll),
+                                 resource.__name__)
+            else:
+                url = self.__request.resource_url(resource)
         return url_unquote(url)
 
 
@@ -169,5 +188,3 @@ class UrlPartsConverter(object):
         start = slice_key.start
         size = slice_key.stop - start
         return (str(start), str(size))
-
-

@@ -24,6 +24,7 @@ tests_requirements = install_requirements + [
     'nose-cov',
     'pytz',
     'webtest',
+    'mock'
     ]
 
 setup(name='everest',

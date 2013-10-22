@@ -123,6 +123,9 @@ class IMemberDataElement(IResourceDataElement):
     converter_registry = Attribute("Registry of representation<->value "
                                    "converters.")
 
+    data = Attribute("Ordered dictionary mapping data attribute names to "
+                     "data attribute values.")
+
     def get_mapped_terminal(attr):
         """
         Returns the value for the given terminal mapped attribute.
@@ -141,7 +144,7 @@ class IMemberDataElement(IResourceDataElement):
 
     def set_mapped_child(attr, data_element):
         """
-        Sets the given mmeber or collection mapped attribute to the given 
+        Sets the given mmeber or collection mapped attribute to the given
         data element.
         """
 

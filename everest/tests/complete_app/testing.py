@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 23, 2012.
@@ -10,8 +10,6 @@ from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityGrandchild
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
-from everest.tests.complete_app.interfaces import IMyEntityChild
-from everest.tests.complete_app.interfaces import IMyEntityParent
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['create_collection',
@@ -27,34 +25,31 @@ def create_entity(entity_id=0, entity_text=None):
     my_entity.parent = my_entity_parent
     my_entity_child = MyEntityChild()
     my_entity_child.id = entity_id
-    my_entity_child.parent = my_entity
-    if len(my_entity.children) == 0:
-        # Tests that use the ORM will not need to go here.
-        my_entity.children.append(my_entity_child)
-        assert len(my_entity.children) == 1
+    my_entity.children.append(my_entity_child)
     my_entity_grandchild = MyEntityGrandchild()
     my_entity_grandchild.id = entity_id
-    my_entity_grandchild.parent = my_entity_child
-    # Tests that use the ORM will not need this.
-    if len(my_entity.children) == 0:
-        my_entity.children.append(my_entity_child)
-    if len(my_entity_child.children) == 0:
-        my_entity_child.children.append(my_entity_grandchild)
+    my_entity_child.children.append(my_entity_grandchild)
+    # If we run with the SQLAlchemy backend, the back references are populated
+    # automatically.
+    if my_entity_child.parent is None:
+        my_entity_child.parent = my_entity
+    if my_entity_grandchild.parent is None:
+        my_entity_grandchild.parent = my_entity_child
     return my_entity
 
 
-def create_collection():
-    my_entity0 = create_entity(entity_id=0, entity_text='foo0')
-    my_entity1 = create_entity(entity_id=1, entity_text='too1')
+def create_collection(entity_id1=0, entity_id2=1):
+    my_entity1 = create_entity(entity_id=None, entity_text='foo0')
+    my_entity2 = create_entity(entity_id=None, entity_text='too1')
     coll = get_root_collection(IMyEntity)
-    my_mb0 = coll.create_member(my_entity0)
-    my_mb1 = coll.create_member(my_entity1)
-    # FIXME: This should really be done automatically.
-    parent_coll = get_root_collection(IMyEntityParent)
-    parent_coll.add(my_mb0.parent)
-    parent_coll.add(my_mb1.parent)
-    children_coll = get_root_collection(IMyEntityChild)
-    children_coll.add(list(my_mb0.children)[0])
-    children_coll.add(list(my_mb1.children)[0])
+    coll.create_member(my_entity1)
+    coll.create_member(my_entity2)
+    my_entity1.id = entity_id1
+    my_entity1.parent.id = entity_id1
+    my_entity1.children[0].id = entity_id1
+    my_entity1.children[0].children[0].id = entity_id1
+    my_entity2.id = entity_id2
+    my_entity2.parent.id = entity_id2
+    my_entity2.children[0].id = entity_id2
+    my_entity2.children[0].children[0].id = entity_id2
     return coll
-

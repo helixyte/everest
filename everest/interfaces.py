@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
 """
+from zope.interface import Attribute # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.schema import Bool # pylint: disable=E0611,F0401
 from zope.schema import List # pylint: disable=E0611,F0401
@@ -123,12 +124,12 @@ class IUserMessage(Interface):
 class IUserMessageNotifier(Interface):
     def notify(message_text):
         """
-        Notifies all subscribers to 
+        Notifies all subscribers to
         :class:`everest.messaging.IUserMessage` of the given message
         and returns their collective vote.
-        
+
         :param str message_text: message to notify subcribers about. The
-          notifier will need to convert this to a :class:`UserMessage` 
+          notifier will need to convert this to a :class:`UserMessage`
           instance.
         """
 
@@ -138,16 +139,16 @@ class IUserMessageChecker(Interface):
         """
         This is required so that instances of user message checkers can
         serve as an adapter to a user message.
-        
+
         :param message: message to check
         :type message: :class:`everest.entities.system.UserMessage`.
         """
 
     def check():
         """
-        Evaluates the message held by this checker. Returns `False`, 
-        `True`, or `None` to signal abortion, continuation conditional on 
-        other checkers approval, or unconditional continuation to the caller. 
+        Evaluates the message held by this checker. Returns `False`,
+        `True`, or `None` to signal abortion, continuation conditional on
+        other checkers approval, or unconditional continuation to the caller.
         """
 
     vote = Bool(title=u'Result of the voting from all subscribed checkers.')
@@ -158,5 +159,63 @@ class IResourceUrlConverter(Interface):
         """Performs URL -> resource conversion."""
     def resource_to_url(resource):
         """Performs URL -> resource conversion."""
+
+
+class IDataTraversalProxyFactory(Interface):
+    def make_source_proxy(data, options=None):
+        """
+        Creates a source data traversal proxy.
+        """
+
+    def make_target_proxy(data, accessor,
+                          manage_back_references=True, options=None):
+        """
+        Creates a target data traversal proxy.
+        """
+
+
+class IDataTraversalProxyAdapter(Interface):
+    proxy_class = Attribute('The data traversal proxy class for this '
+                            'adapter.')
+
+
+class IRelationship(Interface):
+    specification = Attribute('Filter specification for the objects '
+                              'defined by this relationship.')
+
+    def add(related, direction=None, safe=False):
+        """
+        Adds the given related object to the relationship.
+
+        The add operation is performed on both ends of the relationship if
+        appropriate entity attribute declarations have been made.
+
+        :param related: object to ADD.
+        :param direction: One of the constants defined in
+          :class:`everest.constants.RELATIONSHIP_DIRECTIONS`. Indicates if
+          the attribute of the relator (FORWARD), of the relatee (REVERSE),
+          or both (BIDIRECTIONAL) should be updated.
+        :param safe: Flag indicating if the ADD operation should
+          only proceed if the object to add is not already in the
+          relationship.
+        """
+
+    def remove(related, direction=None, safe=False):
+        """
+        Removes the given related object from the relationship.
+
+        The remove operation is performed on both ends of the relationship if
+        appropriate entity attribute declarations have been made.
+
+        :param related: object to REMOVE.
+        :param direction: One of the constants defined in
+          :class:`everest.constants.RELATIONSHIP_DIRECTIONS`. Indicates if
+          the attribute of the relator (FORWARD), of the relatee (REVERSE),
+          or both (BIDIRECTIONAL) should be updated.
+        :param safe: Flag indicating if the REMOVE operation should succeed
+          even when the object being removed is not in the relationship.
+        :raises ValueError: If :param:`related` is not in the relationship
+          and :param:`safe` is not set.
+        """
 
 # pylint: enable=E0213,W0232,E0211

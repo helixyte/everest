@@ -33,10 +33,12 @@ XML_PREFIX_ATOM = 'atom'
 
 
 class AtomResourceRepresenter(MappingResourceRepresenter):
-
+    """
+    Resource representer implementation for ATOM.
+    """
     content_type = AtomMime
 
-    def from_stream(self, stream):
+    def from_stream(self, stream, resource=None):
         # We do not support parsing ATOM representations.
         raise NotImplementedError('Not implemented.')
 

@@ -1,7 +1,7 @@
 """
 General purpose utilities.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
@@ -9,6 +9,7 @@ Created on Oct 7, 2011.
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.repositories.interfaces import IRepositoryManager
+from functools import update_wrapper
 from pyramid.compat import NativeIO
 from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
@@ -20,9 +21,13 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
            'check_email',
            'classproperty',
+           'generative',
            'get_filter_specification_visitor',
+           'get_nested_attribute',
            'get_order_specification_visitor',
            'get_repository_manager',
+           'resolve_nested_attribute',
+           'set_nested_attribute',
            ]
 
 EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$'
@@ -40,6 +45,50 @@ class classproperty(object):
 
     def __get__(self, instance, cls):
         return self.__get(cls)
+
+
+def resolve_nested_attribute(obj, attribute):
+    #: Helper function for dotted attribute resolution.
+    tokens = attribute.split('.')
+    for token in tokens[:-1]:
+        obj = getattr(obj, token)
+        if obj is None:
+            break
+    return (obj, tokens[-1])
+
+
+def get_nested_attribute(obj, attribute):
+    """
+    Returns the value of the given (possibly dotted) attribute for the given
+    object.
+
+    If any of the parents on the nested attribute's name path are `None`, the
+    value of the nested attribute is also assumed as `None`.
+
+    :raises AttributeError: If any attribute access along the attribute path
+      fails with an `AttributeError`.
+    """
+    parent, attr = resolve_nested_attribute(obj, attribute)
+    if not parent is None:
+        attr_value = getattr(parent, attr)
+    else:
+        attr_value = None
+    return attr_value
+
+
+def set_nested_attribute(obj, attribute, value):
+    """
+    Sets the value of the given (possibly dotted) attribute for the given
+    object to the given value.
+
+    :raises AttributeError: If any of the parents on the nested attribute's
+      name path are `None`.
+    """
+    parent, attr = resolve_nested_attribute(obj, attribute)
+    if parent is None:
+        raise AttributeError('Can not set attribute "%s" on None value.'
+                             % attr)
+    setattr(parent, attr, value)
 
 
 def id_generator(start=0):
@@ -74,11 +123,11 @@ def get_traceback():
 
 def get_filter_specification_visitor(name):
     """
-    Returns a the class registered as the filter specification 
-    visitor utility under the given name (one of the 
+    Returns a the class registered as the filter specification
+    visitor utility under the given name (one of the
     :const:`everest.querying.base.EXPRESSION_KINDS` constants).
-    
-    :returns: class implementing 
+
+    :returns: class implementing
         :class:`everest.interfaces.IFilterSpecificationVisitor`
     """
     reg = get_current_registry()
@@ -87,11 +136,11 @@ def get_filter_specification_visitor(name):
 
 def get_order_specification_visitor(name):
     """
-    Returns the class registered as the order specification 
-    visitor utility under the given name (one of the 
+    Returns the class registered as the order specification
+    visitor utility under the given name (one of the
     :const:`everest.querying.base.EXPRESSION_KINDS` constants).
-    
-    :returns: class implementing 
+
+    :returns: class implementing
         :class:`everest.interfaces.IOrderSpecificationVisitor`
     """
     reg = get_current_registry()
@@ -101,8 +150,8 @@ def get_order_specification_visitor(name):
 def get_repository_manager():
     """
     Registers the object registered as the repository manager utility.
-    
-    :returns: object implementing 
+
+    :returns: object implementing
         :class:`everest.interfaces.IRepositoryManager`
     """
     reg = get_current_registry()
@@ -112,7 +161,7 @@ def get_repository_manager():
 class BidirectionalLookup(object):
     """
     Bidirectional mapping between a left and a right collection of items.
-    
+
     Each element of the left collection is mapped to exactly one element of
     the right collection; both collections contain unique elements.
     """
@@ -312,3 +361,15 @@ class WeakList(list):
             cnt += 1
         else:
             raise StopIteration
+
+
+def generative(func):
+    """
+    Marks an instance method as generative.
+    """
+    def wrap(inst, *args, **kw):
+        clone = type(inst).__new__(type(inst))
+        clone.__dict__ = inst.__dict__.copy()
+        return func(clone, *args, **kw)
+    return update_wrapper(wrap, func)
+

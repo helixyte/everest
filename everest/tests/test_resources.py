@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 14, 2012.
@@ -10,11 +10,12 @@ from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.querying.utils import get_filter_specification_factory
 from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
+from everest.tests.complete_app.testing import create_collection
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooCollection
 from everest.tests.simple_app.resources import FooMember
-from everest.tests.complete_app.testing import create_collection
+from mock import patch
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourcesFilteringTestCase',
@@ -34,12 +35,20 @@ class ResourcesTestCase(ResourceTestCase):
         ent = UnregisteredEntity()
         self.assert_raises(ValueError, FooMember, ent)
 
+    def test_member_name(self):
+        coll = get_root_collection(IFoo)
+        foo = FooEntity(id=0)
+        mb = coll.create_member(foo)
+        self.assert_equal(mb.__name__, '0')
+        mb.__name__ = 'foo'
+        self.assert_equal(mb.__name__, 'foo')
+
     def test_member_delete(self):
         coll = get_root_collection(IFoo)
         foo = FooEntity(id=0)
         mb = coll.create_member(foo)
         self.assert_true(mb in coll)
-        mb.delete()
+        coll.remove(mb)
         self.assert_false(mb in coll)
 
     def test__getitem__with_invalid_key_raises_error(self):
@@ -61,18 +70,21 @@ class ResourcesTestCase(ResourceTestCase):
         exc_msg = 'Collection must have a title.'
         self.assert_equal(str(cm.exception), exc_msg)
 
-    def test_update_from_entity(self):
-        foo0 = FooEntity(id=0)
-        coll = get_root_collection(IFoo)
-        mb0 = coll.create_member(foo0)
-        foo1 = FooEntity(id=1)
-        mb0.update_from_entity(foo1)
-        self.assert_equal(mb0.id, 1)
-
     def test_str(self):
         coll = get_root_collection(IFoo)
         coll_str = str(coll)
         self.assert_true(coll_str.startswith('<FooCollection'))
+
+
+#class RelatedResourcesTestCase(ResourceTestCase):
+#    package_name = 'everest.tests.complete_app'
+#    config_file_name = 'configure_no_rdb.zcml'
+#
+#    def test_delete_related_member(self):
+#        coll = create_collection()
+#        mb = coll['0']
+#        parent = mb.parent
+#        parent.remove(mb)
 
 
 class ResourcesFilteringTestCase(ResourceTestCase):
@@ -81,19 +93,19 @@ class ResourcesFilteringTestCase(ResourceTestCase):
 
     def test_filter_nested(self):
         coll = create_collection()
-        children = next(iter(coll)).children
+        children = coll['1'].children
         spec_fac = get_filter_specification_factory()
-        spec = spec_fac.create_equal_to('id', 1)
+        spec = spec_fac.create_equal_to('id', 0)
         children.filter = spec
         self.assert_true(isinstance(children.filter,
-                                    ValueEqualToFilterSpecification))
+                                    ConjunctionFilterSpecification))
         self.assert_equal(len(children), 0)
 
     def test_filter_not_nested(self):
         # The grand children are not nested, so the filter spec has to be
         # a ConjunctionFilterSpecification.
         coll = create_collection()
-        grand_children = next(iter(next(iter(coll)).children)).children
+        grand_children = coll['0'].children['0'].children
         spec_fac = get_filter_specification_factory()
         spec = spec_fac.create_equal_to('id', 1)
         grand_children.filter = spec
@@ -113,9 +125,11 @@ class ResourcesFilteringTestCase(ResourceTestCase):
         grandchildren = next(iter(children)).children
         grandchild = next(iter(grandchildren))
         spec_fac = get_filter_specification_factory()
-        spec = spec_fac.create_equal_to('backref_only_children', grandchild)
-        with self.assert_raises(ValueError) as cm:
-            children.filter = spec
+        spec = spec_fac.create_equal_to('children', grandchild)
+        with patch('%s.resources.MyEntityChildMember.children.entity_attr'
+                   % self.package_name, None):
+            with self.assert_raises(ValueError) as cm:
+                children.filter = spec
         exc_msg = 'does not have a corresponding entity attribute.'
         self.assert_true(str(cm.exception).endswith(exc_msg))
 

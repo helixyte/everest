@@ -130,12 +130,6 @@
                     name="repr_name"
                     value="myentitygrandchildren" />
             </attribute>
-            <attribute name="no_backref_children">
-                <option 
-                    name="ignore"
-                    value="true" 
-                    type="zope.configuration.fields.Bool" />
-            </attribute>
             <attribute name="text_rc">
                 <option 
                     name="ignore"

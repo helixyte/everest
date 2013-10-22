@@ -7,7 +7,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 13, 2010.
 """
 __docformat__ = 'reStructuredText en'
-__all__ = ['DuplicateException',
+__all__ = ['MultipleResultsException',
+           'NoResultsException',
            'UnsupportedOperationException',
            ]
 
@@ -18,8 +19,14 @@ class UnsupportedOperationException(Exception):
     """
 
 
-class DuplicateException(Exception):
+class NoResultsException(Exception):
     """
-    Raised when more than one item was found where one was expected. 
+    Raised when no result was found when at least one was expected.
+    """
+
+
+class MultipleResultsException(Exception):
+    """
+    Raised when more than one item was found where at most one was expected. 
     """
 

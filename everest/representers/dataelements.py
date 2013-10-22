@@ -7,14 +7,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012
 """
 from collections import OrderedDict
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IResourceDataElement
 from everest.representers.utils import data_element_tree_to_string
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
@@ -43,7 +43,6 @@ class DataElement(object):
     Implementations may need to be adapted to the format of the external
     representation they manage.
     """
-
     #: Static attribute mapping.
     mapping = None
 
@@ -195,9 +194,9 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
 
     def get_terminal_converted(self, attr):
         """
-        Returns the value of the specified attribute converted to a 
+        Returns the value of the specified attribute converted to a
         representation value.
-        
+
         :param attr: attribute to retrieve.
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
         :returns: representation string
@@ -209,8 +208,8 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
 
     def set_terminal_converted(self, attr, repr_value):
         """
-        Converts the given representation value and sets the specified 
-        attribute value to the converted value. 
+        Converts the given representation value and sets the specified
+        attribute value to the converted value.
 
         :param attr: attribute to set.
         :param str repr_value: string value of the attribute to set.
@@ -284,20 +283,20 @@ class SimpleLinkedDataElement(LinkedDataElement):
     @classmethod
     def create(cls, url, kind, relation=None, title=None, **options):
         inst = cls()
-        # pylint:disable=W0212
+        # pylint: disable=W0212
         inst.__url = url
         inst.__kind = kind
         inst.__relation = relation
         inst.__title = title
-        # pylint:enable=W0212
+        # pylint: enable=W0212
         return inst
 
     @classmethod
     def create_from_resource(cls, resource):
         if provides_member_resource(resource):
-            kind = ResourceKinds.MEMBER
+            kind = RESOURCE_KINDS.MEMBER
         elif provides_collection_resource(resource):
-            kind = ResourceKinds.COLLECTION
+            kind = RESOURCE_KINDS.COLLECTION
         else:
             raise ValueError('"%s" is not a resource.' % resource)
         return cls.create(resource_to_url(resource), kind,
@@ -320,12 +319,12 @@ class SimpleLinkedDataElement(LinkedDataElement):
 class DataElementAttributeProxy(object):
     """
     Convenience proxy for accessing data from data elements.
-    
+
     The proxy allows you to transparently access terminal, member, and
     collection attributes. Nested access is also supported.
-    
+
     Example: ::
-    
+
        prx = DataElementAttributeProxy(data_element)
        de_id = prx.id                              # terminal access
        de_parent = prx.parent                      # member access
@@ -353,7 +352,7 @@ class DataElementAttributeProxy(object):
         except KeyError:
             raise AttributeError(name)
         else:
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 value = self.__data_element.get_terminal(attr)
             else:
                 nested_data_el = self.__data_element.get_nested(attr)
@@ -361,7 +360,7 @@ class DataElementAttributeProxy(object):
                     value = None
                 elif ILinkedDataElement in provided_by(nested_data_el):
                     value = nested_data_el # links are returned as-is.
-                elif attr.kind == ResourceAttributeKinds.MEMBER:
+                elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                     value = DataElementAttributeProxy(nested_data_el)
                 else:
                     value = [DataElementAttributeProxy(mb_el)
@@ -379,7 +378,7 @@ class DataElementAttributeProxy(object):
             except KeyError:
                 raise AttributeError(name)
             else:
-                if attr.kind == ResourceAttributeKinds.TERMINAL:
+                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     self.__data_element.set_terminal(attr, value)
                 else:
                     if not (isinstance(value, DataElement) or value is None):

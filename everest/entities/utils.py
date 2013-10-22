@@ -89,6 +89,7 @@ def identifier_from_slug(slug):
     """
     return slug.replace('-', '_')
 
+
 def new_entity_id():
     """
     Generates a new (global) ID.
@@ -99,5 +100,3 @@ def new_entity_id():
     :return: UUID string.
     """
     return str(uuid.uuid1())
-
-

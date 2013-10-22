@@ -1,7 +1,7 @@
 """
 CSV representers.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 19, 2011.
@@ -13,12 +13,13 @@ from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
 from csv import writer
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
-from everest.representers.attributes import AttributeKey
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.base import RepresentationGenerator
 from everest.representers.base import RepresentationParser
-from everest.representers.config import IGNORE_ON_READ_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.converters import BooleanConverter
 from everest.representers.converters import ConverterRegistry
@@ -30,10 +31,7 @@ from everest.representers.dataelements import SimpleMemberDataElement
 from everest.representers.interfaces import IRepresentationConverter
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import PROCESSING_DIRECTIONS
 from everest.representers.traversal import ResourceDataVisitor
-from everest.resources.attributes import ResourceAttributeKinds
-from everest.resources.kinds import ResourceKinds
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
@@ -102,25 +100,25 @@ CsvConverterRegistry.register(float, NoOpConverter)
 class CsvRepresentationParser(RepresentationParser):
     """
     Parser for CSV representations.
-    
+
     The tabular structure of the CSV format makes it difficult to transport
-    nested (tree-like) data structures with it. The simplest way to solve 
+    nested (tree-like) data structures with it. The simplest way to solve
     this problem is to resort to links (URLs) for specifying nested resources
-    which implies that the referenced resources have to be created in 
-    advance. 
-    
-    Since it is quite a common use case to create a resource and its 
+    which implies that the referenced resources have to be created in
+    advance.
+
+    Since it is quite a common use case to create a resource and its
     immediate children from one representation (i.e., in a single REST call),
-    the CSV parser also supports explicit specification of nested member 
-    attributes through separate CSV fields and specification of nested 
+    the CSV parser also supports explicit specification of nested member
+    attributes through separate CSV fields and specification of nested
     collection member attributes through separate
     CSV fields and multiple rows (i.e., each row is specifying a member in
     the nested collection while all other field values remain unchanged).
     Nested collection members are allocated to their enclosing member either
-    by the member ID (if specified in a column named "id") or by the 
+    by the member ID (if specified in a column named "id") or by the
     combined values of all remaining fields (sorted by field name).
-    
-    :note: The CSV column (field) names have to be mapped uniquely to 
+
+    :note: The CSV column (field) names have to be mapped uniquely to
       (nested) attribute representation names.
     :note: Polymorphic nested resources may not be mapped correctly.
     """
@@ -179,7 +177,7 @@ class CsvRepresentationParser(RepresentationParser):
                 # get attribute values destructively from the row_data.
                 self.__row_data_key = self.__coll_data.make_key(row_data)
             mb_data_el = self.__process_row(row_data, self._resource_class,
-                                            AttributeKey(()))
+                                            MappedAttributeKey(()))
             if self.__is_first_row:
                 self.__is_first_row = False
                 if len(self.__first_row_field_names) > 0:
@@ -244,14 +242,13 @@ class CsvRepresentationParser(RepresentationParser):
         # fields we found from the set of all field names.
         if self.__is_first_row:
             self.__first_row_field_names.discard(attribute.repr_name)
-        if attribute.should_ignore(IGNORE_ON_READ_OPTION,
-                                   attribute_key):
+        if attribute.should_ignore(attribute_key):
             if not attribute_value in (None, ''):
                 raise ValueError('Value for attribute "%s" found '
                                  'which is configured to be ignored.'
                                  % attribute.repr_name)
         else:
-            if attribute.kind == ResourceAttributeKinds.TERMINAL:
+            if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 if not attribute_value is None:
                     data_el.set_terminal_converted(attribute, attribute_value)
             else:
@@ -263,10 +260,10 @@ class CsvRepresentationParser(RepresentationParser):
                             self.__process_link(attribute_value, attribute)
                     data_el.set_nested(attribute, link_data_el)
                 elif not has_attribute and len(row_data) > 0:
-                    nested_attr_key = attribute_key + (attribute.name,)
+                    nested_attr_key = attribute_key + (attribute,)
                     # We recursively look for nested resource attributes in
                     # other fields.
-                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                    if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                         # For polymorphic classes, this lookup will only work
                         # if a representer (and a mapping) was initialized
                         # for each derived class.
@@ -290,7 +287,7 @@ class CsvRepresentationParser(RepresentationParser):
                     nested_data_el = \
                         self.__process_row(row_data, nested_rc_cls,
                                            nested_attr_key)
-                    if attribute.kind == ResourceAttributeKinds.MEMBER:
+                    if attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                         if len(nested_data_el.data) > 0:
                             data_el.set_nested(attribute, nested_data_el)
                     elif len(nested_data_el) > 0:
@@ -308,11 +305,11 @@ class CsvRepresentationParser(RepresentationParser):
         if not self.__is_link(link):
             raise ValueError('Value for nested attribute "%s" '
                              'is not a link.' % attr.repr_name)
-        if attr.kind == ResourceAttributeKinds.MEMBER:
-            kind = ResourceKinds.MEMBER
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
+            kind = RESOURCE_KINDS.MEMBER
             rc_cls = get_member_class(attr.value_type)
         else:
-            kind = ResourceKinds.COLLECTION
+            kind = RESOURCE_KINDS.COLLECTION
             rc_cls = get_collection_class(attr.value_type)
         return self._mapping.create_linked_data_element(link,
                                                         kind,
@@ -423,14 +420,15 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def visit_member(self, attribute_key, attribute, member_node, member_data,
                      is_link_node, parent_data, index=None):
         if is_link_node:
-            new_field_name = self.__get_field_name(attribute_key[:-1],
+            new_field_name = self.__get_field_name(attribute_key.names[:-1],
                                                    attribute)
             mb_data = CsvData({new_field_name:
                                self.__encode(member_node.get_url())})
         else:
             rpr_mb_data = OrderedDict()
             for attr, value in iteritems_(member_data):
-                new_field_name = self.__get_field_name(attribute_key, attr)
+                new_field_name = self.__get_field_name(attribute_key.names,
+                                                       attr)
                 rpr_mb_data[new_field_name] = value
             mb_data = CsvData(rpr_mb_data)
         if not index is None:
@@ -446,7 +444,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def visit_collection(self, attribute_key, attribute, collection_node,
                          collection_data, is_link_node, parent_data):
         if is_link_node:
-            new_field_name = self.__get_field_name(attribute_key[:-1],
+            new_field_name = self.__get_field_name(attribute_key.names[:-1],
                                                    attribute)
             coll_data = CsvData({new_field_name:collection_node.get_url()})
         else:
@@ -463,11 +461,11 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
     def csv_data(self):
         return self.__csv_data
 
-    def __get_field_name(self, attribute_key, attribute):
+    def __get_field_name(self, attribute_names, attribute):
         if attribute.name != attribute.repr_name:
             field_name = attribute.repr_name
         else:
-            field_name = '.'.join(attribute_key + (attribute.name,))
+            field_name = '.'.join(attribute_names + (attribute.name,))
         return self.__encode(field_name)
 
     def __encode(self, item):
@@ -479,21 +477,19 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
 class CsvRepresentationGenerator(RepresentationGenerator):
     """
     A generator converting data elements into CSV representations.
-    
+
     :note: ``None`` values in terminal attributes are represented as the empty
            string (this is the default behavior of the CSV writer from the
            standard library).
-    :note: Nested member and collection resources are handled by adding 
+    :note: Nested member and collection resources are handled by adding
            more columns (member attributes) and rows (collection members)
            dynamically. By default, column names for nested member attributes
            are built as dot-concatenation of the corresponding attribute key.
     """
-
     def run(self, data_element):
         # We also emit None values to make sure every data row has the same
         # number of fields.
         trv = DataElementTreeTraverser(data_element, self._mapping,
-                                       direction=PROCESSING_DIRECTIONS.WRITE,
                                        ignore_none_values=False)
         vst = CsvDataElementTreeVisitor(self.get_option('encoding'))
         trv.run(vst)
@@ -507,9 +503,10 @@ class CsvRepresentationGenerator(RepresentationGenerator):
 
 
 class CsvResourceRepresenter(MappingResourceRepresenter):
-
+    """
+    Resource representer implementation for CSV.
+    """
     content_type = CsvMime
-
     #: The CSV dialect to use for exporting CSV data.
     CSV_EXPORT_DIALECT = 'export'
     #: The CSV dialect to use for importing CSV data.

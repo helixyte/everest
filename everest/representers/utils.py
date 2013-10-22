@@ -28,8 +28,7 @@ def as_representer(resource, content_type):
     Adapts the given resource and content type to a representer.
 
     :param resource: resource to adapt.
-    :param str content_type: content (MIME) type to create a
-        representer for.
+    :param str content_type: content (MIME) type to obtain a representer for.
     """
     reg = get_current_registry()
     rpr_reg = reg.queryUtility(IRepresenterRegistry)
@@ -88,6 +87,7 @@ def data_element_tree_to_string(data_element):
                     if not IResourceDataElement in provided_by(attr_value):
                         stream.write("%s=%s" % (attr_name, attr_value))
                     else:
+                        stream.write("%s=" % attr_name)
                         __dump(attr_value, stream, offset)
             stream.write(')')
     stream = NativeIO()

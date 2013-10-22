@@ -131,15 +131,22 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         self.assert_equal(mb.__name__, '0')
-        req_body = '"id","text","number"\n1,"abc",2\n'
+        req_body = '"id","text","number"\n0,"abc",2\n'
         res = self.app.put("%s/0" % self.path,
                            params=req_body,
                            content_type=CsvMime.mime_type_string,
                            status=200)
         self.assert_is_not_none(res)
         mb = next(iter(coll))
-        self.assert_equal(mb.__name__, '1')
         self.assert_equal(mb.text, 'abc')
+        self.assert_equal(mb.number, 2)
+        req_body = '"id","text","number"\n2,"abc",2\n'
+        res = self.app.put("%s/0" % self.path,
+                           params=req_body,
+                           content_type=CsvMime.mime_type_string,
+                           status=200)
+        self.assert_equal(mb.id, 2)
+        self.assert_true(res.headers['Location'].endswith('2/'))
 
     def test_post_collection(self):
         req_body = '"id","text","number"\n0,"abc",2\n'
@@ -167,13 +174,13 @@ class BasicViewTestCase(FunctionalTestCase):
 
     def test_post_nested_collection_no_parent(self):
         mb, mb_url = self.__make_parent_and_link()
-        child_coll = get_root_collection(IMyEntityChild)
         req_body = '"id","text"\n0,"child"\n'
         res = self.app.post("%schildren" % mb_url,
                             params=req_body,
                             content_type=CsvMime.mime_type_string,
                             status=201)
         self.assert_is_not_none(res)
+        child_coll = get_root_collection(IMyEntityChild)
         child_mb = child_coll['0']
         self.assert_equal(child_mb.text, 'child')
         self.assert_equal(child_mb.parent.id, mb.id)

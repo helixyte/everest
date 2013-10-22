@@ -1,6 +1,5 @@
 """
-
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 5, 2013.
@@ -11,7 +10,10 @@ from everest.resources.utils import get_collection_class
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['Repository',
+__all__ = ['AutocommittingSessionMixin',
+           'Query',
+           'Repository',
+           'Session',
            'SessionFactory',
            ]
 
@@ -27,18 +29,95 @@ class SessionFactory(object):
         raise NotImplementedError('Abstract method.')
 
 
+class Session(object):
+    """
+    Abstract base class for session objects.
+    """
+    #: Flag to indicate whether session operations need to update back
+    #: references.
+    IS_MANAGING_BACKREFERENCES = None
+
+    def get_by_id(self, entity_class, id_key):
+        """
+        Adds the given entity data to the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def add(self, entity_class, data):
+        """
+        Adds the given entity data to the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def remove(self, entity_class, data):
+        """
+        Removes the given entity data from the session.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def update(self, entity_class, data, target=None):
+        """
+        Updates an existing entity with the given entity data. If
+        :param:`target_data` not given, the target entity will be determined
+        through the ID supplied with the data.
+
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
+          iterable of such objects.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def query(self, entity_class):
+        raise NotImplementedError('Abstract method.')
+
+
+class AutocommittingSessionMixin(object):
+    """
+    Mixin classes for sessions that wrap every add, remove, and update
+    operation into a transaction.
+    """
+    def add(self, entity_class, data):
+        self.begin()
+        super(AutocommittingSessionMixin, self).add(entity_class, data)
+        self.commit()
+
+    def remove(self, entity_class, data):
+        self.begin()
+        super(AutocommittingSessionMixin, self).remove(entity_class, data)
+        self.commit()
+
+    def update(self, entity_class, data, target=None):
+        self.begin()
+        spr = super(AutocommittingSessionMixin, self)
+        updated_entity = spr.update(entity_class, data, target=target)
+        self.commit()
+        return updated_entity
+
+
 @implementer(IRepository)
 class Repository(object):
     """
     Base class for repositories.
 
     A repository has the following responsibilities:
-     * Configure and initialize a storage backend for resource data; 
-     * Create and cache aggregate and collection accessors for registered 
+     * Configure and initialize a storage backend for resource data;
+     * Create and cache aggregate and collection accessors for registered
        resources;
-     * Create and hold a session factory which is used to create a 
-       (thread-local) session. The session is used by the accessors to 
-       load entities and resources from the repository. 
+     * Create and hold a session factory which is used to create a
+       (thread-local) session. The session is used by the accessors to
+       load entities and resources from the repository.
     """
 
     #: A list of key names which can be used by :method:`configure`.
@@ -48,11 +127,11 @@ class Repository(object):
                  join_transaction=False, autocommit=False):
         """
         Constructor.
-        
+
         :param name: Name for this repository (propagated to repository).
         :param aggregate_class: The aggregate class to use when creating new
           aggregates in this repository.
-        :param join_transaction: Indicates whether this repository should 
+        :param join_transaction: Indicates whether this repository should
           participate in the Zope transaction.
         :param autocommit: Indicates whether changes should be committed
           automatically.
@@ -79,7 +158,7 @@ class Repository(object):
     def get_aggregate(self, resource):
         """
         Get a clone of the root aggregate for the given registered resource.
-        
+
         :param resource: Registered resource.
         :raises RuntimeError: If the repository has not been initialized yet.
         """
@@ -97,19 +176,20 @@ class Repository(object):
         ent_cls = get_entity_class(resource)
         root_coll = self.__cache.get(ent_cls)
         if root_coll is None:
+            # Create a new root aggregate.
+            root_agg = self.__agg_cls.create(ent_cls, self.session_factory,
+                                             self)
+            # Create a new root collection.
             coll_cls = get_collection_class(resource)
-            agg = self.__agg_cls.create(ent_cls, self.session_factory)
-            root_coll = coll_cls.create_from_aggregate(agg)
+            root_coll = coll_cls.create_from_aggregate(root_agg)
             self.__cache[ent_cls] = root_coll
-        clone = root_coll.clone()
-        clone.__repository__ = self
-        return clone
+        return root_coll.clone()
 
     def set_collection_parent(self, resource, parent):
         """
         Sets the parent of the specified root collection to the given
         object (typically a service object).
-        
+
         :param resource: Registered resource.
         :raises ValueError: If no root collection has been created for the
           given registered resource.
@@ -122,11 +202,11 @@ class Repository(object):
 
     def configure(self, **config):
         """
-        Apply the given configuration key:value map to the configuration of 
+        Apply the given configuration key:value map to the configuration of
         this repository.
-        
+
         :raises ValueError: If the configuration map contains keys which are
-          not declared in the `_configurables` class variable. 
+          not declared in the `_configurables` class variable.
         """
         for key, val in config.items():
             if not key in self._configurables:
@@ -177,5 +257,75 @@ class Repository(object):
     def _make_session_factory(self):
         """
         Create the session factory for this repository.
+        """
+        raise NotImplementedError('Abstract method.')
+
+
+class Query(object):
+    """
+    Abstract base class for queries.
+    """
+
+    def __iter__(self):
+        """
+        Returns an iterator over all entities in this query after applying
+        filtering, ordering, and slicing settings.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def count(self):
+        """
+        Returns the count of the entities in this query.
+
+        :note: This does not take slicing into account.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def all(self):
+        """
+        Returns a list of all entities in this query after applying
+        filtering, ordering, and slicing settings.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def one(self):
+        """
+        Returns exactly one result from this query.
+
+        :raises NoResultsException: if no results were found.
+        :raises MultipleResultsException: if more than one result was found.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def filter(self, filter_expression):
+        """
+        Sets the filter expression for this query. Generative (returns a
+        clone).
+
+        :note: If the query already has a filter expression, the returned
+            query will use the conjunction of both expressions.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def filter_by(self, **kw):
+        """
+        Generates an equal-to filter expression and calls :method:`filter`
+        with it.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def order_by(self, order_expression):
+        """
+        Sets the order expression for this query. Generative (returns a
+        clone).
+
+        :note: If the query already has an order expression, the returned
+            query will use the conjunction of both expressions.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def slice(self, start, stop):
+        """
+        Sets the slice key for this query. Generative (returns a clone).
         """
         raise NotImplementedError('Abstract method.')

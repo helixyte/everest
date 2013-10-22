@@ -35,9 +35,9 @@ class _UrlBaseTestCase(ResourceTestCase):
 
     def test_resource_to_url_non_resource_object(self):
         ent = create_entity(entity_id=2)
-        with self.assert_raises(ValueError) as cm:
+        with self.assert_raises(TypeError) as cm:
             resource_to_url(ent)
-        exc_msg = 'Can not convert non-resource object'
+        exc_msg = 'Can not generate URL for non-resource'
         self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_resource_to_url_floating_member(self):
@@ -45,7 +45,7 @@ class _UrlBaseTestCase(ResourceTestCase):
         mb = MyEntityMember.create_from_entity(ent)
         with self.assert_raises(ValueError) as cm:
             resource_to_url(mb)
-        exc_msg = 'Can not generate URL for floating member'
+        exc_msg = 'Can not generate URL for floating resource'
         self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_resource_to_url_member(self):
@@ -81,7 +81,7 @@ class _UrlBaseTestCase(ResourceTestCase):
         self.coll.filter = flt_spec
         self.__check_url(resource_to_url(self.coll),
                          schema='http', path='/my-entities/', params='',
-                         query='q=parent:equal-to:%s' % parent_url)
+                         query="q=parent:equal-to:'%s'" % parent_url)
 
     def test_resource_to_url_with_order(self):
         ord_spec_fac = get_order_specification_factory()
@@ -185,8 +185,6 @@ class _UrlBaseTestCase(ResourceTestCase):
                     url_to_resource(self.base_url + '?q=%s' % criterion)
         mbs = list(coll_from_url)
         self.assert_equal(len(mbs), 2)
-        self.assert_equal(getattr(mbs[0], 'id'), 0)
-        self.assert_equal(getattr(mbs[1], 'id'), 1)
 
     def test_url_to_resource_with_order(self):
         coll_from_url = url_to_resource(self.base_url + '?sort=id:asc')

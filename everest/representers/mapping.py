@@ -1,35 +1,35 @@
 """
 Mapping and mapping registry.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 4, 2012.
 """
 from collections import OrderedDict
-from everest.representers.attributes import AttributeKey
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.attributes import MappedAttribute
+from everest.representers.attributes import MappedAttributeKey
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.interfaces import IDataElement
+from everest.representers.interfaces import IMemberDataElement
 from everest.representers.traversal import DataElementBuilderResourceTreeVisitor
-from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.traversal import PROCESSING_DIRECTIONS
-from everest.representers.traversal import ResourceBuilderDataElementTreeVisitor
 from everest.representers.traversal import ResourceTreeTraverser
-from everest.resources.attributes import ResourceAttributeKinds
 from everest.resources.attributes import get_resource_class_attributes
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResourceLink
 from everest.resources.link import Link
+from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
-from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
+from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -41,11 +41,14 @@ __all__ = ['Mapping',
 class Mapping(object):
     """
     Performs configurable resource <-> data element tree <-> representation
-    mappings.
-    
+    attribute mappings.
+
     :property mapped_class: The resource class mapped by this mapping.
     :property data_element_class: The data element class for this mapping
     """
+    #: Flag indicating if this mapping should prune the attribute tree
+    #: according to the IGNORE settings.
+    is_pruning = False
 
     def __init__(self, mapping_registry, mapped_class, data_element_class,
                  configuration):
@@ -62,12 +65,21 @@ class Mapping(object):
         self.__mapped_attr_cache = {}
 
     def clone(self, options=None, attribute_options=None):
+        """
+        Returns a clone of this mapping that is configured with the given
+        option and attribute option dictionaries.
+        """
         copied_cfg = self.__configuration.copy()
         upd_cfg = type(copied_cfg)(options=options,
                                    attribute_options=attribute_options)
         copied_cfg.update(upd_cfg)
         return self.__class__(self.__mp_reg, self.__mapped_cls,
                               self.__de_cls, copied_cfg)
+
+    def update(self, options=None, attribute_options=None):
+        cfg = RepresenterConfiguration(options=options,
+                                       attribute_options=attribute_options)
+        self.configuration.update(cfg)
 
     @property
     def configuration(self):
@@ -81,40 +93,60 @@ class Mapping(object):
 
     def get_attribute_map(self, mapped_class=None, key=None):
         """
-        Returns a map of all attributes of the given mapped class.
-        
+        Returns an ordered map of the mapped attributes for the given mapped
+        class and attribute key.
+
         :param key: tuple of attribute names specifying a path to a nested
-          attribute in a resource tree. If this is not given, all attributes
+          attribute in a resource tree. If this is not given, the attributes
           in this mapping will be returned.
         """
         if mapped_class is None:
             mapped_class = self.__mapped_cls
-        if key is None:
-            key = AttributeKey(()) # Top level access.
-        # FIXME: Investigate caching of mapped attributes.
-        attrs = None # self.__mapped_attr_cache.get((mapped_class, key))
-        if attrs is None:
-            attrs = self.__collect_mapped_attributes(mapped_class, key)
-#            self.__mapped_attr_cache[(mapped_class, key)] = attrs
-        return attrs
+        return OrderedDict([(attr.resource_attr, attr)
+                            for attr in self._attribute_iterator(mapped_class,
+                                                                 key)])
+
+    def get_attribute(self, attribute_name, mapped_class=None, key=None):
+        """
+        Returns the specified attribute from the map of all mapped attributes
+        for the given mapped class and attribute key.
+        """
+        return self.__get_attribute_map(mapped_class, key)[attribute_name]
 
     def attribute_iterator(self, mapped_class=None, key=None):
-        attr_map = self.get_attribute_map(mapped_class=mapped_class, key=key)
-        for attr in itervalues_(attr_map):
+        """
+        Returns an iterator over all mapped attributes for the given mapped
+        class and attribute key. See :method:`get_attribute_map` for details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
             yield attr
 
     def terminal_attribute_iterator(self, mapped_class=None, key=None):
-        for attr in self.attribute_iterator(mapped_class, key=key):
-            if attr.kind == ResourceAttributeKinds.TERMINAL:
+        """
+        Returns an iterator over all terminal mapped attributes for the given
+        mapped class and attribute key. See :method:`get_attribute_map` for
+        details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
+            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def nonterminal_attribute_iterator(self, mapped_class=None, key=None):
-        for attr in self.attribute_iterator(mapped_class=mapped_class,
-                                            key=key):
-            if attr.kind != ResourceAttributeKinds.TERMINAL:
+        """
+        Returns an iterator over all non-terminal mapped attributes for the
+        given mapped class and attribute key. See :method:`get_attribute_map`
+        for details.
+        """
+        for attr in self._attribute_iterator(mapped_class, key):
+            if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 yield attr
 
     def create_data_element(self, mapped_class=None):
+        """
+        Returns a new data element for the given mapped class.
+
+        :returns: object implementing :class:`IResourceDataElement`.
+        """
         if not mapped_class is None and mapped_class != self.__mapped_cls:
             mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             data_el = mp.create_data_element()
@@ -124,31 +156,70 @@ class Mapping(object):
 
     def create_linked_data_element(self, url, kind,
                                    relation=None, title=None):
+        """
+        Returns a new linked data element for the given url and kind.
+
+        :param str url: URL to assign to the linked data element.
+        :param str kind: kind of the resource that is linked. One of the
+          constantes defined by :class:`everest.constants.RESOURCE_KINDS`.
+        :returns: object implementing :class:`ILinkedDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create(url, kind,
                                             relation=relation, title=title)
 
     def create_data_element_from_resource(self, resource):
+        """
+        Returns a new data element for the given resource object.
+
+        :returns: object implementing :class:`IResourceDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(type(resource))
         return mp.data_element_class.create_from_resource(resource)
 
     def create_linked_data_element_from_resource(self, resource):
+        """
+        Returns a new linked data element for the given resource object.
+
+        :returns: object implementing :class:`ILinkedDataElement`.
+        """
         mp = self.__mp_reg.find_or_create_mapping(Link)
         return mp.data_element_class.create_from_resource(resource)
 
-    def map_to_resource(self, data_element):
-        trv = DataElementTreeTraverser(data_element, self,
-                                       direction=PROCESSING_DIRECTIONS.READ)
-        visitor = ResourceBuilderDataElementTreeVisitor()
-        trv.run(visitor)
-        return visitor.resource
+    def map_to_resource(self, data_element, resource=None):
+        """
+        Maps the given data element to a new resource or updates the given
+        resource.
+
+        :raises ValueError: If :param:`data_element` does not provide
+          :class:`everest.representers.interfaces.IDataElement`.
+        """
+        if not IDataElement.providedBy(data_element): # pylint:disable=E1101
+            raise ValueError('Expected data element, got %s.' % data_element)
+        if resource is None:
+            coll = \
+                create_staging_collection(data_element.mapping.mapped_class)
+            agg = coll.get_aggregate()
+            agg.add(data_element)
+            if IMemberDataElement.providedBy(data_element): # pylint: disable=E1101
+                ent = next(iter(agg))
+                resource = \
+                    data_element.mapping.mapped_class.create_from_entity(ent)
+            else:
+                resource = coll
+        else:
+            resource.update(data_element)
+        return resource
 
     def map_to_data_element(self, resource):
-        trv = ResourceTreeTraverser(resource, self,
-                                    direction=PROCESSING_DIRECTIONS.WRITE)
+        trv = ResourceTreeTraverser(resource, self.as_pruning())
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
+
+    def as_pruning(self):
+        return PruningMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
+                              self.__configuration)
 
     @property
     def mapped_class(self):
@@ -162,25 +233,57 @@ class Mapping(object):
     def mapping_registry(self):
         return self.__mp_reg
 
+    def _attribute_iterator(self, mapped_class, key):
+        """
+        Returns an iterator over the attributes in this mapping for the
+        given mapped class and attribute key.
+
+        If this is a pruning mapping, the default behavior for ignoring
+        nested attributes are applied as well as the configured ignore
+        options.
+        """
+        for attr in itervalues_(self.__get_attribute_map(mapped_class, key)):
+            if self.is_pruning:
+                do_ignore = attr.should_ignore(key)
+            else:
+                do_ignore = False
+            if not do_ignore:
+                yield attr
+
+    def __get_attribute_map(self, mapped_class, key):
+        if mapped_class is None:
+            mapped_class = self.__mapped_cls
+        if key is None:
+            key = MappedAttributeKey(()) # Top level access.
+        attr_map = self.__mapped_attr_cache.get((mapped_class, key))
+        if attr_map is None:
+            attr_map = self.__collect_mapped_attributes(mapped_class, key)
+            self.__mapped_attr_cache[(mapped_class, key)] = attr_map
+        return attr_map
+
     def __collect_mapped_attributes(self, mapped_class, key):
+        if isinstance(key, MappedAttributeKey):
+            names = key.names
+        else:
+            names = key
         collected_mp_attrs = OrderedDict()
         is_mapped_cls = mapped_class is self.__mapped_cls
-        if len(key) == 0 and is_mapped_cls:
+        if len(names) == 0 and is_mapped_cls:
             # Bootstrapping: fetch resource attributes and create new
             # mapped attributes.
             rc_attrs = get_resource_class_attributes(self.__mapped_cls)
             for rc_attr in itervalues_(rc_attrs):
-                attr_key = key + (rc_attr.name,)
+                attr_key = names + (rc_attr.resource_attr,)
                 attr_mp_opts = \
                         self.__configuration.get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
-                collected_mp_attrs[rc_attr.name] = new_mp_attr
+                collected_mp_attrs[new_mp_attr.resource_attr] = new_mp_attr
         else:
             # Indirect access - fetch mapped attributes from some other
             # class' mapping and clone.
             if is_mapped_cls:
                 mp = self
-            elif len(key) == 0 and self.__is_collection_mapping:
+            elif len(names) == 0 and self.__is_collection_mapping:
                 if provides_member_resource(mapped_class):
                     # Mapping a polymorphic member class.
                     mapped_coll_cls = get_collection_class(mapped_class)
@@ -192,7 +295,7 @@ class Mapping(object):
                 mp = self.__mp_reg.find_or_create_mapping(mapped_class)
             mp_attrs = mp.get_attribute_map()
             for mp_attr in itervalues_(mp_attrs):
-                attr_key = key + (mp_attr.name,)
+                attr_key = names + (mp_attr.name,)
                 attr_mp_opts = \
                     dict(((k, v)
                           for (k, v) in
@@ -204,8 +307,15 @@ class Mapping(object):
         return collected_mp_attrs
 
 
-class MappingRegistry(object):
+class PruningMapping(Mapping):
+    is_pruning = True
 
+
+class MappingRegistry(object):
+    """
+    The mapping registry manages resource attribute mappings by resource
+    class.
+    """
     member_data_element_base_class = None
     collection_data_element_base_class = None
     linked_data_element_base_class = None
@@ -226,7 +336,7 @@ class MappingRegistry(object):
 
     def create_mapping(self, mapped_class, configuration=None):
         """
-        Creates a new mapping for the given mapped class and representer 
+        Creates a new mapping for the given mapped class and representer
         configuration.
 
         :param configuration: configuration for the new data element class.
@@ -267,7 +377,7 @@ class MappingRegistry(object):
     def find_mapping(self, mapped_class):
         """
         Returns the mapping registered for the given mapped class or any of
-        its base classes. Returns `None` if no mapping can be found. 
+        its base classes. Returns `None` if no mapping can be found.
 
         :param mapped_class: mapped type
         :type mapped_class: type
@@ -289,8 +399,8 @@ class MappingRegistry(object):
     def find_or_create_mapping(self, mapped_class):
         """
         First calls :meth:`find_mapping` to check if a mapping for the given
-        mapped class or any of its base classes has been created. If not, a 
-        new one is created with a default configuration, registered 
+        mapped class or any of its base classes has been created. If not, a
+        new one is created with a default configuration, registered
         automatically and returned.
         """
         mapping = self.find_mapping(mapped_class)
@@ -303,7 +413,7 @@ class MappingRegistry(object):
         """
         Returns an iterator over all registered mappings.
 
-        :returns: iterator yielding tuples containing a mapped class as the 
+        :returns: iterator yielding tuples containing a mapped class as the
           first and a :class:`Mapping` instance as the second item.
         """
         return itervalues_(self.__mappings)

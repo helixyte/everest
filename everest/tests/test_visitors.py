@@ -4,14 +4,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
 """
-from everest.repositories.rdb import SqlFilterSpecificationVisitor
-from everest.repositories.rdb import SqlOrderSpecificationVisitor
-from everest.repositories.rdb.utils import OrderClauseList
-from everest.repositories.rdb.utils import Session
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
+from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb import SqlOrderSpecificationVisitor
+from everest.repositories.rdb.querying import OrderClauseList
+from everest.repositories.rdb.utils import Session
+from everest.repositories.rdb.utils import reset_metadata
 from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
@@ -54,7 +55,7 @@ def teardown():
     if not Person.metadata is None:
         Person.metadata.drop_all()
         Person.metadata = None
-#    reset_metadata()
+    reset_metadata()
 
 
 class VisitorTestCase(Pep8CompliantTestCase):
@@ -270,7 +271,7 @@ class CqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
 class SqlFilterSpecificationVisitorTestCase(FilterVisitorTestCase):
     def set_up(self):
         if Person.metadata is None:
-#            reset_metadata()
+            reset_metadata()
             engine = create_engine('sqlite://')
             metadata = create_metadata(engine)
             Person.metadata = metadata

@@ -1,15 +1,13 @@
 """
 ZCML directives for everest.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
 from everest.repositories.constants import REPOSITORY_TYPES
-from everest.representers.config import IGNORE_ON_READ_OPTION
-from everest.representers.config import IGNORE_ON_WRITE_OPTION
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
@@ -28,10 +26,10 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
+from everest.constants import RESOURCE_KINDS
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RESOURCE_KINDS',
-           'RepresenterDirective',
+__all__ = ['RepresenterDirective',
            'ResourceDirective',
            'ResourceRepresenterAttributeDirective',
            'ResourceRepresenterDirective',
@@ -175,7 +173,7 @@ def messaging(_context, repository, reset_on_start=False):
     """
     Directive for setting up the user message resource in the appropriate
     repository.
-    
+
     :param str repository: The repository to create the user messages resource
       in.
     """
@@ -273,9 +271,9 @@ class ResourceDirective(GroupingContextDecorator):
         for key, value in iteritems_(self.representers):
             cnt_type, rc_kind = key
             opts, mp_opts = value
-            if rc_kind == RESOURCE_KINDS.member:
+            if rc_kind == RESOURCE_KINDS.MEMBER:
                 rc = get_member_class(self.interface)
-            elif rc_kind == RESOURCE_KINDS.collection:
+            elif rc_kind == RESOURCE_KINDS.COLLECTION:
                 rc = get_collection_class(self.interface)
             else: # None
                 rc = self.interface
@@ -393,17 +391,13 @@ class RepresenterDirective(GroupingContextDecorator):
                                options=self.options)
 
 
-class RESOURCE_KINDS(object):
-    member = 'member'
-    collection = 'collection'
-
-
 class IResourceRepresenterDirective(Interface):
     content_type = \
         GlobalObject(title=u"The (MIME) content type the representer manages.",
                      required=True)
     kind = \
-        Choice(values=(RESOURCE_KINDS.member, RESOURCE_KINDS.collection),
+        Choice(values=(RESOURCE_KINDS.MEMBER.lower(),
+                       RESOURCE_KINDS.COLLECTION.lower()),
                title=u"Specifies the kind of resource the representer should "
                       "be used for ('member' or 'collection'). If this is "
                       "not provided, the representer is used for both "
@@ -414,7 +408,7 @@ class IResourceRepresenterDirective(Interface):
 @implementer(IConfigurationContext, IResourceRepresenterDirective)
 class ResourceRepresenterDirective(GroupingContextDecorator):
     """
-    Grouping directive for registering a representer for a given resource(s) 
+    Grouping directive for registering a representer for a given resource(s)
     and content type combination. Delegates the work to a
     :class:`everest.configuration.Configurator`.
     """
@@ -422,6 +416,8 @@ class ResourceRepresenterDirective(GroupingContextDecorator):
     def __init__(self, context, content_type, kind=None):
         self.context = context
         self.content_type = content_type
+        if not kind is None:
+            kind = kind.upper()
         self.kind = kind
         self.options = {}
         self.attribute_options = {}
@@ -471,8 +467,7 @@ def option(_context, name, value, type=None): # pylint: disable=W0622
     if not type is None:
         field = type()
         value = field.fromUnicode(value)
-    elif name in (IGNORE_OPTION, IGNORE_ON_READ_OPTION,
-                  IGNORE_ON_WRITE_OPTION, WRITE_AS_LINK_OPTION,
+    elif name in (IGNORE_OPTION, WRITE_AS_LINK_OPTION,
                   WRITE_MEMBERS_AS_LINK_OPTION):
         field = Bool()
         value = field.fromUnicode(value)
