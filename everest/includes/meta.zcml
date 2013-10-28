@@ -24,6 +24,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             schema="everest.directives.IRdbRepositoryDirective"
             handler="everest.directives.rdb_repository" />
         <meta:directive
+            name="nosql_repository"
+            schema="everest.directives.INoSqlRepositoryDirective"
+            handler="everest.directives.nosql_repository" />
+        <meta:directive
             name="messaging"
             schema="everest.directives.IMessagingDirective"
             handler="everest.directives.messaging" />

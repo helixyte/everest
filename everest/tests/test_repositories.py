@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
@@ -34,6 +34,7 @@ import os
 import shutil
 import tempfile
 import transaction
+from everest.repositories.interfaces import IRepository
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicRepositoryTestCase',
@@ -299,3 +300,13 @@ class MemoryRepoWithCacheLoaderTestCase(ResourceTestCase):
 
 def entity_loader(entity_class):
     return [entity_class()]
+
+
+class NoSqlRepositoryTestCase(ResourceTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_nosql.zcml'
+
+    def test_init(self):
+        repo_mgr = get_repository_manager()
+        repo = repo_mgr.get(REPOSITORY_TYPES.NO_SQL)
+        self.assert_true(IRepository.providedBy(repo)) # pylint: disable=E1101

@@ -1,6 +1,6 @@
 """
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 25, 2013.
@@ -9,6 +9,7 @@ from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.filesystem.repository import FileSystemRepository
 from everest.repositories.memory.repository import MemoryRepository
+from everest.repositories.nosqldb.repository import NoSqlRepository
 from everest.repositories.rdb.repository import RdbRepository
 from everest.utils import id_generator
 from pyramid.compat import itervalues_
@@ -20,7 +21,7 @@ __all__ = ['RepositoryManager',
 
 class RepositoryManager(object):
     """
-    The repository manager creates, initializes and holds repositories by 
+    The repository manager creates, initializes and holds repositories by
     name.
     """
     __repo_id_gen = id_generator()
@@ -68,6 +69,9 @@ class RepositoryManager(object):
         elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
             if repository_class is None:
                 repository_class = FileSystemRepository
+        elif repo_type == REPOSITORY_TYPES.NO_SQL:
+            if repository_class is None:
+                repository_class = NoSqlRepository
         else:
             raise ValueError('Unknown repository type.')
         repo = repository_class(name,
@@ -83,8 +87,8 @@ class RepositoryManager(object):
     def setup_system_repository(self, repository_type, reset_on_start):
         """
         Sets up the system repository with the given repository type.
-        
-        :param str repository: Repository type to use for the SYSTEM 
+
+        :param str repository: Repository type to use for the SYSTEM
           repository.
         :param bool reset_on_start: Flag to indicate whether stored system
           resources should be discarded on startup.

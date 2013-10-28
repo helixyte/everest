@@ -235,6 +235,19 @@ class Configurator(PyramidConfigurator):
                               repository_class, aggregate_class,
                               make_default, configuration)
 
+    def add_nosql_repository(self, name=None, repository_class=None,
+                             aggregate_class=None,
+                             make_default=False, configuration=None,
+                             _info=u''):
+        if configuration is None:
+            configuration = {}
+        setting_info = [('db_host', 'db_host'),
+                        ('db_port', 'db_port')]
+        configuration.update(self.__cnf_from_settings(setting_info))
+        self.__add_repository(name, REPOSITORY_TYPES.NO_SQL,
+                              repository_class, aggregate_class,
+                              make_default, configuration)
+
     def add_memory_repository(self, name=None, repository_class=None,
                               aggregate_class=None,
                               make_default=False, configuration=None,

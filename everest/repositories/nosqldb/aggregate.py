@@ -1,7 +1,7 @@
 """
 Aggregate for the NoSQL backend.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 5, 2013.
@@ -9,16 +9,16 @@ Created on Jan 5, 2013.
 from everest.entities.base import RootAggregate
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['NoSqlRootAggregate',
+__all__ = ['NoSqlAggregate',
            ]
 
 
-class NoSqlRootAggregate(RootAggregate):
+class NoSqlAggregate(RootAggregate):
     """
     Aggregate implementation for the NoSQL repository.
     """
-    def __init__(self, entity_class, session_factory):
-        RootAggregate.__init__(self, entity_class, session_factory)
+    def __init__(self, entity_class, session_factory, repository):
+        RootAggregate.__init__(self, entity_class, session_factory, repository)
 
     def get_by_slug(self, slug):
         pass

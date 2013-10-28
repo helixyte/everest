@@ -25,6 +25,7 @@ from zope.configuration.fields import Tokens # pylint: disable=E0611,F0401
 from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
+from zope.schema import Int # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
 from everest.constants import RESOURCE_KINDS
 
@@ -128,7 +129,8 @@ def filesystem_repository(_context, name=None, make_default=False,
         cnf['content_type'] = content_type
     _repository(_context, name, make_default,
                 aggregate_class, repository_class,
-                REPOSITORY_TYPES.FILE_SYSTEM, 'add_filesystem_repository', cnf)
+                REPOSITORY_TYPES.FILE_SYSTEM, 'add_filesystem_repository',
+                cnf)
 
 
 class IRdbRepositoryDirective(IRepositoryDirective):
@@ -156,6 +158,24 @@ def rdb_repository(_context, name=None, make_default=False,
     _repository(_context, name, make_default,
                 aggregate_class, repository_class,
                 REPOSITORY_TYPES.RDB, 'add_rdb_repository', cnf)
+
+
+class INoSqlRepositoryDirective(IRepositoryDirective):
+    db_host = \
+        TextLine(title=u"Host name for the MongoDB server.",
+                 required=False)
+    db_port = \
+        Int(title=u"Port for the MongoDB server.",
+            required=False)
+
+
+def nosql_repository(_context, name=None, make_default=False,
+                     aggregate_class=None, repository_class=None,
+                     db_host='localhost', db_port=27017, db_name='test'):
+    cnf = dict(db_host=db_host, db_port=db_port, db_name=db_name)
+    _repository(_context, name, make_default,
+                aggregate_class, repository_class,
+                REPOSITORY_TYPES.NO_SQL, 'add_nosql_repository', cnf)
 
 
 class IMessagingDirective(Interface):

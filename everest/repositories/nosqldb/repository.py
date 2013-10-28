@@ -1,18 +1,20 @@
 """
 Repository for the NoSQL backend.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 11, 2013.
 """
+from bson.objectid import ObjectId
 from everest.repositories.base import Repository
+from everest.repositories.memory.session import MemorySessionFactory
 from everest.repositories.nosqldb.aggregate import NoSqlAggregate
 from everest.repositories.state import ENTITY_STATES
 from everest.repositories.utils import is_engine_initialized
 from everest.repositories.utils import set_engine
 from pymongo.mongo_client import MongoClient
-from bson.objectid import ObjectId
+import operator
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['NoSqlRepository',
@@ -23,6 +25,9 @@ class NoSqlRepository(Repository):
     """
     Repository connected to a NoSQL backend.
     """
+    _configurables = Repository._configurables \
+                     + ['db_host', 'db_port', 'db_name']
+
     def __init__(self, name, aggregate_class=None,
                  join_transaction=True, autocommit=False):
         if aggregate_class is None:
@@ -55,10 +60,10 @@ class NoSqlRepository(Repository):
             engine = self.__make_engine()
             set_engine(self.name, engine)
         db_name = self._config['db_name']
-        self.__db = getattr(engine, db_name)
+        self.__db = operator.getitem(engine, db_name)
 
     def _make_session_factory(self):
-        Repository._make_session_factory(self)
+        return MemorySessionFactory(self)
 
     def __make_engine(self):
         db_host = self._config['db_host']
