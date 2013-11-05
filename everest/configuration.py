@@ -80,6 +80,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+from everest.repositories.nosqldb.querying import NoSqlFilterSpecificationVisitor
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -166,6 +167,7 @@ class Configurator(PyramidConfigurator):
                        cql_filter_specification_visitor=None,
                        sql_filter_specification_visitor=None,
                        eval_filter_specification_visitor=None,
+                       nosql_filter_specification_visitor=None,
                        cql_order_specification_visitor=None,
                        sql_order_specification_visitor=None,
                        eval_order_specification_visitor=None,
@@ -185,6 +187,9 @@ class Configurator(PyramidConfigurator):
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = \
                                     ObjectFilterSpecificationVisitor
+        if nosql_filter_specification_visitor is None:
+            nosql_filter_specification_visitor = \
+                                    NoSqlFilterSpecificationVisitor
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         if sql_order_specification_visitor is None:
@@ -204,6 +209,8 @@ class Configurator(PyramidConfigurator):
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
+               nosql_filter_specification_visitor=
+                                    nosql_filter_specification_visitor,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
@@ -522,6 +529,12 @@ class Configurator(PyramidConfigurator):
                                IFilterSpecificationVisitor,
                                name=EXPRESSION_KINDS.EVAL)
 
+    def _set_nosql_filter_specification_visitor(self,
+                                        nosql_filter_specification_visitor):
+        self._register_utility(nosql_filter_specification_visitor,
+                               IFilterSpecificationVisitor,
+                               name=EXPRESSION_KINDS.NOSQL)
+
     def _set_cql_order_specification_visitor(self,
                                              cql_order_specification_visitor):
         self._register_utility(cql_order_specification_visitor,
@@ -551,6 +564,7 @@ class Configurator(PyramidConfigurator):
                 cql_filter_specification_visitor,
                 sql_filter_specification_visitor,
                 eval_filter_specification_visitor,
+                nosql_filter_specification_visitor,
                 cql_order_specification_visitor,
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
@@ -613,6 +627,9 @@ class Configurator(PyramidConfigurator):
         if not eval_filter_specification_visitor is None:
             self._set_eval_filter_specification_visitor(
                                             eval_filter_specification_visitor)
+        if not nosql_filter_specification_visitor is None:
+            self._set_nosql_filter_specification_visitor(
+                                        nosql_filter_specification_visitor)
         if not cql_order_specification_visitor is None:
             self._set_cql_order_specification_visitor(
                                             cql_order_specification_visitor)

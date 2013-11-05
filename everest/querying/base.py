@@ -1,7 +1,7 @@
 """
 Querying operators, expressions, visitors, builders, directors.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
@@ -29,6 +29,7 @@ class EXPRESSION_KINDS(object):
     CQL = 'CQL'
     SQL = 'SQL'
     EVAL = 'EVAL'
+    NOSQL = 'NOSQL'
 
 
 class Operator(object):
@@ -79,7 +80,7 @@ class BinaryOperator(Operator):
 class CqlExpression(object):
     """
     Single CQL expression.
-    
+
     CQL expressions can be converted to a string and support the conjunction
     (AND) operation.
     """
@@ -103,7 +104,7 @@ class CqlExpression(object):
 class CqlExpressionList(object):
     """
     List of CQL expressions.
-    
+
     Like a single CQL expression, CQL expression lists can be converted to a
     string and joined with the conjunction (AND) operation.
     """
