@@ -1,7 +1,7 @@
 """
 Order specification visitor classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
@@ -89,10 +89,10 @@ class OrderSpecificationVisitor(SpecificationVisitor):
     Base class for order specification visitors.
     """
 
-    def _asc_op(self, attr_name):
+    def _asc_op(self, spec):
         raise NotImplementedError('Abstract method.')
 
-    def _desc_op(self, attr_name):
+    def _desc_op(self, spec):
         raise NotImplementedError('Abstract method.')
 
 
@@ -147,4 +147,4 @@ class RepositoryOrderSpecificationVisitor(OrderSpecificationVisitor): # pylint: 
         """
         Returns the given query ordered by this visitor's order expression.
         """
-        raise NotImplementedError('Abstract method.')
+        return query.order(self.expression)

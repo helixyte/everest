@@ -1,10 +1,11 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 1, 2011.
 """
 from everest.entities.base import Entity
+from pytz import timezone
 import datetime
 
 __docformat__ = 'reStructuredText en'
@@ -41,7 +42,8 @@ class MyEntityParent(_MyEntity):
 
 class MyEntity(_MyEntity):
     DEFAULT_NUMBER = 1
-    DEFAULT_DATETIME = datetime.datetime.now()
+    DEFAULT_DATETIME = datetime.datetime(2012, 8, 29, 16, 20, 0,
+                                         tzinfo=timezone('UTC'))
 
     parent = None
     children = None

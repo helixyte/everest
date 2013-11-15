@@ -1,7 +1,7 @@
 """
-Interfaces for specifications and related classes. 
+Interfaces for specifications and related classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 2, 2011.
@@ -24,14 +24,13 @@ class ISpecification(Interface):
     """
     Specification interface.
     """
-
     operator = Attribute('The operator for this specification. Subclass of '
                          ':class:`everest.querying.operators.Operator`.')
 
     def accept(visitor):
         """
         Accept the given visitor into this specification.
-        
+
         This triggers visits of this specification and all other dependent
         specifications which in turn dispatch appropriate visiting operations.
 
@@ -44,7 +43,6 @@ class IFilterSpecificationFactory(Interface):
     """
     Filter specification factory interface.
     """
-
     def create_equal_to(attr_name, attr_value):
         "Create an equal-to filter specification."
 
@@ -90,7 +88,6 @@ class IOrderSpecificationFactory(Interface):
     """
     Order specification factory interface.
     """
-
     def create_ascending(attr_name):
         "Create an ascending order specification."
 
@@ -102,11 +99,10 @@ class IOrderSpecificationFactory(Interface):
 class ISpecificationVisitor(Interface):
     """
     Interface for specification visitors.
-    
-    The various visiting methods dispatch to the appropriate visiting 
+
+    The various visiting methods dispatch to the appropriate visiting
     operations depending on the passed specification's operator.
     """
-
     expression = Attribute('The expression the visitor built.')
 
     def visit_nullary(spec):
@@ -133,6 +129,13 @@ class IFilterSpecificationVisitor(ISpecificationVisitor):
     """
     Interface for filter specification visitors.
     """
+    def filter_query(query):
+        """
+        Returns the given query filtered by the expression built by this
+        visitor.
+
+        Needs to be called after :method:`accept` has been run.
+        """
 
     def _conjunction_op(spec, *expressions):
         """
@@ -202,9 +205,16 @@ class IFilterSpecificationVisitor(ISpecificationVisitor):
 
 class IOrderSpecificationVisitor(ISpecificationVisitor):
     """
-    Interface for order specification visitors that generate a query 
+    Interface for order specification visitors that generate a query
     expression.
     """
+    def order_query(query):
+        """
+        Returns the given query ordered by the expression built by this
+        visitor.
+
+        Needs to be called after :method:`accept` has been run.
+        """
 
     def _conjunction_op(spec, *expressions):
         """
@@ -219,6 +229,80 @@ class IOrderSpecificationVisitor(ISpecificationVisitor):
     def _desc_op(attr_name):
         """
         Visiting operation for descending order specifications.
+        """
+
+
+class IQuery(Interface):
+    """
+    Interface for everest queries.
+    """
+    _entity_class = Attribute('The entity class the query targets.')
+
+    def __iter__():
+        """
+        Returns an iterator over all entities in this query after applying
+        filtering, ordering, and slicing settings.
+        """
+
+    def count():
+        """
+        Returns the count of the entities in this query.
+
+        :note: This does not take slicing into account.
+        """
+
+    def all():
+        """
+        Returns a list of all entities in this query after applying
+        filtering, ordering, and slicing settings.
+        """
+
+    def one():
+        """
+        Returns exactly one result from this query.
+
+        :raises NoResultsException: if no results were found.
+        :raises MultipleResultsException: if more than one result was found.
+        """
+
+    def filter(filter_expression):
+        """
+        Sets the filter expression for this query. Generative (returns a
+        clone).
+
+        :note: If the query already has a filter expression, the returned
+            query will use the conjunction of both expressions.
+        """
+
+    def filter_by(**kw):
+        """
+        Generates an equal-to filter expression (or a conjunction from
+        multiple equal-to filter expressions) and calls :method:`filter`
+        with it.
+
+        :param dict kw: name, value pairs.
+        """
+
+    def order(order_expression):
+        """
+        Sets the order expression for this query. Generative (returns a
+        clone).
+
+        :note: If the query already has an order expression, the returned
+            query will use the conjunction of both expressions.
+        """
+
+    def order_by(*args):
+        """
+        Generates an ordering expression (or a conjunction from multiple
+        ordering expressions) and calls :method:`order` with it.
+
+        :param tuple args: tuple containing (name, ascending) operator pairs.
+        """
+
+    def slice(start, stop):
+        """
+        Sets the slice key for this query. Generative (returns a clone).
         """
 
 # end interfaces pylint: enable=E0213,W0232,E0211

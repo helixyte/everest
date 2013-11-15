@@ -11,11 +11,11 @@ from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityChild
+from everest.tests.complete_app.entities import MyEntityParent
 from mock import patch
 from pyramid.threadlocal import get_current_registry
 import gc
-from everest.tests.complete_app.entities import MyEntityParent
-from everest.tests.complete_app.entities import MyEntityChild
 
 
 __docformat__ = 'reStructuredText en'
@@ -47,6 +47,7 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         self._session.add(MyEntity, ent)
         self.assert_true(ent in self._session)
         self.assert_true(ent in self._session.query(MyEntity))
+        self.assert_equal(list(self._session.new), [ent])
         # Commit triggers ID generation.
         self._session.commit()
         self.assert_is_not_none(ent.id)
@@ -67,6 +68,7 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         self.assert_equal(len(self._session.query(MyEntity).all()), 0)
         self.assert_is_none(self._session.get_by_id(MyEntity, ent.id))
         self.assert_is_none(self._session.get_by_slug(MyEntity, ent.slug))
+        self.assert_equal(list(self._session.deleted), [fetched_ent0])
 
     def test_remove_entity_not_in_session_raises_error(self):
         ent = MyEntity()
@@ -218,10 +220,21 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         self._session.remove(MyEntity, ent2)
         self.assert_is_none(self._session.get_by_slug(MyEntity, ent2.slug))
 
-    def test_remove_(self):
+    def test_remove_flush_add(self):
         ent = MyEntity()
         self._session.add(MyEntity, ent)
+        self._session.commit()
+        self.assert_equal(len(self._session.query(MyEntity).all()), 1)
         self._session.remove(MyEntity, ent)
+        self.assert_equal(len(self._session.query(MyEntity).all()), 0)
+        self._session.add(MyEntity, ent)
+        self.assert_equal(len(self._session.query(MyEntity).all()), 1)
+
+    def test_add_immediate_remove(self):
+        ent1 = MyEntity()
+        self._session.add(MyEntity, ent1)
+        self._session.remove(MyEntity, ent1)
+        self.assert_false(ent1 in self._session)
         self.assert_equal(len(self._session.query(MyEntity).all()), 0)
 
     @patch('%s.entities.MyEntity.slug' %
@@ -244,8 +257,8 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         ent2.id = None
         with self.assert_raises(ValueError) as cm:
             self._session.commit()
-        exc_msg = 'Entity ID must not be None.'
-        self.assert_equal(str(cm.exception), exc_msg)
+        exc_msg = 'Could not persist data - target entity not found'
+        self.assert_true(str(cm.exception).startswith(exc_msg))
 
     @patch('%s.entities.MyEntity.slug' %
            _MemorySessionTestCaseBase.package_name, 'slug')

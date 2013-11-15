@@ -9,6 +9,8 @@ from everest.exceptions import MultipleResultsException
 from everest.exceptions import NoResultsException
 from everest.querying.base import CqlExpressionList
 from everest.querying.filtering import CqlFilterExpression
+from everest.querying.operators import ASCENDING
+from everest.querying.operators import DESCENDING
 from everest.querying.operators import GREATER_OR_EQUALS
 from everest.querying.operators import GREATER_THAN
 from everest.querying.operators import LESS_OR_EQUALS
@@ -19,6 +21,7 @@ from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.repositories.memory.querying import EvalFilterExpression
 from everest.repositories.memory.querying import EvalOrderExpression
 from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.resources.staging import StagingAggregate
 from everest.testing import EntityTestCase
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.complete_app.entities import MyEntity
@@ -26,13 +29,12 @@ from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.testing import create_entity
 from operator import and_ as operator_and
 from operator import or_ as operator_or
-from everest.resources.staging import StagingAggregate
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CqlExpressionTestCase',
            'EvalExpressionTestCase',
            'MemoryQueryTestCase',
-           'MemorySessionQueryTestCase',
+           'MemoryRepositoryQueryTestCase',
            'RdbSessionQueryTestCase',
            ]
 
@@ -98,7 +100,10 @@ class _BaseQueryTestCase(EntityTestCase):
         self._aggregate = get_root_aggregate(IMyEntity)
         self._aggregate.add(self._ent0)
         self._aggregate.add(self._ent1)
-        self._query = self._aggregate.query()
+
+    @property
+    def _query(self):
+        return self._aggregate.query()
 
     def test_basics(self):
         self.assert_equal(set(self._query.all()),
@@ -118,19 +123,30 @@ class _BaseQueryTestCase(EntityTestCase):
         q = self._query.filter_by(id=1).filter_by(text='foo1')
         self.assert_true(q.one() is self._ent1)
 
+    def test_order_by(self):
+        ent2 = create_entity(entity_id=2, entity_text='foo3')
+        ent3 = create_entity(entity_id=3, entity_text='foo3')
+        self._aggregate.add(ent2)
+        self._aggregate.add(ent3)
+        q = self._query.order_by(('text', ASCENDING), ('id', DESCENDING))
+        last_ent = q.all()[-1]
+        self.assert_true(last_ent is ent2)
+        self.assert_raises(ValueError, self._query.order_by, ('text', None))
+
     def _test_order(self, txt_expr, id_expr):
         ent2 = create_entity(entity_id=2, entity_text='foo3')
         ent3 = create_entity(entity_id=3, entity_text='foo3')
         self._aggregate.add(ent2)
         self._aggregate.add(ent3)
-        q = self._query.order_by(txt_expr)
+        q = self._query.order(txt_expr)
         self.assert_true(iter(q).next() is self._ent0)
-        q = q.order_by(None)
-        q = q.order_by(txt_expr).order_by(id_expr)
-        self.assert_true(q.all()[-1] is ent2)
+        q = q.order(None)
+        q = q.order(txt_expr).order(id_expr)
+        last_ent = q.all()[-1]
+        self.assert_true(last_ent is ent2)
 
 
-class MemorySessionQueryTestCase(_BaseQueryTestCase):
+class MemoryRepositoryQueryTestCase(_BaseQueryTestCase):
     config_file_name = 'configure_no_rdb.zcml'
 
     def test_order(self):
@@ -165,5 +181,5 @@ class MemoryQueryTestCase(EntityTestCase):
         self.assert_equal(len(q.slice(1, 2).all()), 1)
         self.assert_equal(q.slice(1, 2).count(), 2)
         order_expr = EvalOrderExpression(AscendingOrderSpecification('text'))
-        q = q.order_by(order_expr)
+        q = q.order(order_expr)
         self.assert_equal(q.all()[0].text, 'text0')

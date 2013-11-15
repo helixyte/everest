@@ -463,7 +463,7 @@ class SourceTargetDataTreeTraverser(object):
             or (not target_proxy is None and
                 target_proxy.proxy_for == RESOURCE_KINDS.COLLECTION)
         if __debug__:
-            self.__logger = get_logger('everest')
+            self.__logger = get_logger('everest.traversal')
         else:
             self.__logger = None
 

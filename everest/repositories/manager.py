@@ -9,10 +9,17 @@ from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.filesystem.repository import FileSystemRepository
 from everest.repositories.memory.repository import MemoryRepository
-from everest.repositories.nosqldb.repository import NoSqlRepository
 from everest.repositories.rdb.repository import RdbRepository
 from everest.utils import id_generator
 from pyramid.compat import itervalues_
+# FIXME: This helps us avoid a dependency on pymongo until we have proper
+#        backend extension points.
+try: # pragma: no cover
+    from everest.repositories.nosqldb.repository import NoSqlRepository
+    HAS_MONGO = True
+except ImportError: # pragma: no cover
+    HAS_MONGO = False
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepositoryManager',
@@ -69,7 +76,7 @@ class RepositoryManager(object):
         elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
             if repository_class is None:
                 repository_class = FileSystemRepository
-        elif repo_type == REPOSITORY_TYPES.NO_SQL:
+        elif HAS_MONGO and repo_type == REPOSITORY_TYPES.NO_SQL:
             if repository_class is None:
                 repository_class = NoSqlRepository
         else:

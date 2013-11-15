@@ -8,7 +8,7 @@ Created on Feb 26, 2013.
 """
 from collections import defaultdict
 from everest.repositories.memory.querying import MemoryQuery
-from everest.repositories.state import EntityStateManager
+from everest.repositories.state import EntityState
 from itertools import islice
 from weakref import WeakValueDictionary
 
@@ -79,29 +79,7 @@ class EntityCache(object):
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
         :raises ValueError: If the ID of the entity to add is ``None``.
         """
-        # For certain use cases (e.g., staging), we do not want the entity to
-        # be added to have an ID yet.
-        do_append = True
-        if not entity.id is None:
-            if entity.id in self.__id_map:
-                if not self.__id_map[entity.id] is entity:
-                    raise ValueError('Duplicate entity ID "%s".' % entity.id)
-                else:
-                    do_append = False
-            else:
-                self.__id_map[entity.id] = entity
-        elif not self.__allow_none_id:
-            raise ValueError('Entity ID must not be None.')
-        # The slug can be a lazy attribute depending on the
-        # value of other (possibly not yet initialized) attributes which is
-        # why we can not always assume it is available at this point.
-        if hasattr(entity, 'slug') and not entity.slug is None:
-            if entity.slug in self.__slug_map:
-                if not self.__slug_map[entity.slug] is entity:
-                    raise ValueError('Duplicate entity slug "%s".'
-                                     % entity.slug)
-            else:
-                self.__slug_map[entity.slug] = entity
+        do_append = self.__check_new(entity)
         if do_append:
             self.__entities.append(entity)
 
@@ -118,21 +96,15 @@ class EntityCache(object):
         self.__slug_map.pop(entity.slug, None)
         self.__entities.remove(entity)
 
-    def replace(self, entity):
+    def update(self, source_data, target_entity):
         """
-        Replaces the current entity that has the same ID as the given new
-        entity with the latter.
+        Updates the state of the target entity with the given source data.
 
-        :param entity: Entity to replace.
-        :type entity: Object implementing :class:`everest.interfaces.IEntity`.
-        :raises KeyError: If the given entity is not in this cache.
-        :raises ValueError: If the ID of the given entity is `None`.
+        :param target_entity: Entity to update.
+        :type target_entity: Object implementing
+          :class:`everest.interfaces.IEntity`.
         """
-        if entity.id is None:
-            raise ValueError('Entity ID must not be None.')
-        old_entity = self.__id_map[entity.id]
-        self.remove(old_entity)
-        self.add(entity)
+        EntityState.set_state_data(target_entity, source_data)
 
     def get_all(self):
         """
@@ -142,7 +114,7 @@ class EntityCache(object):
         return self.__entities
 
     def retrieve(self, filter_expression=None,
-                 order_expression=None, slice_expression=None):
+                 order_expression=None, slice_key=None):
         """
         Retrieve entities from this cache, possibly after filtering, ordering
         and slicing.
@@ -154,9 +126,13 @@ class EntityCache(object):
             # Ordering always involves a copy and conversion to a list, so
             # we have to wrap in an iterator.
             ents = iter(order_expression(ents))
-        if not slice_expression is None:
-            ents = islice(ents, slice_expression.start, slice_expression.stop)
+        if not slice_key is None:
+            ents = islice(ents, slice_key.start, slice_key.stop)
         return ents
+
+    def rebuild(self, entities):
+        for ent in entities:
+            self.__check_new(ent)
 
     def __contains__(self, entity):
         if not entity.id is None:
@@ -164,6 +140,33 @@ class EntityCache(object):
         else:
             is_contained = entity in self.__entities
         return is_contained
+
+    def __check_new(self, entity):
+        # For certain use cases (e.g., staging), we do not want the entity to
+        # be added to have an ID yet.
+        do_append = True
+        if not entity.id is None:
+            if entity.id in self.__id_map:
+                if not self.__id_map[entity.id] is entity:
+                    raise ValueError('Duplicate entity ID "%s". %s'
+                                     % (entity.id, entity))
+                else:
+                    do_append = False
+            else:
+                self.__id_map[entity.id] = entity
+        elif not self.__allow_none_id:
+            raise ValueError('Entity ID must not be None.')
+        # The slug can be a lazy attribute depending on the
+        # value of other (possibly not yet initialized) attributes which is
+        # why we can not always assume it is available at this point.
+        if hasattr(entity, 'slug') and not entity.slug is None:
+            if entity.slug in self.__slug_map:
+                if not self.__slug_map[entity.slug] is entity:
+                    raise ValueError('Duplicate entity slug "%s".'
+                                     % entity.slug)
+            else:
+                self.__slug_map[entity.slug] = entity
+        return do_append
 
 
 class EntityCacheMap(object):
@@ -175,6 +178,9 @@ class EntityCacheMap(object):
 
     def __getitem__(self, entity_class):
         return self.__cache_map[entity_class]
+
+    def has_key(self, entity_class):
+        return self.__cache_map.has_key(entity_class)
 
     def get_by_id(self, entity_class, entity_id):
         cache = self.__cache_map[entity_class]
@@ -193,8 +199,8 @@ class EntityCacheMap(object):
         cache.remove(entity)
 
     def update(self, entity_class, source_data, target_entity):
-        EntityStateManager.set_state_data(entity_class,
-                                          source_data, target_entity)
+        cache = self.__cache_map[entity_class]
+        cache.update(source_data, target_entity)
 
     def query(self, entity_class):
         return MemoryQuery(entity_class,

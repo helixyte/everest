@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
@@ -11,6 +11,7 @@ from everest.utils import classproperty
 from everest.utils import get_traceback
 from everest.utils import id_generator
 import random
+from everest.utils import WeakOrderedSet
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UtilsTestCase',
@@ -179,3 +180,23 @@ class UtilsTestCase(Pep8CompliantTestCase):
         del obj_c1, obj_c2, obj_c3, obj_c4
         del obj_a, obj_c
         self.assertEqual(len(weak_list), 0)
+
+    def test_weak_ordered_set(self):
+        class MyObj(object):
+            def __init__(self, value):
+                self.value = value
+            def __eq__(self, other):
+                return self.value == other.value
+        values = [MyObj(val) for val in range(5)]
+        wos = WeakOrderedSet()
+        self.assert_raises(KeyError, wos.pop)
+        for value in values:
+            wos.add(value)
+        self.assert_equal(list(iter(wos)), values)
+        self.assert_equal(list(reversed(wos)), values[::-1])
+        self.assert_equal(len(wos), 5)
+        self.assert_equal(wos.pop(), values.pop())
+        self.assert_equal(len(wos), 4)
+        other_wos = WeakOrderedSet(values)
+        self.assert_equal(wos, other_wos)
+        self.assert_equal(wos, values)

@@ -10,6 +10,7 @@ from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
+from everest.exceptions import NoResultsException
 from everest.querying.utils import get_filter_specification_factory
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
@@ -346,7 +347,10 @@ class RootAggregate(Aggregate):
     def get_by_id(self, id_key):
         ent = self._session.get_by_id(self.entity_class, id_key)
         if ent is None:
-            ent = self._query_by_id(id_key)
+            try:
+                ent = self.query().filter_by(id=id_key).one()
+            except NoResultsException:
+                pass
         if not ent is None \
            and not self._filter_spec is None \
            and not self._filter_spec.is_satisfied_by(ent):
@@ -354,7 +358,17 @@ class RootAggregate(Aggregate):
         return ent
 
     def get_by_slug(self, slug):
-        raise NotImplementedError('Abstract method.')
+        ent = self._session.get_by_slug(self.entity_class, slug)
+        if ent is None:
+            try:
+                ent = self.query().filter_by(slug=slug).one()
+            except NoResultsException:
+                pass
+        if not ent is None \
+           and not self._filter_spec is None \
+           and not self._filter_spec.is_satisfied_by(ent):
+            ent = None
+        return ent
 
     def add(self, data):
 #        if not isinstance(entity, self.entity_class):
@@ -394,9 +408,6 @@ class RootAggregate(Aggregate):
         if not self._session.IS_MANAGING_BACKREFERENCES:
             relationship.direction &= ~RELATIONSHIP_DIRECTIONS.REVERSE
         return RelationshipAggregate(self, relationship)
-
-    def _query_by_id(self, id_key):
-        raise NotImplementedError('Abstract method.')
 
     def __iter__(self):
         """

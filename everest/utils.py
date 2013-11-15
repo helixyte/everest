@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.
 """
+from collections import MutableSet
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.repositories.interfaces import IRepositoryManager
@@ -13,6 +14,7 @@ from functools import update_wrapper
 from pyramid.compat import NativeIO
 from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
+from weakref import WeakKeyDictionary
 from weakref import ref
 import re
 import traceback
@@ -361,6 +363,68 @@ class WeakList(list):
             cnt += 1
         else:
             raise StopIteration
+
+
+class WeakOrderedSet(MutableSet):
+    """
+    Ordered set storing weak references to its items.
+
+    Based on a recipe by Raymond Hettinger
+    (http://code.activestate.com/recipes/576694-orderedset/).
+    """
+    def __init__(self, iterable=None):
+        MutableSet.__init__(self)
+        self.end = end = []
+        end += [None, end, end] # sentinel node for doubly linked list
+        self.map = WeakKeyDictionary() # key --> [key, prev, next]
+        if iterable is not None:
+            self |= iterable
+
+    def __len__(self):
+        return len(self.map)
+
+    def __contains__(self, key):
+        return key in self.map
+
+    def add(self, key):
+        if key not in self.map:
+            end = self.end
+            curr = end[1]
+            curr[2] = end[1] = self.map[key] = [key, curr, end]
+
+    def discard(self, key):
+        if key in self.map:
+            key, prev, nxt = self.map.pop(key)
+            prev[2] = nxt
+            nxt[1] = prev
+
+    def __iter__(self):
+        end = self.end
+        curr = end[2]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[2]
+
+    def __reversed__(self):
+        end = self.end
+        curr = end[1]
+        while curr is not end:
+            yield curr[0]
+            curr = curr[1]
+
+    def pop(self, last=True):
+        if not self:
+            raise KeyError('set is empty')
+        key = self.end[1][0] if last else self.end[2][0]
+        self.discard(key)
+        return key
+
+    def __eq__(self, other):
+        if isinstance(other, WeakOrderedSet):
+            is_eq = len(self) == len(other) and list(self) == list(other)
+        else:
+            is_eq = set(self) == set(other)
+        return is_eq
 
 
 def generative(func):

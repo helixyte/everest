@@ -6,16 +6,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 7, 2013.
 """
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
+from everest.entities.base import Entity
 from everest.exceptions import MultipleResultsException
 from everest.exceptions import NoResultsException
+from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import RepositoryFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import OrderSpecificationVisitor
 from everest.querying.ordering import RepositoryOrderSpecificationVisitor
-from everest.repositories.rdb.orm import OrmAttributeInspector
+from everest.querying.specifications import order
+from everest.repositories.rdb.utils import OrmAttributeInspector
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IResource
+from everest.utils import get_order_specification_visitor
 from functools import reduce as func_reduce
 from sqlalchemy import and_ as sqlalchemy_and
 from sqlalchemy import not_ as sqlalchemy_not
@@ -62,9 +66,6 @@ class SqlFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
             self._push(self.__custom_clause_factories[key](spec.attr_value))
         else:
             RepositoryFilterSpecificationVisitor.visit_nullary(self, spec)
-
-    def filter_query(self, query):
-        return query.filter(self.expression)
 
     def _starts_with_op(self, spec):
         return self.__build(spec.attr_name, 'startswith', spec.attr_value)
@@ -173,7 +174,7 @@ class SqlOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
         for join_expr in self.__joins:
             # FIXME: only join when needed here.
             query = query.outerjoin(join_expr)
-        return query.order_by(self.expression)
+        return query.order(self.expression)
 
     def _conjunction_op(self, spec, *expressions):
         clauses = []
@@ -206,8 +207,13 @@ class SqlOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
 
 
 class _CountingQuery(Query):
-    def __init__(self, *args, **kw):
-        Query.__init__(self, *args, **kw)
+    def __init__(self, entities, session, **kw):
+        Query.__init__(self, entities, session, **kw)
+        ent_cls = entities[0]
+        if isinstance(ent_cls, type) and issubclass(ent_cls, Entity):
+            self._entity_class = ent_cls
+        else:
+            self._entity_class = None
         self.__count = None
         self.__data = None
 
@@ -231,6 +237,16 @@ class _CountingQuery(Query):
         except MultipleResultsFound:
             raise MultipleResultsException('More than one result found '
                                            'where exactly one was expected.')
+
+    def order(self, order_expression):
+        return Query.order_by(self, order_expression)
+
+    def order_by(self, *args):
+        spec = order(*args)
+        vst_cls = get_order_specification_visitor(EXPRESSION_KINDS.SQL)
+        vst = vst_cls(self._entity_class)
+        spec.accept(vst)
+        return vst.order_query(self)
 
     def _load(self):
         raise NotImplementedError('Abstract method.')

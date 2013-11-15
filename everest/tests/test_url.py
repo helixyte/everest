@@ -16,6 +16,11 @@ from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
 from pyramid.compat import urlparse
+try: # pragma: no cover
+    from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
+    HAS_MONGO = True
+except ImportError: # pragma: no cover
+    HAS_MONGO = False
 
 
 __docformat__ = 'reStructuredText en'
@@ -235,7 +240,8 @@ class _UrlBaseTestCase(ResourceTestCase):
 #        self.assert_equal(len(coll_from_url), 1)
 
     def test_url_to_resource_with_link_and_other(self):
-        criterion1 = 'parent:equal-to:"%s/my-entity-parents/0/"' % self.app_url
+        criterion1 = 'parent:equal-to:"%s/my-entity-parents/0/"' \
+                     % self.app_url
         criterion2 = 'id:equal-to:0'
         coll_from_url = url_to_resource(self.base_url +
                                         '?q=%s~%s' % (criterion1, criterion2))
@@ -243,7 +249,8 @@ class _UrlBaseTestCase(ResourceTestCase):
 
     def test_two_urls(self):
         par_url = self.app_url + '/my-entity-parents/'
-        criteria = 'parent:equal-to:"%s","%s"' % (par_url + '0/', par_url + '1/')
+        criteria = 'parent:equal-to:"%s","%s"' \
+                   % (par_url + '0/', par_url + '1/')
         url = self.base_url + '?q=%s' % criteria
         coll_from_url = url_to_resource(url)
         self.assert_equal(len(coll_from_url), 2)
@@ -304,3 +311,10 @@ class RepoUrlTestCaseNoRdb(_UrlBaseTestCase):
 
 class RepoUrlTestCaseRdb(RdbTestCaseMixin, _UrlBaseTestCase):
     config_file_name = 'configure.zcml'
+
+
+if HAS_MONGO:
+    class RepoUrlTestCaseNoSql(NoSqlTestCaseMixin, _UrlBaseTestCase):
+        config_file_name = 'configure_nosql.zcml'
+
+

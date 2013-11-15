@@ -7,7 +7,6 @@ Created on Jun 1, 2011.
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
-from everest.repositories.rdb.querying import OrmAttributeInspector
 from everest.repositories.rdb.utils import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
@@ -525,15 +524,6 @@ class RdbDescriptorsTestCase(RdbTestCaseMixin, _DescriptorsTestCase):
             visitor = SqlFilterSpecificationVisitor(MyEntity)
             new_spec.accept(visitor)
             self.assert_equal(str(visitor.expression), str(expr))
-
-    def test_rdb_attribute_inspector(self):
-        with self.assert_raises(ValueError) as cm:
-            OrmAttributeInspector.inspect(MyEntity, 'text.something')
-        self.assert_true(str(cm.exception).endswith(
-                                    'references a terminal attribute.'))
-        with self.assert_raises(ValueError) as cm:
-            OrmAttributeInspector.inspect(MyEntity, 'DEFAULT_TEXT')
-        self.assert_true(str(cm.exception).endswith('not mapped.'))
 
 
 class MemoryDescriptorsTestCase(_DescriptorsTestCase):

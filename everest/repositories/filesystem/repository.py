@@ -1,6 +1,6 @@
 """
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
@@ -12,11 +12,9 @@ from everest.resources.io import dump_resource
 from everest.resources.io import get_read_collection_path
 from everest.resources.io import get_write_collection_path
 from everest.resources.io import load_collection_from_url
-from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
-from everest.resources.utils import get_member_class
-import os
 from everest.resources.utils import get_root_collection
+import os
 
 __all__ = ['FileSystemRepository',
            ]
@@ -25,7 +23,7 @@ __all__ = ['FileSystemRepository',
 class FileSystemRepository(MemoryRepository):
     """
     Repository using the file system as storage.
-    
+
     On initialization, this repository loads resource representations from
     files into the root repository. Each commit operation writes the specified
     resource back to file.
@@ -50,8 +48,8 @@ class FileSystemRepository(MemoryRepository):
         MemoryRepository.commit(self, unit_of_work)
         if self.is_initialized:
             entity_classes_to_dump = set()
-            for info in unit_of_work.iterator():
-                entity_classes_to_dump.add(info[0])
+            for state in unit_of_work.iterator():
+                entity_classes_to_dump.add(type(state.entity))
             for entity_cls in entity_classes_to_dump:
                 self.__dump_entities(entity_cls)
 

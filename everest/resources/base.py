@@ -1,5 +1,5 @@
 """
-Resources.
+Resource base classes.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -82,7 +82,7 @@ class Resource(object):
         """
         Adds a link to another resource.
 
-        :param link: a resource link
+        :param link: Resource link.
         :type link: :class:`everest.resources.base.Link`
         """
         self.links.add(link)
@@ -114,11 +114,10 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         Constructor:
 
-        :param name: unique name of the member within the collection
-        :type name: :class:`string`
-        :param entity: the associated entity (domain object)
-        :type entity: an object implementing an interface derived from
-                :class:`everest.entities.interfaces.IEntity`
+        :param str name: Unique name of the member within the collection
+        :param entity: Associated entity (domain object).
+        :type entity: Object implementing an interface derived from
+                :class:`everest.entities.interfaces.IEntity`.
         """
         if self.__class__ is Member:
             raise NotImplementedError('Abstract class')
@@ -153,7 +152,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         Returns the entity this resource manages.
 
-        :return: an object implementing
+        :return: Object implementing
             :class:`everest.entities.interfaces.IEntity`.
         """
         return self.__entity
@@ -177,7 +176,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         Equality operator.
 
-        Equality is based on a resource\'s name only.
+        Equality is based on a resource\'s name.
         """
         return (isinstance(other, self.__class__) and
                 self.__name__ == other.__name__)
@@ -236,12 +235,11 @@ class Collection(Resource):
         """
         Constructor.
 
-        :param name: the name of the collection
-        :type name: :class:`string`
-        :param aggregate: the associated aggregate
+        :param str name: Name of the collection.
+        :param aggregate: Associated aggregate.
         :type aggregate: :class:`everest.entities.aggregates.Aggregate` -
                 an object implementing an interface derived from
-                :class:`everest.entities.interfaces.IAggregate`
+                :class:`everest.entities.interfaces.IAggregate`.
         """
         if self.__class__ is Collection:
             raise NotImplementedError('Abstract class')
@@ -265,9 +263,9 @@ class Collection(Resource):
         """
         Creates a new collection from the given aggregate.
 
-        :param aggregate: aggregate containing the entities exposed by this
-            collection resource
-        :param relationship: resource relationship. If given, the root
+        :param aggregate: Aggregate containing the entities exposed by this
+            collection resource.
+        :param relationship: Resource relationship. If given, the root
             aggregate is converted to a relationship aggregate and the
             relationship is passed on to the collection class constructor.
         :type aggregate: :class:`everest.entities.aggregates.RootAggregate`
@@ -281,7 +279,7 @@ class Collection(Resource):
         """
         Returns the aggregate underlying this collection.
 
-        :return: an object implementing
+        :returns: Object implementing
             :class:`everest.entities.interfaces.IAggregate`.
         """
         return self.__aggregate
@@ -305,13 +303,13 @@ class Collection(Resource):
         """
         Gets a member (by name).
 
-        :param key: the name of the member
+        :param key: Name of the member
         :type key: :class:`string` or :class:`unicode`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one member is found for the given key value.
-        :raises: KeyError if no entity is found for the given key.
-        :returns: object implementing
-          :class:`everest.resources.interfaces.IMemberResource`
+        :raises: KeyError If no entity is found for the given key.
+        :returns: Object implementing
+          :class:`everest.resources.interfaces.IMemberResource`.
         """
         ent = self.__aggregate.get_by_slug(key)
         if ent is None:
@@ -349,8 +347,8 @@ class Collection(Resource):
         """
         Adds the given member to this collection.
 
-        :param member: member to add.
-        :type member: object implementing
+        :param member: Member to add.
+        :type member: Object implementing
                     :class:`everest.resources.interfaces.IMemberResource`
         :raise ValueError: if a member with the same name exists
         """
@@ -365,8 +363,8 @@ class Collection(Resource):
         """
         Removes the given member from this collection.
 
-        :param member: member to add.
-        :type member: object implementing
+        :param member: Member to remove.
+        :type member: Object implementing
                     :class:`everest.resources.interfaces.IMemberResource`
         :raise ValueError: if the member can not be found in this collection
         """
@@ -394,8 +392,9 @@ class Collection(Resource):
         """
         Updates a member in this collection from the given data.
 
-        :param data: entity or data element or dictionary
-        :returns: new updated member.
+        :param data: Any object that can be adapted to
+          :class:`everest.interfaces.IDataTraversalProxyAdapter`.
+        :returns: New updated member.
         """
         if not target is None:
             target = target.get_entity()

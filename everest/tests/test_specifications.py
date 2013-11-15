@@ -1,12 +1,12 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
 from datetime import datetime
 from datetime import timedelta
-from everest.querying.base import UnaryOperator
+from everest.querying.operators import UnaryOperator
 from everest.querying.specifications import ConjunctionFilterSpecification
 from everest.querying.specifications import DisjunctionFilterSpecification
 from everest.querying.specifications import FilterSpecification

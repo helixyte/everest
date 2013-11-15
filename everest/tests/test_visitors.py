@@ -479,7 +479,7 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         finally:
             Person.name.asc = old_asc
         # Make sure the correct ORDER BY clause is generated.
-        q = Session.query(Person).order_by(expr) # pylint: disable=E1101
+        q = Session.query(Person).order(expr) # pylint: disable=E1101
         q_str = str(q.statement)
         self.assert_not_equal(q_str.find("ORDER BY %s" % expr), -1)
 

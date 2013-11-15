@@ -1,14 +1,14 @@
 """
 Unit tests for operators.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Sep 7, 2012.
 """
-from everest.querying.base import BinaryOperator
-from everest.querying.base import NullaryOperator
-from everest.querying.base import UnaryOperator
+from everest.querying.operators import BinaryOperator
+from everest.querying.operators import NullaryOperator
+from everest.querying.operators import UnaryOperator
 from everest.testing import Pep8CompliantTestCase
 
 __docformat__ = 'reStructuredText en'

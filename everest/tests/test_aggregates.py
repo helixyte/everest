@@ -10,6 +10,7 @@ from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.utils import get_root_aggregate
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import asc
+from everest.querying.specifications import desc
 from everest.querying.specifications import eq
 from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.rdb.aggregate import RdbAggregate
@@ -23,11 +24,21 @@ from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.testing import create_entity
 from mock import patch
+# FIXME: This helps us avoid a dependency on pymongo until we have proper
+#        backend extension points.
+try:
+    from everest.repositories.nosqldb.aggregate import NoSqlAggregate
+    from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
+    HAS_MONGO = True
+except ImportError:
+    HAS_MONGO = False
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryRootAggregateTestCase',
            'RdbRootAggregateTestCase',
            ]
+
 
 class _RootAggregateTestCase(EntityTestCase):
     package_name = 'everest.tests.complete_app'
@@ -106,7 +117,11 @@ class _RootAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(agg.iterator())), 1)
         agg.filter = None
         self.assert_equal(len(list(agg.iterator())), 3)
-        agg.order = asc('parent.text_ent')
+        # TODO: Nested attribute ordering does not work with NoSQL.
+        if HAS_MONGO and self.agg_class != NoSqlAggregate:
+            agg.order = asc('parent.text_ent')
+        else:
+            agg.order = desc('id')
         self.assert_true(agg.iterator().next() is ent2)
 
     def test_add_remove(self):
@@ -123,8 +138,15 @@ class MemoryRootAggregateTestCase(_RootAggregateTestCase):
     agg_class = MemoryAggregate
 
 
-class RdbRootAggregateTestCase(_RootAggregateTestCase):
+class RdbRootAggregateTestCase(RdbTestCaseMixin, _RootAggregateTestCase):
     agg_class = RdbAggregate
+
+
+if HAS_MONGO:
+    class NosSqlRootAggregateTestCase(NoSqlTestCaseMixin,
+                                      _RootAggregateTestCase):
+        config_file_name = 'configure_nosql.zcml'
+        agg_class = NoSqlAggregate
 
 
 class _RelationshipAggregateTestCase(EntityTestCase):

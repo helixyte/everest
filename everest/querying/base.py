@@ -7,21 +7,23 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Dec 2, 2011.
 """
 from everest.entities.utils import identifier_from_slug
-from everest.querying.interfaces import ISpecification
+from everest.exceptions import MultipleResultsException
+from everest.exceptions import NoResultsException
+from everest.querying.interfaces import IQuery
 from everest.querying.interfaces import ISpecificationVisitor
+from everest.querying.specifications import eq
+from everest.querying.specifications import order
+from everest.utils import generative
+from everest.utils import get_filter_specification_visitor
+from everest.utils import get_order_specification_visitor
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['BinaryOperator',
-           'CqlExpression',
+__all__ = ['CqlExpression',
            'CqlExpressionList',
            'EXPRESSION_KINDS',
-           'NullaryOperator',
-           'Operator',
-           'Specification',
            'SpecificationVisitor',
            'SpecificationVisitorBase',
-           'UnaryOperator',
            ]
 
 
@@ -30,51 +32,6 @@ class EXPRESSION_KINDS(object):
     SQL = 'SQL'
     EVAL = 'EVAL'
     NOSQL = 'NOSQL'
-
-
-class Operator(object):
-    """
-    Base class for querying operators.
-    """
-    #: The name of the operator. To be specified in derived classes.
-    name = None
-    #: The arity (number of arguments required) of the operator. To be
-    #: specified in derived classes.
-    arity = None
-
-
-class NullaryOperator(Operator):
-    """
-    Nullary querying operator.
-    """
-    arity = 0
-
-    @staticmethod
-    def apply():
-        raise NotImplementedError('Abstract method.')
-
-
-
-class UnaryOperator(Operator):
-    """
-    Unary querying operator.
-    """
-    arity = 1
-
-    @staticmethod
-    def apply(value):
-        raise NotImplementedError('Abstract method.')
-
-
-class BinaryOperator(Operator):
-    """
-    Binary querying operator.
-    """
-    arity = 2
-
-    @staticmethod
-    def apply(value, ref_value):
-        raise NotImplementedError('Abstract method.')
 
 
 class CqlExpression(object):
@@ -127,21 +84,6 @@ class CqlExpressionList(object):
         return self.__cql_and.join([str(expr) for expr in self.expressions])
 
 
-@implementer(ISpecification)
-class Specification(object):
-    """
-    Abstract base classs for all specifications.
-    """
-    operator = None
-
-    def __init__(self):
-        if self.__class__ is Specification:
-            raise NotImplementedError('Abstract class')
-
-    def accept(self, visitor):
-        raise NotImplementedError('Abstract method')
-
-
 class SpecificationVisitorBase(object):
     """
     Base class for specification visitors.
@@ -189,3 +131,107 @@ class SpecificationVisitor(SpecificationVisitorBase):
     def __get_op_func(self, op_name):
         # Visitor function dispatch using the operator name.
         return getattr(self, '_%s_op' % identifier_from_slug(op_name))
+
+
+@implementer(IQuery)
+class Query(object):
+    """
+    Base class for everest queries.
+    """
+    def __init__(self, entity_class):
+        self._entity_class = entity_class
+        self._filter_expr = None
+        self._order_expr = None
+        self._slice_key = None
+
+    def __iter__(self):
+        raise NotImplementedError('Abstract method.')
+
+    def count(self):
+        raise NotImplementedError('Abstract method.')
+
+    def all(self):
+        return list(iter(self))
+
+    def one(self):
+        ents = self.all()
+        if len(ents) == 0:
+            raise NoResultsException('No results found when exactly one '
+                                     'was expected.')
+        elif len(ents) > 1:
+            raise MultipleResultsException('More than one result found '
+                                           'where exactly one was expected.')
+        return ents[0]
+
+    @generative
+    def filter(self, filter_expression):
+        if not filter_expression is None and not self._filter_expr is None:
+            filter_expression = self._filter_expr & filter_expression
+        self._filter_expr = filter_expression
+        return self
+
+    def filter_by(self, **kw):
+        raise NotImplementedError('Abstract method.')
+
+    @generative
+    def order(self, order_expression):
+        if not order_expression is None and not self._order_expr is None:
+            order_expression = self._order_expr & order_expression
+        self._order_expr = order_expression
+        return self
+
+    def order_by(self, *args):
+        raise NotImplementedError('Abstract method.')
+
+    @generative
+    def slice(self, start, stop):
+        self._slice_key = slice(start, stop)
+        return self
+
+
+class ExpressionBuilderMixin(object):
+    """
+    Mixin for query classes using eval filter and order expressions.
+    """
+    expression_kind = None
+
+    def filter_by(self, **kw):
+        spec = eq(**kw)
+        visitor_cls = get_filter_specification_visitor(self.expression_kind)
+        vst = visitor_cls(self._entity_class)
+        spec.accept(vst)
+        return vst.filter_query(self)
+
+    def order_by(self, *args):
+        spec = order(*args)
+        visitor_cls = get_order_specification_visitor(self.expression_kind)
+        vst = visitor_cls(self._entity_class)
+        spec.accept(vst)
+        return vst.order_query(self)
+
+
+class RepositoryQuery(Query): # still abstract pylint:disable=W0223
+    """
+    Query operating on objects stored in a repository and loaded through a
+    session.
+    """
+    def __init__(self, entity_class, session, repository):
+        Query.__init__(self, entity_class)
+        self._session = session
+        self._repository = repository
+
+    def __iter__(self):
+        repo_ents = self._repository.retrieve(
+                                        self._entity_class,
+                                        filter_expression=self._filter_expr,
+                                        order_expression=self._order_expr,
+                                        slice_key=self._slice_key
+                                        )
+        for repo_ent in repo_ents:
+            yield self._session.load(self._entity_class, repo_ent)
+
+    def count(self):
+        return sum(1 for _ in self._repository.retrieve(
+                                        self._entity_class,
+                                        filter_expression=self._filter_expr))
+

@@ -12,11 +12,13 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.querying.specifications import asc
 from everest.querying.specifications import eq
 from everest.repositories.memory.cache import EntityCache
+from everest.repositories.memory.cache import EntityCacheMap
 from everest.repositories.memory.querying import EvalFilterExpression
 from everest.repositories.memory.querying import EvalOrderExpression
+from everest.repositories.state import EntityState
+from everest.resources.descriptors import terminal_attribute
 from everest.testing import Pep8CompliantTestCase
 from pyramid.threadlocal import get_current_registry
-from everest.repositories.memory.cache import EntityCacheMap
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityCacheTestCase',
@@ -43,7 +45,7 @@ class EntityCacheTestCase(Pep8CompliantTestCase):
         self.assert_true(cache.get_by_slug(ent.slug) is ent)
         self.assert_true(cache.has_slug(ent.slug))
         self.assert_equal(len(cache.get_all()), 1)
-        # Adding the same entity twices should not have any effect.
+        # Adding the same entity twice should not have any effect.
         cache.add(ent)
         self.assert_true(cache.get_by_id(ent.id) is ent)
         self.assert_equal(len(cache.get_all()), 1)
@@ -51,7 +53,7 @@ class EntityCacheTestCase(Pep8CompliantTestCase):
         ent1 = MyEntity(id=0)
         txt = 'FROBNIC'
         ent1.text = txt
-        cache.replace(ent1)
+        cache.update(EntityState.get_state_data(ent1), ent)
         self.assert_equal(cache.get_by_id(ent.id).text, txt)
         self.assert_equal(cache.get_all(), [ent])
         self.assert_equal(list(cache.retrieve()), [ent])
@@ -69,10 +71,10 @@ class EntityCacheTestCase(Pep8CompliantTestCase):
         cache.add(ent2)
         filter_expr = EvalFilterExpression(~eq(id=0))
         order_expr = EvalOrderExpression(asc('id'))
-        slice_expr = slice(1, 2)
+        slice_key = slice(1, 2)
         self.assert_equal(list(cache.retrieve(filter_expression=filter_expr,
                                               order_expression=order_expr,
-                                              slice_expression=slice_expr)),
+                                              slice_key=slice_key)),
                           [ent2])
 
     def test_allow_none_id_false(self):
@@ -94,5 +96,6 @@ class EntityCacheMapTestCase(Pep8CompliantTestCase):
 
 
 class MyEntity(Entity):
+    __everest_attributes__ = dict(text=terminal_attribute(str, 'text'))
     text = None
 

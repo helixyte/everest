@@ -7,6 +7,6 @@ Created on Jan 11, 2013.
 from .aggregate import NoSqlAggregate as Aggregate
 try:
     from .repository import NoSqlRepository as Repository
-except ImportError:
+except ImportError: # pragma: no cover
     # We do not have support for MongoDB.
     pass

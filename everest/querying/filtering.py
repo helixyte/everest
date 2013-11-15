@@ -224,5 +224,5 @@ class RepositoryFilterSpecificationVisitor(FilterSpecificationVisitor): # pylint
         """
         Returns the given query filtered by this visitor's filter expression.
         """
-        raise NotImplementedError('Abstract method.')
+        return query.filter(self.expression)
 

@@ -16,8 +16,8 @@ from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
 from everest.repositories.memory.cache import EntityCache
-from everest.repositories.memory.querying import MemorySessionQuery
-from everest.repositories.state import EntityStateManager
+from everest.repositories.memory.querying import MemoryRepositoryQuery
+from everest.repositories.state import EntityState
 from everest.repositories.uow import UnitOfWork
 from everest.traversal import SourceTargetDataTreeTraverser
 from pyramid.compat import iteritems_
@@ -46,50 +46,65 @@ class MemorySession(Session):
     """
     IS_MANAGING_BACKREFERENCES = True
 
-    def __init__(self, repository):
+    def __init__(self, repository, query_class=None, clone_on_load=True):
         self.__repository = repository
         self.__unit_of_work = UnitOfWork()
         self.__cache_map = {}
+        if query_class is None:
+            query_class = MemoryRepositoryQuery
+        self.__query_class = query_class
+        self.__clone_on_load = clone_on_load
+        self.__needs_flushing = False
+        self.__is_flushing = False
 
     def get_by_id(self, entity_class, entity_id):
-        """
-        Retrieves the entity for the specified entity class and ID.
-        """
+        if self.__needs_flushing:
+            self.flush()
         cache = self.__get_cache(entity_class)
         return cache.get_by_id(entity_id)
 
-    def add(self, entity_class, data):
-        """
-        Adds the given entity of the given entity class to the session.
+    def get_by_slug(self, entity_class, entity_slug):
+        # When the entity is not found in the cache, it may have been added
+        # with an undefined slug; we therefore attempt to look it up in the
+        # list of pending NEW entities.
+        if self.__needs_flushing:
+            self.flush()
+        cache = self.__get_cache(entity_class)
+        ent = cache.get_by_slug(entity_slug)
+#        if ent is None:
+#            for new_ent in self.__unit_of_work.get_new(entity_class):
+#                if new_ent.slug == entity_slug:
+#                    ent = new_ent
+#                    break
+        return ent
 
-        At the point an entity is added, it must not have an ID or a slug
-        of another entity that is already in the session. However, both the ID
-        and the slug may be ``None`` values.
-        """
+    def add(self, entity_class, data):
         self.__traverse(entity_class, data, None, RELATION_OPERATIONS.ADD)
 
     def remove(self, entity_class, data):
-        """
-        Removes the given entity of the given entity class from the session.
-
-        :raises ValueError: If the entity to remove does not have an ID
-            (unless it is marked NEW).
-        """
         self.__traverse(entity_class, None, data, RELATION_OPERATIONS.REMOVE)
 
     def update(self, entity_class, data, target=None):
-        """
-        Updates the existing entity with the same ID as the given entity
-        with the state of the latter.
-
-        :raises ValueError: If the session does not contain an entity with
-            the same ID as the ID of the given :param:`entity`.
-        """
         return self.__traverse(entity_class, data, target,
                                RELATION_OPERATIONS.UPDATE)
 
     def query(self, entity_class):
-        return MemorySessionQuery(entity_class, self, self.__repository)
+        if self.__needs_flushing:
+            self.flush()
+        return self.__query_class(entity_class, self, self.__repository)
+
+    def flush(self):
+        if self.__needs_flushing and not self.__is_flushing:
+            self.__is_flushing = True
+            with self.__repository.lock:
+                self.__repository.flush(self.__unit_of_work)
+            self.__is_flushing = False
+            for ent_cls in self.__cache_map.keys():
+                # The flush may have auto-generated IDs for NEW entities,
+                # so we rebuild the cache.
+                cache = self.__get_cache(ent_cls)
+                cache.rebuild(self.__unit_of_work.get_new(ent_cls))
+        self.__needs_flushing = False
 
     def begin(self):
         self.__unit_of_work.reset()
@@ -101,6 +116,8 @@ class MemorySession(Session):
         self.__cache_map.clear()
 
     def rollback(self):
+        with self.__repository.lock:
+            self.__repository.rollback(self.__unit_of_work)
         self.__unit_of_work.reset()
         self.__cache_map.clear()
 
@@ -116,27 +133,108 @@ class MemorySession(Session):
         :raises ValueError: When an attempt is made to load an entity that
           has no ID
         """
-        if entity in self.__unit_of_work.get_new(entity_class):
-            # NEW entities may not have an ID, so we have to treat this case
-            # separately.
-            ent = entity
-        else:
-            if entity.id is None:
-                raise ValueError('Can not load entity without an ID.')
-            cache = self.__get_cache(entity_class)
-            ent = cache.get_by_id(entity.id)
-            if ent is None:
-                ent = self.__clone(entity_class, entity, cache)
-                self.__unit_of_work.register_clean(entity_class, ent)
-        return ent
+        if self.__needs_flushing:
+            self.flush()
+        if entity.id is None:
+            raise ValueError('Can not load entity without an ID.')
+        cache = self.__get_cache(entity_class)
+        sess_ent = cache.get_by_id(entity.id)
+        if sess_ent is None:
+            if self.__clone_on_load:
+                sess_ent = self.__clone(entity, cache)
+            else:
+                cache.add(entity)
+                sess_ent = entity
+            self.__unit_of_work.register_clean(entity_class, sess_ent)
+        return sess_ent
 
-    def __clone(self, entity_class, entity, cache):
+    @property
+    def new(self):
+        return self.__unit_of_work.get_new()
+
+    @property
+    def deleted(self):
+        return self.__unit_of_work.get_deleted()
+
+    def __contains__(self, entity):
+        cache = self.__cache_map.get(type(entity))
+        if not cache is None:
+            found = entity in cache
+        else:
+            found = False
+        return found
+
+    def __traverse(self, entity_class, source_data, target_data, rel_op):
+        agg = self.__repository.get_aggregate(entity_class)
+        trv = SourceTargetDataTreeTraverser.make_traverser(source_data,
+                                                           target_data,
+                                                           rel_op,
+                                                           accessor=agg)
+        vst = AruVisitor(entity_class,
+                         self.__add, self.__remove, self.__update)
+        trv.run(vst)
+        # Indicate that we need to flush the changes.
+        self.__needs_flushing = True
+        return vst.root
+
+    def __add(self, entity_class, entity):
+        cache = self.__get_cache(entity_class)
+        # We allow adding the same entity multiple times.
+        if not (not entity.id is None
+                and cache.get_by_id(entity.id) is entity):
+            if not self.__unit_of_work.is_marked_deleted(entity):
+                self.__unit_of_work.register_new(entity_class, entity)
+                if not entity.id is None and cache.has_id(entity.id):
+                    raise ValueError('Duplicate entity ID "%s".' % entity.id)
+                if not entity.slug is None and cache.has_slug(entity.slug):
+                    raise ValueError('Duplicate entity slug "%s".'
+                                     % entity.slug)
+            else:
+                if self.__unit_of_work.is_marked_pending(entity):
+                    # The changes were not flushed yet; just mark as clean.
+                    self.__unit_of_work.mark_clean(entity)
+                else:
+                    self.__unit_of_work.mark_new(entity)
+                    self.__unit_of_work.mark_pending(entity)
+            cache.add(entity)
+
+    def __remove(self, entity_class, entity):
+        if not self.__unit_of_work.is_registered(entity):
+            if entity.id is None:
+                raise ValueError('Can not remove un-registered entity '
+                                 'without an ID')
+            self.__unit_of_work.register_deleted(entity_class, entity)
+        elif not self.__unit_of_work.is_marked_new(entity):
+            self.__unit_of_work.mark_deleted(entity)
+        else:
+            if self.__unit_of_work.is_marked_pending(entity):
+                # The changes were not flushed yet; just mark as clean.
+                self.__unit_of_work.mark_clean(entity)
+            else:
+                self.__unit_of_work.mark_deleted(entity)
+                self.__unit_of_work.mark_pending(entity)
+        cache = self.__get_cache(entity_class)
+        if entity in cache:
+            cache.remove(entity)
+
+    def __update(self, entity_class, source_data, target_entity): # pylint: disable=W0613
+        EntityState.set_state_data(target_entity, source_data)
+        if self.__unit_of_work.is_marked_persisted(target_entity):
+            self.__unit_of_work.mark_pending(target_entity)
+
+    def __get_cache(self, entity_class):
+        cache = self.__cache_map.get(entity_class)
+        if cache is None:
+            cache = self.__cache_map[entity_class] = EntityCache()
+        return cache
+
+    def __clone(self, entity, cache):
         clone = object.__new__(entity.__class__)
         # We add the clone with its ID set to the cache *before* we load it
         # so that circular references will work.
         clone.id = entity.id
         cache.add(clone)
-        state = EntityStateManager.get_state_data(entity_class, entity)
+        state = EntityState.get_state_data(entity)
         id_attr = None
         for attr, value in iteritems_(state):
             if attr.entity_attr == 'id':
@@ -166,92 +264,8 @@ class MemorySession(Session):
         # We set the ID already above.
         if not id_attr is None:
             del state[id_attr]
-        EntityStateManager.set_state_data(entity_class, state, clone)
+        EntityState.set_state_data(clone, state)
         return clone
-
-    def get_by_slug(self, entity_class, entity_slug):
-        """
-        Retrieves the entity for the specified entity class and slug.
-
-        When the entity is not found in the cache, it may have been added
-        with an undefined slug and is looked up in the list of pending NEW
-        entities.
-        """
-        cache = self.__get_cache(entity_class)
-        ent = cache.get_by_slug(entity_slug)
-        if ent is None:
-            for new_ent in self.__unit_of_work.get_new(entity_class):
-                if new_ent.slug == entity_slug:
-                    ent = new_ent
-                    break
-        return ent
-
-    @property
-    def new(self):
-        return self.__unit_of_work.get_new()
-
-    @property
-    def deleted(self):
-        return self.__unit_of_work.get_deleted()
-
-    def __traverse(self, entity_class, source_data, target_data, rel_op):
-        agg = self.__repository.get_aggregate(entity_class)
-        trv = SourceTargetDataTreeTraverser.make_traverser(source_data,
-                                                           target_data,
-                                                           rel_op,
-                                                           accessor=agg)
-        vst = AruVisitor(entity_class,
-                         self.__add, self.__remove, self.__update)
-        trv.run(vst)
-        return vst.root
-
-    def __add(self, entity_class, entity):
-        cache = self.__get_cache(entity_class)
-        # We allow adding the same entity multiple times.
-        if not (not entity.id is None
-                and cache.get_by_id(entity.id) is entity):
-            if not self.__unit_of_work.is_marked_deleted(entity):
-                self.__unit_of_work.register_new(entity_class, entity)
-                if not entity.id is None and cache.has_id(entity.id):
-                    raise ValueError('Duplicate entity ID "%s".' % entity.id)
-                if not entity.slug is None and cache.has_slug(entity.slug):
-                    raise ValueError('Duplicate entity slug "%s".'
-                                     % entity.slug)
-            else:
-                self.__unit_of_work.mark_clean(entity)
-            cache.add(entity)
-
-    def __remove(self, entity_class, entity):
-        if not self.__unit_of_work.is_registered(entity):
-            if entity.id is None:
-                raise ValueError('Can not remove un-registered entity '
-                                 'without an ID')
-            self.__unit_of_work.register_deleted(entity_class, entity)
-        elif not self.__unit_of_work.is_marked_new(entity):
-            self.__unit_of_work.mark_deleted(entity)
-        else:
-            self.__unit_of_work.mark_clean(entity)
-        cache = self.__get_cache(entity_class)
-        if entity in cache:
-            cache.remove(entity)
-
-    def __update(self, entity_class, source_data, target_entity):
-        EntityStateManager.set_state_data(entity_class,
-                                          source_data, target_entity)
-
-    def __contains__(self, entity):
-        cache = self.__cache_map.get(type(entity))
-        if not cache is None:
-            found = entity in cache
-        else:
-            found = False
-        return found
-
-    def __get_cache(self, entity_class):
-        cache = self.__cache_map.get(entity_class)
-        if cache is None:
-            cache = self.__cache_map[entity_class] = EntityCache()
-        return cache
 
 
 class MemoryAutocommittingSession(AutocommittingSessionMixin, MemorySession):
@@ -267,22 +281,35 @@ class MemorySessionFactory(SessionFactory):
 
     The factory creates exactly one session per thread.
     """
-    def __init__(self, repository):
+    def __init__(self, repository, query_class=None, clone_on_load=True):
         SessionFactory.__init__(self, repository)
-        self.__session_registry = local()
+        sess_reg = local()
+        self.__session_registry = sess_reg
+        self.__query_class = query_class
+        self.__clone_on_load = clone_on_load
 
     def __call__(self):
         session = getattr(self.__session_registry, 'session', None)
         if session is None:
             if not self._repository.autocommit:
-                session = MemorySession(self._repository)
+                session = MemorySession(self._repository,
+                                        query_class=self.__query_class,
+                                        clone_on_load=self.__clone_on_load)
             else:
-                session = MemoryAutocommittingSession(self._repository)
-            if self._repository.join_transaction is True:
-                dm = DataManager(session)
-                trx = transaction.get()
-                trx.join(dm)
+                session = MemoryAutocommittingSession(
+                                        self._repository,
+                                        query_class=self.__query_class,
+                                        clone_on_load=self.__clone_on_load)
             self.__session_registry.session = session
+            if self._repository.join_transaction is True:
+                self.__session_registry.data_manager = DataManager(session)
+        if self._repository.join_transaction is True:
+            trx = transaction.get()
+            dm = self.__session_registry.data_manager
+            # We have a new transaction that we need to join.
+            if dm.transaction_id != id(trx):
+                trx.join(dm)
+                dm.transaction_id = id(trx)
         return session
 
 
@@ -295,6 +322,7 @@ class DataManager(object):
 
     def __init__(self, session):
         self.__session = session
+        self.transaction_id = None
 
     def abort(self, trans): # pylint: disable=W0613
         self.__session.rollback()

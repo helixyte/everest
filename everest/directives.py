@@ -167,6 +167,9 @@ class INoSqlRepositoryDirective(IRepositoryDirective):
     db_port = \
         Int(title=u"Port for the MongoDB server.",
             required=False)
+    db_name = \
+        TextLine(title=u"Database name for the MongoDB server.",
+                 required=False)
 
 
 def nosql_repository(_context, name=None, make_default=False,

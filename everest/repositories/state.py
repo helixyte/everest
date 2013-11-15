@@ -12,14 +12,14 @@ from pyramid.compat import iteritems_
 from weakref import ref
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['ENTITY_STATES',
-           'EntityStateManager',
+__all__ = ['ENTITY_STATUS',
+           'EntityState',
            ]
 
 
-class ENTITY_STATES(object):
+class ENTITY_STATUS(object):
     """
-    Entity state flags.
+    Entity status flags.
     """
     CLEAN = 'CLEAN'
     NEW = 'NEW'
@@ -27,9 +27,9 @@ class ENTITY_STATES(object):
     DIRTY = 'DIRTY'
 
 
-class EntityStateManager(object):
+class EntityState(object):
     """
-    Manager for entity state and state data.
+    Tracks entity status, persistency, and state data.
 
     Initially, an object is marked as NEW (freshly instantiated) or CLEAN
     (freshly fetched from repository).
@@ -37,32 +37,35 @@ class EntityStateManager(object):
     Only a weak reference to the tracked object is stored to avoid circular
     references.
 
-    Not all state transitions are allowed.
+    Not all status transitions are allowed.
+
+    :ivar is_persisted: Indicates if this state has been flushed to the
+      backend.
     """
     # FIXME: Need a proper state diagram here or drop tracking alltogether.
-    __allowed_transitions = set([(None, ENTITY_STATES.NEW),
-                                 (None, ENTITY_STATES.CLEAN),
-                                 (None, ENTITY_STATES.DELETED),
-                                 (ENTITY_STATES.NEW, ENTITY_STATES.CLEAN),
-                                 (ENTITY_STATES.NEW, ENTITY_STATES.DELETED),
-                                 (ENTITY_STATES.DELETED, ENTITY_STATES.CLEAN),
-                                 (ENTITY_STATES.DELETED, ENTITY_STATES.NEW),
-                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.DIRTY),
-                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.DELETED),
-                                 (ENTITY_STATES.CLEAN, ENTITY_STATES.NEW),
-                                 (ENTITY_STATES.DIRTY, ENTITY_STATES.CLEAN),
-                                 (ENTITY_STATES.DIRTY, ENTITY_STATES.DELETED),
+    __allowed_transitions = set([(None, ENTITY_STATUS.NEW),
+                                 (None, ENTITY_STATUS.CLEAN),
+                                 (None, ENTITY_STATUS.DELETED),
+                                 (ENTITY_STATUS.NEW, ENTITY_STATUS.CLEAN),
+                                 (ENTITY_STATUS.NEW, ENTITY_STATUS.DELETED),
+                                 (ENTITY_STATUS.DELETED, ENTITY_STATUS.CLEAN),
+                                 (ENTITY_STATUS.DELETED, ENTITY_STATUS.NEW),
+                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.DIRTY),
+                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.DELETED),
+                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.NEW),
+                                 (ENTITY_STATUS.DIRTY, ENTITY_STATUS.CLEAN),
+                                 (ENTITY_STATUS.DIRTY, ENTITY_STATUS.DELETED),
                                  ])
 
-    def __init__(self, entity_class, entity, unit_of_work):
-        self.__entity_class = entity_class
-        self.__obj_ref = ref(entity)
+    def __init__(self, entity, unit_of_work):
+        self.__entity_ref = ref(entity)
         self.__uow_ref = ref(unit_of_work)
-        self.__state = None
-        self.__last_state = self.get_state_data(entity_class, entity)
+        self.__status = None
+        self.__clean_data = self.data
+        self.is_persisted = False
 
     @classmethod
-    def manage(cls, entity_class, entity, unit_of_work):
+    def manage(cls, entity, unit_of_work):
         """
         Manages the given entity under the given Unit Of Work.
 
@@ -77,7 +80,7 @@ class EntityStateManager(object):
                 raise ValueError('Trying to register an entity that has been '
                                  'registered with another session!')
         else:
-            entity.__everest__ = cls(entity_class, entity, unit_of_work)
+            entity.__everest__ = cls(entity, unit_of_work)
 
     @classmethod
     def release(cls, entity, unit_of_work):
@@ -97,67 +100,38 @@ class EntityStateManager(object):
         delattr(entity, '__everest__')
 
     @classmethod
-    def set_state(cls, entity, state):
-        """
-        Sets the state flag of the given entity to the given value.
-
-        :raises ValueError: If `entity` is not managed.
-        """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to mark an unregistered entity as '
-                             '%s!' % state)
-        entity.__everest__.state = state
-
-    @classmethod
     def get_state(cls, entity):
-        """
-        Returns the state flag of the given entity.
-
-        :raises ValueError: If `entity` is not managed.
-        """
-        if not hasattr(entity, '__everest__'):
-            raise ValueError('Trying to get the state of an unregistered '
-                             'entity!')
-        return entity.__everest__.state
+        try:
+            return entity.__everest__
+        except AttributeError:
+            raise ValueError('Trying to obtain state for un-managed entity.')
 
     @classmethod
-    def transfer_state_data(cls, entity_class, source_entity, target_entity):
+    def get_state_data(cls, entity):
         """
-        Transfers instance state data from the given source entity to the
-        given target entity.
-        """
-        state = cls.get_state_data(entity_class, source_entity)
-        cls.set_state_data(entity_class, state, target_entity)
+        Returns the state data for the given entity.
 
-    @classmethod
-    def get_state_data(cls, entity_class, entity):
+        This also works for unmanaged entities.
         """
-        Returns state data for the given entity of the given class.
-
-        :param entity: Entity to obtain the state data from.
-        :returns: Dictionary mapping attributes to attribute values.
-        """
-        attrs = get_domain_class_attribute_iterator(entity_class)
+        attrs = get_domain_class_attribute_iterator(type(entity))
         return dict([(attr,
                       get_nested_attribute(entity, attr.entity_attr))
                      for attr in attrs
                      if not attr.entity_attr is None])
 
     @classmethod
-    def set_state_data(cls, entity_class, data, entity):
+    def set_state_data(cls, entity, data):
         """
-        Sets the given state data on the given entity of the given class.
+        Sets the state data for the given entity to the given data.
 
-        :param data: State data to set.
-        :type data: Dictionary mapping attributes to attribute values.
-        :param entity: Entity to receive the state data.
+        This also works for unmanaged entities.
         """
-        attr_names = get_domain_class_attribute_names(entity_class)
+        attr_names = get_domain_class_attribute_names(type(entity))
         nested_items = []
         for attr, new_attr_value in iteritems_(data):
             if not attr.entity_attr in attr_names:
                 raise ValueError('Can not set attribute "%s" for entity '
-                                 '"%s".' % (attr.entity_attr, entity_class))
+                                 '"%s".' % (attr.entity_attr, entity))
             if '.' in attr.entity_attr:
                 nested_items.append((attr, new_attr_value))
                 continue
@@ -170,27 +144,65 @@ class EntityStateManager(object):
                 if not new_attr_value is None:
                     raise exc
 
-    def __get_state(self):
-        state = self.__state
-        if state == ENTITY_STATES.CLEAN:
-            if self.get_state_data(self.__entity_class, self.__obj_ref()) \
-               != self.__last_state:
-                state = ENTITY_STATES.DIRTY
-        return state
+    @classmethod
+    def transfer_state_data(cls, source_entity, target_entity):
+        """
+        Transfers instance state data from the given source entity to the
+        given target entity.
+        """
+        state_data = cls.get_state_data(source_entity)
+        cls.set_state_data(target_entity, state_data)
 
-    def __set_state(self, state):
-        if not (self.__get_state(), state) in self.__allowed_transitions:
-            raise ValueError('Invalid state transition %s -> %s.'
-                             % (self.__state, state))
-        self.__state = state
-        if state == ENTITY_STATES.CLEAN:
-            self.__last_state = self.get_state_data(self.__entity_class,
-                                                    self.__obj_ref())
+    def __get_data(self):
+        """
+        Returns state data for the given entity of the given class.
 
-    #: The current state. One of the `ENTITY_STATES` constants.
-    state = property(__get_state, __set_state)
+        :param entity: Entity to obtain the state data from.
+        :returns: Dictionary mapping attributes to attribute values.
+        """
+        ent = self.__entity_ref()
+        return self.get_state_data(ent)
+
+    def __set_data(self, data):
+        """
+        Sets the given state data on the given entity of the given class.
+
+        :param data: State data to set.
+        :type data: Dictionary mapping attributes to attribute values.
+        :param entity: Entity to receive the state data.
+        """
+        ent = self.__entity_ref()
+        self.set_state_data(ent, data)
+
+    data = property(__get_data, __set_data)
+
+    @property
+    def clean_data(self):
+        return self.__clean_data
+
+    def __get_status(self):
+        status = self.__status
+        if status == ENTITY_STATUS.CLEAN:
+            if self.data != self.__clean_data:
+                status = ENTITY_STATUS.DIRTY
+        return status
+
+    def __set_status(self, status):
+        if not (self.__get_status(), status) in self.__allowed_transitions:
+            raise ValueError('Invalid status transition %s -> %s.'
+                             % (self.__status, status))
+        self.__status = status
+        if status == ENTITY_STATUS.CLEAN:
+            self.__clean_data = self.data
+
+    #: The current status. One of the `ENTITY_STATUS` constants.
+    status = property(__get_status, __set_status)
 
     @property
     def unit_of_work(self):
         return self.__uow_ref()
+
+    @property
+    def entity(self):
+        return self.__entity_ref()
 

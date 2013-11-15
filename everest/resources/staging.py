@@ -34,15 +34,15 @@ class StagingAggregate(Aggregate):
         self.entity_class = entity_class
         if cache is None:
             cache = EntityCacheMap()
-        self.__cache = cache
+        self.__cache_map = cache
         self.__visitor = AruVisitor(entity_class, self.__add,
                                     self.__remove, self.__update)
 
     def get_by_id(self, id_key):
-        return self.__cache.get_by_id(self.entity_class, id_key)
+        return self.__cache_map.get_by_id(self.entity_class, id_key)
 
     def get_by_slug(self, slug):
-        return self.__cache.get_by_slug(self.entity_class, slug)
+        return self.__cache_map.get_by_slug(self.entity_class, slug)
 
     def add(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
@@ -70,16 +70,16 @@ class StagingAggregate(Aggregate):
         return self.__visitor.root
 
     def query(self):
-        return self.__cache.query(self.entity_class)
+        return self.__cache_map.query(self.entity_class)
 
     def __add(self, entity_class, entity):
-        self.__cache.add(entity_class, entity)
+        self.__cache_map.add(entity_class, entity)
 
     def __remove(self, entity_class, entity):
-        self.__cache.remove(entity_class, entity)
+        self.__cache_map.remove(entity_class, entity)
 
     def __update(self, entity_class, source_data, target_entity):
-        self.__cache.update(entity_class, source_data, target_entity)
+        self.__cache_map.update(entity_class, source_data, target_entity)
 
     @property
     def expression_kind(self):
@@ -87,7 +87,7 @@ class StagingAggregate(Aggregate):
 
     def get_root_aggregate(self, rc):
         ent_cls = get_entity_class(rc)
-        return StagingAggregate(ent_cls, cache=self.__cache)
+        return StagingAggregate(ent_cls, cache=self.__cache_map)
 
     def make_relationship_aggregate(self, relationship):
         return RelationshipAggregate(self, relationship)

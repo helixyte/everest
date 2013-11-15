@@ -80,7 +80,16 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-from everest.repositories.nosqldb.querying import NoSqlFilterSpecificationVisitor
+# FIXME: This helps us avoid a dependency on pymongo until we have proper
+#        backend extension points.
+try: # pragma: no cover
+    from everest.repositories.nosqldb.querying import \
+            NoSqlFilterSpecificationVisitor
+    from everest.repositories.nosqldb.querying import \
+            NoSqlOrderSpecificationVisitor
+    HAS_MONGO = True
+except ImportError: # pragma: no cover
+    HAS_MONGO = False
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -104,9 +113,11 @@ class Configurator(PyramidConfigurator):
                  cql_filter_specification_visitor=None,
                  sql_filter_specification_visitor=None,
                  eval_filter_specification_visitor=None,
+                 nosql_filter_specification_visitor=None,
                  cql_order_specification_visitor=None,
                  sql_order_specification_visitor=None,
                  eval_order_specification_visitor=None,
+                 nosql_order_specification_visitor=None,
                  url_converter=None,
                  **kw
                  ):
@@ -139,12 +150,16 @@ class Configurator(PyramidConfigurator):
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
+               nosql_filter_specification_visitor=
+                                    nosql_filter_specification_visitor,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
                                     sql_order_specification_visitor,
                eval_order_specification_visitor=
                                     eval_order_specification_visitor,
+               nosql_order_specification_visitor=
+                                    nosql_order_specification_visitor,
                url_converter=url_converter,
                **kw)
 
@@ -171,6 +186,7 @@ class Configurator(PyramidConfigurator):
                        cql_order_specification_visitor=None,
                        sql_order_specification_visitor=None,
                        eval_order_specification_visitor=None,
+                       nosql_order_specification_visitor=None,
                        url_converter=None,
                        **kw):
         # Set default values for options.
@@ -187,7 +203,7 @@ class Configurator(PyramidConfigurator):
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = \
                                     ObjectFilterSpecificationVisitor
-        if nosql_filter_specification_visitor is None:
+        if HAS_MONGO and nosql_filter_specification_visitor is None:
             nosql_filter_specification_visitor = \
                                     NoSqlFilterSpecificationVisitor
         if cql_order_specification_visitor is None:
@@ -196,6 +212,8 @@ class Configurator(PyramidConfigurator):
             sql_order_specification_visitor = SqlOrderSpecificationVisitor
         if eval_order_specification_visitor is None:
             eval_order_specification_visitor = ObjectOrderSpecificationVisitor
+        if HAS_MONGO and nosql_order_specification_visitor is None:
+            nosql_order_specification_visitor = NoSqlOrderSpecificationVisitor
         if url_converter is None:
             url_converter = ResourceUrlConverter
         PyramidConfigurator.setup_registry(self, **kw)
@@ -217,6 +235,8 @@ class Configurator(PyramidConfigurator):
                                     sql_order_specification_visitor,
                eval_order_specification_visitor=
                                     eval_order_specification_visitor,
+               nosql_order_specification_visitor=
+                                    nosql_order_specification_visitor,
                url_converter=url_converter)
 
     def add_rdb_repository(self, name=None, repository_class=None,
@@ -553,6 +573,12 @@ class Configurator(PyramidConfigurator):
                                IOrderSpecificationVisitor,
                                name=EXPRESSION_KINDS.EVAL)
 
+    def _set_nosql_order_specification_visitor(self,
+                                            nosql_order_specification_visitor):
+        self._register_utility(nosql_order_specification_visitor,
+                               IOrderSpecificationVisitor,
+                               name=EXPRESSION_KINDS.NOSQL)
+
     def _set_url_converter(self, url_converter):
         self._register_adapter(url_converter, (IRequest,),
                                IResourceUrlConverter)
@@ -568,6 +594,7 @@ class Configurator(PyramidConfigurator):
                 cql_order_specification_visitor,
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
+                nosql_order_specification_visitor,
                 url_converter):
         if self.query_registered_utilities(IRepositoryManager) is None:
             # These are core initializations which should only be done once.
@@ -639,6 +666,9 @@ class Configurator(PyramidConfigurator):
         if not eval_order_specification_visitor is None:
             self._set_eval_order_specification_visitor(
                                             eval_order_specification_visitor)
+        if not nosql_order_specification_visitor is None:
+            self._set_nosql_order_specification_visitor(
+                                            nosql_order_specification_visitor)
         if not url_converter is None:
             self._set_url_converter(url_converter)
 

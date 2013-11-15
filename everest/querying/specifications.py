@@ -12,9 +12,9 @@ especially http://www.martinfowler.com/apsupp/spec.pdf
 
 Created on Jul 5, 2011.
 """
-from everest.querying.base import Specification
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationFactory
+from everest.querying.interfaces import ISpecification
 from everest.querying.operators import ASCENDING
 from everest.querying.operators import CONJUNCTION
 from everest.querying.operators import CONTAINED
@@ -36,6 +36,7 @@ from everest.utils import get_nested_attribute
 from pyramid.compat import string_types
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer # pylint: disable=E0611,F0401
+from zope.interface import implementer # pylint: disable=E0611,F0401
 import re
 
 __docformat__ = 'reStructuredText en'
@@ -54,6 +55,7 @@ __all__ = ['AscendingOrderSpecification',
            'ObjectOrderSpecification',
            'OrderSpecification',
            'OrderSpecificationFactory',
+           'Specification',
            'ValueContainedFilterSpecification',
            'ValueContainsFilterSpecification',
            'ValueEndsWithFilterSpecification',
@@ -64,7 +66,35 @@ __all__ = ['AscendingOrderSpecification',
            'ValueLessThanFilterSpecification',
            'ValueLessThanOrEqualToFilterSpecification',
            'ValueStartsWithFilterSpecification',
+           'asc',
+           'cnts',
+           'cntd',
+           'desc',
+           'eq',
+           'ends',
+           'ge',
+           'gt',
+           'le',
+           'lt',
+           'order',
+           'rng',
+           'starts',
            ]
+
+
+@implementer(ISpecification)
+class Specification(object):
+    """
+    Abstract base classs for all specifications.
+    """
+    operator = None
+
+    def __init__(self):
+        if self.__class__ is Specification:
+            raise NotImplementedError('Abstract class')
+
+    def accept(self, visitor):
+        raise NotImplementedError('Abstract method')
 
 
 class FilterSpecification(Specification):
@@ -651,7 +681,7 @@ class FilterSpecificationGenerator(_SpecificationGenerator):
         return spec
 
 
-class OrderSpecificationGenerator(_SpecificationGenerator):
+class SingleOrderSpecificationGenerator(_SpecificationGenerator):
     """
     Helper class to simplify the generation of order specifications.
     """
@@ -668,6 +698,30 @@ class OrderSpecificationGenerator(_SpecificationGenerator):
                 spec = fn(attr)
             else:
                 spec = spec & (fn(attr))
+        return spec
+
+
+class GenericOrderSpecificationGenerator(_SpecificationGenerator):
+    """
+    Helper class to simplify the generation of generic order specifications.
+    """
+    order = specification_attribute(IOrderSpecificationFactory, None)
+
+    def __call__(self, *args):
+        spec = None
+        for order_crit in args:
+            name, order_op = order_crit
+            if order_op == ASCENDING:
+                fn = self._factory.create_ascending
+            elif order_op == DESCENDING:
+                fn = self._factory.create_descending
+            else:
+                raise ValueError('Invalid ordering operator "%s".' % order_op)
+            item_spec = fn(name)
+            if spec is None:
+                spec = item_spec
+            else:
+                spec &= item_spec
         return spec
 
 
@@ -723,9 +777,14 @@ def rng(**kw):
 
 def asc(*args):
     "Convenience function to create an ascending order specification."
-    return OrderSpecificationGenerator.asc(*args)
+    return SingleOrderSpecificationGenerator.asc(*args)
 
 
 def desc(*args):
     "Convenience function to create a descending order specification."
-    return OrderSpecificationGenerator.desc(*args)
+    return SingleOrderSpecificationGenerator.desc(*args)
+
+
+def order(*args):
+    "Convenience function to create an order specification."
+    return GenericOrderSpecificationGenerator.order(*args)

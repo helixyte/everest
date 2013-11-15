@@ -9,6 +9,8 @@ from everest.entities.utils import get_root_aggregate
 from everest.interfaces import IUserMessage
 from everest.mime import CsvMime
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepository
+from everest.repositories.manager import HAS_MONGO
 from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
 from everest.resources.io import get_collection_name
@@ -20,6 +22,9 @@ from everest.resources.utils import get_service
 from everest.testing import Pep8CompliantTestCase
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityChild
+from everest.tests.complete_app.entities import MyEntityGrandchild
+from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityGrandchild
@@ -29,20 +34,20 @@ from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooMember
 from everest.utils import get_repository_manager
+from iso8601 import iso8601
 import glob
 import os
 import shutil
 import tempfile
 import transaction
-from everest.repositories.interfaces import IRepository
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicRepositoryTestCase',
-           'MemorySystemRepositoryTestCase',
-           'RdbSystemRepositoryTestCase',
-           'RepositoryTestCase',
            'FileSystemEmptyRepositoryTestCase',
            'FileSystemRepositoryTestCase',
+           'MemorySystemRepositoryTestCase',
+           'RdbSystemRepositoryTestCase',
+           'RepositoryManagerTestCase',
            ]
 
 
@@ -53,7 +58,7 @@ class BasicRepositoryTestCase(Pep8CompliantTestCase):
                            autocommit=True, join_transaction=True)
 
 
-class RepositoryTestCase(ResourceTestCase):
+class RepositoryManagerTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_no_rdb.zcml'
 
@@ -124,68 +129,7 @@ class RdbSystemRepositoryTestCase(_SystemRepositoryBaseTestCase):
         self.config.setup_system_repository(REPOSITORY_TYPES.RDB)
 
 
-class _FileSystemRepositoryTestCaseMixin(object):
-    _data_dir = None
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_fs.zcml'
-
-    def _set_data_dir(self):
-        self._data_dir = os.path.join(os.path.dirname(__file__),
-                                       'complete_app', 'data')
-
-
-class FileSystemEmptyRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
-                                        ResourceTestCase):
-    def set_up(self):
-        self._set_data_dir()
-        ResourceTestCase.set_up(self)
-
-    def test_initialization_with_empty_data_dir(self):
-        colls = [
-                 get_root_collection(IMyEntityParent),
-                 get_root_collection(IMyEntity),
-                 get_root_collection(IMyEntityChild),
-                 get_root_collection(IMyEntityGrandchild),
-                 ]
-        for coll in colls:
-            self.assert_equal(len(coll), 0)
-
-
-class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
-                                    ResourceTestCase):
-
-    def set_up(self):
-        self._set_data_dir()
-        self.__copy_data_files()
-        try:
-            ResourceTestCase.set_up(self)
-        except Exception:
-            self.__remove_data_files() # Always remove the copied files.
-            raise
-
-    def tear_down(self):
-        self.__remove_data_files()
-        transaction.abort()
-
-    def test_initialization(self):
-        colls = [
-                 get_root_collection(IMyEntityParent),
-                 get_root_collection(IMyEntity),
-                 get_root_collection(IMyEntityChild),
-                 get_root_collection(IMyEntityGrandchild),
-                 ]
-        for coll in colls:
-            self.assert_equal(len(coll), 1)
-
-    def test_get_read_collection_path(self):
-        path = get_read_collection_path(get_collection_class(IMyEntity),
-                                        CsvMime, directory=self._data_dir)
-        self.assert_false(path is None)
-        tmp_dir = tempfile.mkdtemp()
-        tmp_path = get_read_collection_path(get_collection_class(IMyEntity),
-                                            CsvMime, directory=tmp_dir)
-        self.assert_true(tmp_path is None)
-
+class _RepositoryTestCase(ResourceTestCase):
     def test_add(self):
         coll = get_root_collection(IMyEntity)
         ent = MyEntity(id=2)
@@ -239,9 +183,110 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
         mb = next(iter(coll))
         coll.remove(mb)
         transaction.commit()
+        # If we add the member with its parent, we will get a duplicate key
+        # error for the parent.
+        mb.parent = None
         coll.add(mb)
         transaction.commit()
         self.assert_equal(len(coll), 1)
+
+    def test_rollback_add(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=2)
+        mb_add = MyEntityMember.create_from_entity(ent)
+        coll.add(mb_add)
+        self.assert_equal(len(coll), 2)
+        transaction.abort()
+        self.assert_equal(len(coll), 1)
+
+    def test_rollback_remove(self):
+        coll = get_root_collection(IMyEntity)
+        coll.remove(next(iter(coll)))
+        self.assert_equal(len(coll), 0)
+        transaction.abort()
+        self.assert_equal(len(coll), 1)
+
+    def test_rollback_modified(self):
+        coll = get_root_collection(IMyEntity)
+        mb = next(iter(coll))
+        orig_text = mb.text
+        new_text = 'CHANGED'
+        ent1 = MyEntity(id=0, text=new_text)
+        # FIXME: Right now, using .update is necessary to trigger a flush.
+        mb.update(ent1)
+        self.assert_equal(next(iter(coll)).text, new_text)
+        transaction.abort()
+        mb1 = next(iter(coll))
+        self.assert_equal(mb1.text, orig_text)
+
+    def test_failing_commit(self):
+        coll = get_root_collection(IMyEntity)
+        mb = next(iter(coll))
+        mb.id = None
+        self.assert_raises(ValueError, transaction.commit)
+
+
+class _FileSystemRepositoryTestCaseMixin(object):
+    _data_dir = None
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_fs.zcml'
+
+    def _set_data_dir(self):
+        self._data_dir = os.path.join(os.path.dirname(__file__),
+                                      'complete_app', 'data')
+
+
+class FileSystemEmptyRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
+                                        ResourceTestCase):
+    def set_up(self):
+        self._set_data_dir()
+        ResourceTestCase.set_up(self)
+
+    def test_initialization_with_empty_data_dir(self):
+        colls = [
+                 get_root_collection(IMyEntityParent),
+                 get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntityChild),
+                 get_root_collection(IMyEntityGrandchild),
+                 ]
+        for coll in colls:
+            self.assert_equal(len(coll), 0)
+
+
+class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
+                                   _RepositoryTestCase):
+
+    def set_up(self):
+        self._set_data_dir()
+        self.__copy_data_files()
+        try:
+            ResourceTestCase.set_up(self)
+        except Exception:
+            self.__remove_data_files() # Always remove the copied files.
+            raise
+
+    def tear_down(self):
+        self.__remove_data_files()
+        transaction.abort()
+
+    def test_initialization(self):
+        colls = [
+                 get_root_collection(IMyEntityParent),
+                 get_root_collection(IMyEntity),
+                 get_root_collection(IMyEntityChild),
+                 get_root_collection(IMyEntityGrandchild),
+                 ]
+        for coll in colls:
+            self.assert_equal(len(coll), 1)
+
+    def test_get_read_collection_path(self):
+        path = get_read_collection_path(get_collection_class(IMyEntity),
+                                        CsvMime, directory=self._data_dir)
+        self.assert_false(path is None)
+        tmp_dir = tempfile.mkdtemp()
+        tmp_path = get_read_collection_path(get_collection_class(IMyEntity),
+                                            CsvMime, directory=tmp_dir)
+        self.assert_true(tmp_path is None)
 
     def test_commit(self):
         coll = get_root_collection(IMyEntity)
@@ -255,22 +300,6 @@ class FileSystemRepositoryTestCase(_FileSystemRepositoryTestCaseMixin,
             lines = data_file.readlines()
         data = lines[1].split(',')
         self.assert_equal(data[2], '"%s"' % TEXT)
-
-    def test_abort(self):
-        coll = get_root_collection(IMyEntity)
-        mb = next(iter(coll))
-        OLD_TEXT = mb.text
-        TEXT = 'Changed.'
-        mb.text = TEXT
-        transaction.abort()
-        old_mb = next(iter(coll))
-        self.assert_equal(old_mb.text, OLD_TEXT)
-
-    def test_failing_commit(self):
-        coll = get_root_collection(IMyEntity)
-        mb = next(iter(coll))
-        mb.id = None
-        self.assert_raises(ValueError, transaction.commit)
 
     def test_configure(self):
         repo_mgr = get_repository_manager()
@@ -302,11 +331,40 @@ def entity_loader(entity_class):
     return [entity_class()]
 
 
-class NoSqlRepositoryTestCase(ResourceTestCase):
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_nosql.zcml'
+if HAS_MONGO:
+    class NoSqlRepositoryTestCase(_RepositoryTestCase):
+        package_name = 'everest.tests.complete_app'
+        config_file_name = 'configure_nosql.zcml'
 
-    def test_init(self):
-        repo_mgr = get_repository_manager()
-        repo = repo_mgr.get(REPOSITORY_TYPES.NO_SQL)
-        self.assert_true(IRepository.providedBy(repo)) # pylint: disable=E1101
+        def set_up(self):
+            ResourceTestCase.set_up(self)
+            # FIXME: This uses a lot of the machinery we are trying to test
+            #        here. We should have some sort of pre-loading facility
+            #        like the cache loader for the entity repo.
+            ent = MyEntity(id=0, number=1, text_ent='TEST',
+                           date_time=
+                             iso8601.parse_date('2012-06-13 11:06:47+02:00'))
+            parent = MyEntityParent(id=0, text_ent='TEXT')
+            ent.parent = parent
+            child = MyEntityChild(id=0, text_ent='TEXT')
+            ent.children.append(child)
+            grandchild = MyEntityGrandchild(id=0, text='TEXT')
+            child.children.append(grandchild)
+            coll = get_root_collection(IMyEntity)
+            coll.create_member(ent)
+            transaction.commit()
+
+        def tear_down(self):
+            transaction.abort()
+
+        def test_init(self):
+            repo_mgr = get_repository_manager()
+            repo = repo_mgr.get(REPOSITORY_TYPES.NO_SQL)
+            self.assert_true(IRepository.providedBy(repo)) # pylint: disable=E1101
+
+        def test_commit(self):
+            coll = get_root_collection(IMyEntity)
+            mb = next(iter(coll))
+            TEXT = 'Changed.'
+            mb.text = TEXT
+            transaction.commit()

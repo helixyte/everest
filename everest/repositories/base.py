@@ -11,7 +11,6 @@ from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AutocommittingSessionMixin',
-           'Query',
            'Repository',
            'Session',
            'SessionFactory',
@@ -39,17 +38,29 @@ class Session(object):
 
     def get_by_id(self, entity_class, id_key):
         """
-        Adds the given entity data to the session.
+        Retrieves the entity for the specified entity class and ID.
 
-        :param data: Any object that can be adapted to
-          :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
-          iterable of such objects.
+        :param entity_class: the type of the entity to retrieve.
+        :param id_key: ID of the entity to retrieve.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def get_by_slug(self, entity_class, slug):
+        """
+        Retrieves the entity for the specified entity class and slug.
+
+        :param entity_class: the type of the entity to retrieve.
+        :param slug: slug of the entity to retrieve.
         """
         raise NotImplementedError('Abstract method.')
 
     def add(self, entity_class, data):
         """
-        Adds the given entity data to the session.
+        Adds the given entity of the given entity class to the session.
+
+        At the point an entity is added, it must not have an ID or a slug
+        of another entity that is already in the session. However, both the ID
+        and the slug may be ``None`` values.
 
         :param data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
@@ -59,11 +70,13 @@ class Session(object):
 
     def remove(self, entity_class, data):
         """
-        Removes the given entity data from the session.
+        Removes the specified of the given entity class from the session.
 
         :param data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
           iterable of such objects.
+        :raises ValueError: If the entity data does not provide an ID
+            (unless it is marked NEW).
         """
         raise NotImplementedError('Abstract method.')
 
@@ -76,6 +89,8 @@ class Session(object):
         :param data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter` or an
           iterable of such objects.
+        :raises ValueError: If no target is given and the session does not
+          contain an entity with the ID provided with the data.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -146,7 +161,6 @@ class Repository(object):
         #: Flag indicating that changes should be committed immediately.
         self.autocommit = autocommit
         self._config = {}
-        self.__is_initializing = False
         self.__is_initialized = False
         self.__cache = {}
         self.__agg_cls = aggregate_class
@@ -217,9 +231,7 @@ class Repository(object):
         """
         Initializes this repository.
         """
-        self.__is_initializing = True
         self._initialize()
-        self.__is_initializing = False
         self.__is_initialized = True
 
     @property
@@ -232,6 +244,10 @@ class Repository(object):
 
     def register_resource(self, resource):
         self.__registered_resources.add(resource)
+
+    @property
+    def registered_resources(self):
+        return iter(self.__registered_resources)
 
     @property
     def is_initialized(self):
@@ -257,75 +273,5 @@ class Repository(object):
     def _make_session_factory(self):
         """
         Create the session factory for this repository.
-        """
-        raise NotImplementedError('Abstract method.')
-
-
-class Query(object):
-    """
-    Abstract base class for queries.
-    """
-
-    def __iter__(self):
-        """
-        Returns an iterator over all entities in this query after applying
-        filtering, ordering, and slicing settings.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def count(self):
-        """
-        Returns the count of the entities in this query.
-
-        :note: This does not take slicing into account.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def all(self):
-        """
-        Returns a list of all entities in this query after applying
-        filtering, ordering, and slicing settings.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def one(self):
-        """
-        Returns exactly one result from this query.
-
-        :raises NoResultsException: if no results were found.
-        :raises MultipleResultsException: if more than one result was found.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def filter(self, filter_expression):
-        """
-        Sets the filter expression for this query. Generative (returns a
-        clone).
-
-        :note: If the query already has a filter expression, the returned
-            query will use the conjunction of both expressions.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def filter_by(self, **kw):
-        """
-        Generates an equal-to filter expression and calls :method:`filter`
-        with it.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def order_by(self, order_expression):
-        """
-        Sets the order expression for this query. Generative (returns a
-        clone).
-
-        :note: If the query already has an order expression, the returned
-            query will use the conjunction of both expressions.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def slice(self, start, stop):
-        """
-        Sets the slice key for this query. Generative (returns a clone).
         """
         raise NotImplementedError('Abstract method.')

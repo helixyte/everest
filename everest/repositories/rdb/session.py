@@ -13,7 +13,7 @@ from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
-from everest.repositories.state import EntityStateManager
+from everest.repositories.state import EntityState
 from everest.traversal import SourceTargetDataTreeTraverser
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -43,6 +43,11 @@ class RdbSession(Session, SaSession):
         except NoResultsException:
             ent = None
         return ent
+
+    def get_by_slug(self, entity_class, slug):
+        # We don't have an optimization for access by slug here; returning
+        # `None` indicates that a query should be run.
+        return None
 
     def add(self, entity_class, data):
         if not IEntity.providedBy(data): # pylint: disable=E1101
@@ -88,8 +93,7 @@ class RdbSession(Session, SaSession):
             SaSession.delete(self, entity)
 
     def __update(self, entity_class, source_data, target_entity, path): # pylint: disable=W0613
-        EntityStateManager.set_state_data(entity_class, source_data,
-                                          target_entity)
+        EntityState.set_state_data(target_entity, source_data)
 
 
 class RdbAutocommittingSession(AutocommittingSessionMixin, RdbSession):
