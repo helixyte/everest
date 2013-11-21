@@ -307,9 +307,9 @@ class MemorySessionFactory(SessionFactory):
             trx = transaction.get()
             dm = self.__session_registry.data_manager
             # We have a new transaction that we need to join.
-            if dm.transaction_id != id(trx):
+            if not dm.transaction is trx:
                 trx.join(dm)
-                dm.transaction_id = id(trx)
+                dm.transaction = trx
         return session
 
 
@@ -322,7 +322,7 @@ class DataManager(object):
 
     def __init__(self, session):
         self.__session = session
-        self.transaction_id = None
+        self.transaction = None
 
     def abort(self, trans): # pylint: disable=W0613
         self.__session.rollback()

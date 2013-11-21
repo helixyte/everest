@@ -12,6 +12,7 @@ from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import asc
 from everest.querying.specifications import desc
 from everest.querying.specifications import eq
+from everest.querying.specifications import gt
 from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.rdb.aggregate import RdbAggregate
 from everest.repositories.rdb.utils import RdbTestCaseMixin
@@ -122,7 +123,13 @@ class _RootAggregateTestCase(EntityTestCase):
             agg.order = asc('parent.text_ent')
         else:
             agg.order = desc('id')
-        self.assert_true(agg.iterator().next() is ent2)
+        self.assert_true(next(agg.iterator()) is ent2)
+        # With nested filter and order.
+        agg.filter = gt(**{'parent.text_ent':'000'})
+        self.assert_true(next(agg.iterator()) is ent1)
+        # With nested filter, order, and slice.
+        agg.slice = slice(1, 2)
+        self.assert_true(next(agg.iterator()) is ent0)
 
     def test_add_remove(self):
         agg = self._aggregate

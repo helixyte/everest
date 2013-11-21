@@ -112,3 +112,22 @@ class MemoryRepository(Repository):
                         ent.id = new_entity_id()
                     cache.add(ent)
         return cache
+
+#        if not self.__cache_is_loaded \
+#           and not self.__cache_map.has_key(entity_class):
+#            loader = self.configuration['cache_loader']
+#            if not loader is None:
+#                ent_clss = \
+#                    [get_entity_class(rc) for rc in self.registered_resources]
+#                ent_clss.remove(entity_class)
+#                ent_clss.insert(0, entity_class)
+#                for ent_cls in ent_clss:
+#                    do_load = not self.__cache_map.has_key(ent_cls)
+#                    if do_load:
+#                        cache = self.__cache_map[ent_cls]
+#                        for ent in loader(ent_cls):
+#                            if ent.id is None:
+#                                ent.id = new_entity_id()
+#                            cache.add(ent)
+#            self.__cache_is_loaded = True
+#        return self.__cache_map[entity_class]

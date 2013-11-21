@@ -49,10 +49,7 @@ class NoSqlRepository(Repository):
                             join_transaction=join_transaction,
                             autocommit=autocommit)
         self.__db = None
-        if __debug__:
-            self.__logger = get_logger('everest.repositories')
-        else:
-            self.__logger = None
+        self.__logger = get_logger('everest.repositories')
 
     def retrieve(self, entity_class, filter_expression=None,
                  order_expression=None, slice_key=None):
@@ -73,7 +70,9 @@ class NoSqlRepository(Repository):
             # evaluated (string).
             exprs = [filter_expression]
             if not order_expression is None:
-                exprs.append('sort(%s)' % order_expression)
+                ord_str = \
+                    '.'.join(['{%s:%s}' % item for item in order_expression])
+                exprs.append('sort(%s)' % ord_str)
             if not slice_key is None:
                 limit = slice_key.stop - slice_key.start
                 skip = slice_key.start
@@ -88,8 +87,7 @@ class NoSqlRepository(Repository):
         return mongo_coll.find(spec=filter_expression).count()
 
     def flush(self, unit_of_work):
-        if __debug__:
-            self.__logger.info('Starting FLUSH.')
+        self.__logger.info('Starting FLUSH.')
         # First, make sure that all entities have OIDs and IDs.
         for new_ent in unit_of_work.get_new():
             ent_oid = getattr(new_ent, '_id', None)
@@ -104,24 +102,19 @@ class NoSqlRepository(Repository):
             else:
                 self.__persist(state)
                 unit_of_work.mark_persisted(state.entity)
-        if __debug__:
-            self.__logger.info('Finished FLUSH.')
+        self.__logger.info('Finished FLUSH.')
 
     def commit(self, unit_of_work):
-        if __debug__:
-            self.__logger.info('Starting COMMIT.')
+        self.__logger.info('Starting COMMIT.')
         self.flush(unit_of_work)
-        if __debug__:
-            self.__logger.info('Finished COMMIT.')
+        self.__logger.info('Finished COMMIT.')
 
     def rollback(self, unit_of_work):
-        if __debug__:
-            self.__logger.info('Starting ROLLBACK.')
+        self.__logger.info('Starting ROLLBACK.')
         for state in unit_of_work.iterator():
             if state.is_persisted:
                 self.__rollback(state)
-        if __debug__:
-            self.__logger.info('Finished ROLLBACK.')
+        self.__logger.info('Finished ROLLBACK.')
 
     def _initialize(self):
         if not is_engine_initialized(self.name):
@@ -174,13 +167,21 @@ class NoSqlRepository(Repository):
                                  'to None.')
             if status == ENTITY_STATUS.DELETED:
                 mongo_coll.remove(ent_oid)
+                if __debug__:
+                    self.__logger.debug("REMOVEd entity OID %s." % ent_oid)
             else:
                 data = transform_incoming(ent_cls, source_entity)
                 if status == ENTITY_STATUS.NEW:
                     mongo_coll.insert(data)
+                    if __debug__:
+                        self.__logger.debug('INSERTed entity OID %s: %s.'
+                                            % (ent_oid, data.items()))
                 else:
                     assert status == ENTITY_STATUS.DIRTY
                     mongo_coll.update({'_id':ent_oid}, data)
+                    if __debug__:
+                        self.__logger.debug('UPDATEed entity OID %s: %s.'
+                                            % (ent_oid, data.items()))
 
     def __rollback(self, state):
         source_entity = state.entity
@@ -191,13 +192,22 @@ class NoSqlRepository(Repository):
             ent_oid = getattr(source_entity, '_id')
             if status == ENTITY_STATUS.NEW:
                 mongo_coll.remove(ent_oid)
+                if __debug__:
+                    self.__logger.debug("Rollback INSERT entity OID %s."
+                                        % ent_oid)
             else:
                 if status == ENTITY_STATUS.DELETED:
                     data = transform_incoming(ent_cls, source_entity)
                     mongo_coll.insert(data)
+                    if __debug__:
+                        self.__logger.debug('Rollback REMOVE entity OID %s: '
+                                            '%s.' % (ent_oid, data.items()))
                 else:
                     assert status == ENTITY_STATUS.DIRTY
                     EntityState.set_state_data(source_entity,
                                                state.clean_data)
                     data = transform_incoming(ent_cls, source_entity)
                     mongo_coll.update({'_id':ent_oid}, data)
+                    if __debug__:
+                        self.__logger.debug('Rollback UPDATE entity OID %s: '
+                                            '%s.' % (ent_oid, data.items()))

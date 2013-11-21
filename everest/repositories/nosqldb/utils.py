@@ -63,21 +63,20 @@ class MongoClassRegistry(object):
         This involves removing all custom attribute descriptors from the
         entity class namespace.
         """
-#        return
         if not entity_class in MongoClassRegistry.__registered_classes:
             raise ValueError('The class "%s" is not registered.'
                              % entity_class)
         for attr in \
               get_domain_class_relationship_attribute_iterator(entity_class):
             try:
-                cls_val = object.__getattribute__(entity_class,
-                                                  attr.entity_attr)
+                descr = object.__getattribute__(entity_class,
+                                                attr.entity_attr)
             except AttributeError:
                 pass
             else:
-                if isinstance(cls_val, MongoInstrumentedAttribute):
+                if isinstance(descr, MongoInstrumentedAttribute):
                     try:
-                        orig_cls_val = cls_val.__get__(None, entity_class)
+                        orig_cls_val = descr.original_class_value
                     except AttributeError:
                         delattr(entity_class, attr.entity_attr)
                     else:
@@ -141,18 +140,17 @@ def transform_outgoing(entity_class, son):
     Converts an outgoing SON object into an entity. DBRefs are
     converted lazily.
     """
-    init_map = {}
     ref_map = {}
+    ent = object.__new__(entity_class)
     for attr in get_domain_class_attribute_iterator(entity_class):
         try:
             value = son[attr.entity_attr]
         except KeyError:
             continue
-        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
-            init_map[attr.entity_attr] = value
+        if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL or value is None:
+            setattr(ent, attr.entity_attr, value)
         else:
             ref_map[attr.entity_attr] = value
-    ent = entity_class.create_from_data(init_map)
     ent.__mongo_refs__ = ref_map
     # Set the _id attribute.
     setattr(ent, '_id', son['_id'])
@@ -167,7 +165,7 @@ class MongoInstrumentedAttribute(object):
         self.__attr = attr
         self.__db = db
         if args:
-            self.__class_value, = args
+            self.original_class_value, = args
 
     def __get__(self, entity, entity_class):
         if not entity is None:
@@ -183,9 +181,7 @@ class MongoInstrumentedAttribute(object):
                                            self.__db.dereference(ref_val))
             setattr(entity, self.__attr.entity_attr, value)
         else:
-            # This deliberately raises an AttributeError if no class value
-            # was passed at construction time.
-            value = self.__class_value
+            value = self
         return value
 
 
@@ -210,6 +206,8 @@ class NoSqlAttributeInspector(object):
                     infos[-1][1] = None
                     do_append = False
                 else:
+                    # The 'slug' attribute is special as it is not a properly
+                    # declared resource attribute but needs to be queryable.
                     attr_kind = RESOURCE_ATTRIBUTE_KINDS.TERMINAL
                     attr_type = str
             else:

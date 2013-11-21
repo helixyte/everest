@@ -40,6 +40,7 @@ import os
 import shutil
 import tempfile
 import transaction
+from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicRepositoryTestCase',
@@ -332,7 +333,8 @@ def entity_loader(entity_class):
 
 
 if HAS_MONGO:
-    class NoSqlRepositoryTestCase(_RepositoryTestCase):
+    class NoSqlRepositoryTestCase(NoSqlTestCaseMixin,
+                                  _RepositoryTestCase):
         package_name = 'everest.tests.complete_app'
         config_file_name = 'configure_nosql.zcml'
 
@@ -361,6 +363,11 @@ if HAS_MONGO:
             repo_mgr = get_repository_manager()
             repo = repo_mgr.get(REPOSITORY_TYPES.NO_SQL)
             self.assert_true(IRepository.providedBy(repo)) # pylint: disable=E1101
+            # Test initialization through config.
+            tmp_name = 'TMP'
+            self.config.add_nosql_repository(tmp_name)
+            repo = repo_mgr.get(tmp_name)
+            self.assert_true(IRepository.providedBy(repo)) # pylint: disable=E1101
 
         def test_commit(self):
             coll = get_root_collection(IMyEntity)
@@ -368,3 +375,16 @@ if HAS_MONGO:
             TEXT = 'Changed.'
             mb.text = TEXT
             transaction.commit()
+            self.assert_equal(next(iter(coll)).text, TEXT)
+
+        def test_load_referenced_entities(self):
+            coll = get_root_collection(IMyEntity)
+            ent = next(iter(coll)).get_entity()
+            parent = ent.parent
+            self.assert_true(isinstance(parent, MyEntityParent))
+            self.assert_equal(len(ent.children), 1)
+            self.assert_true(isinstance(ent.children[0], MyEntityChild))
+            self.assert_true(len(ent.children[0].children), 1)
+            self.assert_true(isinstance(ent.children[0].children[0],
+                             MyEntityGrandchild))
+
