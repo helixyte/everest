@@ -290,10 +290,10 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         if child.countchildren() == 1:
             grand_child = child.getchildren()[0]
             if ILinkedDataElement in provided_by(grand_child):
-                # We inject the id attribute from the wrapper element.
-                str_xml = child.get('id')
-                if not str_xml is None:
-                    grand_child.set('id', str_xml)
+#                # We inject the id attribute from the wrapper element.
+#                str_xml = child.get('id')
+#                if not str_xml is None:
+#                    grand_child.set('id', str_xml)
                 child = grand_child
         return child
 
@@ -313,7 +313,8 @@ class XmlCollectionDataElement(objectify.ObjectifiedElement,
 class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
 
     @classmethod
-    def create(cls, url, kind, relation=None, title=None, **options):
+    def create(cls, url, kind,
+               id=None, relation=None, title=None, **options): # pylint: disable=W0622
 #        mp_reg = get_mapping_registry(XmlMime)
 #        ns_map = mp_reg.namespace_map
         xml_ns = options[XML_NAMESPACE_OPTION]
@@ -322,6 +323,8 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
         link_el = el_fac(tag)
         link_el.set('href', url)
         link_el.set('kind', kind)
+        if not id is None:
+            link_el.set('id', id)
         if not relation is None:
             link_el.set('rel', relation)
         if not title is None:
@@ -339,6 +342,7 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
         if provides_member_resource(resource):
             link_el = cls.create(resource_to_url(resource),
                                  RESOURCE_KINDS.MEMBER,
+                                 id=str(resource.id),
                                  relation=resource.relation,
                                  title=resource.title,
                                  **options)
@@ -368,7 +372,16 @@ class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
         return self.get('title')
 
     def get_id(self):
-        return self.get('id')
+        # FIXME: This will not work with ID strings that happen to be
+        #        convertible to an int.
+        id_str = self.get('id')
+        try:
+            id_val = int(id_str)
+        except ValueError:
+            id_val = id_str
+        except TypeError: # Happens if the id string is None.
+            id_val = id_str
+        return id_val
 
 
 class XmlRepresenterConfiguration(RepresenterConfiguration):

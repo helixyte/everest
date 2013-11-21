@@ -1,2 +1,2 @@
 "id","parent","children","text","text_rc"
-0,"http://0.0.0.0:6543/my-entities/0/",,"TEXT",
+0,"http://0.0.0.0:6543/my-entities/0/","http://0.0.0.0:6543/my-entity-grandchildren?q=id:contained:0","TEXT",

@@ -181,6 +181,27 @@ class ILinkedDataElement(IDataElement):
         Returns the URL for this data element.
         """
 
+    def get_kind():
+        """
+        Returns the kind of the resource being linked to (one of the
+        constants declared in :class:`everest.constants.RESOURCE_KINDS`).
+        """
+
+    def get_id():
+        """
+        Returns the ID of the resource being linked to.
+        """
+
+    def get_relation():
+        """
+        Returns the relation of the resource being linked to.
+        """
+
+    def get_title():
+        """
+        Returns a title for the resource being linked to.
+        """
+
 
 class ICustomDataElement(Interface):
 

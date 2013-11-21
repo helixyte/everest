@@ -112,11 +112,19 @@ class RepresenterConfiguration(object):
         return self.__options.copy()
 
     def set_attribute_option(self, attribute_key, option_name, option_value):
+        """
+        Sets the given attribute option to the given value for the specified
+        attribute key.
+        """
         self.__validate_attribute_option_name(option_name)
         mp_options = self.__attribute_options.setdefault(attribute_key, {})
         mp_options[option_name] = option_value
 
     def get_attribute_option(self, attribute_key, option_name):
+        """
+        Returns the value of the given attribute option for the specified
+        attribute key.
+        """
         self.__validate_attribute_option_name(option_name)
         return self.__attribute_options[attribute_key].get(option_name)
 

@@ -251,7 +251,8 @@ class LinkedDataElement(DataElement):
     """
 
     @classmethod
-    def create(cls, url, kind, relation=None, title=None, **options):
+    def create(cls, url, kind,
+               id=None, relation=None, title=None, **options): # pylint: disable=W0622
         raise NotImplementedError('Abstract method.')
 
     @classmethod
@@ -262,6 +263,9 @@ class LinkedDataElement(DataElement):
         raise NotImplementedError('Abstract method.')
 
     def get_kind(self):
+        raise NotImplementedError('Abstract method.')
+
+    def get_id(self):
         raise NotImplementedError('Abstract method.')
 
     def get_relation(self):
@@ -277,15 +281,18 @@ class SimpleLinkedDataElement(LinkedDataElement):
     """
     __url = None
     __kind = None
+    __id = None
     __relation = None
     __title = None
 
     @classmethod
-    def create(cls, url, kind, relation=None, title=None, **options):
+    def create(cls, url, kind,
+               id=None, relation=None, title=None, **options): # pylint: disable=W0622
         inst = cls()
         # pylint: disable=W0212
         inst.__url = url
         inst.__kind = kind
+        inst.__id = id
         inst.__relation = relation
         inst.__title = title
         # pylint: enable=W0212
@@ -295,19 +302,25 @@ class SimpleLinkedDataElement(LinkedDataElement):
     def create_from_resource(cls, resource):
         if provides_member_resource(resource):
             kind = RESOURCE_KINDS.MEMBER
+            opts = dict(id=resource.id)
         elif provides_collection_resource(resource):
             kind = RESOURCE_KINDS.COLLECTION
+            opts = {}
         else:
             raise ValueError('"%s" is not a resource.' % resource)
         return cls.create(resource_to_url(resource), kind,
                           relation=resource.relation,
-                          title=resource.title)
+                          title=resource.title,
+                          **opts)
 
     def get_url(self):
         return self.__url
 
     def get_kind(self):
         return self.__kind
+
+    def get_id(self):
+        return self.__id
 
     def get_relation(self):
         return self.__relation

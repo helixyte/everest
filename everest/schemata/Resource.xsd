@@ -27,6 +27,11 @@
         >
         </attribute>
         <attribute
+            name="id"
+            use="optional"
+            type="string"
+        ></attribute>
+        <attribute
             name="kind"
             use="optional"
             type="string"

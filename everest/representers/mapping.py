@@ -53,14 +53,14 @@ class Mapping(object):
     def __init__(self, mapping_registry, mapped_class, data_element_class,
                  configuration):
         """
-        :param configuration: mapping configuration object.
+        :param configuration: Mapping configuration object.
         """
         self.__mp_reg = mapping_registry
         self.__mapped_cls = mapped_class
         self.__is_collection_mapping = \
                                 provides_collection_resource(mapped_class)
         self.__de_cls = data_element_class
-        self.__configuration = configuration
+        self.__configurations = [configuration]
         #
         self.__mapped_attr_cache = {}
 
@@ -69,7 +69,7 @@ class Mapping(object):
         Returns a clone of this mapping that is configured with the given
         option and attribute option dictionaries.
         """
-        copied_cfg = self.__configuration.copy()
+        copied_cfg = self.__configurations[-1].copy()
         upd_cfg = type(copied_cfg)(options=options,
                                    attribute_options=attribute_options)
         copied_cfg.update(upd_cfg)
@@ -84,12 +84,12 @@ class Mapping(object):
     @property
     def configuration(self):
         """
-        Returns this mapping's configuration object.
+        Returns this mapping's current configuration object.
         """
         # We clear the cache every time the configuration is accessed since
         # we can not guarantee that it stays unchanged.
         self.__mapped_attr_cache.clear()
-        return self.__configuration
+        return self.__configurations[-1]
 
     def get_attribute_map(self, mapped_class=None, key=None):
         """
@@ -219,7 +219,28 @@ class Mapping(object):
 
     def as_pruning(self):
         return PruningMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
-                              self.__configuration)
+                              self.__configurations[-1])
+
+    def push_configuration(self, configuration):
+        """
+        Pushes the given configuration object on the stack of configurations
+        managed by this mapping and makes it the active configuration.
+        """
+        self.__mapped_attr_cache.clear()
+        self.__configurations.append(configuration)
+
+    def pop_configuration(self):
+        """
+        Pushes the currently active configuration from the stack of
+        configurations managed by this mapping.
+
+        :raises IndexError: If there is only one configuration in the stack.
+        """
+        if len(self.__configurations) == 1:
+            raise IndexError('Can not pop the last configuration from the '
+                             'stack of configurations.')
+        self.__configurations.pop()
+        self.__mapped_attr_cache.clear()
 
     @property
     def mapped_class(self):
@@ -275,7 +296,7 @@ class Mapping(object):
             for rc_attr in itervalues_(rc_attrs):
                 attr_key = names + (rc_attr.resource_attr,)
                 attr_mp_opts = \
-                        self.__configuration.get_attribute_options(attr_key)
+                    self.__configurations[-1].get_attribute_options(attr_key)
                 new_mp_attr = MappedAttribute(rc_attr, options=attr_mp_opts)
                 collected_mp_attrs[new_mp_attr.resource_attr] = new_mp_attr
         else:
@@ -299,7 +320,7 @@ class Mapping(object):
                 attr_mp_opts = \
                     dict(((k, v)
                           for (k, v) in
-                            iteritems_(self.__configuration
+                            iteritems_(self.__configurations[-1]
                                        .get_attribute_options(attr_key))
                           if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)

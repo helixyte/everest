@@ -93,3 +93,27 @@ def data_element_tree_to_string(data_element):
     stream = NativeIO()
     __dump(data_element, stream, 0)
     return stream.getvalue()
+
+
+class RepresenterConfigurationContext(object):
+    """
+    A context manager that configures a representer.
+    """
+    def __init__(self, mapped_class, content_type,
+                 options=None, attribute_options=None):
+        self.__mapped_class = mapped_class
+        self.__content_type = content_type
+        self.__options = options
+        self.__attribute_options = attribute_options
+        self.__mapping = None
+
+    def __enter__(self):
+        mp_reg = get_mapping_registry(self.__content_type)
+        self.__mapping = mp_reg.find_or_create_mapping(self.__mapped_class)
+        cfg_cls = type(self.__mapping.configuration)
+        cfg = cfg_cls(options=self.__options,
+                      attribute_options=self.__attribute_options)
+        self.__mapping.push_configuration(cfg)
+
+    def __exit__(self, ext_type, value, tb):
+        self.__mapping.pop_configuration()

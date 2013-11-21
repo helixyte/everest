@@ -390,7 +390,7 @@ class Collection(Resource):
 
     def update(self, data, target=None):
         """
-        Updates a member in this collection from the given data.
+        Updates this collection from the given data.
 
         :param data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter`.

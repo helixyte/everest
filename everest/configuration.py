@@ -38,13 +38,13 @@ from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import MappingResourceRepresenter
-from everest.representers.base import RepresenterRegistry
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import ICollectionDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.interfaces import IMemberDataElement
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.json import JsonResourceRepresenter
+from everest.representers.registry import RepresenterRegistry
 from everest.representers.traversal import DataElementDataTraversalProxyAdapter
 from everest.representers.xml import XmlResourceRepresenter
 from everest.resources.attributes import resource_attributes_injector
