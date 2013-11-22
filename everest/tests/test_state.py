@@ -19,6 +19,7 @@ __all__ = ['EntityStateTestCase',
 
 class EntityStateTestCase(EntityTestCase):
     package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
 
     def test_state_data(self):
         data = dict(text='FOO',

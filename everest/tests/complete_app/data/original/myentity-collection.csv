@@ -1,2 +1,2 @@
 "id","parent","children","text","text_rc","number","date_time","parent_text"
-0,"http://0.0.0.0:6543/my-entity-parents/0/",""http://0.0.0.0:6543/my-entity-children?q=id:contained:0","TEXT","",1,"2012-06-13 11:06:47+02:00",
+0,"http://0.0.0.0:6543/my-entity-parents/0/",,"TEXT","",1,"2012-06-13 11:06:47+02:00",

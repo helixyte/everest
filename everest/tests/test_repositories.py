@@ -184,9 +184,12 @@ class _RepositoryTestCase(ResourceTestCase):
         mb = next(iter(coll))
         coll.remove(mb)
         transaction.commit()
-        # If we add the member with its parent, we will get a duplicate key
-        # error for the parent.
-        mb.parent = None
+        # If we add the member with its parent or its children, we will get
+        # a duplicate key error for the parent.
+        ent = mb.get_entity()
+        ent.parent = None
+        while ent.children:
+            ent.children.pop()
         coll.add(mb)
         transaction.commit()
         self.assert_equal(len(coll), 1)
