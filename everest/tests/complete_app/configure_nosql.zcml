@@ -12,29 +12,7 @@
         make_default="true" />
 
     <!-- Resources. -->
-
-    <resource
-        interface='.interfaces.IMyEntityParent'
-        member=".resources.MyEntityParentMember"
-        entity=".entities.MyEntityParent"
-        collection_root_name="my-entity-parents" />
-
-    <resource
-        interface='.interfaces.IMyEntity'
-        member=".resources.MyEntityMember"
-        entity=".entities.MyEntity"
-        collection_root_name="my-entities" />
-
-    <resource
-        interface='.interfaces.IMyEntityChild'
-        member=".resources.MyEntityChildMember"
-        entity=".entities.MyEntityChild"
-        collection_root_name="my-entity-children" />
-
-    <resource
-        interface='.interfaces.IMyEntityGrandchild'
-        member=".resources.MyEntityGrandchildMember"
-        entity=".entities.MyEntityGrandchild"
-        collection_root_name="my-entity-grandchildren" />
+    
+    <include file="resources.zcml" />
 
 </configure>
