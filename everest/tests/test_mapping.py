@@ -18,6 +18,7 @@ from everest.resources.utils import get_root_collection
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.resources import MyEntityMember
+from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
 from everest.tests.test_entities import MyEntity
 
@@ -160,6 +161,17 @@ class MappingTestCase(ResourceTestCase):
         ns = mp.configuration.get_option(XML_NAMESPACE_OPTION)
         cls_map = new_lookup.get_namespace(ns)
         self.assert_equal(cls_map[new_tag], mp.data_element_class)
+
+    def test_mapping_linked_xml_data_element_with_string_id(self):
+        mp_reg = get_mapping_registry(XmlMime)
+        mb_mp = mp_reg.find_or_create_mapping(MyEntityMember)
+        coll = create_collection()
+        mb = next(iter(coll))
+        mb_id = 'unique'
+        mb.id = mb_id
+        data_el = mb_mp.create_linked_data_element_from_resource(mb)
+        link_el = next(data_el.iterchildren())
+        self.assert_equal(link_el.get_id(), mb.id)
 
     def test_mapping_polymorhpic(self):
         # pylint: disable=W0232

@@ -129,7 +129,7 @@ class NoSqlRepository(Repository):
             for coll_name in \
               self.__db.collection_names(include_system_collections=False):
                 self.__db.drop_collection(coll_name)
-        #
+        # Set up the class registry.
         for rc in self.registered_resources:
             ent_cls = get_entity_class(rc)
             if not MongoClassRegistry.is_registered(ent_cls):

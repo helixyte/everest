@@ -13,6 +13,7 @@ from everest.tests.complete_app.resources import MyEntityMember
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from everest.representers.interfaces import IDataElement
 from everest.representers.traversal import DataElementTreeTraverser
+from everest.representers.utils import RepresenterConfigurationContext
 
 
 __docformat__ = 'reStructuredText en'
@@ -64,6 +65,20 @@ class MappingTestCase(ResourceTestCase):
         attr_map = self.mapping.get_attribute_map(key=key)
         self.assert_true(attr_map['children'].options[IGNORE_OPTION]
                          is False)
+
+    def test_representer_configuration_context(self):
+        self.assert_raises(IndexError, self.mapping.pop_configuration)
+        opts = dict(parent={IGNORE_OPTION : True})
+        ctx = RepresenterConfigurationContext(MyEntityMember, CsvMime,
+                                              attribute_options=opts)
+        self.assert_false(
+            self.mapping.configuration.get_attribute_option('parent',
+                                                            IGNORE_OPTION))
+        with ctx:
+            mp = self.mapping_registry.find_mapping(MyEntityMember)
+            self.assert_true(
+                    mp.configuration.get_attribute_option('parent',
+                                                          IGNORE_OPTION))
 
 
 class NonResource(object):

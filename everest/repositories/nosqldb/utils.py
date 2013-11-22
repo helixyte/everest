@@ -66,21 +66,16 @@ class MongoClassRegistry(object):
         if not entity_class in MongoClassRegistry.__registered_classes:
             raise ValueError('The class "%s" is not registered.'
                              % entity_class)
-        for attr in \
-              get_domain_class_relationship_attribute_iterator(entity_class):
-            try:
-                descr = object.__getattribute__(entity_class,
-                                                attr.entity_attr)
-            except AttributeError:
-                pass
-            else:
-                if isinstance(descr, MongoInstrumentedAttribute):
-                    try:
-                        orig_cls_val = descr.original_class_value
-                    except AttributeError:
-                        delattr(entity_class, attr.entity_attr)
-                    else:
-                        setattr(entity_class, attr.entity_attr, orig_cls_val)
+        # We can not rely on the resource attribute iterators to work here -
+        # the registry might already have been taken down at this point.
+        for attr_name, attr_value in entity_class.__dict__.items():
+            if isinstance(attr_value, MongoInstrumentedAttribute):
+                try:
+                    orig_cls_val = attr_value.original_class_value
+                except AttributeError:
+                    delattr(entity_class, attr_name)
+                else:
+                    setattr(entity_class, attr_name, orig_cls_val)
         MongoClassRegistry.__registered_classes.remove(entity_class)
 
     @staticmethod
@@ -231,9 +226,9 @@ class NoSqlTestCaseMixin(object):
     """
     @classmethod
     def teardown_class(cls):
+        MongoClassRegistry.unregister_all()
         base_cls = super(NoSqlTestCaseMixin, cls)
         try:
             base_cls.teardown_class()
         except AttributeError:
             pass
-        MongoClassRegistry.unregister_all()

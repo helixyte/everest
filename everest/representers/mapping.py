@@ -154,7 +154,7 @@ class Mapping(object):
             data_el = self.__de_cls.create()
         return data_el
 
-    def create_linked_data_element(self, url, kind,
+    def create_linked_data_element(self, url, kind, id=None, # pylint: disable=W0622
                                    relation=None, title=None):
         """
         Returns a new linked data element for the given url and kind.
@@ -165,7 +165,7 @@ class Mapping(object):
         :returns: object implementing :class:`ILinkedDataElement`.
         """
         mp = self.__mp_reg.find_or_create_mapping(Link)
-        return mp.data_element_class.create(url, kind,
+        return mp.data_element_class.create(url, kind, id=id,
                                             relation=relation, title=title)
 
     def create_data_element_from_resource(self, resource):

@@ -45,6 +45,11 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         msg = 'Trying to obtain state for un-managed entity'
         self.assert_true(cm.exception.message.startswith(msg))
 
+    def test_is_marked_unregistered(self):
+        ent = _MyEntity()
+        self.assert_false(self._uow.is_marked_persisted(ent))
+        self.assert_false(self._uow.is_marked_pending(ent))
+
     def test_mark_unregistered_fails(self):
         ent = _MyEntity()
         with self.assert_raises(ValueError) as cm:

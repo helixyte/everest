@@ -77,7 +77,9 @@ class NoSqlFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
             attr_value = re.compile('^.*%s.*' % spec.attr_value)
             expr = self.__build('$regex', spec.attr_name, attr_value)
         else:
-            expr = self.__build('$exists', spec.attr_name, spec.attr_value)
+            # FIXME: Test this.
+            # expr = self.__build('$exists', spec.attr_name, spec.attr_value)
+            raise NotImplementedError('Not implemented.')
         return expr
 
     def _contained_op(self, spec):
@@ -139,7 +141,9 @@ class NoSqlFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
             if nested_attr_kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
                 expr = self.__nested_member_query_template % templ_map
             else: # RESOURCE_ATTRIBUTE_KINDS.COLLECTION
-                expr = self.__nested_collection_query_template % templ_map
+                # FIXME: Test this.
+                # expr = self.__nested_collection_query_template % templ_map
+                raise NotImplementedError('Not implemented.') # pragma: no cover
             exprs.insert(0, expr)
             parent_type = nested_attr_type
         terminal_attr_name = infos[-1][-1]
@@ -155,14 +159,15 @@ class NoSqlFilterSpecificationVisitor(RepositoryFilterSpecificationVisitor):
         return expr
 
     def __prepare_criterion(self, attr, op, val):
-        if op in (None, '$exists'):
+        if op is None: # (None, '$exists'):
             if IMemberResource.providedBy(val): # pylint: disable=E1101
                 attr = '%s.$id' % attr
                 val = getattr(val.get_entity(), '_id')
-            if op is None:
-                crit = {attr:val}
-            else:
-                crit = {attr:{op:val}}
+            crit = {attr:val}
+#            if op is None:
+#                crit = {attr:val}
+#            else:
+#                crit = {attr:{op:val}}
         elif op == '$in':
             if ICollectionResource.providedBy(val): # pylint: disable=E1101
                 val = [getattr(mb.get_entity(), '_id') for mb in val]

@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 7, 2012.
@@ -10,6 +10,7 @@ from everest.representers.attributes import MappedAttribute
 from everest.representers.csv import CsvLinkedDataElement
 from everest.representers.dataelements import DataElementAttributeProxy
 from everest.representers.dataelements import SimpleCollectionDataElement
+from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
 from everest.resources.attributes import get_resource_class_attribute
 from everest.testing import ResourceTestCase
@@ -89,7 +90,7 @@ class DataElementsTestCase(ResourceTestCase):
         self.assert_true(prt_str.startswith(coll_data_el.__class__.__name__))
         self.assert_true(prt_str.endswith(']'))
 
-    def test_linked_data_element(self):
+    def test_linked_collection_data_element(self):
         rc = create_collection()
         self.assert_raises(ValueError,
                            CsvLinkedDataElement.create_from_resource,
@@ -104,3 +105,9 @@ class DataElementsTestCase(ResourceTestCase):
         self.assert_raises(ValueError, DataElementAttributeProxy, data_el)
         self.assert_true(str(data_el).startswith(data_el.__class__.__name__))
 
+    def test_linked_member_data_element(self):
+        mb_data_el = SimpleLinkedDataElement.create('http://dummy',
+                                                    RESOURCE_KINDS.MEMBER,
+                                                    id=0)
+        self.assert_equal(mb_data_el.get_kind(), RESOURCE_KINDS.MEMBER)
+        self.assert_equal(mb_data_el.get_id(), 0)
