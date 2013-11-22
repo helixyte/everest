@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
 """
+from everest.entities.utils import get_entity_class
 from everest.entities.utils import new_entity_id
 from everest.repositories.base import Repository
 from everest.repositories.memory.aggregate import MemoryAggregate
@@ -102,32 +103,24 @@ class MemoryRepository(Repository):
 
     def __get_cache(self, entity_class):
         run_loader = not self.__cache_map.has_key(entity_class)
-        cache = self.__cache_map[entity_class]
         if run_loader:
-            # Check if we have an entity loader configured.
-            loader = self.configuration['cache_loader']
-            if not loader is None:
-                for ent in loader(entity_class):
-                    if ent.id is None:
-                        ent.id = new_entity_id()
-                    cache.add(ent)
-        return cache
+            is_top_level = len(self.__cache_map.keys()) == 0
+            self.__load_entities(entity_class, is_top_level)
+        return self.__cache_map[entity_class]
 
-#        if not self.__cache_is_loaded \
-#           and not self.__cache_map.has_key(entity_class):
-#            loader = self.configuration['cache_loader']
-#            if not loader is None:
-#                ent_clss = \
-#                    [get_entity_class(rc) for rc in self.registered_resources]
-#                ent_clss.remove(entity_class)
-#                ent_clss.insert(0, entity_class)
-#                for ent_cls in ent_clss:
-#                    do_load = not self.__cache_map.has_key(ent_cls)
-#                    if do_load:
-#                        cache = self.__cache_map[ent_cls]
-#                        for ent in loader(ent_cls):
-#                            if ent.id is None:
-#                                ent.id = new_entity_id()
-#                            cache.add(ent)
-#            self.__cache_is_loaded = True
-#        return self.__cache_map[entity_class]
+    def __load_entities(self, entity_class, is_top_level):
+        # Check if we have an entity loader configured.
+        loader = self.configuration['cache_loader']
+        if not loader is None:
+            cache = self.__cache_map[entity_class]
+            for ent in loader(entity_class):
+                if ent.id is None:
+                    ent.id = new_entity_id()
+                cache.add(ent)
+            # To fully initialize the cache, we also need to load collections
+            # that are not linked to from any of the entities just loaded.
+            if is_top_level:
+                for reg_rc in self.registered_resources:
+                    reg_ent_cls = get_entity_class(reg_rc)
+                    if not self.__cache_map.has_key(reg_ent_cls):
+                        self.__load_entities(reg_ent_cls, False)

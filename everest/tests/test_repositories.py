@@ -185,9 +185,12 @@ class _RepositoryTestCase(ResourceTestCase):
         coll.remove(mb)
         transaction.commit()
         # If we add the member with its parent or its children, we will get
-        # a duplicate key error for the parent.
+        # duplicate key errors.
         ent = mb.get_entity()
         ent.parent = None
+        # FIXME: The duplicate key error is actually *not* raised by the
+        #        file system repository when the following statement is
+        #        commented out!
         while ent.children:
             ent.children.pop()
         coll.add(mb)
