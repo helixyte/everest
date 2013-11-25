@@ -15,13 +15,13 @@ development of REST applications in `Python <http://www.python.org>`_.
   response to REST requests;
 * Representers that convert resources to string representations and vice versa
   for a number of MIME types (XML, ATOM, CSV, JSON);
-* A repository layer permitting per-resource configuration of the storage
-  backend to use (memory for testing, file system for small data volumes,
-  relational database for large data volumes);
+* A repository layer with four different storage backends: a memory backend, a
+  file system backend, a NoSQL database backend and a relational database
+  backend;
 * A query language for expressing complex hierarchical queries on the resource
   object tree through URLs;
 * A Flex client
-  (`distributed separately <https://github.com/cenix/everest-flex>`_);
+  (`distributed separately <https://github.com/cenix/everest-flex>`_).
 
 
 Installation
@@ -57,5 +57,5 @@ Development
 
 ``everest`` is hosted on `github <https://github.com/cenix/everest>`_. To
 contribute, please fork the project and submit a pull request. Please adhere to
-PEP8 in your code and ensure 100% test coverage. We recommend configuring
-pylint with the configuration file supplied in the `support` directory.
+PEP8 in your code and ensure 100% test coverage and zero pylint errors and
+warnings (using the configuration file supplied in the `support` directory).
