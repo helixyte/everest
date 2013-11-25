@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 19, 2011.
 """
+from collections import OrderedDict
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import XmlMime
@@ -19,6 +20,7 @@ from everest.representers.converters import DateTimeConverter
 from everest.representers.dataelements import CollectionDataElement
 from everest.representers.dataelements import LinkedDataElement
 from everest.representers.dataelements import MemberDataElement
+from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.mapping import MappingRegistry
 from everest.representers.utils import get_mapping_registry
@@ -32,8 +34,6 @@ from lxml import objectify
 from pkg_resources import resource_filename # pylint: disable=E0611
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import datetime
-from everest.representers.interfaces import IDataElement
-from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['XmlCollectionDataElement',
@@ -68,7 +68,6 @@ XmlConverterRegistry.register(bool, BooleanConverter)
 
 
 class XmlRepresentationParser(RepresentationParser):
-
     def run(self):
         # Create an XML schema.
         schema_loc = self.get_option('schema_location')
@@ -123,7 +122,6 @@ class XmlParserFactory(object):
 
 
 class XmlResourceRepresenter(MappingResourceRepresenter):
-
     content_type = XmlMime
 
     #: The encoding to use for reading and writing XML.
@@ -311,7 +309,6 @@ class XmlCollectionDataElement(objectify.ObjectifiedElement,
 
 
 class XmlLinkedDataElement(objectify.ObjectifiedElement, LinkedDataElement):
-
     @classmethod
     def create(cls, url, kind,
                id=None, relation=None, title=None, **options): # pylint: disable=W0622

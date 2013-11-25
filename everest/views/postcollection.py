@@ -1,7 +1,7 @@
 """
 Post collection view.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
@@ -22,9 +22,9 @@ class PostCollectionView(PutOrPostResourceView):
     View for POST requests on collection resources.
 
     The client POSTs a representation of the member to the URI of the
-    collection. If the new member resource was created successfully, the 
-    server responds with a status code of 201 and a Location header that 
-    contains the IRI of the newly created resource and a representation 
+    collection. If the new member resource was created successfully, the
+    server responds with a status code of 201 and a Location header that
+    contains the IRI of the newly created resource and a representation
     of it in the body of the response.
 
     See http://bitworking.org/projects/atom/rfc5023.html#post-to-create

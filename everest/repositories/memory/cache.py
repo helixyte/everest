@@ -30,7 +30,7 @@ class EntityCache(object):
         :param bool allow_none_id: Flag specifying if calling :meth:`add`
             with an entity that does not have an ID is allowed.
         """
-        #
+        # Flag indicating if None IDs are allowed in this cache.
         self.__allow_none_id = allow_none_id
         # List of cached entities. This is the only place we are holding a
         # real reference to the entity.
@@ -131,6 +131,12 @@ class EntityCache(object):
         return ents
 
     def rebuild(self, entities):
+        """
+        Rebuilds the ID and slug maps of this cache.
+
+        This can be necessary when entities obtain their IDs only after
+        they have been flushed to the backend.
+        """
         for ent in entities:
             self.__check_new(ent)
 

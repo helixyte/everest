@@ -1,22 +1,21 @@
 """
 WSGI filter to help a Flex client interact with an everest server.
 
-
 Background:
 
-The Flash browser plugin is not able to 
+The Flash browser plugin is not able to
 
- 1. Properly handle response messages for which the status code is <> 200. 
+ 1. Properly handle response messages for which the status code is <> 200.
     This makes it impossible to properly handle errors on the client side
     (e.g. distinguish a bad request form an internal server error); and
- 2. Set Accept headers for GET requests. This causes the default Flex 
+ 2. Set Accept headers for GET requests. This causes the default Flex
     Accept header to be sent ::
         text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
     which prompts evererst to respond with XML, not with ATOM.
 
 Solution:
 
-On ingress, the filter replaces for GET calls from a Flex client the 
+On ingress, the filter replaces for GET calls from a Flex client the
 Accept header with 'application/atom+xml'.
 
 On egress, this filter processes all response messages for calls from a

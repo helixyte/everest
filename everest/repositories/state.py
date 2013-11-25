@@ -1,4 +1,6 @@
 """
+Entity state management.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -38,9 +40,6 @@ class EntityState(object):
     references.
 
     Not all status transitions are allowed.
-
-    :ivar is_persisted: Indicates if this state has been flushed to the
-      backend.
     """
     # FIXME: Need a proper state diagram here or drop tracking alltogether.
     __allowed_transitions = set([(None, ENTITY_STATUS.NEW),
@@ -62,6 +61,7 @@ class EntityState(object):
         self.__uow_ref = ref(unit_of_work)
         self.__status = None
         self.__clean_data = self.data
+        #: Flag indicating if this state has been flushed to the backend.
         self.is_persisted = False
 
     @classmethod

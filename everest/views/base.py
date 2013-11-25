@@ -1,7 +1,7 @@
 """
 View base classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.j
@@ -34,6 +34,7 @@ __docformat__ = "reStructuredText en"
 __all__ = ['GetResourceView',
            'HttpWarningResubmit',
            'PutOrPostResourceView',
+           'RepresentingResourceView',
            'ResourceView',
            'ViewUserMessageChecker',
            ]
@@ -57,7 +58,7 @@ class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=
 class ResourceView(object):
     """
     Abstract base class for all resource views.
-    
+
     Resource views know how to handle a number of things that can go wrong
     in a REST request.
     """
@@ -86,7 +87,7 @@ class ResourceView(object):
     def _handle_unknown_exception(self, message, traceback):
         """
         Handles requests that triggered an unknown exception.
-        
+
         Respond with a 500 "Internal Server Error".
         """
         self._logger.error('Request errors\n'
@@ -120,9 +121,9 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
     def _get_response_representer(self):
         """
         Creates a representer for this view.
-        
+
         :raises: :class:`pyramid.httpexceptions.HTTPNotAcceptable` if the
-          MIME content type(s) the client specified can not be handled by 
+          MIME content type(s) the client specified can not be handled by
           the view.
         :returns: :class:`everest.representers.base.ResourceRepresenter`
         """
@@ -169,7 +170,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         Converts the given resource to a result to be returned from the view.
         Unless a custom renderer is employed, this will involve creating
         a representer and using it to convert the resource to a string.
-        
+
         :returns: :class:`pyramid.reposnse.Response` object or a dictionary
           with a single key "context" mapped to the given resource (to be
           passed on to a custom renderer).
@@ -272,13 +273,13 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
     def _process_request_data(self, data):
         """
         Processes the data extracted from the representation.
-        
+
         Implementations of this method need to check for a conflict caused
         by the request data (e.g., if the slug for a new member in a POST
         request is already used) and call the :meth:`_handle_conflict`
         method in case a conflict was detected.
-        
-        :param data: data returned by the :meth:`_extract_request_data` 
+
+        :param data: data returned by the :meth:`_extract_request_data`
           method.
         :returns: response object or dictionary
         """
@@ -287,7 +288,7 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
     def _handle_empty_body(self):
         """
         Handles requests with an empty body.
-        
+
         Respond with a 400 "Bad Request".
         """
         http_exc = HTTPBadRequest("Request's body is empty!")
@@ -296,7 +297,7 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
     def _handle_conflict(self, name):
         """
         Handles requests that triggered a conflict.
-        
+
         Respond with a 409 "Conflict"
         """
         err = HTTPConflict('Member "%s" already exists!' % name).exception
@@ -319,10 +320,10 @@ class ViewUserMessageChecker(UserMessageChecker):
     def check(self):
         """
         Implements user message checking for views.
-        
-        Checks if the current request has an explicit "ignore-message" 
-        parameter (a GUID) pointing to a message with identical text from a 
-        previous request, in which case further processing is allowed.        
+
+        Checks if the current request has an explicit "ignore-message"
+        parameter (a GUID) pointing to a message with identical text from a
+        previous request, in which case further processing is allowed.
         """
         request = get_current_request()
         ignore_guid = request.params.get('ignore-message')
@@ -336,7 +337,7 @@ class ViewUserMessageChecker(UserMessageChecker):
 
     def create_307_response(self):
         """
-        Creates a 307 "Temporary Redirect" response including a HTTP Warning 
+        Creates a 307 "Temporary Redirect" response including a HTTP Warning
         header with code 299 that contains the user message received during
         processing the request.
         """

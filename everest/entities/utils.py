@@ -1,7 +1,7 @@
 """
 Entity related utilities.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
@@ -25,7 +25,7 @@ __all__ = ['get_entity_class',
 
 def get_root_aggregate(resource):
     """
-    Returns an aggregate from the root entity repository for the given 
+    Returns an aggregate from the root entity repository for the given
     registered resource.
 
     :param resource: registered resource
@@ -55,7 +55,7 @@ def get_entity_class(resource):
 def slug_from_string(string):
     """
     Slugs are mnemonic string identifiers for resources for use in URLs.
-    
+
     This function replaces characters that are not allowed to occur in
     a URL with allowed characters.
     """
@@ -84,7 +84,7 @@ def slug_from_identifier(id_string):
 def identifier_from_slug(slug):
     """
     Converts the given slug into an identifier string.
-    
+
     :param str slug: slug string
     """
     return slug.replace('-', '_')
@@ -93,10 +93,10 @@ def identifier_from_slug(slug):
 def new_entity_id():
     """
     Generates a new (global) ID.
-    
-    Uses the :func:`uuid.uuid1` function to generate unique string IDs 
+
+    Uses the :func:`uuid.uuid1` function to generate unique string IDs
     which are sortable by creation time.
-    
+
     :return: UUID string.
     """
     return str(uuid.uuid1())

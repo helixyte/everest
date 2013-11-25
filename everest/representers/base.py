@@ -10,7 +10,8 @@ from everest.representers.utils import get_mapping_registry
 from pyramid.compat import NativeIO
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RepresentationGenerator',
+__all__ = ['MappingResourceRepresenter',
+           'RepresentationGenerator',
            'RepresentationParser',
            'Representer',
            'ResourceRepresenter',

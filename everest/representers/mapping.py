@@ -34,6 +34,7 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
            'MappingRegistry',
+           'PruningMapping',
            'SimpleMappingRegistry',
            ]
 
@@ -44,7 +45,7 @@ class Mapping(object):
     attribute mappings.
 
     :property mapped_class: The resource class mapped by this mapping.
-    :property data_element_class: The data element class for this mapping
+    :property data_element_class: The data element class for this mapping.
     """
     #: Flag indicating if this mapping should prune the attribute tree
     #: according to the IGNORE settings.
@@ -60,6 +61,7 @@ class Mapping(object):
         self.__is_collection_mapping = \
                                 provides_collection_resource(mapped_class)
         self.__de_cls = data_element_class
+        # List of configurations; the last one added is the active one.
         self.__configurations = [configuration]
         #
         self.__mapped_attr_cache = {}
@@ -77,6 +79,9 @@ class Mapping(object):
                               self.__de_cls, copied_cfg)
 
     def update(self, options=None, attribute_options=None):
+        """
+        Updates this mapping with the given option and attribute option maps.
+        """
         cfg = RepresenterConfiguration(options=options,
                                        attribute_options=attribute_options)
         self.configuration.update(cfg)
@@ -212,12 +217,19 @@ class Mapping(object):
         return resource
 
     def map_to_data_element(self, resource):
+        """
+        Maps the given resource to a data element tree.
+        """
         trv = ResourceTreeTraverser(resource, self.as_pruning())
         visitor = DataElementBuilderResourceTreeVisitor(self)
         trv.run(visitor)
         return visitor.data_element
 
     def as_pruning(self):
+        """
+        Returns a clone of this mapping with the `is_pruning` flag set to
+        *True*.
+        """
         return PruningMapping(self.__mp_reg, self.__mapped_cls, self.__de_cls,
                               self.__configurations[-1])
 
@@ -259,9 +271,9 @@ class Mapping(object):
         Returns an iterator over the attributes in this mapping for the
         given mapped class and attribute key.
 
-        If this is a pruning mapping, the default behavior for ignoring
-        nested attributes are applied as well as the configured ignore
-        options.
+        If this is a pruning mapping, attributes that are ignored because
+        of a custom configuration or because of the default ignore rules
+        are skipped.
         """
         for attr in itervalues_(self.__get_attribute_map(mapped_class, key)):
             if self.is_pruning:
@@ -329,6 +341,10 @@ class Mapping(object):
 
 
 class PruningMapping(Mapping):
+    """
+    Specialized mapping that applies ignore rules when iterating over
+    mapped attributes.
+    """
     is_pruning = True
 
 
@@ -353,6 +369,11 @@ class MappingRegistry(object):
         raise NotImplementedError('Abstract method.')
 
     def set_default_config_option(self, name, value):
+        """
+        Sets the option of the given name to the given value in the
+        registry configuration. This setting then serves as the default for
+        future mappings created by this registry.
+        """
         self.__configuration.set_option(name, value)
 
     def create_mapping(self, mapped_class, configuration=None):

@@ -6,11 +6,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 17, 2013.
 """
+from everest.repositories.interfaces import IRepository
 from pyramid.threadlocal import get_current_registry
 from threading import Lock
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-from everest.repositories.interfaces import IRepository
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['GlobalObjectManager',

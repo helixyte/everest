@@ -1,5 +1,5 @@
 """
-Custom resource object tree traverser.
+Custom resource object tree traversal.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.

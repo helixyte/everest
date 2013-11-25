@@ -291,20 +291,6 @@ def find_connected_resources(resource, dependency_graph=None):
             entity_map[mb_cls] = ents
         ents.append(mb.get_entity())
     return entity_map
-#    # Build an ordered dictionary of collections.
-#    collections = OrderedDict()
-#    repo_mgr = get_repository_manager()
-#    repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
-#    repo.initialize()
-#    for mb in topological_sorting(resource_graph):
-#        mb_cls = get_member_class(mb)
-#        coll = collections.get(mb_cls)
-#        if coll is None:
-#            # Create new collection.
-#            coll = repo.get_collection(mb)
-#            collections[mb_cls] = coll
-#        coll.add(mb)
-#    return collections
 
 
 class ResourceGraph(digraph):

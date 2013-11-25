@@ -1,4 +1,6 @@
 """
+Constants.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -8,6 +10,8 @@ Created on Mar 29, 2013.
 __docformat__ = 'reStructuredText en'
 __all__ = ['CARDINALITIES',
            'CARDINALITY_CONSTANTS',
+           'Cardinality',
+           'DEFAULT_CASCADE',
            'MAPPING_DIRECTIONS',
            'RELATIONSHIP_DIRECTIONS',
            'RELATION_OPERATIONS',
@@ -115,6 +119,9 @@ DEFAULT_CASCADE = RELATION_OPERATIONS.ADD | RELATION_OPERATIONS.UPDATE
 
 
 class RELATIONSHIP_DIRECTIONS(object):
+    """
+    Constants specifying the direction of a relationship.
+    """
     NONE = 0
     FORWARD = 1
     REVERSE = 2

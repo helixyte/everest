@@ -10,7 +10,7 @@ from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import identifier_from_slug
 from everest.entities.utils import slug_from_identifier
-from everest.querying.base import SpecificationVisitorBase
+from everest.querying.base import SpecificationExpressionHolder
 from everest.querying.interfaces import ISpecificationVisitor
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.utils import get_filter_specification_factory
@@ -34,6 +34,9 @@ __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
            'Member',
            'Resource',
+           'ResourceToEntityFilterSpecificationVisitor',
+           'ResourceToEntityOrderSpecificationVisitor',
+           'ResourceToEntitySpecificationVisitor',
            ]
 
 
@@ -503,14 +506,14 @@ class Collection(Resource):
 
 
 @implementer(ISpecificationVisitor)
-class ResourceToEntitySpecificationVisitor(SpecificationVisitorBase):
+class ResourceToEntitySpecificationVisitor(SpecificationExpressionHolder):
     """
     Base class for specification visitors that convert resource to entity
     attribute names.
     """
 
     def __init__(self, rc_class):
-        SpecificationVisitorBase.__init__(self)
+        SpecificationExpressionHolder.__init__(self)
         self.__rc_class = rc_class
 
     def visit_nullary(self, spec):

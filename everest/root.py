@@ -1,7 +1,7 @@
 """
 Root factory.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 21, 2011.
@@ -14,6 +14,9 @@ __all__ = ['RootFactory',
 
 
 class RootFactory(object):
+    """
+    Factory for the object tree root (i.e., the service object).
+    """
     def __init__(self):
         self.__root = None
 

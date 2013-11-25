@@ -17,7 +17,8 @@ from zope.interface import providedBy as provided_by # pylint: disable=E0611,F04
 import os
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['as_representer',
+__all__ = ['RepresenterConfigurationContext',
+           'as_representer',
            'data_element_tree_to_string',
            'get_mapping_registry',
            ]

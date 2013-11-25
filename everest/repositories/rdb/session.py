@@ -1,5 +1,5 @@
 """
-Session for the RDBMS backend.
+Session for the rdb backend.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -24,6 +24,7 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['RdbAutocommittingSession',
            'RdbSession',
            'RdbSessionFactory',
+           'ScopedSessionMaker',
            ]
 
 

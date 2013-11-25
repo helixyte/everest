@@ -209,7 +209,6 @@ class CQL_FILTER_OPERATORS(object):
     """
     Static container for all CQL filtering operators.
     """
-
     STARTS_WITH = STARTS_WITH
     ENDS_WITH = ENDS_WITH
     CONTAINED = CONTAINED
@@ -226,6 +225,5 @@ class CQL_ORDER_OPERATORS(object):
     """
     Static container for all CQL ordering operators.
     """
-
     ASCENDING = ASCENDING
     DESCENDING = DESCENDING

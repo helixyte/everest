@@ -27,7 +27,6 @@ __all__ = ['BubbleSorter',
 
 
 class Sorter(object):
-
     _order = None
 
     def __init__(self, order):
@@ -43,7 +42,6 @@ class Sorter(object):
 
 
 class SorterTemplate(Sorter):
-
     def __init__(self, order):
         if self.__class__ is SorterTemplate:
             raise NotImplementedError('Abstract class')
@@ -66,7 +64,6 @@ class SorterTemplate(Sorter):
 
 
 class BubbleSorter(SorterTemplate):
-
     def __init__(self, order):
         SorterTemplate.__init__(self, order)
 
@@ -88,7 +85,6 @@ class OrderSpecificationVisitor(SpecificationVisitor):
     """
     Base class for order specification visitors.
     """
-
     def _asc_op(self, spec):
         raise NotImplementedError('Abstract method.')
 
@@ -117,7 +113,6 @@ class CqlOrderSpecificationVisitor(OrderSpecificationVisitor):
     """
     Order specification visitor building a CQL expression.
     """
-
     def _conjunction_op(self, spec, *expressions):
         res = func_reduce(and_operator, expressions)
         return res

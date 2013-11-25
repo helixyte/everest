@@ -1,4 +1,5 @@
 """
+The repository manager class.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -38,9 +39,15 @@ class RepositoryManager(object):
         self.__default_repo = None
 
     def get(self, name):
+        """
+        Returns the specified repository.
+        """
         return self.__repositories.get(name)
 
     def set(self, repo):
+        """
+        Sets the given repository (by name).
+        """
         name = repo.name
         if name in self.__repositories \
            and self.__repositories[name].is_initialized:
@@ -49,11 +56,20 @@ class RepositoryManager(object):
         self.__repositories[name] = repo
 
     def get_default(self):
+        """
+        Returns the default repository.
+        """
         return self.__default_repo
 
     def new(self, repo_type, name=None, make_default=False,
             repository_class=None, aggregate_class=None,
             configuration=None):
+        """
+        Creates a new repository of the given type. If the root repository
+        domain (see :class:`everest.repositories.constants.REPOSITORY_DOMAINS`)
+        is passed as a repository name, the type string is used as the name;
+        if no name is passed, a unique name is created automatically.
+        """
         if name == REPOSITORY_DOMAINS.ROOT:
             # Unless explicitly configured differently, all root repositories
             # join the transaction.
@@ -119,4 +135,8 @@ class RepositoryManager(object):
                 repo.initialize()
 
     def on_app_created(self, event): # pylint: disable=W0613
+        """
+        Callback set up by the registry configurator to initialize all
+        registered repositories.
+        """
         self.initialize_all()

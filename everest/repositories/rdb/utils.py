@@ -1,5 +1,5 @@
 """
-Utilities for the RDBMS backend.
+Utilities for the rdb backend.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -28,17 +28,19 @@ from sqlalchemy.sql.expression import cast
 from threading import Lock
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RdbTestCaseMixin',
-           'OrmAttributeInspector',
+__all__ = ['OrmAttributeInspector',
+           'RdbTestCaseMixin',
            'as_slug_expression',
            'clear_mappers',
            'empty_metadata',
            'get_metadata',
+           'hybrid_descriptor',
            'is_metadata_initialized',
            'map_system_entities',
            'mapper',
            'reset_metadata',
            'set_metadata',
+           'synonym',
            ]
 
 

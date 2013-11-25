@@ -13,10 +13,15 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['ICollectionResource',
            'ILocationAware',
            'IMemberResource',
+           'IRelation',
            'IResource',
            'IResourceLink',
+           'IResourceAttribute',
+           'IResourceLink',
+           'IService',
            'ITraversable',
            ]
+
 
 # interfaces do not provide a constructor. pylint: disable=W0232
 # interface methods do not have self pylint: disable = E0213

@@ -1,4 +1,5 @@
 """
+Querying functionality for the rdb repository.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -261,7 +262,9 @@ class _CountingQuery(Query):
 
 
 class SimpleCountingQuery(_CountingQuery):
-
+    """
+    Non-optimized counting query.
+    """
     def _load(self):
         count_query = self.limit(None).offset(None)
         # Avoid circular calls to _load by "downcasting" the new query.
@@ -271,7 +274,14 @@ class SimpleCountingQuery(_CountingQuery):
 
 
 class OptimizedCountingQuery(_CountingQuery): # pragma: no cover
+    """
+    Optimized counting query.
 
+    This uses the OVER windowing SQL statement (on backends that have it) to
+    reduce the loading time of everest collections by a factor of almost two
+    (by virtue of avoiding an extra database roundtrip to obtain the count
+    of the filtered collection required for paging).
+    """
     def _load(self):
         query = self.add_columns(over(func.count(1)).label('_count'))
         res = [tup[0] for tup in Query.__iter__(query)]

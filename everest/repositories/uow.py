@@ -11,7 +11,6 @@ from everest.repositories.state import ENTITY_STATUS
 from everest.repositories.state import EntityState
 from everest.utils import WeakOrderedSet
 
-
 __docformat__ = 'reStructuredText en'
 __all__ = ['UnitOfWork',
            ]

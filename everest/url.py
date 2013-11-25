@@ -125,12 +125,14 @@ class ResourceUrlConverter(object):
 
 
 class UrlPartsConverter(object):
-
+    """
+    Helper class providing functionality to convert parts of a URL to
+    specifications and vice versa.
+    """
     @classmethod
     def make_filter_specification(cls, filter_string):
         """
-        Extracts the "query" parameter from the given request and converts
-        the given query string into a filter specification.
+        Converts the given CQL filter expression into a filter specification.
         """
         try:
             return parse_filter(filter_string)
@@ -139,6 +141,9 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_filter_string(cls, filter_specification):
+        """
+        Converts the given filter specification to a CQL filter expression.
+        """
         visitor_cls = get_filter_specification_visitor(EXPRESSION_KINDS.CQL)
         visitor = visitor_cls()
         filter_specification.accept(visitor)
@@ -146,6 +151,9 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_order_specification(cls, order_string):
+        """
+        Converts the given CQL sort expression to a order specification.
+        """
         try:
             return parse_order(order_string)
         except ParseException as err:
@@ -153,6 +161,9 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_order_string(cls, order_specification):
+        """
+        Converts the given order specification to a CQL order expression.
+        """
         visitor_cls = get_order_specification_visitor(EXPRESSION_KINDS.CQL)
         visitor = visitor_cls()
         order_specification.accept(visitor)
@@ -161,8 +172,7 @@ class UrlPartsConverter(object):
     @classmethod
     def make_slice_key(cls, start_string, size_string):
         """
-        Extracts the "start" and "size" parameters from the given
-        start and size parameter strings and constructs a slice from it.
+        Converts the given start and size query parts to a slice key.
 
         :return: slice key
         :rtype: slice
@@ -185,6 +195,9 @@ class UrlPartsConverter(object):
 
     @classmethod
     def make_slice_strings(cls, slice_key):
+        """
+        Converts the given slice key to start and size query parts.
+        """
         start = slice_key.start
         size = slice_key.stop - start
         return (str(start), str(size))

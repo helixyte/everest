@@ -1,7 +1,7 @@
 """
 Service.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 27, 2011.
@@ -22,10 +22,9 @@ class Service(Resource):
     """
     The service resource class.
 
-    The service resource is placed at the root of the resource tree and 
-    provides traversal (=URL) access to all exposed collection resources. 
+    The service resource is placed at the root of the resource tree and
+    provides traversal (=URL) access to all exposed collection resources.
     """
-
     relation = 'service'
 
     def __init__(self):
@@ -50,7 +49,7 @@ class Service(Resource):
     def start(self):
         """
         Starts the service.
-        
+
         This adds all registered resource interfaces to the service. Multiple
         calls to this method will only perform the startup once.
         """

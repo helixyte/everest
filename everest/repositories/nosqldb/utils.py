@@ -1,4 +1,6 @@
 """
+No SQL repository utilities.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
@@ -16,6 +18,8 @@ from everest.resources.utils import get_root_collection
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MongoClassRegistry',
+           'MongoInstrumentedAttribute',
+           'NoSqlAttributeInspector',
            'NoSqlTestCaseMixin',
            'transform_incoming',
            'transform_outgoing',
@@ -181,6 +185,10 @@ class MongoInstrumentedAttribute(object):
 
 
 class NoSqlAttributeInspector(object):
+    """
+    Analyzes attributes of entity classes to assiste building query
+    expressions for the No SQL backend.
+    """
     @staticmethod
     def inspect(entity_class, attribute_name):
         attr_tokens = attribute_name.split('.')

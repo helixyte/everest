@@ -33,11 +33,13 @@ class Relationship(object):
 
     @property
     def specification(self):
-        """
-        Returns a dynamically generated filter specification for the objects
-        defined by this relationship.
-        """
         return self.__make_specification()
+
+    def add(self, related, direction=None, safe=False):
+        raise NotImplementedError('Abstract method.')
+
+    def remove(self, related, direction=None, safe=False):
+        raise NotImplementedError('Abstract method.')
 
     def _get_specification_attributes(self):
         raise NotImplementedError('Abstract method.')
@@ -70,12 +72,6 @@ class Relationship(object):
             else:
                 spec = spec_fac.create_equal_to(backref_attr, self.relator)
         return spec
-
-    def add(self, related, direction=None, safe=False):
-        raise NotImplementedError('Abstract method.')
-
-    def remove(self, related, direction=None, safe=False):
-        raise NotImplementedError('Abstract method.')
 
     def __str__(self):
         rel_char = '-'

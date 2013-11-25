@@ -1,7 +1,7 @@
 """
 Interfaces for entity and aggregate classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
@@ -23,8 +23,13 @@ class IEntity(Interface):
     """
 
     id = Attribute('Provides a unique ID for this entity instance.')
+
     slug = Attribute('A unique string identifier for this entity within '
                      'its aggregate. The slug will be used to build URLs.')
+
+    def create_from_data(data):
+        """
+        """
 
 
 class IAggregate(Interface):

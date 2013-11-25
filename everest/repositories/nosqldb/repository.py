@@ -150,7 +150,6 @@ class NoSqlRepository(Repository):
         return engine
 
     def __get_mongo_collection(self, entity_class):
-#        key = "%s.%s" % (entity_class.__module__, entity_class.__name__)
         key = get_root_collection(entity_class).__name__
         return getattr(self.__db, key)
 

@@ -1,5 +1,5 @@
 """
-Querying operators, expressions, visitors, builders, directors.
+Base classes and constants for the querying subsystem.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -23,11 +23,14 @@ __all__ = ['CqlExpression',
            'CqlExpressionList',
            'EXPRESSION_KINDS',
            'SpecificationVisitor',
-           'SpecificationVisitorBase',
+           'SpecificationExpressionHolder',
            ]
 
 
 class EXPRESSION_KINDS(object):
+    """
+    Supported expression kinds.
+    """
     CQL = 'CQL'
     SQL = 'SQL'
     EVAL = 'EVAL'
@@ -84,7 +87,7 @@ class CqlExpressionList(object):
         return self.__cql_and.join([str(expr) for expr in self.expressions])
 
 
-class SpecificationVisitorBase(object):
+class SpecificationExpressionHolder(object):
     """
     Base class for specification visitors.
     """
@@ -106,7 +109,7 @@ class SpecificationVisitorBase(object):
 
 
 @implementer(ISpecificationVisitor)
-class SpecificationVisitor(SpecificationVisitorBase):
+class SpecificationVisitor(SpecificationExpressionHolder):
     """
     Base class for all specification visitors.
     """

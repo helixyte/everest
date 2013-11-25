@@ -31,7 +31,7 @@ class Entity(object):
     All entities have an ID which is used as the default value for equality
     comparison. The object may be initialized without an ID.
     """
-
+    #: The (unique) entity ID (integer or string).
     id = None
 
     def __init__(self, id=None): # redefining id pylint: disable=W0622
@@ -44,12 +44,15 @@ class Entity(object):
     def slug(self):
         """
         Returns a human-readable and URL-compatible string that is unique
-        within all siblings of this entity.
+        among all siblings of this entity.
         """
         return None if self.id is None else str(self.id)
 
     @classmethod
     def create_from_data(cls, data):
+        """
+        Creates a new instance of this entity from the given data map.
+        """
         return cls(**data)
 
     def __eq__(self, other):
@@ -75,7 +78,6 @@ class Aggregate(object):
     Supports filtering, sorting, slicing, counting, iteration as well as
     retrieving, adding and removing entities.
     """
-
     #: Entity class (type) of the entities in this aggregate.
     entity_class = None
 
@@ -135,7 +137,7 @@ class Aggregate(object):
 
         :note: If a filter is set which matches the requested entity, it
           will not be found.
-        :param id_key: ID value to look up
+        :param id_key: ID value to look up.
         :type id_key: `int` or `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one entity is found for the given ID value.
@@ -149,7 +151,7 @@ class Aggregate(object):
 
         :note: If a filter is set which matches the requested entity, it
           will not be found.
-        :param slug: Slug value to look up
+        :param slug: Slug value to look up.
         :type slug: `str`
         :raises: :class:`everest.exceptions.MultipleResultsException` if more
           than one entity is found for the given ID value.
@@ -167,7 +169,7 @@ class Aggregate(object):
           :class:`everest.interfaces.IDataTraversalProxyAdapter`.
         :type entity: Object implementing
           :class:`everest.entities.interfaces.IEntity`.
-        :raise ValueError: if an entity with the same ID exists.
+        :raise ValueError: If an entity with the same ID exists.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -177,7 +179,7 @@ class Aggregate(object):
 
         :param data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter`.
-        :raise ValueError: Entity was not found.
+        :raise ValueError: If the given entity was not found.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -188,9 +190,12 @@ class Aggregate(object):
         Relies on the underlying repository for the implementation of the
         state update.
 
-        :param data: Any object that can be adapted to
+        :param data: Source entity data for the update.
+        :type data: Any object that can be adapted to
           :class:`everest.interfaces.IDataTraversalProxyAdapter`.
-        :param target: Target entity to transfer state to.
+        :param target: Target entity to transfer state to. If this is not
+          given, the target is looked up by the ID of the given source
+          data.
         :type source_entity: Object implementing
           :class:`everest.entities.interfaces.IEntity`.
         """
@@ -371,21 +376,12 @@ class RootAggregate(Aggregate):
         return ent
 
     def add(self, data):
-#        if not isinstance(entity, self.entity_class):
-#            raise ValueError('Can only add entities of type "%s" to this '
-#                             'aggregate.' % self.entity_class)
         self._session.add(self.entity_class, data)
 
     def remove(self, data):
-#        if not isinstance(entity, self.entity_class):
-#            raise ValueError('Can only remove entities of type "%s" from '
-#                             'this aggregate.' % self.entity_class)
         self._session.remove(self.entity_class, data)
 
     def update(self, data, target=None):
-#        if not isinstance(entity, self.entity_class):
-#            raise ValueError('Can only update entities of type "%s" through '
-#                             'this aggregate.' % self.entity_class)
         return self._session.update(self.entity_class, data, target=target)
 
     def query(self):
@@ -408,12 +404,6 @@ class RootAggregate(Aggregate):
         if not self._session.IS_MANAGING_BACKREFERENCES:
             relationship.direction &= ~RELATIONSHIP_DIRECTIONS.REVERSE
         return RelationshipAggregate(self, relationship)
-
-    def __iter__(self):
-        """
-        Support for iteration.
-        """
-        return self.iterator()
 
     @property
     def _session(self):

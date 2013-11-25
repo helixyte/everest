@@ -70,7 +70,6 @@ class MemberDataElement(DataElement):
     """
     Abstract base class for member data element classes.
     """
-
     #: Registry of representation string <-> value converters. To be set
     #: in derived classes.
     converter_registry = None
@@ -123,7 +122,6 @@ class CollectionDataElement(DataElement):
     """
     Abstract base class for collection data elements.
     """
-
     def add_member(self, data_element):
         """
         Adds the given member data element to this collection data element.
@@ -249,7 +247,6 @@ class LinkedDataElement(DataElement):
     Data element managing a linked resource during serialization and
     deserialization.
     """
-
     @classmethod
     def create(cls, url, kind,
                id=None, relation=None, title=None, **options): # pylint: disable=W0622

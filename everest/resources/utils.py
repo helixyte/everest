@@ -1,7 +1,7 @@
 """
 Resource related utilities.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
@@ -26,9 +26,12 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
            'get_collection_class',
            'get_member_class',
+           'get_registered_collection_resources',
+           'get_repository',
            'get_resource_class_for_relation',
            'get_resource_url',
            'get_root_collection',
+           'get_service',
            'is_resource_url',
            'provides_collection_resource',
            'provides_member_resource',
@@ -90,7 +93,7 @@ def get_resource_class_for_relation(relation):
     """
     Returns the resource class that was registered for the given
     relation.
-    
+
     :param str relation: relation string.
     """
     reg = get_current_registry()
@@ -192,8 +195,8 @@ def get_repository(name):
 def get_service():
     """
     Registers the object registered as the service utility.
-    
-    :returns: object implementing 
+
+    :returns: object implementing
         :class:`everest.interfaces.IService`
     """
     reg = get_current_registry()
@@ -203,8 +206,8 @@ def get_service():
 def resource_to_url(resource, request=None):
     """
     Converts the given resource to a URL.
-    
-    :param request: Request object (required for the host name part of the 
+
+    :param request: Request object (required for the host name part of the
       URL). If this is not given, the current request is used.
     """
     if request is None:
@@ -219,7 +222,7 @@ def url_to_resource(url, request=None):
     """
     Converts the given URL to a resource.
 
-    :param request: Request object (required for the host name part of the 
+    :param request: Request object (required for the host name part of the
       URL). If this is not given, the current request is used.
     """
     if request is None:

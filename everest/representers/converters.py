@@ -1,7 +1,7 @@
 """
 Converters resource attribute value <-> representation string.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 25, 2012.
@@ -19,6 +19,7 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['BooleanConverter',
            'ConverterRegistry',
            'DateTimeConverter',
+           'NoOpConverter',
            'SimpleConverterRegistry',
            ]
 

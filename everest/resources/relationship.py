@@ -1,11 +1,13 @@
 """
+Resource relationship class.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 12, 2013.
 """
-from everest.relationship import Relationship
 from everest.relationship import RELATIONSHIP_DIRECTIONS
+from everest.relationship import Relationship
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceRelationship',

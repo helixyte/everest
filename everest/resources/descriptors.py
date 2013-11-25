@@ -136,6 +136,10 @@ class _relation_attribute(attribute_base):
     def make_relationship(self, relator,
                           direction=
                             RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL):
+        """
+        Create a relationship object for this attribute from the given
+        relator and relationship direction.
+        """
         if IEntity.providedBy(relator): # pylint:disable=E1101
             rel = DomainRelationship(relator, self,
                                      direction=direction)

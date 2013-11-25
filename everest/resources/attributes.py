@@ -1,8 +1,8 @@
 """
+Resource attribute handling classes.
+
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
-
-Resource attribute handling classes.
 
 Created on Dec 2, 2011.
 """
@@ -29,6 +29,10 @@ __all__ = ['MetaResourceAttributeCollector',
            'get_resource_class_attribute_iterator',
            'get_resource_class_attribute_names',
            'get_resource_class_attributes',
+           'get_resource_class_collection_attribute_iterator',
+           'get_resource_class_member_attribute_iterator',
+           'get_resource_class_relationship_attribute_iterator',
+           'get_resource_class_terminal_attribute_iterator',
            'is_resource_class_collection_attribute',
            'is_resource_class_member_attribute',
            'is_resource_class_resource_attribute',
@@ -102,6 +106,7 @@ def arg_to_member_class(func):
             mb_cls = get_member_class(rc)
         return func(mb_cls, *args)
     return wrap
+
 
 def is_resource_class_terminal_attribute(rc, attr_name):
     """

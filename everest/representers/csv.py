@@ -44,8 +44,10 @@ import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvCollectionDataElement',
+           'CsvConverterRegistry',
            'CsvData',
            'CsvDataElementTreeVisitor',
+           'CsvIntConverter',
            'CsvLinkedDataElement',
            'CsvMappingRegistry',
            'CsvMemberDataElement',

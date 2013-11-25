@@ -1,7 +1,7 @@
 """
 Message notification and handling.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 24, 2011.
@@ -56,7 +56,7 @@ class UserMessageNotifier(object):
 class UserMessageChecker(object):
     """
     Abstract base class for user message checkers.
-    
+
     User message checkers can be used to decide if further processing
     should be stopped in response to a non-critical event reported through
     a user message.
@@ -81,13 +81,13 @@ class UserMessageChecker(object):
 
 class UserMessageHandlingContextManager(object):
     """
-    A context which sets up a user message checker as a subscriber to 
+    A context which sets up a user message checker as a subscriber to
     user messages.
     """
     def __init__(self, checker):
         """
         Constructor.
-        
+
         :param checker: The user message checker to subscribe to user messages.
         :type checker: :class:`everest.messaging.UserMessageChecker` instance.
         """

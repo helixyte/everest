@@ -1,5 +1,5 @@
 """
-Specifications.
+Query specifications.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -101,7 +101,6 @@ class FilterSpecification(Specification):
     """
     Abstract base class for all filter specifications.
     """
-
     def __init__(self):
         if self.__class__ is FilterSpecification:
             raise NotImplementedError('Abstract class')
@@ -133,7 +132,6 @@ class LeafFilterSpecification(FilterSpecification): # still abstract pylint: dis
     Abstract base class for specifications that represent leaves in a
     specification tree.
     """
-
     def __init__(self):
         if self.__class__ is LeafFilterSpecification:
             raise NotImplementedError('Abstract class')
@@ -147,7 +145,6 @@ class CriterionFilterSpecification(LeafFilterSpecification):
     """
     Abstract base class for specifications representing filter criteria.
     """
-
     def __init__(self, attr_name, attr_value):
         """
         Constructs a filter specification for a query criterion.
@@ -199,7 +196,6 @@ class CompositeFilterSpecification(FilterSpecification):
     Abstract base class for specifications that are composed of two other
     specifications.
     """
-
     def __init__(self, left_spec, right_spec):
         """
         Constructs a CompositeFilterSpecification
@@ -248,17 +244,15 @@ class CompositeFilterSpecification(FilterSpecification):
 
 class ConjunctionFilterSpecification(CompositeFilterSpecification):
     """
-    Concrete Conjunction specification.
+    Concrete conjunction filter specification.
     """
-
     operator = CONJUNCTION
 
 
 class DisjunctionFilterSpecification(CompositeFilterSpecification):
     """
-    Concrete disjuction specification.
+    Concrete disjuction filter specification.
     """
-
     operator = DISJUNCTION
 
 
@@ -266,12 +260,11 @@ class NegationFilterSpecification(FilterSpecification):
     """
     Concrete negation specification.
     """
-
     operator = NEGATION
 
     def __init__(self, wrapped_spec):
         """
-        Constructs a NegationFilterSpecification
+        Constructs a NegationFilterSpecification.
 
         :param wrapped: the wrapped specification
         :type wrapped: :class:`FilterSpecification`
@@ -303,95 +296,94 @@ class NegationFilterSpecification(FilterSpecification):
 
     @property
     def wrapped_spec(self):
+        """
+        Returns the wrapped (negated) specification.
+        """
         return self.__wrapped_spec
 
 
 class ValueStartsWithFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value starts with specification
+    Concrete value starts with specification.
     """
-
     operator = STARTS_WITH
 
 
 class ValueEndsWithFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value ends with specification
+    Concrete value ends with specification.
     """
-
     operator = ENDS_WITH
 
 
 class ValueContainsFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value contains specification
+    Concrete value contains specification.
     """
-
     operator = CONTAINS
 
 
 class ValueContainedFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value contained in a list of values specification
+    Concrete value contained in a list of values specification.
     """
-
     operator = CONTAINED
 
 
 class ValueEqualToFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value equal to specification
+    Concrete value equal to specification.
     """
-
     operator = EQUAL_TO
 
 
 class ValueGreaterThanFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value greater than specification
+    Concrete value greater than specification.
     """
-
     operator = GREATER_THAN
 
 
 class ValueLessThanFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value less than specification
+    Concrete value less than specification.
     """
-
     operator = LESS_THAN
 
 
 class ValueGreaterThanOrEqualToFilterSpecification(
                                             CriterionFilterSpecification):
     """
-    Concrete value greater than or equal to specification
+    Concrete value greater than or equal to specification.
     """
-
     operator = GREATER_OR_EQUALS
 
 
 class ValueLessThanOrEqualToFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete value less than or equal to specification
+    Concrete value less than or equal to specification.
     """
-
     operator = LESS_OR_EQUALS
 
 
 class ValueInRangeFilterSpecification(CriterionFilterSpecification):
     """
-    Concrete specification for a range of values
+    Concrete specification for a range of values.
     """
-
     operator = IN_RANGE
 
     @property
     def from_value(self):
+        """
+        Returns the first (FROM) value from the range specification.
+        """
         return self.attr_value[0]
 
     @property
     def to_value(self):
+        """
+        Returns the second (TO) value from the range specification.
+        """
         return self.attr_value[1]
 
 
@@ -400,7 +392,6 @@ class FilterSpecificationFactory(object):
     """
     Filter specification factory.
     """
-
     def create_equal_to(self, attr_name, attr_value):
         return ValueEqualToFilterSpecification(attr_name, attr_value)
 
@@ -443,7 +434,9 @@ class FilterSpecificationFactory(object):
 
 
 class OrderSpecification(Specification):
-
+    """
+    Abstract base class for all order specifications.
+    """
     def __init__(self):
         if self.__class__ is OrderSpecification:
             raise NotImplementedError('Abstract class')
@@ -475,7 +468,10 @@ class OrderSpecification(Specification):
 
 
 class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
-
+    """
+    Abstract base class for all order specifications operating on object
+    attributes.
+    """
     def __init__(self, attr_name):
         if self.__class__ is ObjectOrderSpecification:
             raise NotImplementedError('Abstract class')
@@ -516,12 +512,16 @@ class ObjectOrderSpecification(OrderSpecification): # pylint: disable=W0223
 
 
 class AscendingOrderSpecification(ObjectOrderSpecification):
-
+    """
+    Concrete ascending order specification.
+    """
     operator = ASCENDING
 
 
 class DescendingOrderSpecification(ObjectOrderSpecification):
-
+    """
+    Concrete descending order specification.
+    """
     operator = DESCENDING
 
 
@@ -529,7 +529,6 @@ class NaturalOrderSpecification(ObjectOrderSpecification):
     """
     See http://www.codinghorror.com/blog/2007/12/sorting-for-humans-natural-sort-order.html
     """
-
     operator = ASCENDING
 
     def _get_value(self, obj):
@@ -545,7 +544,9 @@ class NaturalOrderSpecification(ObjectOrderSpecification):
 
 
 class ConjunctionOrderSpecification(OrderSpecification):
-
+    """
+    Concrete conjunction order specification.
+    """
     operator = CONJUNCTION
 
     def __init__(self, left, right):
@@ -602,7 +603,6 @@ class OrderSpecificationFactory(object):
     """
     Order specification factory.
     """
-
     def create_ascending(self, attr_name):
         return AscendingOrderSpecification(attr_name)
 

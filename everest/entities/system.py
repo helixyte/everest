@@ -1,7 +1,7 @@
 """
 System entities.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 22, 2011.
@@ -19,6 +19,9 @@ __all__ = ['UserMessage',
 
 @implementer(IUserMessage)
 class UserMessage(Entity):
+    """
+    A user message holding a text, a GUID and a time stamp.
+    """
     def __init__(self, text, guid=None, time_stamp=None, **kw):
         msg_id = kw.pop('id', None)
         if msg_id is None:

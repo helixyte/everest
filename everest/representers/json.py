@@ -37,6 +37,9 @@ import datetime
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['JsonCollectionDataElement',
+           'JsonConverterRegistry',
+           'JsonDataElementTreeVisitor',
+           'JsonDataTreeTraverser',
            'JsonLinkedDataElement',
            'JsonMappingRegistry',
            'JsonMemberDataElement',

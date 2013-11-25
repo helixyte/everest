@@ -59,7 +59,6 @@ class AtomResourceRepresenter(MappingResourceRepresenter):
 
 
 class AtomMapping(Mapping):
-
     # FIXME: Make the hypermedia type configurable. pylint: disable=W0511
     VND_MIME = 'application/vnd.everest+xml'
 
@@ -161,7 +160,6 @@ class AtomMapping(Mapping):
 
 
 class AtomMappingRegistry(XmlMappingRegistry):
-
     NS_MAP = dict(opensearch=XML_NS_OPEN_SEARCH)
     mapping_class = AtomMapping
 

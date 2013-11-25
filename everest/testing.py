@@ -50,7 +50,6 @@ class Pep8CompliantTestCase(unittest.TestCase):
     """
     Use this for simple unit tests with PEP8 compliant method names.
     """
-
     assert_true = unittest.TestCase.assertTrue
 
     assert_false = unittest.TestCase.assertFalse
@@ -88,10 +87,10 @@ class TestCaseWithIni(Pep8CompliantTestCase):
     """
     Use this for unit tests that need access to settings specified in an
     .ini file.
-    
-    :ivar ini: The ini file parser. This will only be set up if the 
-        `ini_file_path` and `ini_section_name` class variables were set up 
-        sensibly.  
+
+    :ivar ini: The ini file parser. This will only be set up if the
+        `ini_file_path` and `ini_section_name` class variables were set up
+        sensibly.
     """
     # : The name of the package where the tests reside. May be overridden in
     # : derived classes.
@@ -168,7 +167,7 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
 class TestCaseWithConfiguration(BaseTestCaseWithConfiguration):
     """
     Use this for test cases that need access to an initialized (but not
-    configured) registry. 
+    configured) registry.
     """
     def set_up(self):
         BaseTestCaseWithConfiguration.set_up(self)
@@ -279,8 +278,8 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
 class FunctionalTestCase(TestCaseWithIni):
     """
     Use this for test cases that need access to a WSGI application.
-    
-    :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test. 
+
+    :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test.
     """
     # : The name of the application to test.
     app_name = None
@@ -318,7 +317,6 @@ class DummyModule(object):
     """
     Dummy module for testing.
     """
-
     __path__ = "foo"
     __name__ = "dummy"
     __file__ = ''
@@ -328,7 +326,6 @@ class DummyContext:
     """
     Dummy context for testing.
     """
-
     def __init__(self, resolved=DummyModule):
         self.actions = []
         self.info = None
@@ -394,7 +391,7 @@ def no_autoflush(scoped_session=None):
 class RdbContextManager(object):
     """
     Context manager for RDB tests.
-    
+
     Configures the entity repository to use the RDB implementation as
     a default, sets up an outer transaction before the test is run and rolls
     this transaction back after the test has finished.
@@ -496,6 +493,10 @@ def persist(session, entity_class, attribute_map,
 
 
 def tear_down_registry(registry):
+    """
+    Explicit un-registration of registered adapters and utilities for testing
+    puprposes.
+    """
     for reg_adp in list(registry.registeredAdapters()):
         registry.unregisterAdapter(factory=reg_adp.factory,
                                    required=reg_adp.required,

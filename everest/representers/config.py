@@ -56,7 +56,6 @@ class RepresenterConfiguration(object):
        Derived classes may add more allowed mapping options; those must be
        declared in the :cvar:`_default_attributes_options` class variable.
     """ % globals() # doc string must not be assigned pylint: disable=W0106
-
     #: Default configuration option names (immutable).
     _default_config_options = {}
     #: Default mapping option names (immutable).

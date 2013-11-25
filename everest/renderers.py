@@ -1,7 +1,7 @@
 """
 Renderers.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created Oct 7, 2011.
@@ -21,13 +21,16 @@ __docformat__ = "reStructuredText en"
 __all__ = ['AtomRenderer',
            'CsvRenderer',
            'JsonRenderer',
-           'XmlRenderer',
            'RendererFactory',
            'ResourceRenderer',
+           'XmlRenderer',
            ]
 
 
 class RendererFactory(object):
+    """
+    Factory for renderers based on names.
+    """
     def __init__(self, info):
         self.__name = info.name
 
@@ -47,7 +50,11 @@ class RendererFactory(object):
 
 @implementer(IRenderer)
 class ResourceRenderer(object):
+    """
+    Renderer for resources.
 
+    Uses a representer to perform the resource -> representation conversion.
+    """
     def __init__(self, content_type): # redef format pylint:disable=W0622
         self._content_type = content_type
 
@@ -74,6 +81,9 @@ class ResourceRenderer(object):
 
 
 class CsvRenderer(ResourceRenderer):
+    """
+    Renderer creating a CSV representation from a resource.
+    """
     def __init__(self):
         ResourceRenderer.__init__(self, CsvMime)
 
@@ -86,17 +96,24 @@ class CsvRenderer(ResourceRenderer):
 
 
 class JsonRenderer(ResourceRenderer):
+    """
+    Renderer creating a JSON representation from a resource.
+    """
     def __init__(self):
         ResourceRenderer.__init__(self, JsonMime)
 
 
 class XmlRenderer(ResourceRenderer):
+    """
+    Renderer creating a XML representation from a resource.
+    """
     def __init__(self):
         ResourceRenderer.__init__(self, XmlMime)
 
 
 class AtomRenderer(ResourceRenderer):
+    """
+    Renderer creating an ATOM representation from a resource.
+    """
     def __init__(self):
         ResourceRenderer.__init__(self, AtomMime)
-
-

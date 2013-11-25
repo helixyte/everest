@@ -21,6 +21,9 @@ import traceback
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
+           'EMAIL_REGEX',
+           'WeakList',
+           'WeakOrderedSet',
            'check_email',
            'classproperty',
            'generative',
@@ -28,9 +31,12 @@ __all__ = ['BidirectionalLookup',
            'get_nested_attribute',
            'get_order_specification_visitor',
            'get_repository_manager',
+           'get_traceback',
+           'id_generator',
            'resolve_nested_attribute',
            'set_nested_attribute',
            ]
+
 
 EMAIL_REGEX = r'^[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,4}$'
 

@@ -26,28 +26,31 @@ from everest.interfaces import IXmlRequest
 from everest.interfaces import IZipMime
 from everest.interfaces import IZipRequest
 from everest.utils import BidirectionalLookup
-from zope.interface import provider # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from zope.interface import provider # pylint: disable=E0611,F0401
 
 __docformat__ = "reStructuredText en"
-__all__ = ['ATOM_MIME',
-           'ATOM_FEED_MIME',
+__all__ = ['ATOM_FEED_MIME',
            'ATOM_ENTRY_MIME',
-           'MIME_REQUEST',
+           'ATOM_MIME',
+           'AtomEntryMime',
+           'AtomFeedMime',
+           'AtomMime',
+           'AtomServiceMime',
            'CSV_MIME',
+           'CsvMime',
            'HTML_MIME',
+           'HtmlMime',
            'JSON_MIME',
+           'JsonMime',
+           'MIME_REQUEST',
            'TEXT_PLAIN_MIME',
+           'TextPlainMime',
            'XLS_MIME',
            'XML_MIME',
-           'ZIP_MIME',
-           'AtomMime',
-           'CsvMime',
-           'HtmlMime',
-           'JsonMime',
-           'TextPlainMime',
            'XlsMime',
            'XmlMime',
+           'ZIP_MIME',
            'ZipMime',
            'get_registered_mime_strings',
            'get_registered_mime_type_for_extension',
@@ -55,11 +58,14 @@ __all__ = ['ATOM_MIME',
            'get_registered_mime_type_for_string',
            'get_registered_mime_types',
            'get_registered_representer_names',
+           'register_mime_type',
            ]
 
 
 class MimeTypeRegistry(object):
-
+    """
+    Simple registry for MIME content types.
+    """
     __type_string_map = {}
     __rpr_name_map = {}
     __file_extension_map = BidirectionalLookup()

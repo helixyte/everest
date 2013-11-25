@@ -1,6 +1,7 @@
 """
+Interfaces for repository classes.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 25, 2013.
@@ -36,7 +37,7 @@ class IRepository(Interface):
 
     def load_representation(rc, url):
         """
-        Loads the representation of the specified registered resource  
+        Loads the representation of the specified registered resource
         pointed to by the given URL into the repository.
         """
 

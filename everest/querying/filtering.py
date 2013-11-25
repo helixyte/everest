@@ -1,5 +1,5 @@
 """
-Filter specification builder, visitor, director classes.
+Filter specification visitors.
 
 This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
@@ -38,7 +38,7 @@ __all__ = ['CqlFilterExpression',
 
 class FilterSpecificationVisitor(SpecificationVisitor):
     """
-    Base class for filter specification visitors.
+    Abstract base class for filter specification visitors.
     """
 
     def _disjunction_op(self, spec, *expressions):
@@ -93,6 +93,7 @@ class CqlFilterExpression(CqlExpression):
         self.value = value
 
     def _as_string(self):
+        #: Returns this CQL expression as a string.
         return self.__cql_format % dict(attr=self.attr_name,
                                         op=slug_from_identifier(self.op_name),
                                         val=self.value)

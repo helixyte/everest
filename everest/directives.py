@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
+from everest.constants import RESOURCE_KINDS
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -27,10 +28,20 @@ from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import Int # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
-from everest.constants import RESOURCE_KINDS
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['RepresenterDirective',
+__all__ = ['IFileSystemRepositoryDirective',
+           'IMemoryRepositoryDirective',
+           'IMessagingDirective',
+           'INoSqlRepositoryDirective',
+           'IOptionDirective',
+           'IRdbRepositoryDirective',
+           'IRepositoryDirective',
+           'IRepresenterDirective',
+           'IResourceDirective',
+           'IResourceRepresenterAttributeDirective',
+           'IRepresenterDirective',
+           'RepresenterDirective',
            'ResourceDirective',
            'ResourceRepresenterAttributeDirective',
            'ResourceRepresenterDirective',

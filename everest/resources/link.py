@@ -1,7 +1,7 @@
 """
 Resource link.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 29, 2011.
@@ -20,10 +20,9 @@ class Link(object):
     """
     A resource link.
 
-    ::note: The URL for the linked resource is created lazily; at
+    :note: The URL for the linked resource is created lazily; at
       instantiation time, we may not have a request to generate the URL.
     """
-
     def __init__(self, linked_resource, rel,
                  type=None, title=None, length=None): # pylint: disable=W0622
         self.__linked_resource = linked_resource

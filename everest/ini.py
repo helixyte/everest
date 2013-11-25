@@ -1,7 +1,7 @@
 """
 Settings file handling and nose plugin for testing.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 30, 2012.
@@ -30,7 +30,9 @@ class EverestNosePlugin(nose.plugins.Plugin):
         self.__dest_opt_name = self.__opt_name.replace('-', '_')
 
     def options(self, parser, env=None):
-        """Add command-line options for this plugin."""
+        """
+        Adds command-line options for this plugin.
+        """
         if env is None:
             env = os.environ
         env_opt_name = 'NOSE_%s' % self.__dest_opt_name.upper()
@@ -42,7 +44,9 @@ class EverestNosePlugin(nose.plugins.Plugin):
                                "test web application.")
 
     def configure(self, options, conf):
-        """Configure the plugin"""
+        """
+        Configures the plugin.
+        """
         super(EverestNosePlugin, self).configure(options, conf)
         opt_val = getattr(options, self.__dest_opt_name, None)
         if opt_val:
@@ -53,7 +57,7 @@ class EverestNosePlugin(nose.plugins.Plugin):
 class EverestIni(object):
     """
     Helper class providing access to settings parsed from an ini file.
-    
+
     By default, the ini file configured through the :class:`EverestNosePlugin`
     is used.
     """
@@ -76,7 +80,7 @@ class EverestIni(object):
         """
         Returns a dictionary containing the settings for the given ini file
         section.
-        
+
         :param str section: ini file section.
         """
         return dict(self.__ini_parser.items(section))
@@ -84,7 +88,7 @@ class EverestIni(object):
     def get_setting(self, section, key):
         """
         Returns the specified setting from the given ini file section.
-        
+
         :param str section: ini file section.
         :param str key: key to look up in the section.
         """
