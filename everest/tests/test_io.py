@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Feb 21, 2012.
 """
 from everest.mime import CsvMime
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
 from everest.resources.io import ConnectedResourcesSerializer
 from everest.resources.io import build_resource_dependency_graph

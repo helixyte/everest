@@ -15,7 +15,7 @@ from everest.querying.specifications import eq
 from everest.querying.specifications import gt
 from everest.repositories.memory.aggregate import MemoryAggregate
 from everest.repositories.rdb.aggregate import RdbAggregate
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
@@ -29,7 +29,7 @@ from mock import patch
 #        backend extension points.
 try:
     from everest.repositories.nosqldb.aggregate import NoSqlAggregate
-    from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
+    from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
     HAS_MONGO = True
 except ImportError:
     HAS_MONGO = False

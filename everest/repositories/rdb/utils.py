@@ -8,7 +8,6 @@ Created on Jan 7, 2013.
 """
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.system import UserMessage
-from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.repositories.utils import GlobalObjectManager
 from inspect import isdatadescriptor
 from sqlalchemy import Column
@@ -16,7 +15,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy import func
+from sqlalchemy import func as sa_func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import clear_mappers as sa_clear_mappers
 from sqlalchemy.orm import mapper as sa_mapper
@@ -29,7 +28,6 @@ from threading import Lock
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['OrmAttributeInspector',
-           'RdbTestCaseMixin',
            'as_slug_expression',
            'clear_mappers',
            'empty_metadata',
@@ -66,6 +64,29 @@ is_metadata_initialized = _MetaDataManager.is_initialized
 reset_metadata = _MetaDataManager.reset
 
 
+def clear_mappers():
+    """
+    Clears all mappers set up by SA and also clears all custom "id" and
+    "slug" attributes inserted by the :func:`mapper` function in this module.
+
+    This should only ever be needed in a testing context.
+    """
+    # Remove our hybrid property constructs.
+    for mpr, is_primary in _mapper_registry.items():
+        if is_primary:
+            for attr_name in ('id', 'slug'):
+                try:
+                    attr = object.__getattribute__(mpr.class_, attr_name)
+                    if isinstance(attr, hybrid_property):
+                        if attr_name == 'id':
+                            delattr(mpr.class_, attr_name)
+                        else:
+                            setattr(mpr.class_, attr_name, attr.descriptor)
+                except AttributeError:
+                    pass
+    sa_clear_mappers()
+
+
 def as_slug_expression(attr):
     """
     Converts the given instrumented string attribute into an SQL expression
@@ -76,9 +97,9 @@ def as_slug_expression(attr):
     and lower casing the result. We need this at the ORM level so that we can
     use the slug in a query expression.
     """
-    slug_expr = func.replace(attr, ' ', '-')
-    slug_expr = func.replace(slug_expr, '_', '-')
-    slug_expr = func.lower(slug_expr)
+    slug_expr = sa_func.replace(attr, ' ', '-')
+    slug_expr = sa_func.replace(slug_expr, '_', '-')
+    slug_expr = sa_func.lower(slug_expr)
     return slug_expr
 
 
@@ -159,36 +180,16 @@ def synonym(name):
                            expr=lambda cls: getattr(cls, name))
 
 
-def clear_mappers():
-    """
-    Clears all mappers set up by SA and also clears all custom "id" and
-    "slug" attributes inserted by the :func:`mapper` function in this module.
-
-    This should only ever be needed in a testing context.
-    """
-    # Remove our hybrid property constructs.
-    for mpr, is_primary in _mapper_registry.items():
-        if is_primary:
-            for attr_name in ('id', 'slug'):
-                try:
-                    attr = object.__getattribute__(mpr.class_, attr_name)
-                    if isinstance(attr, hybrid_property):
-                        if attr_name == 'id':
-                            delattr(mpr.class_, attr_name)
-                        else:
-                            setattr(mpr.class_, attr_name, attr.descriptor)
-                except AttributeError:
-                    pass
-    sa_clear_mappers()
-
-
 def map_system_entities(engine, metadata, reset):
+    """
+    Maps all system entities.
+    """
     # Map the user message system entity.
     msg_tbl = Table('_user_messages', metadata,
                     Column('guid', String, nullable=False, primary_key=True),
                     Column('text', String, nullable=False),
                     Column('time_stamp', DateTime(timezone=True),
-                           nullable=False, default=func.now()),
+                           nullable=False, default=sa_func.now()),
                     )
     mapper(UserMessage, msg_tbl, id_attribute='guid')
     if reset:
@@ -294,32 +295,3 @@ class OrmAttributeInspector(object):
                 raise ValueError('Unsupported relationship direction "%s".' # pragma: no cover
                                  % attr.property.direction)
         return kind, target_type
-
-
-class RdbTestCaseMixin(object):
-    def tear_down(self):
-        super(RdbTestCaseMixin, self).tear_down()
-        Session.remove()
-
-#    @classmethod
-#    def setup_class(cls):
-#        base_cls = super(RdbTestCaseMixin, cls)
-#        try:
-#            base_cls.setup_class()
-#        except AttributeError:
-#            pass
-#        Session.remove()
-#        assert not Session.registry.has()
-#        reset_metadata()
-#        reset_engines()
-
-    @classmethod
-    def teardown_class(cls):
-        base_cls = super(RdbTestCaseMixin, cls)
-        try:
-            base_cls.teardown_class()
-        except AttributeError:
-            pass
-        Session.remove()
-        assert not Session.registry.has()
-        reset_metadata()

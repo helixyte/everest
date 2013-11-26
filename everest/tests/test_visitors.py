@@ -11,7 +11,7 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.repositories.rdb.querying import OrderClauseList
-from everest.repositories.rdb.utils import Session
+from everest.repositories.rdb.testing import Session
 from everest.repositories.rdb.utils import reset_metadata
 from everest.testing import Pep8CompliantTestCase
 from sqlalchemy.engine import create_engine

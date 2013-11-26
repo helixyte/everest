@@ -6,7 +6,7 @@ Created on Jun 1, 2012.
 """
 from everest.querying.utils import get_filter_specification_factory
 from everest.querying.utils import get_order_specification_factory
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.resources.utils import get_root_collection
 from everest.resources.utils import resource_to_url
 from everest.resources.utils import url_to_resource
@@ -17,7 +17,7 @@ from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
 from pyramid.compat import urlparse
 try: # pragma: no cover
-    from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
+    from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
     HAS_MONGO = True
 except ImportError: # pragma: no cover
     HAS_MONGO = False

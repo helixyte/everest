@@ -4,6 +4,8 @@ omit = everest/ini.py
        everest/rfc3339.py
        everest/testing.py
        everest/tests/*
+       everest/repositories/rdb/testing.py
+       everest/repositories/nosql/testing.py
 
 [report]
 exclude_lines =

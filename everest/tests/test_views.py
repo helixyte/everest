@@ -7,7 +7,7 @@ Created on Nov 17, 2011.
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
 from everest.renderers import RendererFactory
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.resources.interfaces import IService
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection

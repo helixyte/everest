@@ -16,7 +16,7 @@ from everest.entities.attributes import is_domain_class_collection_attribute
 from everest.entities.attributes import is_domain_class_domain_attribute
 from everest.entities.attributes import is_domain_class_member_attribute
 from everest.entities.attributes import is_domain_class_terminal_attribute
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.interfaces import IMyEntity

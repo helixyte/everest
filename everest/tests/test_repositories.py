@@ -13,6 +13,7 @@ from everest.repositories.interfaces import IRepository
 from everest.repositories.manager import HAS_MONGO
 from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
+from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
 from everest.resources.io import get_collection_name
 from everest.resources.io import get_read_collection_path
 from everest.resources.staging import create_staging_collection
@@ -40,7 +41,6 @@ import os
 import shutil
 import tempfile
 import transaction
-from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicRepositoryTestCase',

@@ -8,7 +8,7 @@ from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.repositories.nosqldb.utils import MongoClassRegistry
 from everest.repositories.nosqldb.utils import MongoInstrumentedAttribute
 from everest.repositories.rdb.utils import OrmAttributeInspector
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.repositories.utils import commit_veto
 from everest.testing import EntityTestCase
 from everest.testing import Pep8CompliantTestCase
@@ -22,7 +22,7 @@ from pyramid.httpexceptions import HTTPRedirection
 #        backend extension points.
 try: # pragma: nocover
     from everest.repositories.nosqldb.utils import NoSqlAttributeInspector
-    from everest.repositories.nosqldb.utils import NoSqlTestCaseMixin
+    from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
     HAS_MONGO = True
 except ImportError: # pragma: nocover
     HAS_MONGO = False

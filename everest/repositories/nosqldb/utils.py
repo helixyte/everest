@@ -20,7 +20,6 @@ __docformat__ = 'reStructuredText en'
 __all__ = ['MongoClassRegistry',
            'MongoInstrumentedAttribute',
            'NoSqlAttributeInspector',
-           'NoSqlTestCaseMixin',
            'transform_incoming',
            'transform_outgoing',
            ]
@@ -223,20 +222,3 @@ class NoSqlAttributeInspector(object):
             if do_append:
                 infos.append([attr_kind, attr_type, attr_token])
         return infos
-
-
-class NoSqlTestCaseMixin(object):
-    """
-    Mixin for test cases using the NoSQL backend.
-
-    Ensures that all classes instrumented to work with Mongo DB are
-    unregistered on class teardown.
-    """
-    @classmethod
-    def teardown_class(cls):
-        MongoClassRegistry.unregister_all()
-        base_cls = super(NoSqlTestCaseMixin, cls)
-        try:
-            base_cls.teardown_class()
-        except AttributeError:
-            pass

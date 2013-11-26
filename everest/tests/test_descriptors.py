@@ -7,7 +7,7 @@ Created on Jun 1, 2011.
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
 from everest.representers.config import WRITE_AS_LINK_OPTION

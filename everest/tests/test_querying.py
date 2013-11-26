@@ -20,7 +20,7 @@ from everest.querying.specifications import DescendingOrderSpecification
 from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.repositories.memory.querying import EvalFilterExpression
 from everest.repositories.memory.querying import EvalOrderExpression
-from everest.repositories.rdb.utils import RdbTestCaseMixin
+from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.resources.staging import StagingAggregate
 from everest.testing import EntityTestCase
 from everest.testing import Pep8CompliantTestCase
