@@ -10,7 +10,6 @@ from everest.entities.attributes import get_domain_class_attribute
 from everest.entities.utils import get_root_aggregate
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import asc
-from everest.querying.specifications import desc
 from everest.querying.specifications import eq
 from everest.querying.specifications import gt
 from everest.repositories.memory.aggregate import MemoryAggregate
@@ -24,26 +23,23 @@ from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.testing import create_entity
+from everest.utils import classproperty
 from mock import patch
-# FIXME: This helps us avoid a dependency on pymongo until we have proper
-#        backend extension points.
-try:
-    from everest.repositories.nosqldb.aggregate import NoSqlAggregate
-    from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
-    HAS_MONGO = True
-except ImportError:
-    HAS_MONGO = False
-
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MemoryRootAggregateTestCase',
            'RdbRootAggregateTestCase',
+           'RootAggregateTestCaseBase',
            ]
 
 
-class _RootAggregateTestCase(EntityTestCase):
+class RootAggregateTestCaseBase(EntityTestCase):
     package_name = 'everest.tests.complete_app'
     agg_class = None
+
+    @classproperty
+    def __test__(cls):
+        return not cls is RootAggregateTestCaseBase
 
     def set_up(self):
         EntityTestCase.set_up(self)
@@ -118,11 +114,7 @@ class _RootAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(agg.iterator())), 1)
         agg.filter = None
         self.assert_equal(len(list(agg.iterator())), 3)
-        # TODO: Nested attribute ordering does not work with NoSQL.
-        if HAS_MONGO and self.agg_class != NoSqlAggregate:
-            agg.order = asc('parent.text_ent')
-        else:
-            agg.order = desc('id')
+        agg.order = asc('parent.text_ent')
         self.assert_true(next(agg.iterator()) is ent2)
         # With nested filter and order.
         agg.filter = gt(**{'parent.text_ent':'000'})
@@ -140,20 +132,13 @@ class _RootAggregateTestCase(EntityTestCase):
         self.assert_equal(len(list(agg.iterator())), 0)
 
 
-class MemoryRootAggregateTestCase(_RootAggregateTestCase):
+class MemoryRootAggregateTestCase(RootAggregateTestCaseBase):
     config_file_name = 'configure_no_rdb.zcml'
     agg_class = MemoryAggregate
 
 
-class RdbRootAggregateTestCase(RdbTestCaseMixin, _RootAggregateTestCase):
+class RdbRootAggregateTestCase(RdbTestCaseMixin, RootAggregateTestCaseBase):
     agg_class = RdbAggregate
-
-
-if HAS_MONGO:
-    class NosSqlRootAggregateTestCase(NoSqlTestCaseMixin,
-                                      _RootAggregateTestCase):
-        config_file_name = 'configure_nosql.zcml'
-        agg_class = NoSqlAggregate
 
 
 class _RelationshipAggregateTestCase(EntityTestCase):

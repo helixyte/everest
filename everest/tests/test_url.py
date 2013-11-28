@@ -16,12 +16,7 @@ from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
 from pyramid.compat import urlparse
-try: # pragma: no cover
-    from everest.repositories.nosqldb.testing import NoSqlTestCaseMixin
-    HAS_MONGO = True
-except ImportError: # pragma: no cover
-    HAS_MONGO = False
-
+from everest.utils import classproperty
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepoUrlTestCaseNoRdb',
@@ -29,7 +24,11 @@ __all__ = ['RepoUrlTestCaseNoRdb',
            ]
 
 
-class _UrlBaseTestCase(ResourceTestCase):
+class UrlTestCaseBase(ResourceTestCase):
+    @classproperty
+    def __test__(cls):
+        return not cls is UrlTestCaseBase
+
     package_name = 'everest.tests.complete_app'
 
     def set_up(self):
@@ -305,16 +304,9 @@ class _UrlBaseTestCase(ResourceTestCase):
             self.assert_equal(urlp.query, query) # pylint: disable=E1101
 
 
-class RepoUrlTestCaseNoRdb(_UrlBaseTestCase):
+class RepoUrlTestCaseNoRdb(UrlTestCaseBase):
     config_file_name = 'configure_no_rdb.zcml'
 
 
-class RepoUrlTestCaseRdb(RdbTestCaseMixin, _UrlBaseTestCase):
+class RepoUrlTestCaseRdb(RdbTestCaseMixin, UrlTestCaseBase):
     config_file_name = 'configure.zcml'
-
-
-if HAS_MONGO:
-    class RepoUrlTestCaseNoSql(NoSqlTestCaseMixin, _UrlBaseTestCase):
-        config_file_name = 'configure_nosql.zcml'
-
-

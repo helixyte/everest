@@ -54,8 +54,4 @@ setup(name='everest',
       install_requires=install_requirements,
       tests_require=tests_requirements,
       test_suite="everest,doc",
-      entry_points="""\
-      [nose.plugins.0.10]
-      everest = everest.ini:EverestNosePlugin
-      """
       )

@@ -142,7 +142,7 @@ class MemorySession(Session):
         if sess_ent is None:
             if self.__clone_on_load:
                 sess_ent = self.__clone(entity, cache)
-            else:
+            else: # Only needed by the nosql backend pragma: no cover
                 cache.add(entity)
                 sess_ent = entity
             self.__unit_of_work.register_clean(entity_class, sess_ent)

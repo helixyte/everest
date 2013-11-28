@@ -2,12 +2,10 @@
 This file is part of the everest project. 
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 -->
-
 <configure
     xmlns="http://namespaces.zope.org/zope"
     xmlns:meta="http://namespaces.zope.org/meta"
 >
-
     <meta:directives
         namespace="http://pylonshq.com/pyramid"
     >
@@ -23,10 +21,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             name="rdb_repository"
             schema="everest.directives.IRdbRepositoryDirective"
             handler="everest.directives.rdb_repository" />
-        <meta:directive
-            name="nosql_repository"
-            schema="everest.directives.INoSqlRepositoryDirective"
-            handler="everest.directives.nosql_repository" />
         <meta:directive
             name="messaging"
             schema="everest.directives.IMessagingDirective"

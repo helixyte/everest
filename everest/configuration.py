@@ -29,13 +29,16 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.renderers import RendererFactory
 from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.filesystem.repository import FileSystemRepository
 from everest.repositories.interfaces import IRepository
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.manager import RepositoryManager
 from everest.repositories.memory import ObjectFilterSpecificationVisitor
 from everest.repositories.memory import ObjectOrderSpecificationVisitor
+from everest.repositories.memory.repository import MemoryRepository
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
+from everest.repositories.rdb.repository import RdbRepository
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import MappingResourceRepresenter
 from everest.representers.csv import CsvResourceRepresenter
@@ -80,16 +83,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-# FIXME: This helps us avoid a dependency on pymongo until we have proper
-#        backend extension points.
-try: # pragma: no cover
-    from everest.repositories.nosqldb.querying import \
-            NoSqlFilterSpecificationVisitor
-    from everest.repositories.nosqldb.querying import \
-            NoSqlOrderSpecificationVisitor
-    HAS_MONGO = True
-except ImportError: # pragma: no cover
-    HAS_MONGO = False
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -113,11 +106,9 @@ class Configurator(PyramidConfigurator):
                  cql_filter_specification_visitor=None,
                  sql_filter_specification_visitor=None,
                  eval_filter_specification_visitor=None,
-                 nosql_filter_specification_visitor=None,
                  cql_order_specification_visitor=None,
                  sql_order_specification_visitor=None,
                  eval_order_specification_visitor=None,
-                 nosql_order_specification_visitor=None,
                  url_converter=None,
                  **kw
                  ):
@@ -150,16 +141,12 @@ class Configurator(PyramidConfigurator):
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
-               nosql_filter_specification_visitor=
-                                    nosql_filter_specification_visitor,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
                                     sql_order_specification_visitor,
                eval_order_specification_visitor=
                                     eval_order_specification_visitor,
-               nosql_order_specification_visitor=
-                                    nosql_order_specification_visitor,
                url_converter=url_converter,
                **kw)
 
@@ -175,6 +162,19 @@ class Configurator(PyramidConfigurator):
         """
         return self.registry.queryUtility(*args, **kw) # pylint: disable=E1103
 
+    def get_configuration_from_settings(self, setting_info):
+        """
+        Returns a dictionary with configuration names as keys and setting
+        values extracted from this configurator's settings as values.
+
+        :param setting_info: Sequence of 2-tuples containing the configuration
+          name as the first and the setting name as the second element.
+        """
+        settings = self.get_settings()
+        return dict([(name, settings.get(key))
+                     for (name, key) in setting_info
+                     if not settings.get(key, None) is None])
+
     def setup_registry(self,
                        filter_specification_factory=None,
                        order_specification_factory=None,
@@ -182,11 +182,9 @@ class Configurator(PyramidConfigurator):
                        cql_filter_specification_visitor=None,
                        sql_filter_specification_visitor=None,
                        eval_filter_specification_visitor=None,
-                       nosql_filter_specification_visitor=None,
                        cql_order_specification_visitor=None,
                        sql_order_specification_visitor=None,
                        eval_order_specification_visitor=None,
-                       nosql_order_specification_visitor=None,
                        url_converter=None,
                        **kw):
         # Set default values for options.
@@ -203,17 +201,12 @@ class Configurator(PyramidConfigurator):
         if eval_filter_specification_visitor is None:
             eval_filter_specification_visitor = \
                                     ObjectFilterSpecificationVisitor
-        if HAS_MONGO and nosql_filter_specification_visitor is None:
-            nosql_filter_specification_visitor = \
-                                    NoSqlFilterSpecificationVisitor
         if cql_order_specification_visitor is None:
             cql_order_specification_visitor = CqlOrderSpecificationVisitor
         if sql_order_specification_visitor is None:
             sql_order_specification_visitor = SqlOrderSpecificationVisitor
         if eval_order_specification_visitor is None:
             eval_order_specification_visitor = ObjectOrderSpecificationVisitor
-        if HAS_MONGO and nosql_order_specification_visitor is None:
-            nosql_order_specification_visitor = NoSqlOrderSpecificationVisitor
         if url_converter is None:
             url_converter = ResourceUrlConverter
         PyramidConfigurator.setup_registry(self, **kw)
@@ -227,17 +220,30 @@ class Configurator(PyramidConfigurator):
                                     sql_filter_specification_visitor,
                eval_filter_specification_visitor=
                                     eval_filter_specification_visitor,
-               nosql_filter_specification_visitor=
-                                    nosql_filter_specification_visitor,
                cql_order_specification_visitor=
                                     cql_order_specification_visitor,
                sql_order_specification_visitor=
                                     sql_order_specification_visitor,
                eval_order_specification_visitor=
                                     eval_order_specification_visitor,
-               nosql_order_specification_visitor=
-                                    nosql_order_specification_visitor,
                url_converter=url_converter)
+
+    def add_repository(self, name, repository_type, repository_class,
+                       aggregate_class, make_default, configuration):
+        """
+        Generic method for adding a repository.
+        """
+        repo_mgr = self.get_registered_utility(IRepositoryManager)
+        if name is None:
+            # If no name was given, this is assumed to be the ROOT repository
+            # for the given repository type.
+            name = REPOSITORY_DOMAINS.ROOT
+        repo = repo_mgr.new(repository_type, name=name,
+                            make_default=make_default,
+                            repository_class=repository_class,
+                            aggregate_class=aggregate_class,
+                            configuration=configuration)
+        repo_mgr.set(repo)
 
     def add_rdb_repository(self, name=None, repository_class=None,
                            aggregate_class=None,
@@ -245,9 +251,10 @@ class Configurator(PyramidConfigurator):
         if configuration is None:
             configuration = {}
         setting_info = [('db_string', 'db_string')]
-        configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORY_TYPES.RDB, repository_class,
-                              aggregate_class, make_default, configuration)
+        configuration.update(
+                        self.get_configuration_from_settings(setting_info))
+        self.add_repository(name, REPOSITORY_TYPES.RDB, repository_class,
+                            aggregate_class, make_default, configuration)
 
     def add_filesystem_repository(self, name=None, repository_class=None,
                                   aggregate_class=None,
@@ -257,23 +264,11 @@ class Configurator(PyramidConfigurator):
             configuration = {}
         setting_info = [('directory', 'fs_directory'),
                         ('content_type', 'fs_contenttype')]
-        configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORY_TYPES.FILE_SYSTEM,
-                              repository_class, aggregate_class,
-                              make_default, configuration)
-
-    def add_nosql_repository(self, name=None, repository_class=None,
-                             aggregate_class=None,
-                             make_default=False, configuration=None,
-                             _info=u''):
-        if configuration is None:
-            configuration = {}
-        setting_info = [('db_host', 'db_host'),
-                        ('db_port', 'db_port')]
-        configuration.update(self.__cnf_from_settings(setting_info))
-        self.__add_repository(name, REPOSITORY_TYPES.NO_SQL,
-                              repository_class, aggregate_class,
-                              make_default, configuration)
+        configuration.update(
+                        self.get_configuration_from_settings(setting_info))
+        self.add_repository(name, REPOSITORY_TYPES.FILE_SYSTEM,
+                            repository_class, aggregate_class,
+                            make_default, configuration)
 
     def add_memory_repository(self, name=None, repository_class=None,
                               aggregate_class=None,
@@ -281,8 +276,8 @@ class Configurator(PyramidConfigurator):
                               _info=u''):
         if configuration is None:
             configuration = {}
-        self.__add_repository(name, REPOSITORY_TYPES.MEMORY, repository_class,
-                              aggregate_class, make_default, configuration)
+        self.add_repository(name, REPOSITORY_TYPES.MEMORY, repository_class,
+                            aggregate_class, make_default, configuration)
 
     def setup_system_repository(self, repository_type, reset_on_start=False):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
@@ -549,12 +544,6 @@ class Configurator(PyramidConfigurator):
                                IFilterSpecificationVisitor,
                                name=EXPRESSION_KINDS.EVAL)
 
-    def _set_nosql_filter_specification_visitor(self,
-                                        nosql_filter_specification_visitor):
-        self._register_utility(nosql_filter_specification_visitor,
-                               IFilterSpecificationVisitor,
-                               name=EXPRESSION_KINDS.NOSQL)
-
     def _set_cql_order_specification_visitor(self,
                                              cql_order_specification_visitor):
         self._register_utility(cql_order_specification_visitor,
@@ -573,12 +562,6 @@ class Configurator(PyramidConfigurator):
                                IOrderSpecificationVisitor,
                                name=EXPRESSION_KINDS.EVAL)
 
-    def _set_nosql_order_specification_visitor(self,
-                                            nosql_order_specification_visitor):
-        self._register_utility(nosql_order_specification_visitor,
-                               IOrderSpecificationVisitor,
-                               name=EXPRESSION_KINDS.NOSQL)
-
     def _set_url_converter(self, url_converter):
         self._register_adapter(url_converter, (IRequest,),
                                IResourceUrlConverter)
@@ -590,23 +573,36 @@ class Configurator(PyramidConfigurator):
                 cql_filter_specification_visitor,
                 sql_filter_specification_visitor,
                 eval_filter_specification_visitor,
-                nosql_filter_specification_visitor,
                 cql_order_specification_visitor,
                 sql_order_specification_visitor,
                 eval_order_specification_visitor,
-                nosql_order_specification_visitor,
                 url_converter):
+        # These are core initializations which should only be done once.
         if self.query_registered_utilities(IRepositoryManager) is None:
-            # These are core initializations which should only be done once.
+            # Set up the repository class utilities.
+            mem_repo_class = self.query_registered_utilities(
+                                    IRepository, name=REPOSITORY_TYPES.MEMORY)
+            if mem_repo_class is None:
+                self._register_utility(MemoryRepository, IRepository,
+                                       name=REPOSITORY_TYPES.MEMORY)
+                mem_repo_class = MemoryRepository
+            if self.query_registered_utilities(
+                    IRepository, name=REPOSITORY_TYPES.FILE_SYSTEM) is None:
+                self._register_utility(FileSystemRepository, IRepository,
+                                       name=REPOSITORY_TYPES.FILE_SYSTEM)
+            if self.query_registered_utilities(
+                    IRepository, name=REPOSITORY_TYPES.RDB) is None:
+                self._register_utility(RdbRepository, IRepository,
+                                       name=REPOSITORY_TYPES.RDB)
             # Set up the repository manager.
             repo_mgr = RepositoryManager()
             self._register_utility(repo_mgr, IRepositoryManager)
             self.add_subscriber(repo_mgr.on_app_created, IApplicationCreated)
             # Set up the root MEMORY repository and set it as the default
             # for all resources that do not specify a repository.
-            self.__add_repository(REPOSITORY_DOMAINS.ROOT,
-                                  REPOSITORY_TYPES.MEMORY,
-                                  None, None, True, None)
+            self.add_repository(REPOSITORY_DOMAINS.ROOT,
+                                REPOSITORY_TYPES.MEMORY,
+                                mem_repo_class, None, True, None)
             # Create representer registry and register builtin
             # representer classes.
             rpr_reg = RepresenterRegistry()
@@ -654,9 +650,6 @@ class Configurator(PyramidConfigurator):
         if not eval_filter_specification_visitor is None:
             self._set_eval_filter_specification_visitor(
                                             eval_filter_specification_visitor)
-        if not nosql_filter_specification_visitor is None:
-            self._set_nosql_filter_specification_visitor(
-                                        nosql_filter_specification_visitor)
         if not cql_order_specification_visitor is None:
             self._set_cql_order_specification_visitor(
                                             cql_order_specification_visitor)
@@ -666,31 +659,8 @@ class Configurator(PyramidConfigurator):
         if not eval_order_specification_visitor is None:
             self._set_eval_order_specification_visitor(
                                             eval_order_specification_visitor)
-        if not nosql_order_specification_visitor is None:
-            self._set_nosql_order_specification_visitor(
-                                            nosql_order_specification_visitor)
         if not url_converter is None:
             self._set_url_converter(url_converter)
-
-    def __add_repository(self, name, repo_type, repo_cls, agg_cls,
-                         make_default, cnf):
-        repo_mgr = self.get_registered_utility(IRepositoryManager)
-        if name is None:
-            # If no name was given, this is assumed to be the ROOT repository
-            # for the given repository type.
-            name = REPOSITORY_DOMAINS.ROOT
-        repo = repo_mgr.new(repo_type, name=name,
-                            make_default=make_default,
-                            repository_class=repo_cls,
-                            aggregate_class=agg_cls,
-                            configuration=cnf)
-        repo_mgr.set(repo)
-
-    def __cnf_from_settings(self, setting_info):
-        settings = self.get_settings()
-        return dict([(name, settings.get(key))
-                     for (name, key) in setting_info
-                     if not settings.get(key, None) is None])
 
     def __add_resource_view(self, rc, view, name, renderer, request_methods,
                             default_content_type,

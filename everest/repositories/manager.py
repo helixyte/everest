@@ -7,20 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 25, 2013.
 """
 from everest.repositories.constants import REPOSITORY_DOMAINS
-from everest.repositories.constants import REPOSITORY_TYPES
-from everest.repositories.filesystem.repository import FileSystemRepository
-from everest.repositories.memory.repository import MemoryRepository
-from everest.repositories.rdb.repository import RdbRepository
+from everest.repositories.interfaces import IRepository
 from everest.utils import id_generator
 from pyramid.compat import itervalues_
-# FIXME: This helps us avoid a dependency on pymongo until we have proper
-#        backend extension points.
-try: # pragma: no cover
-    from everest.repositories.nosqldb.repository import NoSqlRepository
-    HAS_MONGO = True
-except ImportError: # pragma: no cover
-    HAS_MONGO = False
-
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepositoryManager',
@@ -83,20 +73,11 @@ class RepositoryManager(object):
             # The system repository is special in that its repository
             # should not join the transaction but still commit all changes.
             autocommit = name == REPOSITORY_DOMAINS.SYSTEM
-        if repo_type == REPOSITORY_TYPES.MEMORY:
+        if repository_class is None:
+            reg = get_current_registry()
+            repository_class = reg.queryUtility(IRepository, name=repo_type)
             if repository_class is None:
-                repository_class = MemoryRepository
-        elif repo_type == REPOSITORY_TYPES.RDB:
-            if repository_class is None:
-                repository_class = RdbRepository
-        elif repo_type == REPOSITORY_TYPES.FILE_SYSTEM:
-            if repository_class is None:
-                repository_class = FileSystemRepository
-        elif HAS_MONGO and repo_type == REPOSITORY_TYPES.NO_SQL:
-            if repository_class is None:
-                repository_class = NoSqlRepository
-        else:
-            raise ValueError('Unknown repository type.')
+                raise ValueError('Unknown repository type "%s".' % repo_type)
         repo = repository_class(name,
                                 aggregate_class,
                                 join_transaction=join_transaction,

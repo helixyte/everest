@@ -21,6 +21,10 @@ __all__ = ['IRepository',
 
 class IRepository(Interface):
     """
+    Interface for repositories.
+
+    A repository manages aggregates and collections for a resource; also,
+    it holds the session factory.
     """
 
     def get_aggregate(rc):
