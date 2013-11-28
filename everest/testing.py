@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 2, 2011.
 """
+from ConfigParser import NoSectionError
 from everest.configuration import Configurator
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
@@ -133,9 +134,12 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
                                    package=self.package_name)
         if not self.ini_section_name is None:
             settings = self.ini.get_settings(self.ini_section_name)
-            self.config.setup_registry(settings=settings)
         else:
-            self.config.setup_registry()
+            try:
+                settings = self.ini.get_settings('DEFAULT')
+            except NoSectionError:
+                settings = None
+        self.config.setup_registry(settings=settings)
 
     def tear_down(self):
         super(BaseTestCaseWithConfiguration, self).tear_down()
