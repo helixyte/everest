@@ -41,6 +41,7 @@ from pyramid.httpexceptions import HTTPTemporaryRedirect
 from pyramid.httpexceptions import HTTPUnauthorized
 from xml.sax.saxutils import escape
 import re
+from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['FlexFilter',
@@ -254,7 +255,7 @@ class FlexFilter(Filter):
 
     def __call__(self, environ, start_response):
         if self.__detect_flex(environ) \
-           and environ['REQUEST_METHOD'] == 'GET' \
+           and environ['REQUEST_METHOD'] == RequestMethods.GET \
            and environ.get('HTTP_ACCEPT'):
             # Override the Accept header. We prefer ATOM, but also allow
             # the server to decide if ATOM is not available.

@@ -83,6 +83,7 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -466,7 +467,8 @@ class Configurator(PyramidConfigurator):
             rpr_reg.register(rc, content_type, configuration=rpr_config)
 
     def add_resource_view(self, resource, view=None, name='', renderer=None,
-                          request_method=('GET',), default_content_type=None,
+                          request_method=(RequestMethods.GET,),
+                          default_content_type=None,
                           default_response_content_type=None, **kw):
         # FIXME: We should not allow **kw to support setting up standard
         #        views here since some options may have undesired side
@@ -680,42 +682,45 @@ class Configurator(PyramidConfigurator):
                     # Attempt to guess a default view. We register a factory
                     # so we can pass additional constructor arguments.
                     if provides_member_resource(rc):
-                        if request_method == 'GET':
+                        if request_method == RequestMethods.GET:
                             vw = self.__make_view_factory(GetMemberView, kw)
-                        elif request_method == 'PUT':
+                        elif request_method == RequestMethods.PUT:
                             vw = self.__make_view_factory(PutMemberView, kw)
-                        elif request_method == 'DELETE':
+                        elif request_method == RequestMethods.DELETE:
                             # The DELETE view is special as it does not have
                             # to deal with representations.
                             vw = DeleteMemberView
                             register_sub_views = False
-                        elif request_method == 'FAKE_PUT':
-                            request_method = 'POST'
+                        elif request_method == RequestMethods.FAKE_PUT:
+                            request_method = RequestMethods.POST
                             opts['header'] = 'X-HTTP-Method-Override:PUT'
                             vw = self.__make_view_factory(PutMemberView, kw)
-                        elif request_method == 'FAKE_DELETE':
-                            request_method = 'POST'
+                        elif request_method == RequestMethods.FAKE_DELETE:
+                            request_method = RequestMethods.POST
                             opts['header'] = 'X-HTTP-Method-Override:DELETE'
                             vw = DeleteMemberView
                             register_sub_views = False
                         else:
+                            mb_req_methods = [rm for rm in RequestMethods
+                                              if not rm == 'POST']
                             raise ValueError('Autodetection for member '
                                              'resource views requires '
-                                             '"GET", "PUT", "DELETE", '
-                                             '"FAKE_PUT", or "FAKE_DELETE" '
-                                             'as request method.')
+                                             'one of %s as request method.'
+                                             % str(mb_req_methods))
                     else:
-                        if request_method == 'GET':
+                        if request_method == RequestMethods.GET:
                             vw = \
                               self.__make_view_factory(GetCollectionView, kw)
-                        elif request_method == 'POST':
+                        elif request_method == RequestMethods.POST:
                             vw = \
                               self.__make_view_factory(PostCollectionView, kw)
                         else:
+                            coll_req_methods = [RequestMethods.GET,
+                                                RequestMethods.POST]
                             raise ValueError('Autodetection for collectioon '
                                              'resource views requires '
-                                             '"GET" or "POST" '
-                                             'as request method.')
+                                             'one of %s as request method.'
+                                             % str(coll_req_methods))
                 else:
                     vw = self.__make_view_factory(view, kw)
             else:

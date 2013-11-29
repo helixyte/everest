@@ -21,7 +21,34 @@ __all__ = ['CARDINALITIES',
            ]
 
 
-class RESOURCE_KINDS(object):
+class MetaConstantGroup(type):
+    """
+    Meta class that makes constant group classes iterable.
+    """
+    def __iter__(mcs):
+        for key in mcs.__dict__.keys():
+            if not key.startswith('_'):
+                yield key
+
+
+class ConstantGroup(object):
+    """
+    Base class for all constant group classes.
+
+    To use, declare the individual values of a constant group in the class
+    namespace: ::
+
+    class MyConstGroup(ConstantGroup):
+        FOO = 'Foo'
+        BAR = 'Bar'
+
+    You can then iterate over the constants (`for const in MyConstGroup:`)
+    or get a list of all constants in the group (`list(MyConstGroup)`).
+    """
+    __metaclass__ = MetaConstantGroup
+
+
+class RESOURCE_KINDS(ConstantGroup):
     """
     Static container for resource kind constants.
 
@@ -35,7 +62,7 @@ class RESOURCE_KINDS(object):
     COLLECTION = 'COLLECTION'
 
 
-class RESOURCE_ATTRIBUTE_KINDS(object):
+class RESOURCE_ATTRIBUTE_KINDS(ConstantGroup):
     """
     Static container for resource attribute kind constants.
 
@@ -77,7 +104,7 @@ class Cardinality(tuple):
           self.relatee if self.relatee == CARDINALITY_CONSTANTS.ONE else '*')
 
 
-class CARDINALITY_CONSTANTS(object):
+class CARDINALITY_CONSTANTS(ConstantGroup):
     """
     Constants for cardinality values.
     """
@@ -85,7 +112,7 @@ class CARDINALITY_CONSTANTS(object):
     MANY = 'MANY'
 
 
-class CARDINALITIES(object):
+class CARDINALITIES(ConstantGroup):
     """
     Relationship cardinality constants for non-terminal resource attributes.
     """
@@ -99,7 +126,7 @@ class CARDINALITIES(object):
                              CARDINALITY_CONSTANTS.MANY)
 
 
-class RELATION_OPERATIONS(object):
+class RELATION_OPERATIONS(ConstantGroup):
     """
     Constants for relation operations.
     """
@@ -118,7 +145,7 @@ class RELATION_OPERATIONS(object):
 DEFAULT_CASCADE = RELATION_OPERATIONS.ADD | RELATION_OPERATIONS.UPDATE
 
 
-class RELATIONSHIP_DIRECTIONS(object):
+class RELATIONSHIP_DIRECTIONS(ConstantGroup):
     """
     Constants specifying the direction of a relationship.
     """
@@ -128,7 +155,7 @@ class RELATIONSHIP_DIRECTIONS(object):
     BIDIRECTIONAL = 3
 
 
-class MAPPING_DIRECTIONS(object):
+class MAPPING_DIRECTIONS(ConstantGroup):
     """
     Constants specifying the direction resource data are mapped.
     """
@@ -138,3 +165,15 @@ class MAPPING_DIRECTIONS(object):
     #: Resource data are being written (i.e., a resource is converted
     #: to a representation.
     WRITE = 'WRITE'
+
+
+class RequestMethods(ConstantGroup):
+    """
+    Request methods supported by everest.
+    """
+    GET = 'GET'
+    PUT = 'PUT'
+    POST = 'POST'
+    DELETE = 'DELETE'
+    FAKE_PUT = 'FAKE_PUT'
+    FAKE_DELETE = 'FAKE_DELETE'

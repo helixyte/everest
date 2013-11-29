@@ -8,6 +8,7 @@ Created on Jun 16, 2011.
 """
 from everest.configuration import Configurator
 from everest.constants import RESOURCE_KINDS
+from everest.constants import RequestMethods
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
@@ -341,9 +342,8 @@ class IResourceViewDirective(IViewDirective):
     request_method = \
         Tokens(title=u"One or more request methods that need to be matched.",
                required=True,
-               value_type=Choice(values=('GET', 'POST', 'PUT', 'DELETE',
-                                         'FAKE_PUT', 'FAKE_DELETE'),
-                                 default='GET',
+               value_type=Choice(values=tuple(RequestMethods),
+                                 default=RequestMethods.GET,
                                  ),
                )
 

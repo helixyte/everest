@@ -4,6 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
 """
+from everest.constants import RequestMethods
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
 from everest.renderers import RendererFactory
@@ -14,6 +15,7 @@ from everest.resources.utils import get_root_collection
 from everest.resources.utils import get_service
 from everest.resources.utils import resource_to_url
 from everest.testing import FunctionalTestCase
+from everest.testing import ResourceTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
@@ -34,7 +36,6 @@ from everest.views.utils import accept_csv_only
 from pkg_resources import resource_filename # pylint: disable=E0611
 from pyramid.testing import DummyRequest
 import transaction
-from everest.testing import ResourceTestCase
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicViewTestCase',
@@ -61,19 +62,19 @@ class BasicViewTestCase(FunctionalTestCase):
         self.config.load_zcml('everest.tests.complete_app:configure_rpr.zcml')
         self.config.add_resource_view(IMyEntity,
                                       renderer='csv',
-                                      request_method='GET')
+                                      request_method=RequestMethods.GET)
         self.config.add_member_view(IMyEntity,
                                     renderer='csv',
-                                    request_method='PUT')
+                                    request_method=RequestMethods.PUT)
         self.config.add_collection_view(IMyEntity,
                                         renderer='csv',
-                                        request_method='POST')
+                                        request_method=RequestMethods.POST)
         self.config.add_collection_view(IMyEntityChild,
                                         renderer='csv',
-                                        request_method='POST')
+                                        request_method=RequestMethods.POST)
         self.config.add_member_view(IMyEntity,
                                     renderer='csv',
-                                    request_method='DELETE')
+                                    request_method=RequestMethods.DELETE)
 
     def test_get_collection_defaults(self):
         res = self.app.get(self.path, status=200)
@@ -241,7 +242,7 @@ class PredicatedViewTestCase(FunctionalTestCase):
         self.config.add_view(context=get_collection_class(IMyEntity),
                              view=GetCollectionView,
                              renderer='csv',
-                             request_method='GET',
+                             request_method=RequestMethods.GET,
                              custom_predicates=(accept_csv_only,))
 
     def test_csv_only(self):
@@ -330,7 +331,7 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
                      status=200)
 
     def test_invalid_request_content_type(self):
-        self.config.add_collection_view(IFoo, request_method='POST')
+        self.config.add_collection_view(IFoo, request_method=RequestMethods.POST)
         self.app.post(self.path,
                       params='foobar',
                       content_type='application/foobar',
@@ -342,23 +343,27 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
         self.app.post("%s/0" % self.path,
                       params=req_body,
                       content_type=CsvMime.mime_type_string,
-                      headers={'X-HTTP-Method-Override' : 'PUT'},
+                      headers={'X-HTTP-Method-Override' : RequestMethods.PUT},
                       status=200)
 
     def test_fake_delete_view(self):
-        self.config.add_member_view(IFoo, request_method='FAKE_DELETE')
+        self.config.add_member_view(IFoo,
+                                    request_method=RequestMethods.FAKE_DELETE)
         self.app.post("%s/0" % self.path,
-                      headers={'X-HTTP-Method-Override' : 'DELETE'},
+                      headers=
+                        {'X-HTTP-Method-Override' : RequestMethods.DELETE},
                       status=200)
 
     def test_add_collection_view_with_put_fails(self):
         with self.assert_raises(ValueError) as cm:
-            self.config.add_collection_view(IFoo, request_method='PUT')
+            self.config.add_collection_view(IFoo,
+                                            request_method=RequestMethods.PUT)
         self.assert_true(str(cm.exception).startswith('Autodetection'))
 
     def test_add_member_view_with_post_fails(self):
         with self.assert_raises(ValueError) as cm:
-            self.config.add_member_view(IFoo, request_method='POST')
+            self.config.add_member_view(IFoo,
+                                        request_method=RequestMethods.POST)
         self.assert_true(str(cm.exception).startswith('Autodetection'))
 
 
@@ -398,11 +403,12 @@ class StaticViewTestCase(FunctionalTestCase):
     app_name = 'complete_app'
     def set_up(self):
         FunctionalTestCase.set_up(self)
-        self.config.load_zcml('everest.tests.complete_app:configure_no_rdb.zcml')
+        self.config.load_zcml(
+                        'everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_view(context=IService,
                              view=public_view,
                              name='public',
-                             request_method='GET')
+                             request_method=RequestMethods.GET)
         fn = resource_filename('everest.tests.complete_app', 'data/original')
         self.config.registry.settings['public_dir'] = fn
 
@@ -423,10 +429,10 @@ class ExceptionViewTestCase(FunctionalTestCase):
                         'everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_member_view(IMyEntity,
                                     view=ExceptionPutMemberView,
-                                    request_method='PUT')
+                                    request_method=RequestMethods.PUT)
         self.config.add_collection_view(IMyEntity,
                                         view=ExceptionPostCollectionView,
-                                        request_method='POST')
+                                        request_method=RequestMethods.POST)
 
     def test_put_member_raises_error(self):
         coll = get_root_collection(IMyEntity)
@@ -461,10 +467,10 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
         repo_mgr.initialize_all()
         self.config.add_collection_view(FooCollection,
                                         view=UserMessagePostCollectionView,
-                                        request_method='POST')
+                                        request_method=RequestMethods.POST)
         self.config.add_member_view(FooMember,
                                     view=UserMessagePutMemberView,
-                                    request_method='PUT')
+                                    request_method=RequestMethods.PUT)
 
     def test_post_collection_empty_body(self):
         res = self.app.post(self.path, params='',
@@ -536,7 +542,8 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
 
 
 class WarningViewMemoryTestCase(_WarningViewBaseTestCase):
-    config_file_name = 'everest.tests.simple_app:configure_messaging_memory.zcml'
+    config_file_name = \
+            'everest.tests.simple_app:configure_messaging_memory.zcml'
 
 
 class WarningViewRdbTestCase(RdbTestCaseMixin, _WarningViewBaseTestCase):
@@ -556,7 +563,7 @@ class WarningWithExceptionViewTestCase(FunctionalTestCase):
                         'everest.tests.complete_app:configure_no_rdb.zcml')
         self.config.add_view(context=get_collection_class(IMyEntity),
                              view=ExceptionPostCollectionView,
-                             request_method='POST')
+                             request_method=RequestMethods.POST)
 
     def test_post_collection_raises_error(self):
         req_body = '"id","text","number"\n0,"abc",2\n'
