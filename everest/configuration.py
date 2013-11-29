@@ -283,7 +283,12 @@ class Configurator(PyramidConfigurator):
 
     def setup_system_repository(self, repository_type, reset_on_start=False):
         repo_mgr = self.get_registered_utility(IRepositoryManager)
-        repo_mgr.setup_system_repository(repository_type, reset_on_start)
+        # We have to pass the repository class explicitly as the repo
+        # manager can not use the registry (yet).
+        repo_cls = self.get_registered_utility(IRepository,
+                                               name=repository_type)
+        repo_mgr.setup_system_repository(repository_type, reset_on_start,
+                                         repository_class=repo_cls)
         self.add_resource(IUserMessage, UserMessageMember, UserMessage,
                           repository=REPOSITORY_DOMAINS.SYSTEM,
                           collection_root_name='_messages')

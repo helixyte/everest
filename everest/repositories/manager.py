@@ -88,14 +88,17 @@ class RepositoryManager(object):
             self.__default_repo = repo
         return repo
 
-    def setup_system_repository(self, repository_type, reset_on_start):
+    def setup_system_repository(self, repository_type, reset_on_start,
+                                repository_class=None):
         """
         Sets up the system repository with the given repository type.
 
-        :param str repository: Repository type to use for the SYSTEM
+        :param str repository_type: Repository type to use for the SYSTEM
           repository.
         :param bool reset_on_start: Flag to indicate whether stored system
           resources should be discarded on startup.
+        :param repository_class: class to use for the system repository. If
+          not given, the registered class for the given type will be used.
         """
         # Set up the system entity repository (this does not join the
         # transaction and is in autocommit mode).
@@ -103,6 +106,7 @@ class RepositoryManager(object):
                    messaging_reset_on_start=reset_on_start)
         system_repo = self.new(repository_type,
                                name=REPOSITORY_DOMAINS.SYSTEM,
+                               repository_class=repository_class,
                                configuration=cnf)
         self.set(system_repo)
 
