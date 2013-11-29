@@ -173,7 +173,9 @@ class RequestMethods(ConstantGroup):
     """
     GET = 'GET'
     PUT = 'PUT'
+    PATCH = 'PATCH'
     POST = 'POST'
     DELETE = 'DELETE'
     FAKE_PUT = 'FAKE_PUT'
+    FAKE_PATCH = 'FAKE_PATCH'
     FAKE_DELETE = 'FAKE_DELETE'

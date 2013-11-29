@@ -7,6 +7,7 @@ Created on Nov 17, 2011.
 from everest.constants import RequestMethods
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
+from everest.mime import XmlMime
 from everest.renderers import RendererFactory
 from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.resources.interfaces import IService
@@ -66,6 +67,9 @@ class BasicViewTestCase(FunctionalTestCase):
         self.config.add_member_view(IMyEntity,
                                     renderer='csv',
                                     request_method=RequestMethods.PUT)
+        self.config.add_member_view(IMyEntity,
+                                    renderer='csv',
+                                    request_method=RequestMethods.PATCH)
         self.config.add_collection_view(IMyEntity,
                                         renderer='csv',
                                         request_method=RequestMethods.POST)
@@ -148,6 +152,46 @@ class BasicViewTestCase(FunctionalTestCase):
                            status=200)
         self.assert_equal(mb.id, 2)
         self.assert_true(res.headers['Location'].endswith('2/'))
+
+    def test_patch_member(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        mb = coll.create_member(ent)
+        self.assert_equal(mb.__name__, '0')
+        req_body = '"number"\n2\n'
+        res = self.app.patch("%s/0" % self.path,
+                             params=req_body,
+                             content_type=CsvMime.mime_type_string,
+                             status=200)
+        self.assert_is_not_none(res)
+        mb = next(iter(coll))
+        self.assert_equal(mb.number, 2)
+        req_body = '"id"\n2\n'
+        res = self.app.patch("%s/0" % self.path,
+                             params=req_body,
+                             content_type=CsvMime.mime_type_string,
+                             status=200)
+        self.assert_equal(mb.id, 2)
+        self.assert_true(res.headers['Location'].endswith('2/'))
+
+    def test_patch_member_with_xml(self):
+        self.config.add_member_view(IMyEntity,
+                                    renderer='xml',
+                                    request_method=RequestMethods.PATCH)
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        mb = coll.create_member(ent)
+        req_body = \
+            '<tst:myentity xmlns:tst="http://xml.test.org/tests"id="0">' \
+            '    <number>2</number>' \
+            '</tst:myentity>'
+        res = self.app.patch("%s/0" % self.path,
+                             params=req_body,
+                             content_type=XmlMime.mime_type_string,
+                             status=200)
+        self.assert_is_not_none(res)
+        mb = next(iter(coll))
+        self.assert_equal(mb.number, 2)
 
     def test_post_collection(self):
         req_body = '"id","text","number"\n0,"abc",2\n'
@@ -331,19 +375,32 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
                      status=200)
 
     def test_invalid_request_content_type(self):
-        self.config.add_collection_view(IFoo, request_method=RequestMethods.POST)
+        self.config.add_collection_view(IFoo,
+                                        request_method=RequestMethods.POST)
         self.app.post(self.path,
                       params='foobar',
                       content_type='application/foobar',
                       status=415)
 
     def test_fake_put_view(self):
-        self.config.add_member_view(IFoo, request_method='FAKE_PUT')
+        self.config.add_member_view(IFoo,
+                                    request_method=RequestMethods.FAKE_PUT)
         req_body = '"id"\n0'
         self.app.post("%s/0" % self.path,
                       params=req_body,
                       content_type=CsvMime.mime_type_string,
                       headers={'X-HTTP-Method-Override' : RequestMethods.PUT},
+                      status=200)
+
+    def test_fake_patch_view(self):
+        self.config.add_member_view(IFoo,
+                                    request_method=RequestMethods.FAKE_PATCH)
+        req_body = '"id"\n0'
+        self.app.post("%s/0" % self.path,
+                      params=req_body,
+                      content_type=CsvMime.mime_type_string,
+                      headers={'X-HTTP-Method-Override' :
+                                                    RequestMethods.PATCH},
                       status=200)
 
     def test_fake_delete_view(self):

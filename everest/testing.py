@@ -23,6 +23,7 @@ import sys
 import time
 import transaction
 import unittest
+from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DummyContext',
@@ -269,6 +270,25 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
         return coll.create_member(entity)
 
 
+class EverestTestApp(TestApp):
+    """
+    Testing WSGI application for everest.
+    """
+    def patch(self, url, params='', headers=None, extra_environ=None,
+            status=None, upload_files=None, expect_errors=False,
+            content_type=None):
+        """
+        Do a PATCH request. This uses the same machinery as the
+        :method:`put` method.
+        """
+        return self._gen_request(RequestMethods.PATCH,
+                                 url, params=params, headers=headers,
+                                 extra_environ=extra_environ, status=status,
+                                 upload_files=upload_files,
+                                 expect_errors=expect_errors,
+                                 content_type=content_type)
+
+
 class FunctionalTestCase(TestCaseWithIni):
     """
     Use this for test cases that need access to a WSGI application.
@@ -285,7 +305,8 @@ class FunctionalTestCase(TestCaseWithIni):
         self.config = Configurator(registry=wsgiapp.registry,
                                    package=self.package_name)
         self.config.begin()
-        self.app = TestApp(wsgiapp,
+        self.app = \
+            EverestTestApp(wsgiapp,
                            extra_environ=self._create_extra_environment())
 
     def tear_down(self):

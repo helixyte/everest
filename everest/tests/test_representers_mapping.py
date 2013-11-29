@@ -7,13 +7,14 @@ Created on Jun 7, 2012.
 from everest.mime import CsvMime
 from everest.representers.attributes import MappedAttributeKey
 from everest.representers.config import IGNORE_OPTION
+from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import IRepresenterRegistry
+from everest.representers.traversal import DataElementTreeTraverser
+from everest.representers.utils import NewRepresenterConfigurationContext
+from everest.representers.utils import UpdatedRepresenterConfigurationContext
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.resources import MyEntityMember
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
-from everest.representers.interfaces import IDataElement
-from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.utils import RepresenterConfigurationContext
 
 
 __docformat__ = 'reStructuredText en'
@@ -66,20 +67,37 @@ class MappingTestCase(ResourceTestCase):
         self.assert_true(attr_map['children'].options[IGNORE_OPTION]
                          is False)
 
-    def test_representer_configuration_context(self):
+    def test_representer_configuration_contexts(self):
         self.assert_raises(IndexError, self.mapping.pop_configuration)
         opts = dict(parent={IGNORE_OPTION : True})
-        ctx = RepresenterConfigurationContext(MyEntityMember, CsvMime,
-                                              attribute_options=opts)
         self.assert_false(
             self.mapping.configuration.get_attribute_option('parent',
                                                             IGNORE_OPTION))
-        with ctx:
-            mp = self.mapping_registry.find_mapping(MyEntityMember)
+        self.assert_false(
+            self.mapping.configuration.get_attribute_option('children',
+                                                            IGNORE_OPTION))
+        ctx1 = NewRepresenterConfigurationContext(MyEntityMember, CsvMime,
+                                                  attribute_options=opts)
+        with ctx1:
+            mp1 = self.mapping_registry.find_mapping(MyEntityMember)
             self.assert_true(
-                    mp.configuration.get_attribute_option('parent',
-                                                          IGNORE_OPTION))
-
+                    mp1.configuration.get_attribute_option('parent',
+                                                           IGNORE_OPTION))
+            # Changed to default.
+            self.assert_is_none(
+                    mp1.configuration.get_attribute_option('children',
+                                                           IGNORE_OPTION))
+        ctx2 = UpdatedRepresenterConfigurationContext(MyEntityMember, CsvMime,
+                                                      attribute_options=opts)
+        with ctx2:
+            mp2 = self.mapping_registry.find_mapping(MyEntityMember)
+            self.assert_true(
+                    mp2.configuration.get_attribute_option('parent',
+                                                           IGNORE_OPTION))
+            # Unchanged.
+            self.assert_false(
+                    mp2.configuration.get_attribute_option('children',
+                                                           IGNORE_OPTION))
 
 class NonResource(object):
     pass

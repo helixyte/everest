@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2011.
 """
+from everest.constants import RequestMethods
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
 from everest.entities.traversal import DomainDataTraversalProxyAdapter
@@ -66,6 +67,7 @@ from everest.views.base import RepresentingResourceView
 from everest.views.deletemember import DeleteMemberView
 from everest.views.getcollection import GetCollectionView
 from everest.views.getmember import GetMemberView
+from everest.views.patchmember import PatchMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
 from pyramid.compat import iteritems_
@@ -83,7 +85,6 @@ from zope.interface import alsoProvides as also_provides # pylint: disable=E0611
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
-from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -686,6 +687,8 @@ class Configurator(PyramidConfigurator):
                             vw = self.__make_view_factory(GetMemberView, kw)
                         elif request_method == RequestMethods.PUT:
                             vw = self.__make_view_factory(PutMemberView, kw)
+                        elif request_method == RequestMethods.PATCH:
+                            vw = self.__make_view_factory(PatchMemberView, kw)
                         elif request_method == RequestMethods.DELETE:
                             # The DELETE view is special as it does not have
                             # to deal with representations.
@@ -695,6 +698,10 @@ class Configurator(PyramidConfigurator):
                             request_method = RequestMethods.POST
                             opts['header'] = 'X-HTTP-Method-Override:PUT'
                             vw = self.__make_view_factory(PutMemberView, kw)
+                        elif request_method == RequestMethods.FAKE_PATCH:
+                            request_method = RequestMethods.POST
+                            opts['header'] = 'X-HTTP-Method-Override:PATCH'
+                            vw = self.__make_view_factory(PatchMemberView, kw)
                         elif request_method == RequestMethods.FAKE_DELETE:
                             request_method = RequestMethods.POST
                             opts['header'] = 'X-HTTP-Method-Override:DELETE'

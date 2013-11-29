@@ -21,6 +21,8 @@ __all__ = ['GetCollectionView',
 class GetCollectionView(GetResourceView):
     """
     View for GET requests on collection resources.
+
+    If the request is sucessful, the server responds with status HTTP OK.
     """
     def _prepare_resource(self):
         try:

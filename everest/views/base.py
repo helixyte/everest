@@ -15,6 +15,7 @@ from everest.mime import get_registered_mime_type_for_name
 from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
+from everest.resources.utils import resource_to_url
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
 from pyramid.httpexceptions import HTTPBadRequest
@@ -22,6 +23,7 @@ from pyramid.httpexceptions import HTTPConflict
 from pyramid.httpexceptions import HTTPError
 from pyramid.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPNotAcceptable
+from pyramid.httpexceptions import HTTPOk
 from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPUnsupportedMediaType
 from pyramid.response import Response
@@ -33,7 +35,7 @@ import re
 __docformat__ = "reStructuredText en"
 __all__ = ['GetResourceView',
            'HttpWarningResubmit',
-           'PutOrPostResourceView',
+           'ModifyingResourceView',
            'RepresentingResourceView',
            'ResourceView',
            'ViewUserMessageChecker',
@@ -219,12 +221,12 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
         raise NotImplementedError('Abstract method.')
 
 
-class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
+class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
     """
-    Abstract base class for all member views
+    Abstract base class for all modifying member views
     """
     def __init__(self, resource, request, **kw):
-        if self.__class__ is PutOrPostResourceView:
+        if self.__class__ is ModifyingResourceView:
             raise NotImplementedError('Abstract class')
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
@@ -258,7 +260,7 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
             mime_type = \
               get_registered_mime_type_for_string(self.request.content_type)
         except KeyError:
-            # The client requested a content type we do not support (415).
+            # The client sent a content type we do not support (415).
             raise HTTPUnsupportedMediaType()
         return as_representer(self.context, mime_type)
 
@@ -309,6 +311,27 @@ class PutOrPostResourceView(RepresentingResourceView): # still abstract pylint: 
         exception class.
         """
         return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
+
+
+class PutOrPatchResourceView(ModifyingResourceView):
+    """
+    Base class for views that modify a member through PUT and PATCH requests.
+    """
+    def _process_request_data(self, data):
+        initial_name = self.context.__name__
+        self.context.update(data)
+        current_name = self.context.__name__
+        self.request.response.status = self._status(HTTPOk)
+        # FIXME: add conflict detection
+        if initial_name != current_name:
+            self.request.response.headerlist = \
+                [('Location',
+                  resource_to_url(self.context, request=self.request))]
+        # We return the (representation of) the updated member to
+        # assist the client in doing the right thing.
+        # Not all clients give access to the Response headers and we
+        # cannot find the new location when HTTP/1.1 301 is returned.
+        return self._get_result(self.context)
 
 
 class ViewUserMessageChecker(UserMessageChecker):

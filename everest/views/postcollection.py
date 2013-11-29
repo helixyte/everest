@@ -9,7 +9,7 @@ Created on Oct 14, 2011.
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
 from everest.resources.utils import resource_to_url
-from everest.views.base import PutOrPostResourceView
+from everest.views.base import ModifyingResourceView
 from pyramid.httpexceptions import HTTPCreated
 
 __docformat__ = 'reStructuredText en'
@@ -17,17 +17,15 @@ __all__ = ['PostCollectionView',
            ]
 
 
-class PostCollectionView(PutOrPostResourceView):
+class PostCollectionView(ModifyingResourceView):
     """
     View for POST requests on collection resources.
 
     The client POSTs a representation of the member to the URI of the
     collection. If the new member resource was created successfully, the
-    server responds with a status code of 201 and a Location header that
-    contains the IRI of the newly created resource and a representation
-    of it in the body of the response.
-
-    See http://bitworking.org/projects/atom/rfc5023.html#post-to-create
+    server responds with a status code of HTTP CREATED (201) and a Location
+    header that contains the IRI of the newly created resource and a
+    representation of it in the body of the response.
     """
     def _process_request_data(self, data):
         if not provides_resource(data):

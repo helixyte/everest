@@ -56,6 +56,7 @@ XML_TAG_OPTION = 'xml_tag'
 XML_SCHEMA_OPTION = 'xml_schema'
 XML_NAMESPACE_OPTION = 'xml_ns'
 XML_PREFIX_OPTION = 'xml_prefix'
+XML_VALIDATE_OPTION = 'xml_validate'
 
 NAMESPACE_MAPPING_OPTION = 'namespace'
 
@@ -75,8 +76,10 @@ class XmlRepresentationParser(RepresentationParser):
         try:
             tree = objectify.parse(self._stream, parser)
         except etree.XMLSyntaxError as err:
-            raise SyntaxError('Could not parse XML document for schema %s.'
-                              '\n%s' % (schema_loc, err.msg))
+            msg = 'Could not parse XML document'
+            if not schema_loc is None:
+                msg += ' for schema %s.' % schema_loc
+            raise SyntaxError('%s\n%s' % (msg, err.msg))
         return tree.getroot()[0]
 
 
@@ -134,7 +137,11 @@ class XmlResourceRepresenter(MappingResourceRepresenter):
     def _make_representation_parser(self, stream, resource_class, mapping):
         parser = XmlRepresentationParser(stream, resource_class, mapping)
         mp = self._mapping
-        xml_schema = mp.configuration.get_option(XML_SCHEMA_OPTION)
+        do_validate = mp.configuration.get_option(XML_VALIDATE_OPTION)
+        if do_validate:
+            xml_schema = mp.configuration.get_option(XML_SCHEMA_OPTION)
+        else:
+            xml_schema = None
         parser.set_option('schema_location', xml_schema)
         return parser
 
@@ -394,12 +401,17 @@ class XmlRepresenterConfiguration(RepresenterConfiguration):
     xml_ns :
         The XML namespace to use for the represented data element class.
     xml_prefix :
-        The XML namespace prefix to use for the represented data element class.
+        The XML namespace prefix to use for the represented data element
+        class.
+    xml_validate:
+        Boolean flag indicating if incoming representations should be
+        validated upon parsing (defaults to `True`).
     """
     _default_config_options = \
         dict(list(RepresenterConfiguration._default_config_options.items())
              + [(XML_TAG_OPTION, None), (XML_SCHEMA_OPTION, None),
-                (XML_NAMESPACE_OPTION, None), (XML_PREFIX_OPTION, None)])
+                (XML_NAMESPACE_OPTION, None), (XML_PREFIX_OPTION, None),
+                (XML_VALIDATE_OPTION, True)])
     _default_attributes_options = \
         dict(list(RepresenterConfiguration._default_attributes_options.items())
              + [(NAMESPACE_MAPPING_OPTION, None)])
