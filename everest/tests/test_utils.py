@@ -7,11 +7,15 @@ Created on May 18, 2011.
 from everest.testing import Pep8CompliantTestCase
 from everest.utils import BidirectionalLookup
 from everest.utils import WeakList
+from everest.utils import WeakOrderedSet
 from everest.utils import classproperty
 from everest.utils import get_traceback
 from everest.utils import id_generator
+from logging import StreamHandler
+from pyramid.compat import NativeIO
+import logging
 import random
-from everest.utils import WeakOrderedSet
+from everest.utils import TruncatingFormatter
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UtilsTestCase',
@@ -200,3 +204,12 @@ class UtilsTestCase(Pep8CompliantTestCase):
         other_wos = WeakOrderedSet(values)
         self.assert_equal(wos, other_wos)
         self.assert_equal(wos, values)
+
+    def test_truncating_formatter(self):
+        buf = NativeIO()
+        logger = logging.Logger('test', logging.DEBUG)
+        hdlr = StreamHandler(buf)
+        hdlr.setFormatter(TruncatingFormatter())
+        logger.addHandler(hdlr)
+        logger.debug('%s', 'X' * 101, extra=dict(output_limit=100))
+        self.assert_equal(len(buf.getvalue().strip()), 100)

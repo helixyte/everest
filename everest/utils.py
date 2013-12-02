@@ -18,6 +18,7 @@ from weakref import WeakKeyDictionary
 from weakref import ref
 import re
 import traceback
+from logging import Formatter
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
@@ -443,3 +444,33 @@ def generative(func):
         return func(clone, *args, **kw)
     return update_wrapper(wrap, func)
 
+
+def truncate(message, limit=500):
+    """
+    Truncates the message to the given limit length. The beginning and the
+    end of the message are left untouched.
+    """
+    if len(message) > limit:
+        trc_msg = ''.join([message[:limit / 2 - 2],
+                           ' .. ',
+                           message[len(message) - limit / 2 + 2:]])
+    else:
+        trc_msg = message
+    return trc_msg
+
+
+class TruncatingFormatter(Formatter):
+    """
+    Formatter that chops excessive logging argument strings to a defined
+    limit. Useful e.g. to restrict logging output from request bodies.
+
+    To use, pass a key "output_limit" to the "extra" argument in your
+    logging calls. The logging message will then be truncated to the specified
+    length.
+    """
+    def format(self, record):
+        if record.args and hasattr(record, 'output_limit'):
+            # Truncate all args to the set limit.
+            record.args = tuple([truncate(arg, limit=record.output_limit)
+                                 for arg in record.args])
+        return Formatter.format(self, record)

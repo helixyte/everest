@@ -31,6 +31,7 @@ from pyramid.threadlocal import get_current_request
 from zope.interface import implementer # pylint: disable=E0611,F0401
 import logging
 import re
+from everest.utils import truncate
 
 __docformat__ = "reStructuredText en"
 __all__ = ['GetResourceView',
@@ -71,7 +72,7 @@ class ResourceView(object):
     def __init__(self, context, request):
         if self.__class__ is ResourceView:
             raise NotImplementedError('Abstract class')
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = logging.getLogger('everest.views')
         self.__context = context
         self.__request = request
 
@@ -210,7 +211,7 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
-        self._logger.debug('Request URL: %s' % self.request.url)
+        self._logger.debug('Request URL: %s.', self.request.url)
         result = self._prepare_resource()
         if not isinstance(result, Response):
             # Return a response to bypass Pyramid rendering.
@@ -231,8 +232,8 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
-        self._logger.debug('Request received on %s' % self.request.url)
-        self._logger.debug('Request body:\n%s' % self.request.body)
+        self._logger.debug('Request received on %s.', self.request.url)
+        self._logger.debug('Request body: %s', truncate(self.request.body))
         if len(self.request.body) == 0:
             # Empty body - return 400 Bad Request.
             response = self._handle_empty_body()
