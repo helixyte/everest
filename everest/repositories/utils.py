@@ -95,7 +95,12 @@ def commit_veto(request, response): # unused request arg pylint: disable=W0613
     Unlike the default commit veto supplied with the transaction manager,
     this will veto all commits for HTTP status codes other than 2xx unless
     a commit is explicitly requested by setting the "x-tm" response header to
-    "commit".
+    "commit". As with the default commit veto, the commit is always vetoed if
+    the "x-tm" response header is set to anything other than "commit".
     """
-    return not response.status.startswith('2') \
-            and not response.headers.get('x-tm') == 'commit'
+    tm_header = response.headers.get('x-tm')
+    if not tm_header is None:
+        result = tm_header != 'commit'
+    else:
+        result = response.status.startswith('2') and not tm_header == 'commit'
+    return result
