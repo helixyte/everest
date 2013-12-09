@@ -182,7 +182,7 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         req_body = \
-            '<tst:myentity xmlns:tst="http://xml.test.org/tests"id="0">' \
+            '<tst:myentity xmlns:tst="http://xml.test.org/tests" id="0">' \
             '    <number>2</number>' \
             '</tst:myentity>'
         res = self.app.patch("%s/0" % self.path,
