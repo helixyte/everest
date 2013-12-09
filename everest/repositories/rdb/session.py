@@ -69,10 +69,14 @@ class RdbSession(Session, SaSession):
                                     RELATION_OPERATIONS.UPDATE)
 
     def query(self, *entities, **options):
-        # By default, we use a query that
+        # When called by everest from an aggregate, we use the default query
+        # class that attempts to fetch the total result count and the first
+        # result page in one call. For advanced custom queries, this feature
+        # has to be disabled by using the default SA query class.
+        # FIXME: Not intuitive. Also, we need a test case for this.
         query_cls = options.pop('query_class', None)
         if not query_cls is None:
-            qry = query_cls(entities, self, **options)
+            qry = query_cls(entities, self, **options) # pragma: no cover
         else:
             qry = self._query_cls(entities, self, **options)
         return qry
