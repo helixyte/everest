@@ -69,7 +69,7 @@ class RepresenterConfiguration(object):
         self.__options = self._default_config_options.copy()
         # {attr key : { attr name : {{option name : option value}}}
         self.__attribute_options = \
-                        defaultdict(self._default_config_options.copy)
+                        defaultdict(self._default_attributes_options.copy)
         self.__update(options, attribute_options)
 
     def copy(self):
@@ -167,8 +167,7 @@ class RepresenterConfiguration(object):
                              (name, self.__class__.__name__))
 
     def __validate_attribute_option_name(self, name):
-        if not (name in self._default_attributes_options.keys()
-                or name == IGNORE_OPTION):
+        if not name in self._default_attributes_options.keys():
             raise ValueError('Invalid attribute option name "%s" '
                              'for %s representer.'
                              % (name, self.__class__.__name__))

@@ -100,21 +100,25 @@ def data_element_tree_to_string(data_element):
 class _RepresenterConfigurationContext(object):
     """
     Base class for context managers that configure a representer.
+
+    :ivar options: The representer options map to use within the context.
+    :ivar attribute_options: The representer attribute options map to use
+      within the context.
     """
     def __init__(self, mapped_class, content_type,
                  options=None, attribute_options=None):
+        self.options = options
+        self.attribute_options = attribute_options
         self.__mapped_class = mapped_class
         self.__content_type = content_type
-        self.__options = options
-        self.__attribute_options = attribute_options
         self.__mapping = None
 
     def __enter__(self):
         mp_reg = get_mapping_registry(self.__content_type)
         self.__mapping = mp_reg.find_or_create_mapping(self.__mapped_class)
         cfg = self._get_new_configuration(self.__mapping.configuration,
-                                          self.__options,
-                                          self.__attribute_options)
+                                          self.options,
+                                          self.attribute_options)
         self.__mapping.push_configuration(cfg)
 
     def __exit__(self, ext_type, value, tb):
