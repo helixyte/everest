@@ -68,8 +68,14 @@ class RdbSession(Session, SaSession):
         return self.__run_traversal(entity_class, data, target,
                                     RELATION_OPERATIONS.UPDATE)
 
-    def query(self, entity_class):
-        return SaSession.query(self, entity_class)
+    def query(self, *entities, **options):
+        # By default, we use a query that
+        query_cls = options.pop('query_class', None)
+        if not query_cls is None:
+            qry = query_cls(entities, self, **options)
+        else:
+            qry = self._query_cls(entities, self, **options)
+        return qry
 
     def __run_traversal(self, entity_class, source_data, target_data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)
@@ -126,7 +132,7 @@ class RdbSessionFactory(SessionFactory):
     def configure(self, **kw):
         self.__fac.configure(**kw)
 
-    def __call__(self):
+    def __call__(self, **kw):
         if not self.__fac.registry.has():
             self.__fac.configure(autoflush=self._repository.autoflush,
                                  query_cls=self.__query_class,
@@ -136,4 +142,4 @@ class RdbSessionFactory(SessionFactory):
                 # Enable the Zope transaction extension with the standard
                 # sqlalchemy Session class.
                 self.__fac.configure(extension=ZopeTransactionExtension())
-        return self.__fac()
+        return self.__fac(**kw)
