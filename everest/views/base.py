@@ -182,6 +182,9 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
                 rpr = self._get_response_representer()
             except HTTPError as http_exc:
                 result = self.request.get_response(http_exc)
+            except Exception as err: # catch Exception pylint: disable=W0703
+                result = self._handle_unknown_exception(str(err),
+                                                        get_traceback())
             else:
                 # Set content type and body of the response.
                 self.request.response.content_type = \
