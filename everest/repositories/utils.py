@@ -102,5 +102,6 @@ def commit_veto(request, response): # unused request arg pylint: disable=W0613
     if not tm_header is None:
         result = tm_header != 'commit'
     else:
-        result = response.status.startswith('2') and not tm_header == 'commit'
+        result = not response.status.startswith('2') \
+                 and not tm_header == 'commit'
     return result

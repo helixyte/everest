@@ -27,6 +27,8 @@ class RepositoriesUtilsTestCase(Pep8CompliantTestCase):
         self.assert_true(commit_veto(None, rsp2))
         rsp3 = DummyResponse(HTTPRedirection().status, {'x-tm':'commit'})
         self.assert_false(commit_veto(None, rsp3))
+        rsp4 = DummyResponse(HTTPRedirection().status, {'x-tm':'abort'})
+        self.assert_true(commit_veto(None, rsp4))
 
 
 class RdbAttributeInspectorTestCase(RdbTestCaseMixin, EntityTestCase):
