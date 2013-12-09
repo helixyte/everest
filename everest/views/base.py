@@ -26,7 +26,7 @@ from pyramid.httpexceptions import HTTPNotAcceptable
 from pyramid.httpexceptions import HTTPOk
 from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
 from pyramid.httpexceptions import HTTPUnsupportedMediaType
-from pyramid.response import Response
+from pyramid.interfaces import IResponse
 from pyramid.threadlocal import get_current_request
 from zope.interface import implementer # pylint: disable=E0611,F0401
 import logging
@@ -38,8 +38,48 @@ __all__ = ['GetResourceView',
            'ModifyingResourceView',
            'RepresentingResourceView',
            'ResourceView',
-           'ViewUserMessageChecker',
+           'WarnAndResubmitExecutor',
+           'WarnAndResubmitUserMessageChecker',
            ]
+
+
+class WarnAndResubmitExecutor(object):
+    """
+    Executes a callable within a user message handling context that uses a
+    :class:`WarnAndResutbmitUserMessageChecker` as checker.
+    """
+    def __init__(self, func):
+        """
+        Constructor.
+
+        :param func: Callable to execute.
+        """
+        self.__func = func
+        self.__checker = None
+
+    def __call__(self, *args, **kw):
+        """
+        Runs the function passed to this executor with the given positional
+        and keyword arguments within a user message handling context.
+
+        Returns the result of the execution or a 307 Temporary Redirect
+        response in case the user message checker voted to stop further
+        processing.
+        """
+        self.__checker = WarnAndResubmitUserMessageChecker()
+        with UserMessageHandlingContextManager(self.__checker):
+            result = self.__func(*args, **kw)
+        if not self.__checker.vote is True:
+            result = self.__checker.create_307_response()
+        return result
+
+    @property
+    def do_continue(self):
+        """
+        Returns `True` if the checker the executor has run and the checker
+        did not vote to stop further processing.
+        """
+        return not self.__checker is None and self.__checker.vote is True
 
 
 class HttpWarningResubmit(HTTPTemporaryRedirect): # no __init__ pylint: disable=W0232
@@ -64,15 +104,14 @@ class ResourceView(object):
     Resource views know how to handle a number of things that can go wrong
     in a REST request.
     """
-
-    __context = None
-    __request = None
-
     def __init__(self, context, request):
         if self.__class__ is ResourceView:
             raise NotImplementedError('Abstract class')
+        #: View logger (qualname "everest.views").
         self._logger = logging.getLogger('everest.views')
+        #: The contetxt of the view.
         self.__context = context
+        #: The request for the view.
         self.__request = request
 
     @property
@@ -105,20 +144,24 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
     """
     def __init__(self, context, request,
                  default_content_type=None,
-                 default_response_content_type=None, convert_response=True):
+                 default_response_content_type=None, convert_response=True,
+                 enable_messaging=False):
         if self.__class__ is RepresentingResourceView:
             raise NotImplementedError('Abstract class')
         ResourceView.__init__(self, context, request)
         #: Flag indicating if the response body should be converted using
         #: the representer associated with this view.
         self._convert_response = convert_response
-        #: The default content type for the representer associated with this
-        #: view.
         if default_content_type is None:
             # FIXME: make this configurable.
             default_content_type = CsvMime
+        #: The default content type for this view.
         self._default_content_type = default_content_type
+        #: The default content type for the response.
         self._default_response_content_type = default_response_content_type
+        #: Flag indicating if a messaging context should be used when
+        #: processing calls into this view.
+        self._enable_messaging = enable_messaging
 
     def _get_response_representer(self):
         """
@@ -151,7 +194,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             if mime_type is None:
                 if not acc is None:
                     # The client specified a MIME type we can not handle; this
-                    # is a 406 exxception. We supply allowed MIME content
+                    # is a 406 exception. We supply allowed MIME content
                     # types in the body of the response.
                     headers = \
                         [('Location', self.request.path_url),
@@ -178,19 +221,12 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
           passed on to a custom renderer).
         """
         if self._convert_response:
-            try:
-                rpr = self._get_response_representer()
-            except HTTPError as http_exc:
-                result = self.request.get_response(http_exc)
-            except Exception as err: # catch Exception pylint: disable=W0703
-                result = self._handle_unknown_exception(str(err),
-                                                        get_traceback())
-            else:
-                # Set content type and body of the response.
-                self.request.response.content_type = \
-                                        rpr.content_type.mime_type_string
-                self.request.response.body = rpr.to_string(resource)
-                result = self.request.response
+            rpr = self._get_response_representer()
+            # Set content type and body of the response.
+            self.request.response.content_type = \
+                                    rpr.content_type.mime_type_string
+            self.request.response.body = rpr.to_string(resource)
+            result = self.request.response
         else:
             result = dict(context=resource)
         return result
@@ -210,14 +246,36 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
     def __init__(self, resource, request, **kw):
         if self.__class__ is GetResourceView:
             raise NotImplementedError('Abstract class')
+        # Messaging is disabled by default for GET views.
+        if kw.get('enable_messaging') is None:
+            kw['enable_messaging'] = False
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
         self._logger.debug('Request URL: %s.', self.request.url)
-        result = self._prepare_resource()
-        if not isinstance(result, Response):
-            # Return a response to bypass Pyramid rendering.
-            result = self._get_result(result)
+        try:
+            if self._enable_messaging:
+                prep_executor = \
+                    WarnAndResubmitExecutor(self._prepare_resource)
+                data = prep_executor()
+                do_continue = prep_executor.do_continue
+            else:
+                data = self._prepare_resource()
+                do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
+            if do_continue:
+                # Return a response to bypass Pyramid rendering.
+                if self._enable_messaging:
+                    res_executor = WarnAndResubmitExecutor(self._get_result)
+                    result = res_executor(data)
+                else:
+                    result = self._get_result(data)
+            else:
+                result = data
+        except HTTPError as http_exc:
+            result = self.request.get_response(http_exc)
+        except Exception as err: # catch Exception pylint: disable=W0703
+            result = self._handle_unknown_exception(str(err),
+                                                    get_traceback())
         return result
 
     def _prepare_resource(self):
@@ -231,6 +289,9 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
     def __init__(self, resource, request, **kw):
         if self.__class__ is ModifyingResourceView:
             raise NotImplementedError('Abstract class')
+        # Messaging is enabled by default for modifying views.
+        if kw.get('enable_messaging') is None:
+            kw['enable_messaging'] = True
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
@@ -240,27 +301,40 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
                            extra=dict(output_limit=500))
         if len(self.request.body) == 0:
             # Empty body - return 400 Bad Request.
-            response = self._handle_empty_body()
+            result = self._handle_empty_body()
         else:
-            checker = ViewUserMessageChecker()
             try:
-                with UserMessageHandlingContextManager(checker):
-                    data = self._extract_request_data()
-                if not checker.vote is True:
-                    response = checker.create_307_response()
+                if self._enable_messaging:
+                    extract_executor = \
+                        WarnAndResubmitExecutor(self._extract_request_data)
+                    data = extract_executor()
+                    do_continue = extract_executor.do_continue
                 else:
-                    with UserMessageHandlingContextManager(checker):
-                        response = self._process_request_data(data)
-                    if not checker.vote is True:
-                        response = checker.create_307_response()
+                    data = self._extract_request_data()
+                    do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
+                if do_continue:
+                    if self._enable_messaging:
+                        process_executor = \
+                            WarnAndResubmitExecutor(self._process_request_data)
+                        result = process_executor(data)
+                    else:
+                        result = self._process_request_data(data)
+                else:
+                    result = data
             except HTTPError as err:
-                response = self.request.get_response(err)
+                result = self.request.get_response(err)
             except Exception as err: # catch Exception pylint: disable=W0703
-                response = self._handle_unknown_exception(str(err),
-                                                          get_traceback())
-        return response
+                result = self._handle_unknown_exception(str(err),
+                                                        get_traceback())
+        return result
 
     def _get_request_representer(self):
+        """
+        Returns a representer for the content type specified in the request.
+
+        :raises HTTPUnsupportedMediaType: If the specified content type is
+          not supported.
+        """
         try:
             mime_type = \
               get_registered_mime_type_for_string(self.request.content_type)
@@ -273,6 +347,15 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
         """
         Extracts the data from the representation submitted in the request
         body and returns it.
+
+        This default implementation uses a representer for the content type
+        specified by the request to perform the extraction and returns an
+        object implementing the
+        :class:`everest.representers.interfaces.IResourceDataElement`
+        interface.
+
+        :raises HTTPError: To indicate problems with the request data
+          extraction in terms of HTTP codes.
         """
         rpr = self._get_request_representer()
         return rpr.data_from_representation(self.request.body)
@@ -288,7 +371,9 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
 
         :param data: data returned by the :meth:`_extract_request_data`
           method.
-        :returns: response object or dictionary
+        :raises HTTPError: To indicate problems with the request data
+          processing in terms of HTTP codes.
+        :returns: Response object or dictionary (rendering context).
         """
         raise NotImplementedError('Abstract method.')
 
@@ -333,15 +418,16 @@ class PutOrPatchResourceView(ModifyingResourceView):
                 [('Location',
                   resource_to_url(self.context, request=self.request))]
         # We return the (representation of) the updated member to
-        # assist the client in doing the right thing.
-        # Not all clients give access to the Response headers and we
-        # cannot find the new location when HTTP/1.1 301 is returned.
+        # assist the client in doing the right thing (some clients block
+        # access to the Response headers so we may not be able to find the
+        # new location when HTTP/1.1 301 is returned).
         return self._get_result(self.context)
 
 
-class ViewUserMessageChecker(UserMessageChecker):
+class WarnAndResubmitUserMessageChecker(UserMessageChecker):
     """
-    Custom user message checker for views.
+    Custom user message checker for showing warning messages to the user
+    with the possibility for resubmission with warnings suppressed.
     """
     __guid_pattern = re.compile(r".*ignore-message=([a-z0-9\-]{36})")
 

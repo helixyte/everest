@@ -300,13 +300,15 @@ class ResourceDirective(GroupingContextDecorator):
 
 
 def _resource_view(_context, for_, default_content_type,
-                   default_response_content_type, config_callable_name, kw):
+                   default_response_content_type, enable_messaging,
+                   config_callable_name, kw):
     reg = get_current_registry()
     config = Configurator(reg, package=_context.package)
     config_callable = getattr(config, config_callable_name)
     option_tuples = tuple(sorted([(k, str(v)) for (k, v) in kw.items()]))
     kw['default_content_type'] = default_content_type
     kw['default_response_content_type'] = default_response_content_type
+    kw['enable_messaging'] = enable_messaging
     for rc in for_:
         discriminator = ('resource_view', rc, config_callable_name) \
                         + option_tuples
@@ -346,24 +348,37 @@ class IResourceViewDirective(IViewDirective):
                                  default=RequestMethods.GET,
                                  ),
                )
+    enable_messaging = \
+        Bool(title=u"Flag indicating if messaging should be enabled for "
+                    "this view (defaults to False for GET views and to "
+                    "TRUE for PUT/POST/PATCH views).",
+             default=None,
+             required=False,
+             )
 
 
 def resource_view(_context, for_, default_content_type=None,
-                  default_response_content_type=None, **kw):
+                  default_response_content_type=None, enable_messaging=None,
+                  **kw):
     _resource_view(_context, for_, default_content_type,
-                   default_response_content_type, 'add_resource_view', kw)
+                   default_response_content_type, enable_messaging,
+                   'add_resource_view', kw)
 
 
 def collection_view(_context, for_, default_content_type=None,
-                    default_response_content_type=None, **kw):
+                    default_response_content_type=None,
+                    enable_messaging=None, **kw):
     _resource_view(_context, for_, default_content_type,
-                   default_response_content_type, 'add_collection_view', kw)
+                   default_response_content_type, enable_messaging,
+                   'add_collection_view', kw)
 
 
 def member_view(_context, for_, default_content_type=None,
-                default_response_content_type=None, **kw):
+                default_response_content_type=None, enable_messaging=None,
+             **kw):
     _resource_view(_context, for_, default_content_type,
-                   default_response_content_type, 'add_member_view', kw)
+                   default_response_content_type, enable_messaging,
+                   'add_member_view', kw)
 
 
 class IRepresenterDirective(Interface):

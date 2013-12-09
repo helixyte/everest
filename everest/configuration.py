@@ -475,7 +475,8 @@ class Configurator(PyramidConfigurator):
     def add_resource_view(self, resource, view=None, name='', renderer=None,
                           request_method=(RequestMethods.GET,),
                           default_content_type=None,
-                          default_response_content_type=None, **kw):
+                          default_response_content_type=None,
+                          enable_messaging=None, **kw):
         # FIXME: We should not allow **kw to support setting up standard
         #        views here since some options may have undesired side
         #        effects.
@@ -493,7 +494,8 @@ class Configurator(PyramidConfigurator):
         for rc in rcs:
             self.__add_resource_view(rc, view, name, renderer, request_method,
                                      default_content_type,
-                                     default_response_content_type, kw)
+                                     default_response_content_type,
+                                     enable_messaging, kw)
 
     def add_collection_view(self, resource, **kw):
         if IInterface in provided_by(resource):
@@ -672,7 +674,8 @@ class Configurator(PyramidConfigurator):
 
     def __add_resource_view(self, rc, view, name, renderer, request_methods,
                             default_content_type,
-                            default_response_content_type, options):
+                            default_response_content_type,
+                            enable_messaging, options):
         for request_method in request_methods:
             opts = options.copy()
             vw = view
@@ -683,6 +686,7 @@ class Configurator(PyramidConfigurator):
                 kw = dict(default_content_type=default_content_type,
                           default_response_content_type=
                                     default_response_content_type,
+                          enable_messaging=enable_messaging,
                           convert_response=renderer is None)
                 if view is None:
                     # Attempt to guess a default view. We register a factory

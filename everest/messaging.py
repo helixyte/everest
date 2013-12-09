@@ -31,7 +31,6 @@ class UserMessageNotifier(object):
     """
     Notifier for user messages.
     """
-
     def notify(self, message_text):
         msg = UserMessage(message_text)
         reg = get_current_registry()
