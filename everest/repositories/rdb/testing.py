@@ -7,11 +7,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 26, 2013.
 """
 from everest.repositories.constants import REPOSITORY_TYPES
+from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.repositories.rdb.utils import reset_metadata
 from everest.repositories.utils import get_engine
 from functools import update_wrapper
 from pyramid.compat import iteritems_
+from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RdbContextManager',
@@ -75,15 +77,17 @@ class RdbContextManager(object):
     this transaction back after the test has finished.
     """
     def __init__(self, autoflush=True, engine_name=None):
-        self.__autoflush = autoflush
         if engine_name is None:
             # Use the name of the default RDB repository for engine lookup.
             engine_name = REPOSITORY_TYPES.RDB
+        self.__autoflush = autoflush
         self.__engine_name = engine_name
         self.__connection = None
         self.__transaction = None
         self.__session = None
+        self.__repo = None
         self.__old_autoflush_flag = None
+        self.__old_join_transaction_flag = None
 
     def __enter__(self):
         # We set up an outer transaction that allows us to roll back all
@@ -91,14 +95,21 @@ class RdbContextManager(object):
         engine = get_engine(self.__engine_name)
         self.__connection = engine.connect()
         self.__transaction = self.__connection.begin()
+        reg = get_current_registry()
+        repo_mgr = reg.getUtility(IRepositoryManager)
+        self.__repo = repo_mgr.get(self.__engine_name)
         # Configure the autoflush behavior of the session.
-        self.__old_autoflush_flag = Session.autoflush # pylint:disable=E1101
+        if Session.registry.has():
+            self.__old_autoflush_flag = Session.autoflush # pylint:disable=E1101
+        else:
+            self.__old_autoflush_flag = self.__autoflush
         Session.remove()
         Session.configure(autoflush=self.__autoflush)
-        # Throw out the Zope transaction manager for testing.
-        Session.configure(extension=None)
         # Create a new session for the tests.
-        self.__session = Session(bind=self.__connection)
+        Session.configure(bind=self.__connection)
+        self.__old_join_transaction_flag = self.__repo.join_transaction
+        self.__repo.join_transaction = False
+        self.__session = self.__repo.session_factory()
         return self.__session
 
     def __exit__(self, ext_type, value, tb):
@@ -108,8 +119,9 @@ class RdbContextManager(object):
         self.__connection.close()
         # Remove the session we created.
         Session.remove()
-        # Restore autoflush flag.
+        # Restore flags.
         Session.configure(autoflush=self.__old_autoflush_flag)
+        self.__repo.join_transaction = self.__old_join_transaction_flag
 
 
 def with_rdb(autoflush=True, init_callback=None):
