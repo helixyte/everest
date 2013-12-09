@@ -637,9 +637,12 @@ class SourceTargetDataTreeTraverser(object):
                         src_id = attr_source.get_id()
                         tgt_id = attr_target.get_id()
                         if src_id != tgt_id:
-                            src_target = attr_target.get_matching(src_id)
-                            if not src_target is None:
-                                tgt_items.append(src_target)
+                            if not src_id is None:
+                                # If the source ID is None, this is a replace
+                                # operation (ADD source, REMOVE target).
+                                src_target = attr_target.get_matching(src_id)
+                                if not src_target is None:
+                                    tgt_items.append(src_target)
                 else:
                     src_items = attr_source
                     tgt_items = attr_target

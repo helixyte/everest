@@ -65,8 +65,12 @@ class RdbSession(Session, SaSession):
             SaSession.delete(self, data)
 
     def update(self, entity_class, data, target=None):
-        return self.__run_traversal(entity_class, data, target,
-                                    RELATION_OPERATIONS.UPDATE)
+        if not IEntity.providedBy(data): # pylint: disable=E1101
+            upd_ent = self.__run_traversal(entity_class, data, target,
+                                           RELATION_OPERATIONS.UPDATE)
+        else:
+            upd_ent = SaSession.merge(self, data)
+        return upd_ent
 
     def query(self, *entities, **options):
         # When called by everest from an aggregate, we use the default query
