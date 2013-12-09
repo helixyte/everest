@@ -8,6 +8,7 @@ Created on Nov 2, 2011.
 """
 from ConfigParser import NoSectionError
 from everest.configuration import Configurator
+from everest.constants import RequestMethods
 from everest.entities.utils import get_root_aggregate
 from everest.ini import EverestIni
 from everest.repositories.interfaces import IRepositoryManager
@@ -23,7 +24,6 @@ import sys
 import time
 import transaction
 import unittest
-from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DummyContext',
@@ -173,8 +173,24 @@ class TestCaseWithConfiguration(BaseTestCaseWithConfiguration):
         BaseTestCaseWithConfiguration.tear_down(self)
 
 
+class EntityCreatorMixin(object):
+    """
+    Mixin class providing methods for test entity creation.
+    """
+    def _get_entity(self, icollection, key=None):
+        agg = get_root_aggregate(icollection)
+        if key is None:
+            agg.slice = slice(0, 1)
+            entity = list(agg.iterator())[0]
+        else:
+            entity = agg.get_by_slug(key)
+        return entity
 
-class EntityTestCase(BaseTestCaseWithConfiguration):
+    def _create_entity(self, entity_cls, data):
+        return entity_cls.create_from_data(data)
+
+
+class EntityTestCase(BaseTestCaseWithConfiguration, EntityCreatorMixin):
     """
     Use this for test cases that need access to a configured registry.
     """
@@ -192,20 +208,33 @@ class EntityTestCase(BaseTestCaseWithConfiguration):
         self.config.end()
         super(EntityTestCase, self).tear_down()
 
-    def _get_entity(self, icollection, key=None):
-        agg = get_root_aggregate(icollection)
+
+class ResourceCreatorMixin(EntityCreatorMixin):
+    """
+    Mixin class providing methods for test resource creation.
+    """
+    def _get_member(self, icollection, key=None):
         if key is None:
-            agg.slice = slice(0, 1)
-            entity = list(agg.iterator())[0]
+            coll = self._get_collection(icollection, slice(0, 1))
+            member = list(iter(coll))[0]
         else:
-            entity = agg.get_by_slug(key)
-        return entity
+            coll = get_root_collection(icollection)
+            member = coll.get(key)
+        return member
 
-    def _create_entity(self, entity_cls, data):
-        return entity_cls.create_from_data(data)
+    def _get_collection(self, icollection, slice_key=None):
+        if slice_key is None:
+            slice_key = slice(0, 10)
+        coll = get_root_collection(icollection)
+        coll.slice = slice_key
+        return coll
+
+    def _create_member(self, member_cls, entity):
+        coll = create_staging_collection(member_cls)
+        return coll.create_member(entity)
 
 
-class ResourceTestCase(BaseTestCaseWithConfiguration):
+class ResourceTestCase(BaseTestCaseWithConfiguration, ResourceCreatorMixin):
     """
     Use this for test cases that need access to a configured registry, a
     request object and a service object.
@@ -249,26 +278,6 @@ class ResourceTestCase(BaseTestCaseWithConfiguration):
         # is started.
         pass
 
-    def _get_member(self, icollection, key=None):
-        if key is None:
-            coll = self._get_collection(icollection, slice(0, 1))
-            member = list(iter(coll))[0]
-        else:
-            coll = get_root_collection(icollection)
-            member = coll.get(key)
-        return member
-
-    def _get_collection(self, icollection, slice_key=None):
-        if slice_key is None:
-            slice_key = slice(0, 10)
-        coll = get_root_collection(icollection)
-        coll.slice = slice_key
-        return coll
-
-    def _create_member(self, member_cls, entity):
-        coll = create_staging_collection(member_cls)
-        return coll.create_member(entity)
-
 
 class EverestTestApp(TestApp):
     """
@@ -289,7 +298,7 @@ class EverestTestApp(TestApp):
                                  content_type=content_type)
 
 
-class FunctionalTestCase(TestCaseWithIni):
+class FunctionalTestCase(TestCaseWithIni, ResourceCreatorMixin):
     """
     Use this for test cases that need access to a WSGI application.
 
