@@ -31,7 +31,6 @@ from pyramid.threadlocal import get_current_request
 from zope.interface import implementer # pylint: disable=E0611,F0401
 import logging
 import re
-from everest.utils import truncate
 
 __docformat__ = "reStructuredText en"
 __all__ = ['GetResourceView',
@@ -203,7 +202,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
 
 class GetResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
     """
-    Abstract base class for all collection views
+    Abstract base class for all resource views processing GET requests.
     """
     def __init__(self, resource, request, **kw):
         if self.__class__ is GetResourceView:
@@ -224,7 +223,7 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
 
 class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223
     """
-    Abstract base class for all modifying member views
+    Abstract base class for all modifying member views.
     """
     def __init__(self, resource, request, **kw):
         if self.__class__ is ModifyingResourceView:
@@ -232,8 +231,10 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
         RepresentingResourceView.__init__(self, resource, request, **kw)
 
     def __call__(self):
-        self._logger.debug('Request received on %s.', self.request.url)
-        self._logger.debug('Request body: %s', truncate(self.request.body))
+        self._logger.debug('%s request received on %s.',
+                           self.request.method, self.request.url)
+        self._logger.debug('Request body: %s', self.request.body,
+                           extra=dict(output_limit=500))
         if len(self.request.body) == 0:
             # Empty body - return 400 Bad Request.
             response = self._handle_empty_body()
