@@ -147,11 +147,6 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
             raise ValueError('Attempting to overwrite the custom data '
                              'descriptor defined for the "id" attribute.')
         class_.id = synonym(id_attribute)
-    # Set up the slug attribute as a hybrid property.
-    if slug_expression is None:
-        cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
-    else:
-        cls_expr = slug_expression
     # If this is a polymorphic class, a base class may already have a
     # hybrid descriptor set as slug attribute.
     slug_descr = None
@@ -163,10 +158,18 @@ def mapper(class_, local_table=None, id_attribute='id', slug_expression=None,
         else:
             break
     if isinstance(slug_descr, hybrid_descriptor):
-        descr = slug_descr.descriptor
+        if not slug_expression is None:
+            raise ValueError('Attempting to overwrite the expression for '
+                             'an inherited slug hybrid descriptor.')
+        hyb_descr = slug_descr
     else:
-        descr = slug_descr
-    class_.slug = hybrid_descriptor(descr, expr=cls_expr)
+        # Set up the slug attribute as a hybrid property.
+        if slug_expression is None:
+            cls_expr = lambda cls: cast(getattr(cls, 'id'), String)
+        else:
+            cls_expr = slug_expression
+        hyb_descr = hybrid_descriptor(slug_descr, expr=cls_expr)
+    class_.slug = hyb_descr
     return mpr
 
 

@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
@@ -75,7 +75,10 @@ class RdbTestCase(Pep8CompliantTestCase):
             def slug(self):
                 return str(self.__id)
 
-        class MyPolymorphicEntity(MyEntityWithCustomId):
+        class MyPolymorphicEntity1(MyEntityWithCustomId):
+            pass
+
+        class MyPolymorphicEntity2(MyEntityWithCustomId):
             pass
 
         t1 = self._make_table(True)
@@ -100,12 +103,18 @@ class RdbTestCase(Pep8CompliantTestCase):
         base_mpr = mapper(MyEntityWithCustomId, t2,
                           polymorphic_on='my_type',
                           polymorphic_identity='base')
-        mpr = mapper(MyPolymorphicEntity, inherits=base_mpr,
-                     polymorphic_identity='derived')
-        self.assert_true(isinstance(MyPolymorphicEntity.__dict__['slug'],
+        poly_mpr1 = mapper(MyPolymorphicEntity1, inherits=base_mpr,
+                           polymorphic_identity='derived')
+        self.assert_true(isinstance(MyPolymorphicEntity1.__dict__['slug'],
                                     hybrid_descriptor))
+        # We should not override the slug expression if we are inheriting
+        # a hybrid descriptor from the base class.
+        self.assert_raises(ValueError,
+                           mapper, MyPolymorphicEntity2, inherits=base_mpr,
+                           polymorphic_identity='derived',
+                           slug_expression=slug_expr)
         base_mpr.dispose()
-        mpr.dispose()
+        poly_mpr1.dispose()
 
     def _make_table(self, with_id):
         md = MetaData()
