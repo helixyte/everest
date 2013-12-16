@@ -9,10 +9,10 @@ Created on Jan 8, 2013.
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.interfaces import IEntity
 from everest.entities.traversal import AruVisitor
-from everest.exceptions import NoResultsException
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
+from everest.repositories.rdb.querying import Query
 from everest.repositories.state import EntityState
 from everest.traversal import SourceTargetDataTreeTraverser
 from sqlalchemy.orm import scoped_session
@@ -39,11 +39,7 @@ class RdbSession(Session, SaSession):
         SaSession.__init__(self, *args, **options)
 
     def get_by_id(self, entity_class, id_key):
-        try:
-            ent = self.query(entity_class).get(id_key)
-        except NoResultsException:
-            ent = None
-        return ent
+        return self.query(entity_class).get(id_key)
 
     def get_by_slug(self, entity_class, slug):
         # We don't have an optimization for access by slug here; returning
@@ -73,17 +69,11 @@ class RdbSession(Session, SaSession):
         return upd_ent
 
     def query(self, *entities, **options):
-        # When called by everest from an aggregate, we use the default query
+        # When called by everest from an aggregate, we use the counting query
         # class that attempts to fetch the total result count and the first
-        # result page in one call. For advanced custom queries, this feature
-        # has to be disabled by using the default SA query class.
-        # FIXME: Not intuitive. Also, we need a test case for this.
-        query_cls = options.pop('query_class', None)
-        if not query_cls is None:
-            qry = query_cls(entities, self, **options) # pragma: no cover
-        else:
-            qry = self._query_cls(entities, self, **options)
-        return qry
+        # result page in one call here.
+        query_cls = options.pop('query_class', Query)
+        return query_cls(entities, self, **options)
 
     def __run_traversal(self, entity_class, source_data, target_data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)
@@ -126,7 +116,7 @@ class RdbSessionFactory(SessionFactory):
     """
     Factory for RDB repository sessions.
     """
-    def __init__(self, repository, query_class):
+    def __init__(self, repository, counting_query_class):
         SessionFactory.__init__(self, repository)
         if self._repository.autocommit:
             # Use an autocommitting Session class with our session factory.
@@ -135,16 +125,18 @@ class RdbSessionFactory(SessionFactory):
         else:
             # Use the default Session factory.
             self.__fac = ScopedSessionMaker
-        self.__query_class = query_class
+        #: This is the (optimized, if the engine supports it) counting query
+        #: class used for paged queries.
+        self.counting_query_class = counting_query_class
 
     def configure(self, **kw):
         self.__fac.configure(**kw)
 
     def __call__(self, **kw):
         if not self.__fac.registry.has():
-            self.__fac.configure(autoflush=self._repository.autoflush,
-                                 query_cls=self.__query_class,
-                                 repository=self._repository)
+            self.__fac.configure(
+                            autoflush=self._repository.autoflush,
+                            repository=self._repository)
             if not self._repository.autocommit \
                and self._repository.join_transaction:
                 # Enable the Zope transaction extension with the standard

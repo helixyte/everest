@@ -72,4 +72,8 @@ class IAggregate(Interface):
         """
         """
 
+    def query(**options):
+        """
+        """
+
 # pylint: enable=W0232, E0213, E0211

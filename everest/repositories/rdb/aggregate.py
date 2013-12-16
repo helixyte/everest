@@ -22,6 +22,10 @@ class RdbAggregate(RootAggregate):
 
     def query(self):
         # Need to perform a flush here so that filter expressions are always
-        # generated correctly.
+        # generated correctly. Also, we pass the counting query class to the
+        # base class method to optimize paged queries if the backend supports
+        # it.
         self._session.flush()
-        return RootAggregate.query(self)
+        return RootAggregate.query(
+                    self,
+                    query_class=self._session_factory.counting_query_class)

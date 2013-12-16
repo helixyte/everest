@@ -201,7 +201,7 @@ class Aggregate(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def query(self):
+    def query(self, **options):
         """
         Returns a query for this aggregate.
         """
@@ -384,8 +384,8 @@ class RootAggregate(Aggregate):
     def update(self, data, target=None):
         return self._session.update(self.entity_class, data, target=target)
 
-    def query(self):
-        return self._session.query(self.entity_class)
+    def query(self, **options):
+        return self._session.query(self.entity_class, **options)
 
     @property
     def expression_kind(self):

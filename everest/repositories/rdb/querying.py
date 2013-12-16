@@ -27,7 +27,7 @@ from sqlalchemy import not_ as sqlalchemy_not
 from sqlalchemy import or_ as sqlalchemy_or
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.query import Query as SaQuery
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.expression import over
@@ -207,14 +207,29 @@ class SqlOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
         return expr
 
 
-class _CountingQuery(Query):
+class Query(SaQuery):
     def __init__(self, entities, session, **kw):
-        Query.__init__(self, entities, session, **kw)
+        SaQuery.__init__(self, entities, session, **kw)
         ent_cls = entities[0]
         if isinstance(ent_cls, type) and issubclass(ent_cls, Entity):
             self._entity_class = ent_cls
         else:
             self._entity_class = None
+
+    def order(self, order_expression):
+        return SaQuery.order_by(self, order_expression)
+
+    def order_by(self, *args):
+        spec = order(*args)
+        vst_cls = get_order_specification_visitor(EXPRESSION_KINDS.SQL)
+        vst = vst_cls(self._entity_class)
+        spec.accept(vst)
+        return vst.order_query(self)
+
+
+class CountingQuery(Query):
+    def __init__(self, entities, session, **kw):
+        Query.__init__(self, entities, session, **kw)
         self.__count = None
         self.__data = None
 
@@ -239,16 +254,6 @@ class _CountingQuery(Query):
             raise MultipleResultsException('More than one result found '
                                            'where exactly one was expected.')
 
-    def order(self, order_expression):
-        return Query.order_by(self, order_expression)
-
-    def order_by(self, *args):
-        spec = order(*args)
-        vst_cls = get_order_specification_visitor(EXPRESSION_KINDS.SQL)
-        vst = vst_cls(self._entity_class)
-        spec.accept(vst)
-        return vst.order_query(self)
-
     def _load(self):
         raise NotImplementedError('Abstract method.')
 
@@ -261,7 +266,7 @@ class _CountingQuery(Query):
         return clone
 
 
-class SimpleCountingQuery(_CountingQuery):
+class SimpleCountingQuery(CountingQuery):
     """
     Non-optimized counting query.
     """
@@ -273,7 +278,7 @@ class SimpleCountingQuery(_CountingQuery):
         return count, list(Query.__iter__(self))
 
 
-class OptimizedCountingQuery(_CountingQuery): # pragma: no cover
+class OptimizedCountingQuery(CountingQuery): # pragma: no cover
     """
     Optimized counting query.
 
