@@ -1,7 +1,7 @@
 """
 Batch.
 
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 15, 2011.
@@ -27,7 +27,7 @@ class Batch(object):
             raise ValueError('Batch start must be zero or a positive number.')
         if not size > 0:
             raise ValueError('Batch size must be a positive number.')
-        self.start = int(start) / int(size) * int(size)
+        self.start = int(start) // int(size) * int(size)
         self.size = size
         self.total_size = total_size
 

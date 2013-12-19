@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 21, 2011.
@@ -10,6 +10,7 @@ from everest.testing import Pep8CompliantTestCase
 from shutil import rmtree
 from tempfile import mkdtemp
 from tempfile import mktemp
+from everest.compat import open_text
 
 __docformat__ = 'reStructuredText en'
 __all__ = []
@@ -34,7 +35,7 @@ class TestingTestCase(Pep8CompliantTestCase):
     def set_up(self):
         self.__testdir = mkdtemp()
         fn = mktemp(suffix="ini", dir=self.__testdir)
-        ini_file = open(fn, 'wb')
+        ini_file = open_text(fn)
         ini_file.write(INI)
         ini_file.close()
         self.ini_file_path = fn

@@ -62,8 +62,9 @@ ATTRIBUTE_NAMES = ['id', 'parent', 'children', 'text',
 
 class AttributesTestCase(Pep8CompliantTestCase):
     def test_names(self):
-        self.assert_equal(get_resource_class_attribute_names(MyEntityMember),
-                          ATTRIBUTE_NAMES)
+        self.assert_equal(
+                list(get_resource_class_attribute_names(MyEntityMember)),
+                ATTRIBUTE_NAMES)
 
     def test_terminal_iterator(self):
         it = get_resource_class_terminal_attribute_iterator(MyEntityMember)
@@ -92,28 +93,35 @@ class AttributesTestCase(Pep8CompliantTestCase):
                           set([True]))
 
     def test_types(self):
-        attrs = get_resource_class_attributes(MyEntityMember).values()
-        self.assert_equal(attrs[0].resource_attr, ATTRIBUTE_NAMES[0])
-        self.assert_equal(attrs[0].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
-        self.assert_equal(attrs[0].entity_attr, 'id')
-        self.assert_equal(attrs[0].attr_type, int)
-        self.assert_equal(attrs[1].resource_attr, ATTRIBUTE_NAMES[1])
-        self.assert_equal(attrs[1].kind, RESOURCE_ATTRIBUTE_KINDS.MEMBER)
-        self.assert_equal(attrs[1].entity_attr, 'parent')
-        self.assert_equal(attrs[1].attr_type, IMyEntityParent)
-        self.assert_equal(attrs[2].resource_attr, ATTRIBUTE_NAMES[2])
-        self.assert_equal(attrs[2].kind,
+        attrs = iter(get_resource_class_attributes(MyEntityMember).values())
+        attr0 = next(attrs)
+        self.assert_equal(attr0.resource_attr, ATTRIBUTE_NAMES[0])
+        self.assert_equal(attr0.kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
+        self.assert_equal(attr0.entity_attr, 'id')
+        self.assert_equal(attr0.attr_type, int)
+        attr1 = next(attrs)
+        self.assert_equal(attr1.resource_attr, ATTRIBUTE_NAMES[1])
+        self.assert_equal(attr1.kind, RESOURCE_ATTRIBUTE_KINDS.MEMBER)
+        self.assert_equal(attr1.entity_attr, 'parent')
+        self.assert_equal(attr1.attr_type, IMyEntityParent)
+        attr2 = next(attrs)
+        self.assert_equal(attr2.resource_attr, ATTRIBUTE_NAMES[2])
+        self.assert_equal(attr2.kind,
                           RESOURCE_ATTRIBUTE_KINDS.COLLECTION)
-        self.assert_equal(attrs[2].entity_attr, 'children')
-        self.assert_equal(attrs[2].attr_type, IMyEntityChild)
-        self.assert_equal(attrs[3].resource_attr, ATTRIBUTE_NAMES[3])
-        self.assert_equal(attrs[3].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
-        self.assert_equal(attrs[3].entity_attr, 'text')
-        self.assert_equal(attrs[3].attr_type, str)
-        self.assert_equal(attrs[5].resource_attr, ATTRIBUTE_NAMES[5])
-        self.assert_equal(attrs[5].kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
-        self.assert_equal(attrs[5].entity_attr, 'number')
-        self.assert_equal(attrs[5].attr_type, int)
+        self.assert_equal(attr2.entity_attr, 'children')
+        self.assert_equal(attr2.attr_type, IMyEntityChild)
+        attr3 = next(attrs)
+        self.assert_equal(attr3.resource_attr, ATTRIBUTE_NAMES[3])
+        self.assert_equal(attr3.kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
+        self.assert_equal(attr3.entity_attr, 'text')
+        self.assert_equal(attr3.attr_type, str)
+        attr4 = next(attrs)
+        self.assert_equal(attr4.resource_attr, ATTRIBUTE_NAMES[4])
+        attr5 = next(attrs)
+        self.assert_equal(attr5.resource_attr, ATTRIBUTE_NAMES[5])
+        self.assert_equal(attr5.kind, RESOURCE_ATTRIBUTE_KINDS.TERMINAL)
+        self.assert_equal(attr5.entity_attr, 'number')
+        self.assert_equal(attr5.attr_type, int)
         self.assert_true(is_resource_class_member_attribute(MyEntityMember,
                                                             'parent'))
         self.assert_true(is_resource_class_collection_attribute(MyEntityMember,
@@ -179,7 +187,7 @@ class _DescriptorsTestCase(ResourceTestCase):
                                                               'parent'))
         self.assert_true(is_resource_class_resource_attribute(IMyEntity,
                                                               'children'))
-        attr_names = get_resource_class_attribute_names(MyEntityMember)
+        attr_names = list(get_resource_class_attribute_names(MyEntityMember))
         self.assert_equal(attr_names, ATTRIBUTE_NAMES)
         it = get_resource_class_attribute_iterator(MyEntityMember)
         self.assert_equal([attr.resource_attr for attr in it],
@@ -402,12 +410,12 @@ class _DescriptorsTestCase(ResourceTestCase):
 
     def test_backref_only_collection(self):
         coll = create_collection()
-        mb = iter(coll).next()
-        child_mb = iter(mb.children).next()
+        mb = next(iter(coll))
+        child_mb = next(iter(mb.children))
         with patch('%s.resources.MyEntityChildMember.children.entity_attr'
                    % self.package_name, None):
             self.assert_equal(len(child_mb.children), 1)
-            grandchild_mb = iter(child_mb.children).next()
+            grandchild_mb = next(iter(child_mb.children))
             grandchild_mb.parent = None
             self.assert_equal(len(child_mb.children), 0)
 

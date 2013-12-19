@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
-from everest.resources.io import build_resource_dependency_graph
+from everest.resources.storing import build_resource_dependency_graph
 from everest.resources.utils import get_member_class
 from everest.testing import TestCaseWithConfiguration
 from everest.tests.complete_app.interfaces import IMyEntity

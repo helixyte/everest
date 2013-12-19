@@ -6,12 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on June 8, 2011.
 """
+from everest.compat import izip
 from everest.constants import CARDINALITIES
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import REPR_NAME_OPTION
 from everest.resources.interfaces import IResourceAttribute
-from itertools import izip
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'

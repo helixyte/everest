@@ -19,6 +19,7 @@ from weakref import ref
 import re
 import traceback
 from logging import Formatter
+import functools
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
@@ -292,12 +293,22 @@ class WeakList(list):
         list.__init__(self)
         if not sequence is None:
             self.extend(sequence)
+        self.__cmp_key = functools.cmp_to_key(self.__cmp_items)
 
     def __setitem__(self, index, value):
-        list.__setitem__(self, index, self.__get_weakref(value))
+        if isinstance(index, slice):
+            wr = [self.__get_weakref(val) for val in value]
+        else:
+            wr = self.__get_weakref(value)
+        list.__setitem__(self, index, wr)
 
     def __getitem__(self, index):
-        return list.__getitem__(self, index)()
+        if isinstance(index, slice):
+            val = [list.__getitem__(self, item)()
+                   for item in range(index.start, index.stop)]
+        else:
+            val = list.__getitem__(self, index)()
+        return val
 
     def __setslice__(self, start, stop, sequence):
         list.__setslice__(self, start, stop,
@@ -315,7 +326,13 @@ class WeakList(list):
         return new_weak_list
 
     def __iter__(self):
-        return self.__iterator()
+        if len(self) == 0:
+            raise StopIteration
+        else:
+            cnt = 0
+            while cnt < len(self):
+                yield self.__getitem__(cnt)
+                cnt += 1
 
     def append(self, value):
         list.append(self, self.__get_weakref(value))
@@ -337,10 +354,10 @@ class WeakList(list):
         self.__delitem__(self.index(value))
 
     def extend(self, sequence):
-        list.extend(self, self.__sequence_to_weakref(sequence))
+        list.extend(self, self.__sequence_to_weakrefs(sequence))
 
     def sort(self):
-        list.sort(self, self.__cmp_items)
+        list.sort(self, key=self.__cmp_key)
 
     def __get_weakref(self, value):
         return ref(value, self.__remove_by_weakref)
@@ -353,23 +370,11 @@ class WeakList(list):
             except ValueError:
                 break
 
-    def __sequence_to_weakref(self, sequence):
-        if not isinstance(sequence, WeakList):
-            weakrefs = [self.__get_weakref(el) for el in sequence]
-        else:
-            weakrefs = sequence
-        return weakrefs
+    def __sequence_to_weakrefs(self, sequence):
+        return [self.__get_weakref(el) for el in sequence]
 
     def __cmp_items(self, left_ref, right_ref):
-        return cmp(left_ref(), right_ref())
-
-    def __iterator(self):
-        cnt = 0
-        while cnt < len(self):
-            yield self.__getitem__(cnt)
-            cnt += 1
-        else:
-            raise StopIteration
+        return (left_ref() > right_ref()) - (left_ref() < right_ref())
 
 
 class WeakOrderedSet(MutableSet):

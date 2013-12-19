@@ -43,7 +43,7 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm:
             EntityState.get_state(ent)
         msg = 'Trying to obtain state for un-managed entity'
-        self.assert_true(cm.exception.message.startswith(msg))
+        self.assert_true(cm.exception.args[0].startswith(msg))
 
     def test_is_marked_unregistered(self):
         ent = _MyEntity()
@@ -55,7 +55,7 @@ class UnitOfWorkTestCase(Pep8CompliantTestCase):
         with self.assert_raises(ValueError) as cm:
             self._uow.mark_dirty(ent)
         msg = 'Trying to obtain state for un-managed entity'
-        self.assert_true(cm.exception.message.startswith(msg))
+        self.assert_true(cm.exception.args[0].startswith(msg))
 
     def test_release_unregistered_fails(self):
         ent = _MyEntity()

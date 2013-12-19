@@ -111,7 +111,7 @@ class MappingTestCase(ResourceTestCase):
         mb = coll.create_member(entity)
         self.assert_equal(len(entity.children), 1)
         self.assert_equal(len(mb.children), 1)
-        mb_child = iter(mb.children).next()
+        mb_child = next(iter(mb.children))
         self.assert_equal(len(mb_child.children), 1)
         mp_reg = get_mapping_registry(CsvMime)
         mp = mp_reg.find_or_create_mapping(MyEntityMember)

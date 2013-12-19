@@ -140,7 +140,7 @@ class EntityState(object):
         for attr, new_attr_value in nested_items:
             try:
                 set_nested_attribute(entity, attr.entity_attr, new_attr_value)
-            except AttributeError, exc:
+            except AttributeError as exc:
                 if not new_attr_value is None:
                     raise exc
 

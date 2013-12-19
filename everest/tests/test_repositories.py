@@ -11,8 +11,8 @@ from everest.mime import CsvMime
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.memory import Aggregate
 from everest.repositories.memory import Repository
-from everest.resources.io import get_collection_name
-from everest.resources.io import get_read_collection_path
+from everest.resources.storing import get_collection_name
+from everest.resources.storing import get_read_collection_path
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection

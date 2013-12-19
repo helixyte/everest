@@ -210,7 +210,7 @@ class UnitOfWork(object):
         """
         # FIXME: There is no dependency tracking; objects are iterated in
         #        random order.
-        for ent_cls in self.__entity_set_map.keys():
+        for ent_cls in list(self.__entity_set_map.keys()):
             for ent in self.__entity_set_map[ent_cls]:
                 yield EntityState.get_state(ent)
 

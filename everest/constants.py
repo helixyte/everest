@@ -30,22 +30,22 @@ class MetaConstantGroup(type):
             if not key.startswith('_'):
                 yield key
 
+# PY3 compatible way of using the metaclass (__metaclass__ does not work).
+ConstantGroup = MetaConstantGroup('ConstantGroup', (object,), {})
+ConstantGroup.__doc__ = \
+"""
+Base class for all constant group classes.
 
-class ConstantGroup(object):
-    """
-    Base class for all constant group classes.
+To use, declare the individual values of a constant group in the class
+namespace: ::
 
-    To use, declare the individual values of a constant group in the class
-    namespace: ::
+class MyConstGroup(ConstantGroup):
+    FOO = 'Foo'
+    BAR = 'Bar'
 
-    class MyConstGroup(ConstantGroup):
-        FOO = 'Foo'
-        BAR = 'Bar'
-
-    You can then iterate over the constants (`for const in MyConstGroup:`)
-    or get a list of all constants in the group (`list(MyConstGroup)`).
-    """
-    __metaclass__ = MetaConstantGroup
+You can then iterate over the constants (`for const in MyConstGroup:`)
+or get a list of all constants in the group (`list(MyConstGroup)`).
+"""
 
 
 class RESOURCE_KINDS(ConstantGroup):

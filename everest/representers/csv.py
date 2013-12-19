@@ -7,12 +7,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 19, 2011.
 """
 from __future__ import absolute_import # Makes the import below absolute
+
 from collections import OrderedDict
 from csv import Dialect
-from csv import DictReader
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
-from csv import writer
+import datetime
+from itertools import product
+
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
+from pyramid.compat import text_type
+
+from everest.compat import CsvDictReader
+from everest.compat import csv_writer
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
@@ -36,11 +44,8 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import is_resource_url
 from everest.resources.utils import provides_member_resource
-from itertools import product
-from pyramid.compat import iteritems_
-from pyramid.compat import string_types
 from zope.interface import provider # pylint: disable=E0611,F0401
-import datetime
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CsvCollectionDataElement',
@@ -163,8 +168,8 @@ class CsvRepresentationParser(RepresentationParser):
         self.__row_data_key = None
 
     def run(self):
-        csv_reader = DictReader(self._stream,
-                                dialect=self.get_option('dialect'))
+        csv_reader = CsvDictReader(self._stream,
+                                   dialect=self.get_option('dialect'))
         is_member_rpr = provides_member_resource(self._resource_class)
         if is_member_rpr:
             coll_data_el = None
@@ -424,8 +429,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
         if is_link_node:
             new_field_name = self.__get_field_name(attribute_key.names[:-1],
                                                    attribute)
-            mb_data = CsvData({new_field_name:
-                               self.__encode(member_node.get_url())})
+            mb_data = CsvData({new_field_name: member_node.get_url()})
         else:
             rpr_mb_data = OrderedDict()
             for attr, value in iteritems_(member_data):
@@ -468,10 +472,10 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
             field_name = attribute.repr_name
         else:
             field_name = '.'.join(attribute_names + (attribute.name,))
-        return self.__encode(field_name)
+        return field_name # self.__encode(field_name)
 
     def __encode(self, item):
-        if isinstance(item, unicode):
+        if isinstance(item, text_type):
             item = item.encode(self.__encoding)
         return item
 
@@ -497,11 +501,10 @@ class CsvRepresentationGenerator(RepresentationGenerator):
         trv.run(vst)
         csv_data = vst.csv_data
         if len(csv_data) > 0:
-            csv_writer = writer(self._stream,
-                                dialect=self.get_option('dialect'))
-            csv_writer.writerow(csv_data.fields)
+            wrt = csv_writer(self._stream, dialect=self.get_option('dialect'))
+            wrt.writerow(csv_data.fields)
             for row_data in csv_data.data:
-                csv_writer.writerow(row_data)
+                wrt.writerow(row_data)
 
 
 class CsvResourceRepresenter(MappingResourceRepresenter):

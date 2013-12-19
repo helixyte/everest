@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 28, 2011.
 """
+from everest.compat import parse_qsl
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
@@ -21,7 +22,6 @@ from pyramid.compat import url_unquote
 from pyramid.compat import urlparse
 from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
-from urlparse import parse_qsl
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 

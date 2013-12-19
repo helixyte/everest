@@ -43,7 +43,7 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         # Load without ID fails.
         with self.assert_raises(ValueError) as cm:
             self._session.load(MyEntity, ent)
-        self.assert_true(cm.exception.message.startswith('Can not load'))
+        self.assert_true(cm.exception.args[0].startswith('Can not load'))
         self._session.add(MyEntity, ent)
         self.assert_true(ent in self._session)
         self.assert_true(ent in self._session.query(MyEntity))
@@ -113,7 +113,7 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         child.id = 0
         with self.assert_raises(ValueError) as cm:
             self._session.load(MyEntity, ent)
-        self.assert_true(cm.exception.message.startswith('Do not know'))
+        self.assert_true(cm.exception.args[0].startswith('Do not know'))
 
     def test_nested_with_invalid_collection_data(self):
         ent = MyEntity()

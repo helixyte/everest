@@ -212,9 +212,13 @@ class EntityCacheMap(object):
         return MemoryQuery(entity_class,
                            self.__cache_map[entity_class].get_all())
 
-    def __contains__(self, entity):
-        cache = self.__cache_map[type(entity)]
-        return entity in cache
+    def __contains__(self, entity_or_entity_class):
+        if isinstance(entity_or_entity_class, type):
+            result = entity_or_entity_class in self.__cache_map
+        else:
+            cache = self.__cache_map[type(entity_or_entity_class)]
+            result = entity_or_entity_class in cache
+        return result
 
     def keys(self):
         return self.__cache_map.keys()

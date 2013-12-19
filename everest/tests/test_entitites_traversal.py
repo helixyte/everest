@@ -86,7 +86,7 @@ class SourceTargetDataTraverserTestCase(EntityTestCase):
                                                 RELATION_OPERATIONS.UPDATE,
                                                 accessor=agg)
         self.assert_true(
-                cm.exception.message.endswith('or both not be sequences.'))
+                cm.exception.args[0].endswith('or both not be sequences.'))
         # Without target.
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 [ent01, ent11], None,

@@ -6,7 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 2, 2011.
 """
-from ConfigParser import NoSectionError
+from pyramid.compat import configparser
 from everest.configuration import Configurator
 from everest.constants import RequestMethods
 from everest.entities.utils import get_root_aggregate
@@ -138,7 +138,7 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
         else:
             try:
                 settings = self.ini.get_settings('DEFAULT')
-            except NoSectionError:
+            except configparser.NoSectionError:
                 settings = None
         self.config.setup_registry(settings=settings)
 

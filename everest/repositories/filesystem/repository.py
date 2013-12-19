@@ -9,10 +9,10 @@ Created on Jan 7, 2013.
 from everest.mime import CsvMime
 from everest.repositories.memory.repository import MemoryRepository
 from everest.repositories.memory.repository import MemorySessionFactory
-from everest.resources.io import dump_resource
-from everest.resources.io import get_read_collection_path
-from everest.resources.io import get_write_collection_path
-from everest.resources.io import load_collection_from_url
+from everest.resources.storing import dump_resource
+from everest.resources.storing import get_read_collection_path
+from everest.resources.storing import get_write_collection_path
+from everest.resources.storing import load_collection_from_url
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_root_collection
 import os
@@ -83,7 +83,7 @@ class FileSystemRepository(MemoryRepository):
 #        for ent in self.retrieve(entity_class):
 #            coll.add(mb_cls.create_from_entity(ent))
         # Open stream for writing and dump the collection.
-        stream = file(fn, 'w')
+        stream = open(fn, 'w')
         with stream:
             dump_resource(coll, stream,
                           content_type=self._config['content_type'])

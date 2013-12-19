@@ -23,7 +23,7 @@ class ConstantsTestCase(Pep8CompliantTestCase):
     def test_new_cardinality(self):
         with self.assert_raises(ValueError) as cm:
             dummy = Cardinality('foo', 'bar')
-        self.assert_true(cm.exception.message.startswith('"relator" and'))
+        self.assert_true(cm.exception.args[0].startswith('"relator" and'))
 
     def test_str_cardinality(self):
         self.assert_true(str(CARDINALITIES.MANYTOONE).startswith('*->'))

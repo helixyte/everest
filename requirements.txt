@@ -1,7 +1,6 @@
-WSGIFilter>=0.2
-iso8601
+iso8601>=0.1.8
 lxml>=3.2.1
-pyparsing==1.5.5
+pyparsing
 pyramid>=1.4.2
 pyramid_tm>=0.7
 pyramid_zcml>=1.0.0

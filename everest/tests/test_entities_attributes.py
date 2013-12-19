@@ -30,11 +30,11 @@ class EntityAttributesTestCase(RdbTestCaseMixin, EntityTestCase):
     package_name = 'everest.tests.complete_app'
 
     def _test_accessors(self, obj):
-        names = get_domain_class_attribute_names(obj)
-        self.assert_equal(names,
+        names = list(get_domain_class_attribute_names(obj))
+        self.assert_equal(list(names),
                           ['id', 'parent', 'children', 'text', 'text_ent',
                            'number', 'date_time', 'parent.text_ent'])
-        self.assert_equal(get_domain_class_attributes(obj).keys(),
+        self.assert_equal(list(get_domain_class_attributes(obj).keys()),
                           names)
         term_attr_name = 'number'
         term_attr = get_domain_class_attribute(obj, term_attr_name)

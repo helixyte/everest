@@ -6,29 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-from everest.entities.utils import identifier_from_slug
-from everest.querying.operators import CONTAINED
-from everest.querying.operators import CONTAINS
-from everest.querying.operators import ENDS_WITH
-from everest.querying.operators import EQUAL_TO
-from everest.querying.operators import GREATER_OR_EQUALS
-from everest.querying.operators import GREATER_THAN
-from everest.querying.operators import IN_RANGE
-from everest.querying.operators import LESS_OR_EQUALS
-from everest.querying.operators import LESS_THAN
-from everest.querying.operators import STARTS_WITH
-from everest.querying.specifications import cntd
-from everest.querying.specifications import cnts
-from everest.querying.specifications import ends
-from everest.querying.specifications import eq
-from everest.querying.specifications import ge
-from everest.querying.specifications import gt
-from everest.querying.specifications import le
-from everest.querying.specifications import lt
-from everest.querying.specifications import rng
-from everest.querying.specifications import starts
-from everest.resources.interfaces import ICollectionResource
-from everest.resources.utils import url_to_resource
+from iso8601.iso8601 import ParseError
 from iso8601.iso8601 import parse_date
 from pyparsing import CaselessKeyword
 from pyparsing import Combine
@@ -52,6 +30,31 @@ from pyparsing import replaceWith
 from pyparsing import sglQuotedString
 from pyparsing import srange
 from pyramid.compat import string_types
+
+from everest.entities.utils import identifier_from_slug
+from everest.querying.operators import CONTAINED
+from everest.querying.operators import CONTAINS
+from everest.querying.operators import ENDS_WITH
+from everest.querying.operators import EQUAL_TO
+from everest.querying.operators import GREATER_OR_EQUALS
+from everest.querying.operators import GREATER_THAN
+from everest.querying.operators import IN_RANGE
+from everest.querying.operators import LESS_OR_EQUALS
+from everest.querying.operators import LESS_THAN
+from everest.querying.operators import STARTS_WITH
+from everest.querying.specifications import cntd
+from everest.querying.specifications import cnts
+from everest.querying.specifications import ends
+from everest.querying.specifications import eq
+from everest.querying.specifications import ge
+from everest.querying.specifications import gt
+from everest.querying.specifications import le
+from everest.querying.specifications import lt
+from everest.querying.specifications import rng
+from everest.querying.specifications import starts
+from everest.resources.interfaces import ICollectionResource
+from everest.resources.utils import url_to_resource
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['parse_filter',
@@ -107,7 +110,7 @@ def convert_date(toks):
     date_val = toks[0][0]
     try:
         res = parse_date(date_val)
-    except ValueError:
+    except ParseError:
         res = date_val
     return res
 

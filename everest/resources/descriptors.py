@@ -58,7 +58,7 @@ class attribute_base(object):
     def __init__(self, attr_type, entity_attr):
         self.attr_type = attr_type
         self.entity_attr = entity_attr
-        self.index = self.__index_gen.next()
+        self.index = next(self.__index_gen)
         self.resource_attr = None
 
     def __get__(self, resource, resource_class):

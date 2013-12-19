@@ -7,6 +7,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Jan 27, 2012.
 """
 from collections import OrderedDict
+import os
+from zipfile import ZIP_DEFLATED
+from zipfile import ZipFile
+
+from pyramid.compat import NativeIO
+from pyramid.compat import iteritems_
+from pyramid.compat import urlparse
+
+from everest.compat import open_text
 from everest.entities.utils import get_entity_class
 from everest.mime import CsvMime
 from everest.mime import MimeTypeRegistry
@@ -23,12 +32,7 @@ from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
 from pygraph.algorithms.sorting import topological_sorting # pylint: disable=E0611,F0401
 from pygraph.classes.digraph import digraph # pylint: disable=E0611,F0401
-from pyramid.compat import NativeIO
-from pyramid.compat import iteritems_
-from pyramid.compat import urlparse
-from zipfile import ZIP_DEFLATED
-from zipfile import ZipFile
-import os
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConnectedResourcesSerializer',
@@ -238,7 +242,7 @@ def build_resource_graph(resource, dependency_graph=None):
     def visit(rc, grph, dep_grph):
         mb_cls = type(rc)
         attr_map = get_resource_class_attributes(mb_cls)
-        for attr_name, attr in attr_map.iteritems():
+        for attr_name, attr in iteritems_(attr_map):
             if is_resource_class_terminal_attribute(mb_cls, attr_name):
                 continue
             # Only follow the resource attribute if the dependency graph
@@ -375,11 +379,11 @@ class ConnectedResourcesSerializer(object):
         representation files in the given directory.
         """
         collections = self.__collect(resource)
-        for (mb_cls, coll) in collections.iteritems():
+        for (mb_cls, coll) in iteritems_(collections):
             fn = get_write_collection_path(mb_cls,
                                            self.__content_type,
                                            directory=directory)
-            with open(os.path.join(directory, fn), 'wb') as strm:
+            with open_text(os.path.join(directory, fn)) as strm:
                 dump_resource(coll, strm, content_type=self.__content_type)
 
     def to_zipfile(self, resource, zipfile):

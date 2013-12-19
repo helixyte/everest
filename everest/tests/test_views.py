@@ -4,6 +4,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 17, 2011.
 """
+from pkg_resources import resource_filename # pylint: disable=E0611
+from pyramid.compat import bytes_
+from pyramid.testing import DummyRequest
+import transaction
+
 from everest.constants import RequestMethods
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
@@ -34,9 +39,7 @@ from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
-from pkg_resources import resource_filename # pylint: disable=E0611
-from pyramid.testing import DummyRequest
-import transaction
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BasicViewTestCase',
@@ -539,8 +542,9 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
         res1 = self.app.post(self.path, params='foo name',
                              status=307)
         self.assert_true(res1.body.rstrip().endswith(
-                                    UserMessagePostCollectionView.message))
-        self.assert_true(res1.body.startswith('307 Temporary Redirect'))
+                            bytes_(UserMessagePostCollectionView.message)))
+        self.assert_true(res1.body.startswith(
+                                        bytes_('307 Temporary Redirect')))
         # Second POST to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.post(resubmit_location1,
@@ -556,7 +560,7 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
                                  params='foo name',
                                  status=307)
             self.assert_true(
-                    res3.body.startswith('307 Temporary Redirect'))
+                    res3.body.startswith(bytes_('307 Temporary Redirect')))
             # Fourth POST to new redirection location - get back a 409 (since
             # the second POST from above went through).
             resubmit_location2 = res3.headers['Location']
@@ -590,7 +594,7 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
                             params='foo name',
                             status=307)
         self.assert_true(
-                    res1.body.startswith('307 Temporary Redirect'))
+                    res1.body.startswith(bytes_('307 Temporary Redirect')))
         # Second PUT to redirection location - get back a 200.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.put(resubmit_location1, params='foo name',

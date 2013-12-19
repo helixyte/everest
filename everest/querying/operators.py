@@ -170,7 +170,7 @@ class ASCENDING(BinaryOperator):
 
     @staticmethod
     def apply(x, y):
-        return cmp(x, y)
+        return (x > y) - (x < y) # PY3 compatible cmp replacement.
 
 
 class DESCENDING(BinaryOperator):
@@ -178,7 +178,7 @@ class DESCENDING(BinaryOperator):
 
     @staticmethod
     def apply(x, y):
-        return cmp(y, x)
+        return (y > x) - (y < x) # PY3 compatible cmp replacement.
 
 
 class NEGATION(UnaryOperator):

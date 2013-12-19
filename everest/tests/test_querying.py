@@ -139,7 +139,7 @@ class _BaseQueryTestCase(EntityTestCase):
         self._aggregate.add(ent2)
         self._aggregate.add(ent3)
         q = self._query.order(txt_expr)
-        self.assert_true(iter(q).next() is self._ent0)
+        self.assert_true(next(iter(q)) is self._ent0)
         q = q.order(None)
         q = q.order(txt_expr).order(id_expr)
         last_ent = q.all()[-1]

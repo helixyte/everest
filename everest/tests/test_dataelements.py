@@ -31,16 +31,16 @@ class DataElementsTestCase(ResourceTestCase):
     def test_member_data_element(self):
         data_el = SimpleMemberDataElement.create()
         # Test nesteds.
-        self.assert_equal(data_el.nesteds.keys(), [])
+        self.assert_equal(list(data_el.nesteds.keys()), [])
         parent_data_el = SimpleMemberDataElement.create()
         rc_nested_attr = \
             get_resource_class_attribute(MyEntityMember, 'parent')
         mp_nested_attr = MappedAttribute(rc_nested_attr)
         data_el.set_nested(mp_nested_attr, parent_data_el)
         self.assert_true(data_el.get_nested(mp_nested_attr) is parent_data_el)
-        self.assert_equal(data_el.nesteds.keys(), ['parent'])
+        self.assert_equal(list(data_el.nesteds.keys()), ['parent'])
         # Test terminals.
-        self.assert_equal(data_el.terminals.keys(), [])
+        self.assert_equal(list(data_el.terminals.keys()), [])
         utc = timezone('UTC')
         ldt = datetime.datetime(2012, 8, 29, 16, 20, 0, tzinfo=utc)
         term_attr_data = OrderedDict(text='foo',
@@ -61,7 +61,8 @@ class DataElementsTestCase(ResourceTestCase):
             rpr_val = data_el.get_terminal_converted(mp_attr)
             data_el.set_terminal_converted(mp_attr, rpr_val)
             self.assert_equal(data_el.get_terminal(mp_attr), term_attr_value)
-        self.assert_equal(data_el.terminals.keys(), term_attr_data.keys())
+        self.assert_equal(list(data_el.terminals.keys()),
+                          list(term_attr_data.keys()))
         # Printing.
         prt_str = str(data_el)
         self.assert_true(prt_str.startswith(data_el.__class__.__name__))
@@ -69,7 +70,7 @@ class DataElementsTestCase(ResourceTestCase):
 
     def test_printing_with_none_value(self):
         data_el = SimpleMemberDataElement.create()
-        self.assert_equal(data_el.terminals.keys(), [])
+        self.assert_equal(list(data_el.terminals.keys()), [])
         rc_attr = get_resource_class_attribute(MyEntityMember, 'text')
         mp_attr = MappedAttribute(rc_attr)
         data_el.set_terminal(mp_attr, None) # Need one None attr value.

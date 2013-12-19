@@ -102,7 +102,7 @@ class MemoryRepository(Repository):
         return MemorySessionFactory(self)
 
     def __get_cache(self, entity_class):
-        run_loader = not self.__cache_map.has_key(entity_class)
+        run_loader = not entity_class in self.__cache_map
         if run_loader:
             is_top_level = len(self.__cache_map.keys()) == 0
             self.__load_entities(entity_class, is_top_level)
@@ -122,5 +122,5 @@ class MemoryRepository(Repository):
             if is_top_level:
                 for reg_rc in self.registered_resources:
                     reg_ent_cls = get_entity_class(reg_rc)
-                    if not self.__cache_map.has_key(reg_ent_cls):
+                    if not reg_ent_cls in self.__cache_map:
                         self.__load_entities(reg_ent_cls, False)

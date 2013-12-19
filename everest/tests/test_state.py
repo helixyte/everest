@@ -56,7 +56,7 @@ class EntityStateTestCase(EntityTestCase):
         state_data[invalid_number_attr] = -2
         with self.assert_raises(ValueError) as cm:
             EntityState.get_state(entity).data = state_data
-        self.assert_true(cm.exception.message.startswith('Can not set'))
+        self.assert_true(cm.exception.args[0].startswith('Can not set'))
         # Make set nested attribute fail.
         entity.parent = None
         del state_data[invalid_number_attr]

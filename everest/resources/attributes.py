@@ -21,6 +21,7 @@ from functools import wraps
 from pyramid.compat import iteritems_
 from pyramid.compat import itervalues_
 from zope.interface import implementedBy as implemented_by # pylint: disable=E0611,F0401
+import functools
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MetaResourceAttributeCollector',
@@ -74,8 +75,10 @@ class MetaResourceAttributeCollector(type):
                     descr_map[descr_name] = descr
         # Order by descriptor index (=sequence in which they were declared).
         ordered_descr_map = OrderedDict()
-        cmp_fnc = lambda item1, item2: cmp(item1[1].index, item2[1].index)
-        for item in sorted(descr_map.items(), cmp=cmp_fnc):
+        cmp_fnc = lambda item1, item2: (item1[1].index > item2[1].index) - \
+                                       (item1[1].index < item2[1].index)
+        for item in sorted(descr_map.items(),
+                           key=functools.cmp_to_key(cmp_fnc)):
             name, descr = item
             if not type(descr) in (terminal_resource_attribute,
                                    member_resource_attribute,
@@ -90,11 +93,12 @@ class MetaResourceAttributeCollector(type):
         return ordered_descr_map
 
 
-class ResourceAttributeControllerMixin(object):
-    __metaclass__ = MetaResourceAttributeCollector
-
-    # Populated by the meta class.
-    __everest_attributes__ = None
+# PY3 compatible way of using the metaclass (__metaclass__ does not work).
+ResourceAttributeControllerMixin = MetaResourceAttributeCollector(
+                                        'ResourceAttributeControllerMixin',
+                                        (object,), {})
+# This is populated by the meta class.
+ResourceAttributeControllerMixin.__everest_attributes__ = None
 
 
 def arg_to_member_class(func):

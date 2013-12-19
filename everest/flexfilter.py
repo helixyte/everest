@@ -32,6 +32,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Sep 27, 2011.
 """
+from everest.constants import RequestMethods
 from everest.mime import AtomMime
 from lxml import etree
 from pyramid.compat import string_types
@@ -41,7 +42,6 @@ from pyramid.httpexceptions import HTTPTemporaryRedirect
 from pyramid.httpexceptions import HTTPUnauthorized
 from xml.sax.saxutils import escape
 import re
-from everest.constants import RequestMethods
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['FlexFilter',

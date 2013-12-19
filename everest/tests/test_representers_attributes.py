@@ -38,7 +38,7 @@ class AttributeKeyTestCase(Pep8CompliantTestCase):
     def test_iteration(self):
         key = MappedAttributeKey((MyEntityMember.children,
                                     MyEntityChildMember.children))
-        self.assert_true(iter(key).next() is MyEntityMember.children)
+        self.assert_true(next(iter(key)) is MyEntityMember.children)
         self.assert_true(key[1] is MyEntityChildMember.children)
         self.assert_equal(len(key), 2)
 

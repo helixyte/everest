@@ -169,12 +169,12 @@ class AtomMappingRegistry(XmlMappingRegistry):
                          xml_ns=XML_NS_ATOM,
                          xml_prefix=XML_PREFIX_ATOM)
         mb_config = \
-            self.configuration_class(options=dict(atom_opts.items() +
+            self.configuration_class(options=dict(list(atom_opts.items()) +
                                                   [('xml_tag', 'entry')]))
         mb_mp = self.create_mapping(Member, mb_config)
         self.set_mapping(mb_mp)
         coll_config = \
-            self.configuration_class(options=dict(atom_opts.items() +
+            self.configuration_class(options=dict(list(atom_opts.items()) +
                                                   [('xml_tag', 'feed')]))
         coll_mp = self.create_mapping(Collection, coll_config)
         self.set_mapping(coll_mp)

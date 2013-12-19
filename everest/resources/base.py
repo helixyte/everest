@@ -175,11 +175,16 @@ class Member(ResourceAttributeControllerMixin, Resource):
             raise KeyError('%s' % ident)
         return getattr(self, ident)
 
+    def __hash__(self):
+        """
+        Hash value, based on the resource class and the name.
+        """
+        return hash((self.__class__, self.__name__))
+
     def __eq__(self, other):
         """
-        Equality operator.
-
-        Equality is based on a resource\'s name.
+        Equality operator. Two members compare equal if they belong to the
+        same class and have the same name.
         """
         return (isinstance(other, self.__class__) and
                 self.__name__ == other.__name__)

@@ -4,23 +4,33 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 21, 2012.
 """
+import glob
+import os
+import shutil
+import tempfile
+import zipfile
+
+from pyramid.compat import NativeIO
+from pyramid.compat import itervalues_
+
+from everest.compat import BytesIO
 from everest.mime import CsvMime
 from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
-from everest.resources.io import ConnectedResourcesSerializer
-from everest.resources.io import build_resource_dependency_graph
-from everest.resources.io import dump_resource
-from everest.resources.io import dump_resource_to_files
-from everest.resources.io import dump_resource_to_zipfile
-from everest.resources.io import find_connected_resources
-from everest.resources.io import get_collection_filename
-from everest.resources.io import get_collection_name
-from everest.resources.io import load_collection_from_file
-from everest.resources.io import load_collection_from_stream
-from everest.resources.io import load_collection_from_url
-from everest.resources.io import load_into_collection_from_url
-from everest.resources.io import load_into_collections_from_zipfile
 from everest.resources.staging import create_staging_collection
+from everest.resources.storing import ConnectedResourcesSerializer
+from everest.resources.storing import build_resource_dependency_graph
+from everest.resources.storing import dump_resource
+from everest.resources.storing import dump_resource_to_files
+from everest.resources.storing import dump_resource_to_zipfile
+from everest.resources.storing import find_connected_resources
+from everest.resources.storing import get_collection_filename
+from everest.resources.storing import get_collection_name
+from everest.resources.storing import load_collection_from_file
+from everest.resources.storing import load_collection_from_stream
+from everest.resources.storing import load_collection_from_url
+from everest.resources.storing import load_into_collection_from_url
+from everest.resources.storing import load_into_collections_from_zipfile
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_root_collection
@@ -33,13 +43,7 @@ from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityGrandchild
 from everest.tests.complete_app.interfaces import IMyEntityParent
-from pyramid.compat import NativeIO
-from pyramid.compat import itervalues_
-import glob
-import os
-import shutil
-import tempfile
-import zipfile
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConnectedResourcesTestCase',
@@ -151,7 +155,7 @@ class _ResourceIoTestCaseBase(ResourceTestCase):
 class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
     def test_load_from_zipfile(self):
         member = _make_test_entity_member()
-        strm = NativeIO('w')
+        strm = BytesIO()
         dump_resource_to_zipfile(member, strm)
         colls = [
                  get_root_collection(IMyEntityParent),

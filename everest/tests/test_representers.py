@@ -5,6 +5,8 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Mar 2, 2012.
 """
 from collections import OrderedDict
+import os
+
 from everest.constants import RESOURCE_KINDS
 from everest.mime import AtomMime
 from everest.mime import CsvMime
@@ -47,7 +49,7 @@ from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.resources import MyEntityParentMember
 from everest.tests.complete_app.testing import create_collection
 from zope.interface import Interface # pylint: disable=E0611,F0401
-import os
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AtomRepresentationTestCase',
@@ -134,11 +136,17 @@ class AttributesTestCase(Pep8CompliantTestCase):
 class TestCsvData(Pep8CompliantTestCase):
     def test_methods(self):
         csvd0 = CsvData()
-        csvd1 = CsvData(OrderedDict(foo='foo', bar=1))
+        od1 = OrderedDict()
+        od1['foo'] = 'foo'
+        od1['bar'] = 1
+        csvd1 = CsvData(od1)
         csvd0.expand(csvd1)
         self.assert_equal(csvd0.fields, ['foo', 'bar'])
         self.assert_equal(csvd0.data, [['foo', 1]])
-        csvd2 = CsvData(OrderedDict(foo='foo1', bar=2))
+        od2 = OrderedDict()
+        od2['foo'] = 'foo1'
+        od2['bar'] = 2
+        csvd2 = CsvData(od2)
         csvd0.append(csvd2)
         self.assert_equal(csvd0.fields, ['foo', 'bar'])
         self.assert_equal(csvd0.data, [['foo', 1], ['foo1', 2]])
@@ -338,7 +346,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         self._representer.configure(attribute_options=attribute_options)
         data_el = self._representer.data_from_resource(self._collection)
         loaded_coll = self._representer.resource_from_data(data_el)
-        self.assert_true(iter(loaded_coll).next().parent is None)
+        self.assert_true(next(iter(loaded_coll)).parent is None)
 
     def test_csv_member_to_data_roundtrip_in_place(self):
         mb = self._collection['0']
@@ -491,7 +499,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         mp.configuration.set_attribute_option(('parent',),
                                               WRITE_AS_LINK_OPTION, False)
         de1 = mp.map_to_data_element(mb)
-        self.assert_equal(de1.data.keys(),
+        self.assert_equal(list(de1.data.keys()),
                           ['myentityparent', 'text', 'number', 'date_time'])
         self.assert_equal(de1.data['number'], 1)
         self.assert_true(
@@ -549,7 +557,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         attr = mp.get_attribute_map()['parent']
         self.assert_equal(attr.namespace, ns)
         de = mp.map_to_data_element(mb)
-        self.assert_equal(de.data.keys(),
+        self.assert_equal(list(de.data.keys()),
                           ['myentityparent', 'text', 'number', 'date_time'])
         parent_de = de.get_nested(attr)
         self.assert_equal(parent_de.tag.find('{'), -1)

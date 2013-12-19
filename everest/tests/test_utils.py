@@ -64,12 +64,12 @@ class UtilsTestCase(Pep8CompliantTestCase):
         self.assert_equal(bl.pop_left('a'), 1)
         self.assert_false(bl.has_left('a'))
         self.assert_false(bl.has_right(1))
-        self.assert_equal(bl.left_keys(), ['b'])
-        self.assert_equal(bl.right_keys(), [2])
-        self.assert_equal(bl.left_values(), [2])
-        self.assert_equal(bl.right_values(), ['b'])
-        self.assert_equal(bl.left_items(), [('b', 2)])
-        self.assert_equal(bl.right_items(), [(2, 'b')])
+        self.assert_equal(list(bl.left_keys()), ['b'])
+        self.assert_equal(list(bl.right_keys()), [2])
+        self.assert_equal(list(bl.left_values()), [2])
+        self.assert_equal(list(bl.right_values()), ['b'])
+        self.assert_equal(list(bl.left_items()), [('b', 2)])
+        self.assert_equal(list(bl.right_items()), [(2, 'b')])
         self.assert_true('b' in bl)
         self.assert_true(2 in bl)
         self.assert_equal(bl['b'], 2)
@@ -191,6 +191,8 @@ class UtilsTestCase(Pep8CompliantTestCase):
                 self.value = value
             def __eq__(self, other):
                 return self.value == other.value
+            def __hash__(self):
+                return hash(self.value)
         values = [MyObj(val) for val in range(5)]
         wos = WeakOrderedSet()
         self.assert_raises(KeyError, wos.pop)

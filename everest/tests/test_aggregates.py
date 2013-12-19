@@ -58,20 +58,20 @@ class RootAggregateTestCaseBase(EntityTestCase):
     def test_iterator_count(self):
         agg = self._aggregate
         ent0 = self._entity
-        self.assert_raises(StopIteration, agg.iterator().next)
+        self.assert_raises(StopIteration, next, agg.iterator())
         agg.add(ent0)
-        self.assert_true(agg.iterator().next() is ent0)
+        self.assert_true(next(agg.iterator()) is ent0)
         # Iterator heeds filtering.
         agg.filter = eq(id=1)
-        self.assert_raises(StopIteration, agg.iterator().next)
+        self.assert_raises(StopIteration, next, agg.iterator())
         ent1 = create_entity(entity_id=1)
         agg.add(ent1)
-        self.assert_true(agg.iterator().next() is ent1)
+        self.assert_true(next(agg.iterator()) is ent1)
         # Iterator heeds ordering.
         agg.filter = None
         agg.order = asc('id')
         self.assert_true(isinstance(agg.order, AscendingOrderSpecification))
-        self.assert_true(agg.iterator().next() is ent0)
+        self.assert_true(next(agg.iterator()) is ent0)
         # Iterator heeds slice.
         self.assert_equal(len(list(agg.iterator())), 2)
         agg.slice = slice(0, 1)
@@ -96,7 +96,7 @@ class RootAggregateTestCaseBase(EntityTestCase):
         with self.assert_raises(ValueError) as cm:
             agg.add(object())
         exp_msg = 'Invalid data type for traversal'
-        self.assert_true(cm.exception.message.startswith(exp_msg))
+        self.assert_true(cm.exception.args[0].startswith(exp_msg))
 
     def test_nested_attribute(self):
         agg = self._aggregate

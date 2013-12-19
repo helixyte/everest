@@ -16,6 +16,7 @@ from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.ordering import RepositoryOrderSpecificationVisitor
 from itertools import islice
 from zope.interface import implementer # pylint: disable=E0611,F0401
+import functools
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EvalFilterExpression',
@@ -59,7 +60,7 @@ class EvalOrderExpression(object):
         self.__spec = spec
 
     def __call__(self, entities):
-        return sorted(entities, cmp=self.__spec.cmp)
+        return sorted(entities, key=functools.cmp_to_key(self.__spec.cmp))
 
     def __and__(self, other):
         return EvalOrderExpression(self.__spec & other.__spec) # pylint: disable=W0212
@@ -160,10 +161,13 @@ class ObjectOrderSpecificationVisitor(RepositoryOrderSpecificationVisitor):
     ordering.
     """
     def _conjunction_op(self, spec, *expressions):
-        return lambda entities: sorted(entities, cmp=spec.cmp)
+        return lambda entities: sorted(entities,
+                                       key=functools.cmp_to_key(spec.cmp))
 
     def _asc_op(self, spec):
-        return lambda entities: sorted(entities, cmp=spec.cmp)
+        return lambda entities: sorted(entities,
+                                       key=functools.cmp_to_key(spec.cmp))
 
     def _desc_op(self, spec):
-        return lambda entities: sorted(entities, cmp=spec.cmp)
+        return lambda entities: sorted(entities,
+                                       key=functools.cmp_to_key(spec.cmp))

@@ -90,7 +90,7 @@ class EntityCacheMapTestCase(Pep8CompliantTestCase):
         ecm.add(MyEntity, ent)
         self.assert_equal(ecm[MyEntity].get_by_id(0), ent)
         self.assert_true(ent in ecm)
-        self.assert_equal(ecm.keys(), [MyEntity])
+        self.assert_equal(list(ecm.keys()), [MyEntity])
         ecm.remove(MyEntity, ent)
         self.assert_false(ent in ecm)
 
