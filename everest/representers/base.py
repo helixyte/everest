@@ -8,6 +8,7 @@ Created on May 18, 2011.
 """
 from everest.representers.utils import get_mapping_registry
 from pyramid.compat import NativeIO
+from pyramid.compat import bytes_
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingResourceRepresenter',
@@ -25,16 +26,29 @@ class Representer(object):
     A representer knows how to convert an object into a representation of a
     particular MIME type (content type) and vice versa.
     """
+    #: The encoding to use to convert between bytes and string
+    #: representations.
+    encoding = 'utf-8'
     #: The registered MIME content type this representer is handling.
     content_type = None
 
-    def from_string(self, string_representation):
+    def from_string(self, string_representation, resource=None):
         """
         Extracts resource data from the given string and converts them to
         a new resource or updates the given resource from it.
         """
         stream = NativeIO(string_representation)
-        return self.from_stream(stream)
+        return self.from_stream(stream, resource=resource)
+
+    def from_bytes(self, bytes_representation, resource=None, encoding=None):
+        """
+        Extracts resource data from the given bytes representation and calls
+        :method:`from_string` with the resulting text representation.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = bytes_representation.decode(encoding)
+        return self.from_string(text, resource=resource)
 
     def to_string(self, obj):
         """
@@ -44,6 +58,16 @@ class Representer(object):
         stream = NativeIO()
         self.to_stream(obj, stream)
         return stream.getvalue()
+
+    def to_bytes(self, obj, encoding=None):
+        """
+        Converts the given resource to bytes representation in the encoding
+        specified by :param:`encoding` and returns it.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = self.to_string(obj)
+        return bytes_(text, encoding=self.encoding)
 
     def from_stream(self, stream, resource=None):
         """
@@ -97,19 +121,28 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
-    def data_from_representation(self, representation):
+    def data_from_string(self, text):
         """
-        Converts the given representation to resource data.
+        Converts the given text representation to resource data.
 
         :returns: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
         """
-        stream = NativeIO(representation)
+        stream = NativeIO(text)
         return self.data_from_stream(stream)
 
-    def representation_from_data(self, data_element):
+    def data_from_bytes(self, byte_representation, encoding=None):
         """
-        Converts the given data element into a representation.
+        Converts the given bytes representation to resource data.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = byte_representation.decode(encoding)
+        return self.data_from_string(text)
+
+    def string_from_data(self, data_element):
+        """
+        Converts the given data element into a string representation.
 
         :param data_element: object implementing
             :class:`everest.representers.interfaces.IExplicitDataElement`
@@ -119,6 +152,17 @@ class ResourceRepresenter(Representer):
         stream = NativeIO()
         self.data_to_stream(data_element, stream)
         return stream.getvalue()
+
+    def bytes_from_data(self, data_element, encoding=None):
+        """
+        Converts the given data element into a string representation using
+        the :method:`string_from_data` method and encodes the resulting
+        text with the given encoding.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = self.string_from_data(data_element)
+        return bytes_(text, encoding=encoding)
 
     def resource_from_data(self, data, resource=None):
         """

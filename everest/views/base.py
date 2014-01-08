@@ -6,6 +6,20 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 7, 2011.j
 """
+import logging
+import re
+
+from pyramid.httpexceptions import HTTPBadRequest
+from pyramid.httpexceptions import HTTPConflict
+from pyramid.httpexceptions import HTTPError
+from pyramid.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPNotAcceptable
+from pyramid.httpexceptions import HTTPOk
+from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
+from pyramid.httpexceptions import HTTPUnsupportedMediaType
+from pyramid.interfaces import IResponse
+from pyramid.threadlocal import get_current_request
+
 from everest.messaging import UserMessageChecker
 from everest.messaging import UserMessageHandlingContextManager
 from everest.mime import CsvMime
@@ -18,19 +32,8 @@ from everest.resources.system import UserMessageMember
 from everest.resources.utils import resource_to_url
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
-from pyramid.httpexceptions import HTTPBadRequest
-from pyramid.httpexceptions import HTTPConflict
-from pyramid.httpexceptions import HTTPError
-from pyramid.httpexceptions import HTTPInternalServerError # pylint: disable=F0401
-from pyramid.httpexceptions import HTTPNotAcceptable
-from pyramid.httpexceptions import HTTPOk
-from pyramid.httpexceptions import HTTPTemporaryRedirect # pylint: disable=F0401
-from pyramid.httpexceptions import HTTPUnsupportedMediaType
-from pyramid.interfaces import IResponse
-from pyramid.threadlocal import get_current_request
 from zope.interface import implementer # pylint: disable=E0611,F0401
-import logging
-import re
+
 
 __docformat__ = "reStructuredText en"
 __all__ = ['GetResourceView',
@@ -225,7 +228,8 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
             # Set content type and body of the response.
             self.request.response.content_type = \
                                     rpr.content_type.mime_type_string
-            self.request.response.body = rpr.to_string(resource)
+            rpr_body = rpr.to_bytes(resource)
+            self.request.response.body = rpr_body
             result = self.request.response
         else:
             result = dict(context=resource)
@@ -315,7 +319,7 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
                 if do_continue:
                     if self._enable_messaging:
                         process_executor = \
-                            WarnAndResubmitExecutor(self._process_request_data)
+                          WarnAndResubmitExecutor(self._process_request_data)
                         result = process_executor(data)
                     else:
                         result = self._process_request_data(data)
@@ -358,7 +362,7 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
           extraction in terms of HTTP codes.
         """
         rpr = self._get_request_representer()
-        return rpr.data_from_representation(self.request.body)
+        return rpr.data_from_bytes(self.request.body)
 
     def _process_request_data(self, data):
         """

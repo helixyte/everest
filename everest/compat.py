@@ -4,23 +4,22 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 18, 2013.
 """
+from csv import DictReader
+from csv import reader
+
+from pyramid.compat import PY3
+from pyramid.compat import binary_type
+
+
 __docformat__ = 'reStructuredText en'
 __all__ = ['csv_reader',
-           'csv_writer',
            'izip',
            'open_text',
            'parse_qsl',
            'BytesIO',
            'CsvDictReader',
-           'CsvDictWriter'
            ]
 
-from csv import DictReader
-from csv import DictWriter
-from csv import reader
-from csv import writer
-
-from pyramid.compat import PY3
 
 
 # pylint: disable=E0611
@@ -52,29 +51,29 @@ else:
         return open(filename, 'wb')
 
 
-
 if PY3:
     csv_reader = reader
     CsvDictReader = DictReader
-    csv_writer = writer
-    CsvDictWriter = DictWriter
 else:
     from csv import excel
-
-    def utf_8_encoder(unicode_csv_data):
-        for line in unicode_csv_data:
-            yield line.encode('utf-8')
+    from pyramid.compat import text_type
 
 
     class UnicodeReader(object):
+        """
+        A CSV reader that ensures that byte strings are read as unicode under
+        Python 2.7.
+        """
         def __init__(self, f, dialect=excel, **kwargs):
-            self.reader = reader(utf_8_encoder(f), dialect=dialect, **kwargs)
+            self.reader = reader(f, dialect=dialect, **kwargs)
 
         def next(self):
-            row = self.reader.next()
-            return [unicode(cell, 'utf-8')
-                    if isinstance(cell, basestring) else cell
+            row = next(self.reader)
+            return [text_type(cell, 'utf-8')
+                    if isinstance(cell, binary_type) else cell
                     for cell in row]
+
+        __next__ = next
 
         @property
         def line_num(self):
@@ -85,6 +84,10 @@ else:
 
 
     class UnicodeDictReader(DictReader):
+        """
+        A CSV dict reader that ensures that byte strings are read as unicode
+        under Python 2.7.
+        """
         def __init__(self, f, fieldnames=None, restkey=None, restval=None,
                      dialect="excel", *args, **kw):
             DictReader.__init__(self, f, fieldnames=fieldnames,
@@ -94,29 +97,7 @@ else:
             self.reader = UnicodeReader(f, dialect=dialect, *args, **kw)
 
 
-    class UnicodeWriter(object):
-        def __init__(self, f, dialect=excel, **kwds):
-            self.writer = writer(f, dialect=dialect, **kwds)
-
-        def writerow(self, row):
-            self.writer.writerow([cell.encode("utf-8")
-                                  if isinstance(cell, basestring) else cell
-                                  for cell in row])
-
-
-    class UnicodeDictWriter(DictWriter):
-        def __init__(self, f, fieldnames, restval="", extrasaction="raise",
-                     dialect="excel", encoding='utf-8', *args, **kw):
-            DictWriter.__init__(self, f, fieldnames, restval=restval,
-                                extrasaction=extrasaction, dialect=dialect,
-                                *args, **kw)
-            # Replace the writer with our UnicodeWriter.
-            self.writer = UnicodeWriter(f, dialect=dialect, encoding=encoding,
-                                        *args, **kw)
-
     csv_reader = UnicodeReader
     CsvDictReader = UnicodeDictReader
-    csv_writer = UnicodeWriter
-    CsvDictWriter = UnicodeDictWriter
 
 # pylint: enable=E0611

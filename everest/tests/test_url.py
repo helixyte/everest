@@ -301,7 +301,10 @@ class UrlTestCaseBase(ResourceTestCase):
         if not params is None:
             self.assert_equal(urlp.params, params) # pylint: disable=E1101
         if not query is None:
-            self.assert_equal(urlp.query, query) # pylint: disable=E1101
+            # We can not rely on the order of query parameters returned by
+            # urlparse, so we compare the sets of parameters.
+            self.assert_equal(set(urlp.query.split('&')), # pylint: disable=E1101
+                              set(query.split('&')))
 
 
 class RepoUrlTestCaseNoRdb(UrlTestCaseBase):

@@ -13,6 +13,7 @@ from zipfile import ZipFile
 
 from pyramid.compat import NativeIO
 from pyramid.compat import iteritems_
+from pyramid.compat import text_type
 from pyramid.compat import urlparse
 
 from everest.compat import open_text
@@ -137,6 +138,31 @@ def load_collection_from_url(resource, url, content_type=None):
     return coll
 
 
+class DecodingStream(object):
+    """
+    Helper class that iterates over a bytes stream yielding strings.
+    """
+    def __init__(self, stream, encoding='utf-8'):
+        self.__stream = stream
+        self.__encoding = encoding
+
+    def __enter__(self):
+        return self.__stream.__enter__()
+
+    def __exit__(self, *args, **kw):
+        self.__stream.__exit__(*args, **kw)
+
+    def __iter__(self):
+        for line in self.__stream:
+            yield text_type(line, self.__encoding)
+
+    def next(self):
+        line = next(self.__stream)
+        return text_type(line, self.__encoding)
+
+    __next__ = next
+
+
 def load_into_collections_from_zipfile(collections, zipfile):
     """
     Loads resources contained in the given ZIP archive into each of the
@@ -166,8 +192,12 @@ def load_into_collections_from_zipfile(collections, zipfile):
             except KeyError:
                 raise ValueError('Could not infer MIME type for file '
                                  'extension "%s".' % ext)
+            # Strings are always written as UTF-8 encoded byte strings when
+            # the zip file is created, so we have to wrap the iterator into
+            # a decoding step.
+            coll_data = DecodingStream(zipf.open(coll_fn, 'r'))
             load_into_collection_from_stream(coll,
-                                             zipf.open(coll_fn, 'r'),
+                                             coll_data,
                                              content_type)
 
 

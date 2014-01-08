@@ -178,7 +178,7 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
     config_file_name = 'configure_no_rdb.zcml'
 
     def test_load_from_zipfile_invalid_extension(self):
-        strm = NativeIO('w')
+        strm = BytesIO()
         zipf = zipfile.ZipFile(strm, 'w')
         coll_name = get_collection_name(get_collection_class(IMyEntity))
         zipf.writestr('%s.foo' % coll_name, '')
@@ -190,7 +190,7 @@ class ZipResourceIoTestCaseNoRdb(_ZipResourceIoTestCaseBase):
         self.assert_true(str(cm.exception).startswith(exc_msg))
 
     def test_load_from_zipfile_filename_not_found(self):
-        strm = NativeIO('w')
+        strm = BytesIO()
         zipf = zipfile.ZipFile(strm, 'w')
         zipf.writestr('foo.foo', '')
         zipf.close()

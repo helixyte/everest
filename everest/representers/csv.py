@@ -12,6 +12,7 @@ from collections import OrderedDict
 from csv import Dialect
 from csv import QUOTE_NONNUMERIC
 from csv import register_dialect
+from csv import writer
 import datetime
 from itertools import product
 
@@ -20,7 +21,6 @@ from pyramid.compat import string_types
 from pyramid.compat import text_type
 
 from everest.compat import CsvDictReader
-from everest.compat import csv_writer
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import CsvMime
@@ -168,16 +168,16 @@ class CsvRepresentationParser(RepresentationParser):
         self.__row_data_key = None
 
     def run(self):
-        csv_reader = CsvDictReader(self._stream,
+        csv_rdr = CsvDictReader(self._stream,
                                    dialect=self.get_option('dialect'))
         is_member_rpr = provides_member_resource(self._resource_class)
         if is_member_rpr:
             coll_data_el = None
         else:
             coll_data_el = self._mapping.create_data_element()
-        for row_data in csv_reader:
+        for row_data in csv_rdr:
             if self.__is_first_row:
-                self.__first_row_field_names = set(csv_reader.fieldnames)
+                self.__first_row_field_names = set(csv_rdr.fieldnames)
                 self.__first_row_data = row_data.copy()
             if not self.__coll_data is None:
                 # We need to generate the row data key now because we
@@ -346,10 +346,10 @@ class CsvRepresentationParser(RepresentationParser):
 #            coll_data_el = coll_mp.create_data_element()
 #            result_data_el = coll_data_el
 #        mb_mp = mp_reg.find_or_create_mapping(member_cls)
-#        csv_reader = reader(self._stream, self.get_option('dialect'))
+#        csv_rdr = reader(self._stream, self.get_option('dialect'))
 #        attrs = mb_mp.get_attribute_map()
 #        header = None
-#        for row in csv_reader:
+#        for row in csv_rdr:
 #            mb_data_el = mb_mp.create_data_element()
 #            if header is None:
 #                # Check if the header is valid.
@@ -501,7 +501,7 @@ class CsvRepresentationGenerator(RepresentationGenerator):
         trv.run(vst)
         csv_data = vst.csv_data
         if len(csv_data) > 0:
-            wrt = csv_writer(self._stream, dialect=self.get_option('dialect'))
+            wrt = writer(self._stream, dialect=self.get_option('dialect'))
             wrt.writerow(csv_data.fields)
             for row_data in csv_data.data:
                 wrt.writerow(row_data)
@@ -516,8 +516,6 @@ class CsvResourceRepresenter(MappingResourceRepresenter):
     CSV_EXPORT_DIALECT = 'export'
     #: The CSV dialect to use for importing CSV data.
     CSV_IMPORT_DIALECT = 'import'
-    #: The encoding to use for exporting and importing CSV data.
-    ENCODING = 'utf-8'
 
     @classmethod
     def make_mapping_registry(cls):
@@ -531,7 +529,7 @@ class CsvResourceRepresenter(MappingResourceRepresenter):
     def _make_representation_generator(self, stream, resource_class, mapping):
         generator = CsvRepresentationGenerator(stream, resource_class, mapping)
         generator.set_option('dialect', self.CSV_EXPORT_DIALECT)
-        generator.set_option('encoding', self.ENCODING)
+        generator.set_option('encoding', self.encoding)
         return generator
 
 

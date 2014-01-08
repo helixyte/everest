@@ -118,10 +118,10 @@ class MappingTestCase(ResourceTestCase):
         mp1 = mp.clone(
             attribute_options={('children',):{IGNORE_OPTION:False,
                                             WRITE_AS_LINK_OPTION:False},
-                             ('children', 'children'):
-                                        {IGNORE_OPTION:False,
-                                         WRITE_AS_LINK_OPTION:False}
-                             })
+                               ('children', 'children'):
+                                             {IGNORE_OPTION:False,
+                                              WRITE_AS_LINK_OPTION:False}
+                                })
         de = mp1.map_to_data_element(mb)
         prx = DataElementAttributeProxy(de)
         self.assert_equal(len(prx.children), 1)
@@ -146,8 +146,7 @@ class MappingTestCase(ResourceTestCase):
         mp.mapping_registry.set_mapping(mp)
         with self.assert_raises(ValueError) as cm:
             getattr(mp.mapping_registry, 'parsing_lookup')
-        exc_msg = 'Duplicate tag "%s" ' % mb_tag
-        self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
+        self.assert_true(str(cm.exception).startswith('Duplicate tag'))
 
     def test_mapping_reset_lookup(self):
         mp_reg = get_mapping_registry(XmlMime)

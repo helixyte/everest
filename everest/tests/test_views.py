@@ -5,7 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 17, 2011.
 """
 from pkg_resources import resource_filename # pylint: disable=E0611
-from pyramid.compat import bytes_
+from pyramid.compat import native_
 from pyramid.testing import DummyRequest
 import transaction
 
@@ -39,6 +39,7 @@ from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
+from pyramid.compat import bytes_
 
 
 __docformat__ = 'reStructuredText en'
@@ -139,7 +140,7 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         self.assert_equal(mb.__name__, '0')
-        req_body = '"id","text","number"\n0,"abc",2\n'
+        req_body = b'"id","text","number"\n0,"abc",2\n'
         res = self.app.put("%s/0" % self.path,
                            params=req_body,
                            content_type=CsvMime.mime_type_string,
@@ -148,7 +149,7 @@ class BasicViewTestCase(FunctionalTestCase):
         mb = next(iter(coll))
         self.assert_equal(mb.text, 'abc')
         self.assert_equal(mb.number, 2)
-        req_body = '"id","text","number"\n2,"abc",2\n'
+        req_body = b'"id","text","number"\n2,"abc",2\n'
         res = self.app.put("%s/0" % self.path,
                            params=req_body,
                            content_type=CsvMime.mime_type_string,
@@ -161,7 +162,7 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         self.assert_equal(mb.__name__, '0')
-        req_body = '"number"\n2\n'
+        req_body = b'"number"\n2\n'
         res = self.app.patch("%s/0" % self.path,
                              params=req_body,
                              content_type=CsvMime.mime_type_string,
@@ -169,7 +170,7 @@ class BasicViewTestCase(FunctionalTestCase):
         self.assert_is_not_none(res)
         mb = next(iter(coll))
         self.assert_equal(mb.number, 2)
-        req_body = '"id"\n2\n'
+        req_body = b'"id"\n2\n'
         res = self.app.patch("%s/0" % self.path,
                              params=req_body,
                              content_type=CsvMime.mime_type_string,
@@ -185,9 +186,9 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         req_body = \
-            '<tst:myentity xmlns:tst="http://xml.test.org/tests" id="0">' \
-            '    <number>2</number>' \
-            '</tst:myentity>'
+            b'<tst:myentity xmlns:tst="http://xml.test.org/tests" id="0">' \
+            b'    <number>2</number>' \
+            b'</tst:myentity>'
         res = self.app.patch("%s/0" % self.path,
                              params=req_body,
                              content_type=XmlMime.mime_type_string,
@@ -197,7 +198,7 @@ class BasicViewTestCase(FunctionalTestCase):
         self.assert_equal(mb.number, 2)
 
     def test_post_collection(self):
-        req_body = '"id","text","number"\n0,"abc",2\n'
+        req_body = b'"id","text","number"\n0,"abc",2\n'
         res = self.app.post("%s" % self.path,
                             params=req_body,
                             content_type=CsvMime.mime_type_string,
@@ -210,9 +211,9 @@ class BasicViewTestCase(FunctionalTestCase):
     def test_post_nested_collection(self):
         mb, mb_url = self.__make_parent_and_link()
         child_coll = get_root_collection(IMyEntityChild)
-        req_body = '"id","text","parent"\n0,"child","%s"\n' % mb_url
+        req_text = '"id","text","parent"\n0,"child","%s"\n' % mb_url
         res = self.app.post("%schildren" % mb_url,
-                            params=req_body,
+                            params=bytes_(req_text, encoding='utf-8'),
                             content_type=CsvMime.mime_type_string,
                             status=201)
         self.assert_is_not_none(res)
@@ -222,7 +223,7 @@ class BasicViewTestCase(FunctionalTestCase):
 
     def test_post_nested_collection_no_parent(self):
         mb, mb_url = self.__make_parent_and_link()
-        req_body = '"id","text"\n0,"child"\n'
+        req_body = b'"id","text"\n0,"child"\n'
         res = self.app.post("%schildren" % mb_url,
                             params=req_body,
                             content_type=CsvMime.mime_type_string,
@@ -330,12 +331,15 @@ class _ConfiguredViewsTestCase(FunctionalTestCase):
     def _test_with_view_name(self, path_fn):
         # Use suffix traverser as default.
         self.config.add_traverser(SuffixResourceTraverser)
-        for sfx, fn in (('csv', lambda body: body.startswith('"id"')),
-                        ('json', lambda body: body.startswith('[{"id": 0')),
-                        ('xml', lambda body: body.strip().endswith('</foos>'))
-                        ):
+        for sfx, exp, end in (('csv', b'"id"', False),
+                              ('json', b'[{"id": 0', False),
+                              ('xml', b'</foos>', True)
+                              ):
             res = self.app.get(path_fn(self.path, sfx), status=200)
-            self.assert_true(fn(res.body))
+            if not end:
+                self.assert_equal(res.body[:len(exp)], exp)
+            else:
+                self.assert_equal(res.body.strip()[-len(exp):], exp)
         # Fail for non-existing collection.
         self.app.get('/bars.csv', status=404)
 
@@ -356,10 +360,10 @@ class NewStyleConfiguredViewsTestCase(_ConfiguredViewsTestCase):
     def test_default(self):
         # New style views return the default_content_type.
         res = self.app.get(self.path, status=200)
-        self.assert_true(res.body.startswith('<?xml'))
+        self.assert_true(res.body.startswith(b'<?xml'))
 
     def test_custom_view(self):
-        TXT = 'my custom response body'
+        TXT = b'my custom response body'
         def custom_view(context, request): # context unused pylint: disable=W0613
             request.response.body = TXT
             return request.response
@@ -541,10 +545,10 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
         # First POST - get back a 307.
         res1 = self.app.post(self.path, params='foo name',
                              status=307)
-        self.assert_true(res1.body.rstrip().endswith(
-                            bytes_(UserMessagePostCollectionView.message)))
-        self.assert_true(res1.body.startswith(
-                                        bytes_('307 Temporary Redirect')))
+        body_text = native_(res1.body.rstrip(), encoding='utf-8')
+        self.assert_true(body_text.endswith(
+                                    UserMessagePostCollectionView.message))
+        self.assert_true(res1.body.startswith(b'307 Temporary Redirect'))
         # Second POST to redirection location - get back a 201.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.post(resubmit_location1,
@@ -559,8 +563,7 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
             res3 = self.app.post(resubmit_location1,
                                  params='foo name',
                                  status=307)
-            self.assert_true(
-                    res3.body.startswith(bytes_('307 Temporary Redirect')))
+            self.assert_true(res3.body.startswith(b'307 Temporary Redirect'))
             # Fourth POST to new redirection location - get back a 409 (since
             # the second POST from above went through).
             resubmit_location2 = res3.headers['Location']
@@ -593,8 +596,7 @@ class _WarningViewBaseTestCase(FunctionalTestCase):
         res1 = self.app.put(path,
                             params='foo name',
                             status=307)
-        self.assert_true(
-                    res1.body.startswith(bytes_('307 Temporary Redirect')))
+        self.assert_true(res1.body.startswith(b'307 Temporary Redirect'))
         # Second PUT to redirection location - get back a 200.
         resubmit_location1 = res1.headers['Location']
         res2 = self.app.put(resubmit_location1, params='foo name',

@@ -7,6 +7,14 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 19, 2011.
 """
 from collections import OrderedDict
+import datetime
+
+from lxml import etree
+from lxml import objectify
+from pkg_resources import resource_filename # pylint: disable=E0611
+from pyramid.compat import bytes_
+from pyramid.compat import text_type
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.mime import XmlMime
@@ -29,11 +37,8 @@ from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
-from lxml import etree
-from lxml import objectify
-from pkg_resources import resource_filename # pylint: disable=E0611
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-import datetime
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['XmlCollectionDataElement',
@@ -87,11 +92,10 @@ class XmlRepresentationGenerator(RepresentationGenerator):
     def run(self, data_element):
         objectify.deannotate(data_element)
         etree.cleanup_namespaces(data_element)
-        encoding = self.get_option('encoding')
-        self._stream.write(etree.tostring(data_element,
-                                          pretty_print=True,
-                                          encoding=encoding,
-                                          xml_declaration=True))
+        rpr_text = etree.tostring(data_element,
+                                  pretty_print=True,
+                                  encoding=text_type)
+        self._stream.write(rpr_text)
 
 
 class XmlParserFactory(object):
@@ -127,8 +131,25 @@ class XmlParserFactory(object):
 class XmlResourceRepresenter(MappingResourceRepresenter):
     content_type = XmlMime
 
-    #: The encoding to use for reading and writing XML.
-    ENCODING = 'utf-8'
+    __tmpl = "<?xml version='1.0' encoding='%s' ?>%s"
+
+    def to_bytes(self, obj, encoding=None):
+        """
+        Overwritten so we can insert the `?xml` processing directive.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = self.__tmpl % (encoding, self.to_string(obj))
+        return bytes_(text, encoding=encoding)
+
+    def bytes_from_data(self, data_element, encoding=None):
+        """
+        Overwritten so we can insert the `?xml` processing directive.
+        """
+        if encoding is None:
+            encoding = self.encoding
+        text = self.__tmpl % (encoding, self.string_from_data(data_element))
+        return bytes_(text, encoding=encoding)
 
     @classmethod
     def make_mapping_registry(cls):
@@ -146,9 +167,7 @@ class XmlResourceRepresenter(MappingResourceRepresenter):
         return parser
 
     def _make_representation_generator(self, stream, resource_class, mapping):
-        generator = XmlRepresentationGenerator(stream, resource_class, mapping)
-        generator.set_option('encoding', self.ENCODING)
-        return generator
+        return XmlRepresentationGenerator(stream, resource_class, mapping)
 
 
 class _XmlDataElementMixin(object):
@@ -477,7 +496,7 @@ class XmlMappingRegistry(MappingRegistry):
             if issubclass(de_cls, XmlLinkedDataElement):
                 continue
             xml_ns = mapping.configuration.get_option(XML_NAMESPACE_OPTION)
-            xml_tag = mapping.configuration.get_option(XML_TAG_OPTION)
+            xml_tag = bytes_(mapping.configuration.get_option(XML_TAG_OPTION))
             ns_cls_map = lookup.get_namespace(xml_ns)
             if xml_tag in ns_cls_map:
                 raise ValueError('Duplicate tag "%s" in namespace "%s" '

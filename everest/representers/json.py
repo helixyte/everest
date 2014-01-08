@@ -34,6 +34,7 @@ from json import loads
 from pyramid.compat import iteritems_
 from pyramid.compat import string_types
 import datetime
+from collections import OrderedDict
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['JsonCollectionDataElement',
@@ -137,7 +138,8 @@ class JsonDataElementTreeVisitor(ResourceDataVisitor):
         if is_link_node:
             mb_data = member_node.get_url()
         else:
-            mb_data = {}
+            # Using an ordered dict gives us reproducible representations.
+            mb_data = OrderedDict()
             for attr, value in iteritems_(member_data):
 #                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 mb_data[attr.repr_name] = value

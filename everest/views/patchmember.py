@@ -6,8 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 29, 2013.
 """
-from pyramid.compat import native_
-
 from everest.mime import XmlMime
 from everest.representers.utils import UpdatedRepresenterConfigurationContext
 from everest.representers.xml import XML_VALIDATE_OPTION
@@ -35,8 +33,7 @@ class PatchMemberView(PutOrPatchResourceView):
                             rpr.content_type,
                             options={XML_VALIDATE_OPTION:False})
             with ctxt:
-                data = rpr.data_from_representation(
-                                                native_(self.request.body))
+                data = rpr.data_from_bytes(self.request.body)
         else:
-            data = rpr.data_from_representation(native_(self.request.body))
+            data = rpr.data_from_bytes(self.request.body)
         return data

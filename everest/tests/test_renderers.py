@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 5, 2012.
@@ -9,7 +9,7 @@ from everest.renderers import RendererFactory
 from everest.renderers import ResourceRenderer
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.testing import create_collection
-from pyramid.compat import string_types
+from pyramid.compat import binary_type
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RendererTestCase',
@@ -27,11 +27,11 @@ class RendererTestCase(ResourceTestCase):
             inf = self._Info(rnd_name)
             fac = RendererFactory(inf)
             rpr_str = fac(dict(), dict(request=self._request, context=rc))
-            self.assert_true(isinstance(rpr_str, string_types))
+            self.assert_true(isinstance(rpr_str, binary_type))
             self.assert_not_equal(rpr_str.find(exp_str), -1)
         resource = create_collection()
-        _test(resource, 'csv', '"id","parent"')
-        _test(resource, 'atom', 'www.w3.org/2005/Atom')
+        _test(resource, 'csv', b'"id","parent"')
+        _test(resource, 'atom', b'www.w3.org/2005/Atom')
         self.assert_raises(ValueError, _test, resource, 'foo', '')
         self.assert_raises(ValueError, _test, None, 'csv', '"id","parent"')
 

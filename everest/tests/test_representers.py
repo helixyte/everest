@@ -373,31 +373,31 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
              }
         self._representer.configure(attribute_options=attribute_options)
         data = self._representer.data_from_resource(self._collection)
-        rpr_str = self._representer.representation_from_data(data)
+        rpr_str = self._representer.string_from_data(data)
         lines = rpr_str.split(os.linesep)
         self.assert_equal(lines[0],
                           '"id","custom_text","text_rc","number","date_time"')
 
-    def test_csv_data_from_representation(self):
+    def test_csv_data_from_string(self):
         csv_invalid_field = '"id","text","number","foo"\n0,"abc",0,"xyz"'
         with self.assert_raises(ValueError) as cm:
-            self._representer.data_from_representation(csv_invalid_field)
+            self._representer.data_from_string(csv_invalid_field)
         self.assert_true(str(cm.exception).startswith('Invalid field'))
         csv_invalid_row_length = '"id","text","number"\n0,"abc",0,"xyz",5'
         with self.assert_raises(ValueError) as cm:
-            self._representer.data_from_representation(csv_invalid_row_length)
+            self._representer.data_from_string(csv_invalid_row_length)
         self.assert_true(
                     str(cm.exception).startswith('Invalid row length'))
         csv_value_for_ignored_field = '"id","children"\n' \
                                       '0,"http://0.0.0.0/my-entity-parents/0"'
         with self.assert_raises(ValueError) as cm:
-            self._representer.data_from_representation(
+            self._representer.data_from_string(
                                                 csv_value_for_ignored_field)
         self.assert_true(str(cm.exception).startswith(
                                                     'Value for attribute'))
         csv_invalid_link = '"id","parent"\n0,"my-entity-parents/0"'
         with self.assert_raises(ValueError) as cm:
-            self._representer.data_from_representation(csv_invalid_link)
+            self._representer.data_from_string(csv_invalid_link)
         self.assert_true(str(cm.exception).startswith(
                                             'Value for nested attribute'))
 
@@ -413,7 +413,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         csv_two_colls_expanded = \
                 '"id","children.id","children.children.id"\n0,0,0'
         with self.assert_raises(ValueError) as cm:
-            self._representer.data_from_representation(csv_two_colls_expanded)
+            self._representer.data_from_string(csv_two_colls_expanded)
         self.assert_true(str(cm.exception).startswith(
                                             'All but one nested collection'))
 
@@ -425,7 +425,7 @@ class CsvRepresenterTestCase(_RepresenterTestCase):
         self._representer.configure(attribute_options=attribute_options)
         csv_multiple_nested_members = \
                 '"id","children.id"\n0,0\n0,1'
-        data_el = self._representer.data_from_representation(
+        data_el = self._representer.data_from_string(
                                                 csv_multiple_nested_members)
         self.assert_true(len(data_el), 1)
         self.assert_equal(
@@ -471,7 +471,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         rpr.configure(attribute_options=attribute_options)
         data = rpr.data_from_resource(coll)
         self.assert_equal(len(data), 2)
-        rpr_str = rpr.representation_from_data(data)
+        rpr_str = rpr.string_from_data(data)
         reloaded_coll = rpr.from_string(rpr_str)
         self.assert_equal(len(reloaded_coll), 2)
 
@@ -592,7 +592,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         coll = object.__new__(get_collection_class(IMyEntity))
         rpr = as_representer(coll, XmlMime)
         with self.assert_raises(SyntaxError) as cm:
-            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?><murks/>')
+            rpr.from_string('<murks/>')
         exc_msg = 'Could not parse XML document for schema'
         self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
@@ -601,7 +601,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         mp.configuration.set_option(XML_SCHEMA_OPTION,
                                     'everest:tests/complete_app/NoXml.xsd')
         with self.assert_raises(SyntaxError) as cm:
-            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
+            rpr.from_string('')
         exc_msg = 'Could not parse XML schema'
         self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
@@ -610,7 +610,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         mp.configuration.set_option(XML_SCHEMA_OPTION,
                                     'everest:tests/complete_app/NoSchema.xsd')
         with self.assert_raises(SyntaxError) as cm:
-            rpr.from_string('<?xml version="1.0" encoding="UTF-8"?>')
+            rpr.from_string('')
         exc_msg = 'Invalid XML schema'
         self.assert_not_equal(str(cm.exception).find(exc_msg), -1)
 
@@ -637,8 +637,7 @@ class AtomRepresentationTestCase(ResourceTestCase):
         def _test(rc):
             rpr = as_representer(rc, AtomMime)
             rpr_str = rpr.to_string(rc)
-            self.assert_not_equal(
-              rpr_str.find('<feed xmlns:ent="http://xml.test.org/tests"'), -1)
+            self.assert_not_equal(rpr_str.find('<feed xmlns:'), -1)
         coll = create_collection()
         _test(coll)
         coll.slice = slice(0, 1)
