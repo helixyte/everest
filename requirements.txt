@@ -1,6 +1,6 @@
 iso8601>=0.1.8
 lxml>=3.2.1
-pyparsing
+pyparsing>=2.0.1
 pyramid>=1.4.2
 pyramid_tm>=0.7
 pyramid_zcml>=1.0.0
