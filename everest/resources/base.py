@@ -542,6 +542,9 @@ class ResourceToEntitySpecificationVisitor(SpecificationExpressionHolder):
         rc_class = self.__rc_class
         for rc_attr_token in rc_attr_name.split('.'):
             rc_attr = get_resource_class_attribute(rc_class, rc_attr_token)
+            if rc_attr is None:
+                raise ValueError('%s resource does not have an attribute '
+                                 '"%s".' % (rc_class.__name__, rc_attr_name))
             ent_attr_name = rc_attr.entity_attr
             if ent_attr_name is None:
                 raise ValueError('Resource attribute "%s" does not have a '
