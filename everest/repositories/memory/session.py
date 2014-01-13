@@ -239,9 +239,17 @@ class MemorySession(Session):
         for attr, value in iteritems_(state):
             if attr.entity_attr == 'id':
                 id_attr = attr
+                continue
+            attr_type = attr.attr_type
+            if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL \
+               and not self.__repository.is_registered_resource(attr_type):
+                # Prevent loading of entities from other repositories.
+                # FIXME: Doing this here is inconsistent, since e.g. the RDB
+                #        session does not perform this kind of check.
+                continue
             elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER \
                and not value is None:
-                ent_cls = get_entity_class(attr.attr_type)
+                ent_cls = get_entity_class(attr_type)
                 new_value = self.load(ent_cls, value)
                 state[attr] = new_value
             elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION \
@@ -256,7 +264,7 @@ class MemorySession(Session):
                     raise ValueError('Do not know how to clone value of type '
                                      '%s for resource attribute %s.'
                                      % (type(new_value), attr))
-                ent_cls = get_entity_class(attr.attr_type)
+                ent_cls = get_entity_class(attr_type)
                 for child in value:
                     child_clone = self.load(ent_cls, child)
                     add_op(child_clone)

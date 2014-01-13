@@ -245,7 +245,7 @@ class Repository(object):
         return self.__session_factory
 
     def register_resource(self, resource):
-        self.__registered_resources.add(resource)
+        self.__registered_resources.add(get_collection_class(resource))
 
     @property
     def registered_resources(self):
@@ -254,6 +254,9 @@ class Repository(object):
     @property
     def is_initialized(self):
         return self.__is_initialized
+
+    def is_registered_resource(self, resource):
+        return get_collection_class(resource) in self.__registered_resources
 
     @property
     def name(self):

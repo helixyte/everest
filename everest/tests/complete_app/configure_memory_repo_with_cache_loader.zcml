@@ -15,11 +15,7 @@
 
     <!-- Resources. -->
 
-    <resource
-        interface='.interfaces.IMyEntity'
-        member=".resources.MyEntityMember"
-        entity=".entities.MyEntity"
-        collection_root_name="my-entities" />
+    <include file="resources.zcml" />
 
 
 </configure>

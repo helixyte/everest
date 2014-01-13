@@ -16,6 +16,10 @@ from everest.tests.complete_app.entities import MyEntityParent
 from mock import patch
 from pyramid.threadlocal import get_current_registry
 import gc
+from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.interfaces import IMyEntity
+from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityGrandchild
 
 
 __docformat__ = 'reStructuredText en'
@@ -35,6 +39,14 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         flt_spec_fac = FilterSpecificationFactory()
         reg = get_current_registry()
         reg.registerUtility(flt_spec_fac, IFilterSpecificationFactory)
+        self._repository = self._make_repository()
+        # Strictly speaking, we should register the rcs only with *one*
+        # repository; the tests do not require this at the moment, however.
+        for ifc in (IMyEntityParent, IMyEntity, IMyEntityChild,
+                    IMyEntityGrandchild):
+            self._repository.register_resource(ifc)
+        self._repository.initialize()
+        self._session = self._repository.session_factory()
 
     def test_basics(self):
         ent = MyEntity()
@@ -120,22 +132,18 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         ent.children = [None]
         self.assert_raises(ValueError, self._session.add, MyEntity, ent)
 
+    def _make_repository(self):
+        raise NotImplementedError('Abstract method.')
+
 
 class JoinedTransactionMemorySessionTestCase(_MemorySessionTestCaseBase):
-    def set_up(self):
-        _MemorySessionTestCaseBase.set_up(self)
-        self._repository = Repository('DUMMY', Aggregate,
-                                      join_transaction=True)
-        self._repository.initialize()
-        self._session = self._repository.session_factory()
+    def _make_repository(self):
+        return Repository('DUMMY', Aggregate, join_transaction=True)
 
 
 class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
-    def set_up(self):
-        _MemorySessionTestCaseBase.set_up(self)
-        self._repository = Repository('DUMMY', Aggregate)
-        self._repository.initialize()
-        self._session = self._repository.session_factory()
+    def _make_repository(self):
+        return Repository('DUMMY', Aggregate)
 
     def test_update_entity_not_in_session_raises_error(self):
         ent = MyEntity()
