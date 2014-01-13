@@ -116,7 +116,7 @@ class Aggregate(object):
 
         :returns: An iterator for the aggregate entities.
         """
-        return iter(self._get_data_query())
+        return iter(self._get_ordered_query(None))
 
     def __iter__(self):
         return self.iterator()
@@ -270,6 +270,18 @@ class Aggregate(object):
     def _get_filtered_query(self, key):
         #: Returns a query filtered by the current filter specification.
         query = self._query_optimizer(self.query(), key)
+        query = self.__filter_query(query)
+        return self.__slice_query(query)
+
+    def _get_ordered_query(self, key):
+        #: Returns a filtered query ordered by the current order
+        #: specification.
+        query = self._query_optimizer(self.query(), key)
+        query = self.__filter_query(query)
+        query = self.__order_query(query)
+        return self.__slice_query(query)
+
+    def __filter_query(self, query):
         if not self.filter is None:
             visitor_cls = \
               get_filter_specification_visitor(self.expression_kind)
@@ -278,10 +290,7 @@ class Aggregate(object):
             query = vst.filter_query(query)
         return query
 
-    def _get_ordered_query(self, key):
-        #: Returns a filtered query ordered by the current order
-        #: specification.
-        query = self._get_filtered_query(key)
+    def __order_query(self, query):
         if not self._order_spec is None:
             #: Orders the given query with the given order specification.
             visitor_cls = \
@@ -291,9 +300,7 @@ class Aggregate(object):
             query = vst.order_query(query)
         return query
 
-    def _get_data_query(self):
-        #: Returns an ordered query sliced by the current slice key.
-        query = self._get_ordered_query(self._slice_key)
+    def __slice_query(self, query):
         if not self._slice_key is None:
             query = query.slice(self._slice_key.start,
                                 self._slice_key.stop)
