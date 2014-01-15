@@ -8,8 +8,10 @@ Created on Jan 5, 2013.
 """
 from everest.entities.utils import get_entity_class
 from everest.repositories.interfaces import IRepository
+from everest.resources.base import Collection
 from everest.resources.utils import get_collection_class
 from zope.interface import implementer # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AutocommittingSessionMixin',
@@ -172,21 +174,9 @@ class Repository(object):
         self.__registered_resources = set()
 
     def get_aggregate(self, resource):
-        """
-        Get a clone of the root aggregate for the given registered resource.
-
-        :param resource: Registered resource.
-        :raises RuntimeError: If the repository has not been initialized yet.
-        """
         return self.get_collection(resource).get_aggregate()
 
     def get_collection(self, resource):
-        """
-        Get a clone of the root collection for the given registered resource.
-
-        :param resource: Registered resource.
-        :raises RuntimeError: If the repository has not been initialized yet.
-        """
         if not self.__is_initialized:
             raise RuntimeError('Repository needs to be initialized.')
         ent_cls = get_entity_class(resource)
@@ -217,24 +207,34 @@ class Repository(object):
         root_coll.__parent__ = parent
 
     def configure(self, **config):
-        """
-        Apply the given configuration key:value map to the configuration of
-        this repository.
-
-        :raises ValueError: If the configuration map contains keys which are
-          not declared in the `_configurables` class variable.
-        """
         for key, val in config.items():
             if not key in self._configurables:
                 raise ValueError('Invalid configuration key "%s".' % key)
             self._config[key] = val
 
+    @property
+    def configuration(self):
+        return self._config.copy()
+
     def initialize(self):
-        """
-        Initializes this repository.
-        """
         self._initialize()
         self.__is_initialized = True
+
+    @property
+    def is_initialized(self):
+        return self.__is_initialized
+
+    def register_resource(self, resource):
+        if not issubclass(resource, Collection):
+            resource = get_collection_class(resource)
+        self.__registered_resources.add(resource)
+
+    @property
+    def registered_resources(self):
+        return iter(self.__registered_resources)
+
+    def is_registered_resource(self, resource):
+        return get_collection_class(resource) in self.__registered_resources
 
     @property
     def session_factory(self):
@@ -244,30 +244,9 @@ class Repository(object):
             self.__session_factory = self._make_session_factory()
         return self.__session_factory
 
-    def register_resource(self, resource):
-        self.__registered_resources.add(get_collection_class(resource))
-
-    @property
-    def registered_resources(self):
-        return iter(self.__registered_resources)
-
-    @property
-    def is_initialized(self):
-        return self.__is_initialized
-
-    def is_registered_resource(self, resource):
-        return get_collection_class(resource) in self.__registered_resources
-
     @property
     def name(self):
         return self.__name
-
-    @property
-    def configuration(self):
-        """
-        Returns a copy of the configuration for this repository.
-        """
-        return self._config.copy()
 
     def _initialize(self):
         """

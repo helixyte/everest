@@ -29,14 +29,20 @@ class IRepository(Interface):
 
     def get_aggregate(rc):
         """
-        Returns the root agregate for the registered resource. If necessary,
-        a new instance is created on the fly.
+        Returns a clone of the root aggregate for the given registered
+        resource. If necessary, a new instance is created on the fly.
+
+        :param rc: Registered resource.
+        :raises RuntimeError: If the repository has not been initialized yet.
         """
 
     def get_collection(rc):
         """
-        Returns the root collection for the registered resource. If necessary,
-        a new instance is created on the fly.
+        Returns a clone of the root collection for the given registered
+        resource. If necessary, a new instance is created on the fly.
+
+        :param rc: Registered resource.
+        :raises RuntimeError: If the repository has not been initialized yet.
         """
 
     def load_representation(rc, url):
@@ -49,20 +55,43 @@ class IRepository(Interface):
         """
         Sets configuration options for this repository which can then be used
         during initialization.
+
+        :param config: Map of configuration options.
+        :raises ValueError: If the configuration map contains keys which are
+          not declared in the `_configurables` class variable.
         """
+
+    configuration = Attribute('Copy of the map of configuration options.')
 
     def initialize():
         """
         Initializes the repository.
         """
 
+    is_initialized = Bool(title=u'Flag indicating if this repository has '
+                                 'been initialized.')
+
+    def register_resource(rc):
+        """
+        Registers the given resource
+
+        :param rc: Collection class for the resource to register.
+        """
+
+    registered_resources = Attribute('Iterator over all registered resources '
+                                     'in this repository (as collection '
+                                     'classes).')
+
+    def is_registered_resource(rc):
+        """
+        Checks if the given object is a resource that was registered with this
+        repository.
+        """
+
     session_factory = Attribute('The session factory provided by this '
                                 'repository.')
 
     name = Attribute('Unique name for this repository.')
-
-    is_initialized = Bool(title=u'Flag indicating if this repository has '
-                                 'been initialized.')
 
     join_transaction = Bool(title=u'Flag indicating if this repository '
                                    'should participate in the Zope '
@@ -72,8 +101,6 @@ class IRepository(Interface):
     autocommit = Bool(title=u'Flag indicating that changes should be '
                              'committed automatically (mutually exclusive '
                              'with "join_transaction").')
-
-    configuration = Attribute('Copy of the map of configuration options.')
 
 
 class IRepositoryManager(Interface):

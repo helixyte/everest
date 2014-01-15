@@ -10,7 +10,9 @@ from everest.constants import CARDINALITY_CONSTANTS
 from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.interfaces import IRelationship
 from everest.querying.utils import get_filter_specification_factory
+from everest.utils import get_nested_attribute
 from zope.interface import implementer # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Relationship',
@@ -50,7 +52,7 @@ class Relationship(object):
         spec_fac = get_filter_specification_factory()
         crd = self.descriptor.cardinality
         if backref_attr is None:
-            relatee = getattr(self.relator, ref_attr)
+            relatee = get_nested_attribute(self.relator, ref_attr)
             if crd.relatee == CARDINALITY_CONSTANTS.MANY:
                 # This is potentially expensive as we may need to iterate over
                 # a large collection to create the "contained" specification.
@@ -59,13 +61,13 @@ class Relationship(object):
                     spec = spec_fac.create_contained('id', ids)
                 else:
                     # Create impossible search criterion.
-                    spec = spec_fac.create_equal_to('id', None)
+                    spec = spec_fac.create_equal_to('id', -1)
             else:
                 if not relatee is None:
                     spec = spec_fac.create_equal_to('id', relatee.id)
                 else:
                     # Create impossible search criterion.
-                    spec = spec_fac.create_equal_to('id', None)
+                    spec = spec_fac.create_equal_to('id', -1)
         else:
             if crd.relator == CARDINALITY_CONSTANTS.MANY:
                 spec = spec_fac.create_contains(backref_attr, self.relator)
