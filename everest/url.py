@@ -103,22 +103,32 @@ class ResourceUrlConverter(object):
             if not resource.slice is None:
                 query['start'], query['size'] = \
                     UrlPartsConverter.make_slice_strings(resource.slice)
-            if not resource.is_root_collection:
-                root_coll = get_root_collection(resource)
-            else:
-                root_coll = resource
             if query != {}:
-                url = self.__request.resource_url(root_coll, query=query)
+                options = dict(query=query)
             else:
-                url = self.__request.resource_url(root_coll)
-        else:
-#            if resource.__parent__.__parent__ is None:
-#                raise ValueError('Can not generate URL for member of '
-#                                 'floating collection.')
-            if not resource.is_root_member:
+                options = dict()
+            if not resource.is_root_collection:
+                # For nested collections, we check if the referenced root
+                # collection is exposed (i.e., has the service as parent).
+                # If yes, we return an absolute URL, else a nested URL.
                 root_coll = get_root_collection(resource)
-                url = "%s%s/" % (self.__request.resource_url(root_coll),
-                                 resource.__name__)
+                if not root_coll.has_parent:
+                    url = self.__request.resource_url(resource, **options)
+                else:
+                    url = self.__request.resource_url(root_coll, **options)
+            else:
+                url = self.__request.resource_url(resource, **options)
+        else:
+            if not resource.is_root_member:
+                # For nested members, we check if the referenced root
+                # collection is exposed (i.e., has the service as parent).
+                # If yes, we return an absolute URL, else a nested URL.
+                root_coll = get_root_collection(resource)
+                if not root_coll.has_parent:
+                    par_url = self.__request.resource_url(resource)
+                else:
+                    par_url = self.__request.resource_url(root_coll)
+                url = "%s%s/" % (par_url, resource.__name__)
             else:
                 url = self.__request.resource_url(resource)
         return url_unquote(url)

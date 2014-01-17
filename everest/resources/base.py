@@ -104,6 +104,13 @@ class Resource(object):
         """
         return uuid.uuid5(uuid.NAMESPACE_URL, self.path).urn
 
+    @property
+    def has_parent(self):
+        """
+        Checks if this resource has a parent.
+        """
+        return not self.__parent__ is None
+
 
 @implementer(IMemberResource)
 class Member(ResourceAttributeControllerMixin, Resource):
@@ -201,6 +208,7 @@ class Member(ResourceAttributeControllerMixin, Resource):
 
     @property
     def is_root_member(self):
+        # The parent might be a member, so we use getattr with a default.
         return not self.__parent__ is None \
                and getattr(self.__parent__, 'is_root_collection', False)
 
@@ -466,8 +474,7 @@ class Collection(Resource):
         Returns a clone of this collection.
         """
         agg = self.__aggregate.clone()
-        clone = self.create_from_aggregate(agg,
-                                           relationship=self._relationship)
+        clone = self.create_from_aggregate(agg)
         # Pass filter and order specs explicitly (may differ from the ones
         # at the aggregate level).
         # pylint: disable=W0212
