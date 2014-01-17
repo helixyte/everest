@@ -187,7 +187,7 @@ class AtomMappingRegistry(XmlMappingRegistry):
         xml_ns_map = xml_mp_reg.namespace_map
         atom_ns_map.update(xml_ns_map)
         # Make ATOM namespace the default.
-        del atom_ns_map[XML_PREFIX_ATOM]
+        atom_ns_map.pop(XML_PREFIX_ATOM, None)
         atom_ns_map[None] = XML_NS_ATOM
         return atom_ns_map
 
