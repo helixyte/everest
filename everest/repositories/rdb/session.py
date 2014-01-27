@@ -142,4 +142,7 @@ class RdbSessionFactory(SessionFactory):
                 # Enable the Zope transaction extension with the standard
                 # sqlalchemy Session class.
                 self.__fac.configure(extension=ZopeTransactionExtension())
+            else:
+                # Disable extension otherwise.
+                self.__fac.configure(extension=None)
         return self.__fac(**kw)

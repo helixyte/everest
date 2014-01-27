@@ -55,7 +55,7 @@ def persist(session, entity_class, attribute_map,
     """
     # Instantiate.
     entity = entity_class(**attribute_map)
-    session.add(entity)
+    session.add(entity_class, entity)
     session.commit()
     session.refresh(entity)
     entity_id = entity.id
@@ -120,7 +120,8 @@ class RdbContextManager(object):
         # Remove the session we created.
         Session.remove()
         # Restore flags.
-        Session.configure(autoflush=self.__old_autoflush_flag)
+        Session.configure(autoflush=self.__old_autoflush_flag,
+                          bind=get_engine(self.__engine_name))
         self.__repo.join_transaction = self.__old_join_transaction_flag
 
 
