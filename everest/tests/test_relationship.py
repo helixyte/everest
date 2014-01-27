@@ -72,7 +72,7 @@ class DomainRelationshipTestCase(EntityTestCase):
                                         ValueEqualToFilterSpecification))
             self.assert_equal(rel.specification.attr_name, 'id')
             # Without a relatee, we get a non-matching spec.
-            self.assert_equal(rel.specification.attr_value, None)
+            self.assert_equal(rel.specification.attr_value, -1)
             # When a relatee, its ID becomes available in the spec.
             rel.add(relatee)
             self.assert_true(isinstance(rel.specification,
