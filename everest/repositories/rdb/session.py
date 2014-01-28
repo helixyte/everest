@@ -6,18 +6,19 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 8, 2013.
 """
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.session import Session as SaSession
+
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.interfaces import IEntity
 from everest.entities.traversal import AruVisitor
 from everest.repositories.base import AutocommittingSessionMixin
 from everest.repositories.base import Session
 from everest.repositories.base import SessionFactory
-from everest.repositories.rdb.querying import Query
 from everest.repositories.state import EntityState
 from everest.traversal import SourceTargetDataTreeTraverser
-from sqlalchemy.orm import scoped_session
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.session import Session as SaSession
 from zope.sqlalchemy import ZopeTransactionExtension # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'

@@ -4,6 +4,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 10, 2011.
 """
+from sqlalchemy.engine import create_engine
+from sqlalchemy.orm.scoping import scoped_session
+from sqlalchemy.orm.session import sessionmaker
+
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.ordering import CqlOrderSpecificationVisitor
 from everest.querying.specifications import FilterSpecificationFactory
@@ -11,12 +15,11 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.rdb import SqlFilterSpecificationVisitor
 from everest.repositories.rdb import SqlOrderSpecificationVisitor
 from everest.repositories.rdb.querying import OrderClauseList
-from everest.repositories.rdb.testing import Session
 from everest.repositories.rdb.utils import reset_metadata
 from everest.testing import Pep8CompliantTestCase
-from sqlalchemy.engine import create_engine
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CqlFilterSpecificationVisitorTestCase',
@@ -479,7 +482,9 @@ class SqlOrderSpecificationVisitorTestCase(OrderVisitorTestCase):
         finally:
             Person.name.asc = old_asc
         # Make sure the correct ORDER BY clause is generated.
-        q = Session.query(Person).order(expr) # pylint: disable=E1101
+        sm = scoped_session(sessionmaker())
+        sess = sm()
+        q = sess.query(Person).order_by(expr) # pylint: disable=E1101
         q_str = str(q.statement)
         self.assert_not_equal(q_str.find("ORDER BY %s" % expr), -1)
 
