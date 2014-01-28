@@ -1,12 +1,11 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 14, 2012.
 """
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_registered_collection_resources
-from everest.resources.utils import get_repository
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import get_resource_url
 from everest.resources.utils import provides_collection_resource
@@ -17,6 +16,7 @@ from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourcesUtilsTestCase',
@@ -31,10 +31,6 @@ class ResourcesUtilsTestCase(ResourceTestCase):
         coll = create_collection()
         url = get_resource_url(coll)
         self.assert_not_equal(url.find('/my-entities'), -1)
-
-    def test_get_repository(self):
-        repo = get_repository('MEMORY')
-        self.assert_equal(repo.name, 'MEMORY')
 
     def test_provides_resource(self):
         coll = create_collection()

@@ -6,28 +6,28 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
+from pyramid.compat import string_types
+from pyramid.compat import urlparse
+from pyramid.threadlocal import get_current_registry
+from pyramid.threadlocal import get_current_request
+from pyramid.traversal import model_path
+
 from everest.interfaces import IResourceUrlConverter
-from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.utils import as_repository
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IRelation
 from everest.resources.interfaces import IResource
 from everest.resources.interfaces import IService
-from pyramid.compat import string_types
-from pyramid.compat import urlparse
-from pyramid.threadlocal import get_current_registry
-from pyramid.threadlocal import get_current_request
-from pyramid.traversal import model_path
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['as_member',
            'get_collection_class',
            'get_member_class',
            'get_registered_collection_resources',
-           'get_repository',
            'get_resource_class_for_relation',
            'get_resource_url',
            'get_root_collection',
@@ -181,15 +181,6 @@ def get_registered_collection_resources():
     return [util.component
             for util in reg.registeredUtilities()
             if util.name == 'collection-class']
-
-
-def get_repository(name):
-    """
-    Returns the resource repository with the given name.
-    """
-    reg = get_current_registry()
-    repo_mgr = reg.getUtility(IRepositoryManager)
-    return repo_mgr.get(name)
 
 
 def get_service():

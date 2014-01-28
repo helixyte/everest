@@ -4,18 +4,23 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
 """
+from logging import StreamHandler
+import logging
+import random
+
+from pyramid.compat import NativeIO
+
 from everest.testing import Pep8CompliantTestCase
 from everest.utils import BidirectionalLookup
+from everest.utils import TruncatingFormatter
 from everest.utils import WeakList
 from everest.utils import WeakOrderedSet
 from everest.utils import classproperty
+from everest.utils import get_repository
 from everest.utils import get_traceback
 from everest.utils import id_generator
-from logging import StreamHandler
-from pyramid.compat import NativeIO
-import logging
-import random
-from everest.utils import TruncatingFormatter
+from everest.testing import EntityTestCase
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['UtilsTestCase',
@@ -219,3 +224,12 @@ class UtilsTestCase(Pep8CompliantTestCase):
         buf.truncate()
         logger.debug('%s', 'X' * 101, extra=dict(output_limit=100))
         self.assert_equal(len(buf.getvalue().strip()), 100)
+
+
+class RepoManagerTestCase(EntityTestCase):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_no_rdb.zcml'
+
+    def test_get_repository(self):
+        repo = get_repository('MEMORY')
+        self.assert_equal(repo.name, 'MEMORY')

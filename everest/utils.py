@@ -168,6 +168,19 @@ def get_repository_manager():
     return reg.getUtility(IRepositoryManager)
 
 
+def get_repository(name=None):
+    """
+    Returns the repository with the given name or the default repository if
+    :param:`name` is `None`.
+    """
+    repo_mgr = get_repository_manager()
+    if name is None:
+        repo = repo_mgr.get_default()
+    else:
+        repo = repo_mgr.get(name)
+    return repo
+
+
 class BidirectionalLookup(object):
     """
     Bidirectional mapping between a left and a right collection of items.
