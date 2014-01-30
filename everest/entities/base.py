@@ -267,6 +267,20 @@ class Aggregate(object):
         """
         return query
 
+    def _filter_visitor_factory(self):
+        """
+        Override this to create filter visitors with custom clauses.
+        """
+        visitor_cls = get_filter_specification_visitor(self.expression_kind)
+        return visitor_cls(self.entity_class)
+
+    def _order_visitor_factory(self):
+        """
+        Override this to create order visitors with custom clauses.
+        """
+        visitor_cls = get_order_specification_visitor(self.expression_kind)
+        return visitor_cls(self.entity_class)
+
     def _get_filtered_query(self, key):
         #: Returns a query filtered by the current filter specification.
         query = self._query_optimizer(self.query(), key)
@@ -283,19 +297,14 @@ class Aggregate(object):
 
     def __filter_query(self, query):
         if not self.filter is None:
-            visitor_cls = \
-              get_filter_specification_visitor(self.expression_kind)
-            vst = visitor_cls(self.entity_class)
+            vst = self._filter_visitor_factory()
             self.filter.accept(vst)
             query = vst.filter_query(query)
         return query
 
     def __order_query(self, query):
         if not self._order_spec is None:
-            #: Orders the given query with the given order specification.
-            visitor_cls = \
-              get_order_specification_visitor(self.expression_kind)
-            vst = visitor_cls(self.entity_class)
+            vst = self._order_visitor_factory()
             self._order_spec.accept(vst)
             query = vst.order_query(query)
         return query
