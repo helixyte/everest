@@ -6,6 +6,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Mar 29, 2013.
 """
+from pyramid.compat import PY3
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CARDINALITIES',
@@ -30,8 +31,15 @@ class MetaConstantGroup(type):
             if not key.startswith('_'):
                 yield key
 
-# PY3 compatible way of using the metaclass (__metaclass__ does not work).
-ConstantGroup = MetaConstantGroup('ConstantGroup', (object,), {})
+if PY3:
+    # PY3 compatible way of using the metaclass (__metaclass__ does not work)
+    # that keeps pylint happy (no syntax error under Python 2.x).
+    ConstantGroup = MetaConstantGroup('ConstantGroup', (object,), {})
+else:
+    class ConstantGroup(object):
+        __metaclass__ = MetaConstantGroup
+
+# Assigning __doc__ outside __init__ pylint: disable=W0201
 ConstantGroup.__doc__ = \
 """
 Base class for all constant group classes.
@@ -46,6 +54,7 @@ class MyConstGroup(ConstantGroup):
 You can then iterate over the constants (`for const in MyConstGroup:`)
 or get a list of all constants in the group (`list(MyConstGroup)`).
 """
+# pylint: enable=W0201
 
 
 class RESOURCE_KINDS(ConstantGroup):
