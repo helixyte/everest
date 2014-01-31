@@ -206,7 +206,7 @@ class CqlFilterSpecificationVisitor(FilterSpecificationVisitor):
         if isinstance(value, string_types):
             result = '"%s"' % value
         elif IResource.providedBy(value): # pylint: disable=E1101
-            result = "'%s'" % resource_to_url(value)
+            result = '"%s"' % resource_to_url(value)
         else:
             result = str(value)
         return result

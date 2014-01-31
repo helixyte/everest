@@ -34,4 +34,3 @@ class Link(object):
     @property
     def href(self):
         return resource_to_url(self.__linked_resource)
-

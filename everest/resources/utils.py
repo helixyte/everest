@@ -194,19 +194,20 @@ def get_service():
     return reg.getUtility(IService)
 
 
-def resource_to_url(resource, request=None):
+def resource_to_url(resource, request=None, quote=False):
     """
     Converts the given resource to a URL.
 
     :param request: Request object (required for the host name part of the
       URL). If this is not given, the current request is used.
+    :param bool quote: If set, the URL returned will be quoted.
     """
     if request is None:
         request = get_current_request()
 #    cnv = request.registry.getAdapter(request, IResourceUrlConverter)
     reg = get_current_registry()
     cnv = reg.getAdapter(request, IResourceUrlConverter)
-    return cnv.resource_to_url(resource)
+    return cnv.resource_to_url(resource, quote=quote)
 
 
 def url_to_resource(url, request=None):

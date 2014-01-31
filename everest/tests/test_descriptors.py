@@ -429,8 +429,8 @@ class _DescriptorsTestCase(ResourceTestCase):
         exp_url = '/my-entity-parents/0/'
         url = resource_to_url(mb.parent)
         self.assert_true(url.endswith(exp_url))
-        exp_url = "/my-entity-children/?q=parent:equal-to:" \
-                  "'http://0.0.0.0:6543/my-entities/0/'"
+        exp_url = '/my-entity-children/?q=parent:equal-to:' \
+                  '"http://0.0.0.0:6543/my-entities/0/"'
         url = resource_to_url(mb.children)
         self.assert_true(url.endswith(exp_url))
         mb_child = mb.children['0']

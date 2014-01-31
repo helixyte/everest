@@ -78,10 +78,12 @@ class ResourceUrlConverter(object):
             raise ValueError('Traversal found non-resource object "%s".' % rc)
         return rc
 
-    def resource_to_url(self, resource):
+    def resource_to_url(self, resource, quote=False):
         """
         Returns the URL for the given resource.
 
+        :param resource: Resource to create a URL for.
+        :param bool quote: If set, the URL returned will be quoted.
         :raises ValueError: If the given resource is floating (i.e., has
           the parent attribute set to `None`)
         """
@@ -131,7 +133,9 @@ class ResourceUrlConverter(object):
                 url = "%s%s/" % (par_url, resource.__name__)
             else:
                 url = self.__request.resource_url(resource)
-        return url_unquote(url)
+        if not quote:
+            url = url_unquote(url)
+        return url
 
 
 class UrlPartsConverter(object):
