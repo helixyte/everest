@@ -27,9 +27,11 @@ from everest.mime import TextPlainMime
 from everest.mime import get_registered_mime_strings
 from everest.mime import get_registered_mime_type_for_name
 from everest.mime import get_registered_mime_type_for_string
+from everest.representers.utils import UpdatedRepresenterConfigurationContext
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
 from everest.resources.utils import resource_to_url
+from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
 from zope.interface import implementer # pylint: disable=E0611,F0401
@@ -166,19 +168,17 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         #: processing calls into this view.
         self._enable_messaging = enable_messaging
 
-    def _get_response_representer(self):
+    def _get_response_mime_type(self):
         """
-        Creates a representer for this view.
+        Returns the reponse MIME type for this view.
 
         :raises: :class:`pyramid.httpexceptions.HTTPNotAcceptable` if the
           MIME content type(s) the client specified can not be handled by
           the view.
-        :returns: :class:`everest.representers.base.ResourceRepresenter`
         """
         view_name = self.request.view_name
         if view_name != '':
             mime_type = get_registered_mime_type_for_name(view_name)
-            rpr = as_representer(self.context, mime_type)
         else:
             mime_type = None
             acc = None
@@ -210,8 +210,16 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
                                             headers=headers)
                     raise exc
                 mime_type = self.__get_default_response_mime_type()
-            rpr = as_representer(self.context, mime_type)
-        return rpr
+        return mime_type
+
+    def _get_response_representer(self):
+        """
+        Creates a representer for this view.
+
+        :returns: :class:`everest.representers.base.ResourceRepresenter`
+        """
+        mime_type = self._get_response_mime_type()
+        return as_representer(self.context, mime_type)
 
     def _get_result(self, resource):
         """
@@ -219,6 +227,9 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         Unless a custom renderer is employed, this will involve creating
         a representer and using it to convert the resource to a string.
 
+        :param resource: Resource to convert.
+        :type resource: Object implementing
+          :class:`evererst.interfaces.IResource`.
         :returns: :class:`pyramid.reposnse.Response` object or a dictionary
           with a single key "context" mapped to the given resource (to be
           passed on to a custom renderer).
@@ -284,6 +295,30 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
 
     def _prepare_resource(self):
         raise NotImplementedError('Abstract method.')
+
+    def _get_result(self, resource):
+        """
+        Extends the base class method with links options processing.
+        """
+        links_options = self.__configure_links()
+        if not links_options is None:
+            with UpdatedRepresenterConfigurationContext(
+                                        type(self.context),
+                                        self._get_response_mime_type(),
+                                        attribute_options=links_options):
+                result = RepresentingResourceView._get_result(self, resource)
+        else:
+            result = RepresentingResourceView._get_result(self, resource)
+        return result
+
+    def __configure_links(self):
+        links_options_string = self.request.params.get('links')
+        if not links_options_string is None:
+            links_options = \
+                UrlPartsConverter.make_links_options(links_options_string)
+        else:
+            links_options = None
+        return links_options
 
 
 class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223

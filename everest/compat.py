@@ -21,7 +21,6 @@ __all__ = ['csv_reader',
            ]
 
 
-
 # pylint: disable=E0611
 if PY3:
     izip = zip

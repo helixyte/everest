@@ -8,6 +8,7 @@ Created on May 8, 2012.
 """
 from collections import defaultdict
 from pyramid.compat import iteritems_
+from pyramid.compat import string_types
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresenterConfiguration',
@@ -110,33 +111,37 @@ class RepresenterConfiguration(object):
         """
         return self.__options.copy()
 
-    def set_attribute_option(self, attribute_key, option_name, option_value):
+    def set_attribute_option(self, attribute, option_name, option_value):
         """
         Sets the given attribute option to the given value for the specified
-        attribute key.
+        attribute.
         """
         self.__validate_attribute_option_name(option_name)
+        attribute_key = self.__make_key(attribute)
         mp_options = self.__attribute_options.setdefault(attribute_key, {})
         mp_options[option_name] = option_value
 
-    def get_attribute_option(self, attribute_key, option_name):
+    def get_attribute_option(self, attribute, option_name):
         """
         Returns the value of the given attribute option for the specified
-        attribute key.
+        attribute.
         """
         self.__validate_attribute_option_name(option_name)
+        attribute_key = self.__make_key(attribute)
         return self.__attribute_options[attribute_key].get(option_name)
 
-    def get_attribute_options(self, attribute_key=None):
+    def get_attribute_options(self, attribute=None):
         """
         Returns a copy of the mapping options for the given attribute name
         or a copy of all mapping options, if no attribute name is provided.
         All options that were not explicitly configured are given a default
         value of `None`.
 
-        :param tuple attribute_key: tuple specifying an attribute path.
+        :param tuple attribute_key: attribute name or tuple specifying an
+          attribute path.
         :returns: mapping options dictionary (including default `None` values)
         """
+        attribute_key = self.__make_key(attribute)
         if attribute_key is None:
             opts = defaultdict(self._default_attributes_options.copy)
             for attr, mp_options in iteritems_(self.__attribute_options):
@@ -146,6 +151,15 @@ class RepresenterConfiguration(object):
             attr_opts = self.__attribute_options[attribute_key]
             opts.update(attr_opts)
         return opts
+
+    def __make_key(self, attribute):
+        if isinstance(attribute, string_types):
+            key = tuple(attribute.split('.'))
+        elif not (isinstance(attribute, tuple) or attribute is None):
+            key = tuple(attribute)
+        else:
+            key = attribute
+        return key
 
     def __update(self, opts, mp_opts):
         if not opts is None:

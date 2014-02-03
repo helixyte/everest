@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 17, 2011.
 """
 from pkg_resources import resource_filename # pylint: disable=E0611
+from pyramid.compat import bytes_
 from pyramid.compat import native_
 from pyramid.testing import DummyRequest
 import transaction
@@ -39,7 +40,6 @@ from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
-from pyramid.compat import bytes_
 
 
 __docformat__ = 'reStructuredText en'
@@ -127,6 +127,24 @@ class BasicViewTestCase(FunctionalTestCase):
         res = self.app.get(self.path, params=dict(sort='id:asc', size=1),
                            status=200)
         self.assert_is_not_none(res)
+
+    def test_get_collection_with_links_options(self):
+        # The links options are not processed by the renderers, so we need
+        # a native everest view with a defined response MIME type.
+        self.config.add_resource_view(IMyEntity,
+                                      default_response_content_type=CsvMime,
+                                      request_method=RequestMethods.GET)
+        create_collection()
+        res1 = self.app.get(self.path, params=dict(links='parent:OFF'),
+                           status=200)
+        self.assert_is_not_none(res1)
+        self.assert_equal(native_(res1.body).find(',"parent",'), -1)
+        self.assert_equal(native_(res1.body).find(',"parent.id",'), -1)
+        res2 = self.app.get(self.path, params=dict(links='parent:INLINE'),
+                           status=200)
+        self.assert_is_not_none(res2)
+        self.assert_equal(native_(res2.body).find(',"parent",'), -1)
+        self.assert_not_equal(native_(res2.body).find(',"parent.id",'), -1)
 
     def test_get_member_default_content_type(self):
         coll = get_root_collection(IMyEntity)

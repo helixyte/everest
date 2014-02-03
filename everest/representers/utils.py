@@ -116,7 +116,7 @@ class _RepresenterConfigurationContext(object):
     def __enter__(self):
         mp_reg = get_mapping_registry(self.__content_type)
         self.__mapping = mp_reg.find_or_create_mapping(self.__mapped_class)
-        cfg = self._get_new_configuration(self.__mapping.configuration,
+        cfg = self._make_configuration(self.__mapping.configuration,
                                           self.options,
                                           self.attribute_options)
         self.__mapping.push_configuration(cfg)
@@ -124,8 +124,8 @@ class _RepresenterConfigurationContext(object):
     def __exit__(self, ext_type, value, tb):
         self.__mapping.pop_configuration()
 
-    def _get_new_configuration(self, current_configuration,
-                               options, attribute_options):
+    def _make_configuration(self, current_configuration, options,
+                            attribute_options):
         raise NotImplementedError('Abstract method.')
 
 
@@ -134,7 +134,7 @@ class NewRepresenterConfigurationContext(_RepresenterConfigurationContext):
     A context manager that configures a representer with a newly created
     configuration.
     """
-    def _get_new_configuration(self, current_configuration,
+    def _make_configuration(self, current_configuration,
                                options, attribute_options):
         cfg_cls = type(current_configuration)
         cfg = cfg_cls(options=options, attribute_options=attribute_options)
@@ -147,7 +147,7 @@ class UpdatedRepresenterConfigurationContext(
     A context manager that configures a representer with a copied and updated
     configuration.
     """
-    def _get_new_configuration(self, current_configuration,
+    def _make_configuration(self, current_configuration,
                                options, attribute_options):
         new_cfg = current_configuration.copy()
         upd_cfg = type(new_cfg)(options=options,

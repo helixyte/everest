@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
@@ -14,12 +14,11 @@ from everest.testing import TestCaseWithConfiguration
 from pyparsing import ParseException
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OrderSpecificationParserTestCase',
+__all__ = ['OrderParserTestCase',
            ]
 
 
-class OrderSpecificationParserTestCase(TestCaseWithConfiguration):
-
+class OrderParserTestCase(TestCaseWithConfiguration):
     def set_up(self):
         TestCaseWithConfiguration.set_up(self)
         self.parser = parse_order

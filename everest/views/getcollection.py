@@ -7,6 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 from copy import deepcopy
+
 from everest.batch import Batch
 from everest.resources.base import Link
 from everest.url import UrlPartsConverter
@@ -40,35 +41,35 @@ class GetCollectionView(GetResourceView):
                 # be reflected in the links' URLs.
                 self.context.order = deepcopy(self.context.default_order)
             # Build batch links.
-            batch = self._create_batch()
+            batch = self.__create_batch()
             self_link = Link(self.context, 'self', self.context.title)
             self.context.add_link(self_link)
             if batch.index > 0:
-                first_link = self._create_nav_link(batch.first, 'first',
-                                                   not needs_default_order)
+                first_link = self.__create_nav_link(batch.first, 'first',
+                                                    not needs_default_order)
                 self.context.add_link(first_link)
             if not batch.previous is None:
-                prev_link = self._create_nav_link(batch.previous, 'previous',
-                                                  not needs_default_order)
+                prev_link = self.__create_nav_link(batch.previous, 'previous',
+                                                   not needs_default_order)
                 self.context.add_link(prev_link)
             if not batch.next is None:
-                next_link = self._create_nav_link(batch.next, 'next',
-                                                  not needs_default_order)
+                next_link = self.__create_nav_link(batch.next, 'next',
+                                                   not needs_default_order)
                 self.context.add_link(next_link)
             if not batch.index == batch.number - 1:
-                last_link = self._create_nav_link(batch.last, 'last',
-                                                  not needs_default_order)
+                last_link = self.__create_nav_link(batch.last, 'last',
+                                                   not needs_default_order)
                 self.context.add_link(last_link)
             result = self.context
         return result
 
-    def _create_batch(self):
+    def __create_batch(self):
         start = self.context.slice.start
         size = self.context.slice.stop - start
         total_size = len(self.context)
         return Batch(start, size, total_size)
 
-    def _create_nav_link(self, batch, rel, reset_order):
+    def __create_nav_link(self, batch, rel, reset_order):
         coll_clone = self.context.clone()
         if reset_order:
             coll_clone.order = None
