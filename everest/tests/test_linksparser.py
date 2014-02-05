@@ -4,7 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 31, 2014.
 """
-from everest.querying.linksparser import parse_links
+from everest.querying.refsparser import parse_refs
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.testing import TestCaseWithConfiguration
@@ -35,7 +35,7 @@ class LinksParserTestCase(TestCaseWithConfiguration):
                  )
                 ]
         for (expr, expected) in data:
-            result = parse_links(expr)
+            result = parse_refs(expr)
             self.assert_true(isinstance(result, dict))
             for item in expected:
                 (key, opts) = item

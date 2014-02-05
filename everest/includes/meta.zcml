@@ -39,6 +39,11 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
             usedIn="everest.directives.IResourceRepresenterDirective"
             schema="everest.directives.IOptionDirective"
             handler="everest.directives.option" />
+        <meta:directive
+            name="ref"
+            usedIn="everest.directives.IResourceRepresenterDirective" 
+            schema="everest.directives.IRefDirective"
+            handler="everest.directives.ref" />
         <meta:groupingDirective
             name="attribute"
             usedIn="everest.directives.IResourceRepresenterDirective"

@@ -188,3 +188,12 @@ class RequestMethods(ConstantGroup):
     FAKE_PUT = 'FAKE_PUT'
     FAKE_PATCH = 'FAKE_PATCH'
     FAKE_DELETE = 'FAKE_DELETE'
+
+
+class ResourceReferenceRepresentationKinds(ConstantGroup):
+    """
+    Kinds of resource reference representations.
+    """
+    OFF = 'OFF'
+    INLINE = 'INLINE'
+    URL = 'URL'

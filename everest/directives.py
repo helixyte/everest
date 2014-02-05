@@ -6,6 +6,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 16, 2011.
 """
+from pyramid.compat import iteritems_
+from pyramid.threadlocal import get_current_registry
+from pyramid_zcml import IViewDirective
+
 from everest.configuration import Configurator
 from everest.constants import RESOURCE_KINDS
 from everest.constants import RequestMethods
@@ -15,9 +19,6 @@ from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from pyramid.compat import iteritems_
-from pyramid.threadlocal import get_current_registry
-from pyramid_zcml import IViewDirective
 from zope.configuration.config import GroupingContextDecorator # pylint: disable=E0611,F0401
 from zope.configuration.config import IConfigurationContext # pylint: disable=E0611,F0401
 from zope.configuration.fields import Bool # pylint: disable=E0611,F0401
@@ -28,6 +29,7 @@ from zope.interface import Interface # pylint: disable=E0611,F0401
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.schema import Choice # pylint: disable=E0611,F0401
 from zope.schema import TextLine # pylint: disable=E0611,F0401
+from everest.constants import ResourceReferenceRepresentationKinds
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['IFileSystemRepositoryDirective',
@@ -252,10 +254,10 @@ class ResourceDirective(GroupingContextDecorator):
     Directive for registering a resource. Calls
     :meth:`everest.configuration.Configurator.add_resource`.
     """
-
     def __init__(self, context, interface, member, entity,
                  collection=None, collection_root_name=None,
                  collection_title=None, repository=None, expose=True):
+        GroupingContextDecorator.__init__(self, context)
         self.context = context
         self.interface = interface
         self.member = member
@@ -396,8 +398,8 @@ class IRepresenterDirective(Interface):
 
 @implementer(IConfigurationContext, IRepresenterDirective)
 class RepresenterDirective(GroupingContextDecorator):
-
     def __init__(self, context, content_type=None, representer_class=None):
+        GroupingContextDecorator.__init__(self, context)
         self.context = context
         self.content_type = content_type
         self.representer_class = representer_class
@@ -440,6 +442,7 @@ class ResourceRepresenterDirective(GroupingContextDecorator):
     """
 
     def __init__(self, context, content_type, kind=None):
+        GroupingContextDecorator.__init__(self, context)
         self.context = context
         self.content_type = content_type
         if not kind is None:
@@ -463,8 +466,8 @@ class IResourceRepresenterAttributeDirective(Interface):
 
 @implementer(IConfigurationContext, IResourceRepresenterAttributeDirective)
 class ResourceRepresenterAttributeDirective(GroupingContextDecorator):
-
     def __init__(self, context, name):
+        GroupingContextDecorator.__init__(self, context)
         self.context = context
         self.name = name
         self.options = {}
@@ -498,5 +501,29 @@ def option(_context, name, value, type=None): # pylint: disable=W0622
         field = Bool()
         value = field.fromUnicode(value)
     grouping_context.options[name] = value
+
+
+class IRefDirective(Interface):
+    attribute = TextLine(title=u"The resource attribute the link is "
+                                "referencing.")
+    kind = Choice(title=u"The kind of resource reference representation to "
+                         "use.",
+                  values=tuple(ResourceReferenceRepresentationKinds))
+
+
+def ref(_context, attribute, kind):
+    grouping_context = _context.context
+    options = dict()
+    if kind == ResourceReferenceRepresentationKinds.INLINE:
+        options[IGNORE_OPTION] = False
+        options[WRITE_AS_LINK_OPTION] = False
+    elif kind == ResourceReferenceRepresentationKinds.URL:
+        options[IGNORE_OPTION] = False
+        options[WRITE_AS_LINK_OPTION] = True
+    else:
+        options[IGNORE_OPTION] = True
+    key = tuple(attribute.split('.'))
+    grouping_context.attribute_options[key] = options
+
 
 # pylint: enable=W0232
