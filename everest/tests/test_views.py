@@ -128,19 +128,19 @@ class BasicViewTestCase(FunctionalTestCase):
                            status=200)
         self.assert_is_not_none(res)
 
-    def test_get_collection_with_links_options(self):
+    def test_get_collection_with_refs_options(self):
         # The links options are not processed by the renderers, so we need
         # a native everest view with a defined response MIME type.
         self.config.add_resource_view(IMyEntity,
                                       default_response_content_type=CsvMime,
                                       request_method=RequestMethods.GET)
         create_collection()
-        res1 = self.app.get(self.path, params=dict(links='parent:OFF'),
+        res1 = self.app.get(self.path, params=dict(refs='parent:OFF'),
                            status=200)
         self.assert_is_not_none(res1)
         self.assert_equal(native_(res1.body).find(',"parent",'), -1)
         self.assert_equal(native_(res1.body).find(',"parent.id",'), -1)
-        res2 = self.app.get(self.path, params=dict(links='parent:INLINE'),
+        res2 = self.app.get(self.path, params=dict(refs='parent:INLINE'),
                            status=200)
         self.assert_is_not_none(res2)
         self.assert_equal(native_(res2.body).find(',"parent",'), -1)

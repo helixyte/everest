@@ -24,7 +24,7 @@ from pyramid.traversal import find_resource
 from pyramid.traversal import traversal_path
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.querying.linksparser import parse_links
+from everest.querying.refsparser import parse_refs
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
@@ -218,12 +218,12 @@ class UrlPartsConverter(object):
         return (str(start), str(size))
 
     @classmethod
-    def make_links_options(cls, links_options_string):
+    def make_refs_options(cls, refs_string):
         """
-        Converts the given CQL links options string to a dictionary of link
-        options.
+        Converts the given CQL resource references string to a dictionary of
+        attribute representer options.
         """
         try:
-            return parse_links(links_options_string)
+            return parse_refs(refs_string)
         except ParseException as err:
-            raise ValueError('Links options string has errors. %s' % err)
+            raise ValueError('Refs string has errors. %s' % err)

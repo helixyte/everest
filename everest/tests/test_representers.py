@@ -677,6 +677,11 @@ class RepresenterConfigurationNoTypesTestCase(
     config_file_name = 'configure_rpr_no_types.zcml'
 
 
+class RepresenterConfigurationOldStyleAttrsTestCase(
+                                            _RepresenterConfigurationTestCase):
+    config_file_name = 'configure_rpr_oldstyle_attrs.zcml'
+
+
 class RepresenterConfigurationTestCase(_RepresenterConfigurationTestCase):
     config_file_name = 'configure_rpr.zcml'
 

@@ -300,7 +300,7 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
         """
         Extends the base class method with links options processing.
         """
-        links_options = self.__configure_links()
+        links_options = self.__configure_refs()
         if not links_options is None:
             with UpdatedRepresenterConfigurationContext(
                                         type(self.context),
@@ -311,11 +311,11 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
             result = RepresentingResourceView._get_result(self, resource)
         return result
 
-    def __configure_links(self):
-        links_options_string = self.request.params.get('links')
-        if not links_options_string is None:
+    def __configure_refs(self):
+        refs_options_string = self.request.params.get('refs')
+        if not refs_options_string is None:
             links_options = \
-                UrlPartsConverter.make_links_options(links_options_string)
+                UrlPartsConverter.make_refs_options(refs_options_string)
         else:
             links_options = None
         return links_options
