@@ -685,6 +685,20 @@ class RepresenterConfigurationOldStyleAttrsTestCase(
 class RepresenterConfigurationTestCase(_RepresenterConfigurationTestCase):
     config_file_name = 'configure_rpr.zcml'
 
+    def test_non_existing_attribute_fails(self):
+            root_coll = get_root_collection(IMyEntity)
+            ent = MyEntity(id=1)
+            mb = root_coll.create_member(ent)
+            rpr = as_representer(mb, CsvMime)
+            attr_name = 'invalid'
+            attribute_options = {(attr_name,):{IGNORE_OPTION:False,
+                                               WRITE_AS_LINK_OPTION:True}}
+            with self.assert_raises(AttributeError) as cm:
+                rpr.configure(attribute_options=attribute_options)
+            msg = 'Trying to configure non-existing resource attribute "%s"' \
+                  % attr_name
+            self.assert_equal(str(cm.exception)[:len(msg)], msg)
+
     def test_configure_existing(self):
         foo_namespace = 'http://bogus.org/foo'
         foo_prefix = 'foo'

@@ -82,6 +82,16 @@ class Mapping(object):
         """
         Updates this mapping with the given option and attribute option maps.
         """
+        for attributes, opts in attribute_options.items():
+            ignore = opts.get('ignore', True)
+            for attr_name in attributes:
+                try:
+                    attr = self.get_attribute(attr_name)
+                except KeyError:
+                    if not ignore:
+                        raise AttributeError('Trying to configure non-existing resource attribute "%s"' %(attr_name))
+
+
         cfg = RepresenterConfiguration(options=options,
                                        attribute_options=attribute_options)
         self.configuration.update(cfg)
