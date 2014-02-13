@@ -10,7 +10,7 @@ from collections import OrderedDict
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
-from everest.representers.config import RepresenterConfiguration
+from everest.representers.config import RepresenterConfiguration, IGNORE_OPTION
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
@@ -82,6 +82,15 @@ class Mapping(object):
         """
         Updates this mapping with the given option and attribute option maps.
         """
+        for attributes, opts in attribute_options.items():
+            do_ignore = opts.get(IGNORE_OPTION, True)
+            for attr_name in attributes:
+                if not (attr_name in
+                        self.__get_attribute_map(self.__mapped_cls, None)
+                                                             and do_ignore):
+                    raise AttributeError('Trying to configure non-existing '
+                                         'resource attribute "%s"' %(attr_name))
+
         cfg = RepresenterConfiguration(options=options,
                                        attribute_options=attribute_options)
         self.configuration.update(cfg)
