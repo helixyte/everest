@@ -7,10 +7,15 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 4, 2012.
 """
 from collections import OrderedDict
+
+from pyramid.compat import iteritems_
+from pyramid.compat import itervalues_
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.representers.attributes import MappedAttribute
 from everest.representers.attributes import MappedAttributeKey
-from everest.representers.config import RepresenterConfiguration, IGNORE_OPTION
+from everest.representers.config import IGNORE_OPTION
+from everest.representers.config import RepresenterConfiguration
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
@@ -27,9 +32,8 @@ from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
-from pyramid.compat import iteritems_
-from pyramid.compat import itervalues_
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Mapping',
@@ -89,7 +93,7 @@ class Mapping(object):
                         self.__get_attribute_map(self.__mapped_cls, None)
                                                              and do_ignore):
                     raise AttributeError('Trying to configure non-existing '
-                                         'resource attribute "%s"' %(attr_name))
+                                         'resource attribute "%s"' % (attr_name))
 
         cfg = RepresenterConfiguration(options=options,
                                        attribute_options=attribute_options)
