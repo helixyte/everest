@@ -30,6 +30,7 @@ from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import UpdatedRepresenterConfigurationContext
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
+from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
 from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
@@ -235,16 +236,23 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
           passed on to a custom renderer).
         """
         if self._convert_response:
-            rpr = self._get_response_representer()
-            # Set content type and body of the response.
-            self.request.response.content_type = \
-                                    rpr.content_type.mime_type_string
-            rpr_body = rpr.to_bytes(resource)
-            self.request.response.body = rpr_body
+            self._update_response_body(resource)
             result = self.request.response
         else:
             result = dict(context=resource)
         return result
+
+    def _update_response_body(self, resource):
+        rpr = self._get_response_representer()
+        # Set content type and body of the response.
+        self.request.response.content_type = \
+                                rpr.content_type.mime_type_string
+        rpr_body = rpr.to_bytes(resource)
+        self.request.response.body = rpr_body
+
+    def _update_response_location_header(self, resource):
+        location = resource_to_url(resource, request=self.request)
+        self.request.response.headerlist.append(('Location', location))
 
     def __get_default_response_mime_type(self):
         if not self._default_response_content_type is None:
@@ -296,7 +304,7 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
     def _prepare_resource(self):
         raise NotImplementedError('Abstract method.')
 
-    def _get_result(self, resource):
+    def _update_response_body(self, resource):
         """
         Extends the base class method with links options processing.
         """
@@ -306,10 +314,9 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
                                         type(self.context),
                                         self._get_response_mime_type(),
                                         attribute_options=links_options):
-                result = RepresentingResourceView._get_result(self, resource)
+                RepresentingResourceView._update_response_body(self, resource)
         else:
-            result = RepresentingResourceView._get_result(self, resource)
-        return result
+            RepresentingResourceView._update_response_body(self, resource)
 
     def __configure_refs(self):
         refs_options_string = self.request.params.get('refs')
@@ -440,6 +447,31 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
         exception class.
         """
         return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
+
+    def _get_result(self, resource):
+        """
+        Overrides the base class method to handle the rare case where
+        the URL and representation of the modified resource are not fully
+        available yet (e.g. because the backend has not flushed the changes
+        yet). This is done by deferring setting of the location header
+        (and updating the body, if the response is converted) to a response
+        callback.
+        """
+        if provides_member_resource(resource):
+            loc_rc = resource
+        else:
+            loc_rc = self.context
+        cb_header = lambda request, response: \
+                            self._update_response_location_header(loc_rc)
+        self.request.add_response_callback(cb_header)
+        if self._convert_response:
+            cb_body = lambda request, response: \
+                            self._update_response_body(resource)
+            self.request.add_response_callback(cb_body)
+            result = self.request.response
+        else:
+            result = RepresentingResourceView._get_result(self, resource)
+        return result
 
 
 class PutOrPatchResourceView(ModifyingResourceView):

@@ -6,11 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 14, 2011.
 """
+from pyramid.httpexceptions import HTTPCreated
+
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import provides_resource
-from everest.resources.utils import resource_to_url
 from everest.views.base import ModifyingResourceView
-from pyramid.httpexceptions import HTTPCreated
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['PostCollectionView',
@@ -33,8 +34,7 @@ class PostCollectionView(ModifyingResourceView):
             resource = rpr.resource_from_data(data)
         else:
             resource = data
-        member_was_posted = provides_member_resource(resource)
-        if member_was_posted:
+        if provides_member_resource(resource):
             new_members = [resource]
         else:
             new_members = resource
@@ -42,18 +42,12 @@ class PostCollectionView(ModifyingResourceView):
         for new_member in new_members:
             if self.context.get(new_member.__name__) is not None:
                 # We have a member with the same name - 409 Conflict.
-                response = self._handle_conflict(new_member.__name__)
+                result = self._handle_conflict(new_member.__name__)
                 was_created = False
                 break
             else:
                 self.context.add(new_member)
         if was_created:
-            if member_was_posted:
-                new_location = resource_to_url(resource, request=self.request)
-            else:
-                new_location = resource_to_url(self.context,
-                                               request=self.request)
             self.request.response.status = self._status(HTTPCreated)
-            self.request.response.headerlist = [('Location', new_location)]
-            response = self._get_result(resource)
-        return response
+            result = self._get_result(resource)
+        return result
