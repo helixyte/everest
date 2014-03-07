@@ -243,6 +243,10 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         return result
 
     def _update_response_body(self, resource):
+        """
+        Creates a representer and updates the response body with the byte
+        representation created for the given resource.
+        """
         rpr = self._get_response_representer()
         # Set content type and body of the response.
         self.request.response.content_type = \
@@ -251,8 +255,19 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         self.request.response.body = rpr_body
 
     def _update_response_location_header(self, resource):
+        """
+        Adds a new or replaces an existing Location header to the response
+        headers pointing to the URL of the given resource.
+        """
         location = resource_to_url(resource, request=self.request)
-        self.request.response.headerlist.append(('Location', location))
+        loc_hdr = ('Location', location)
+        hdr_names = [hdr[0].upper() for hdr in self.request.response.headerlist]
+        try:
+            idx = hdr_names.index('LOCATION')
+        except ValueError:
+            self.request.response.headerlist.append(loc_hdr)
+        else:
+            self.request.response.headerlist[idx] = loc_hdr
 
     def __get_default_response_mime_type(self):
         if not self._default_response_content_type is None:

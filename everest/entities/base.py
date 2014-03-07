@@ -207,6 +207,13 @@ class Aggregate(object):
         """
         raise NotImplementedError('Abstract method.')
 
+    def sync_with_repository(self):
+        """
+        Flushes all pending state to the repository and updates all loaded
+        entities.
+        """
+        raise NotImplementedError('Abstract method.')
+
     @property
     def expression_kind(self):
         """
@@ -403,6 +410,9 @@ class RootAggregate(Aggregate):
     def query(self, **options):
         return self._session.query(self.entity_class, **options)
 
+    def sync_with_repository(self):
+        self._session.flush()
+
     @property
     def expression_kind(self):
         return self._expression_kind
@@ -450,6 +460,9 @@ class RelationshipAggregate(Aggregate):
 
     def query(self):
         return self._root_aggregate.query()
+
+    def sync_with_repository(self):
+        self._root_aggregate.sync_with_repository()
 
     @property
     def entity_class(self):

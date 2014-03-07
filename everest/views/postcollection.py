@@ -34,13 +34,18 @@ class PostCollectionView(ModifyingResourceView):
             resource = rpr.resource_from_data(data)
         else:
             resource = data
-        if provides_member_resource(resource):
+        data_is_member = provides_member_resource(resource)
+        if data_is_member:
             new_members = [resource]
         else:
             new_members = resource
         was_created = True
+        sync_with_repo = False
         for new_member in new_members:
-            if self.context.get(new_member.__name__) is not None:
+            name_is_none = new_member.__name__ is None
+            sync_with_repo |= name_is_none
+            if not name_is_none \
+               and not self.context.get(new_member.__name__) is None:
                 # We have a member with the same name - 409 Conflict.
                 result = self._handle_conflict(new_member.__name__)
                 was_created = False
@@ -48,6 +53,17 @@ class PostCollectionView(ModifyingResourceView):
             else:
                 self.context.add(new_member)
         if was_created:
+            if sync_with_repo:
+                # This is not pretty, but necessary: When the resource
+                # name depends on the entity ID, the pending entity needs
+                # to be flushed to the repository before we can access
+                # the ID.
+                self.context.get_aggregate().sync_with_repository()
             self.request.response.status = self._status(HTTPCreated)
+            if data_is_member:
+                loc_rc = resource
+            else:
+                loc_rc = self.context
+            self._update_response_location_header(loc_rc)
             result = self._get_result(resource)
         return result

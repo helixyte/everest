@@ -40,6 +40,7 @@ from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
+import os
 
 
 __docformat__ = 'reStructuredText en'
@@ -60,7 +61,7 @@ class BasicViewTestCase(FunctionalTestCase):
     ini_file_path = resource_filename('everest.tests.complete_app',
                                       'complete_app.ini')
     app_name = 'complete_app'
-    path = '/my-entities'
+    path = '/my-entities/'
 
     def set_up(self):
         FunctionalTestCase.set_up(self)
@@ -225,6 +226,17 @@ class BasicViewTestCase(FunctionalTestCase):
         coll = get_root_collection(IMyEntity)
         mb = coll['0']
         self.assert_equal(mb.text, 'abc')
+
+    def test_post_collection_no_id(self):
+        req_body = b'"text","number"\n"abc",2\n'
+        res = self.app.post("%s" % self.path,
+                            params=req_body,
+                            content_type=CsvMime.mime_type_string,
+                            status=201)
+        self.assert_is_not_none(res)
+        self.assert_true(res.headers['Location'].endswith(self.path))
+        self.assert_not_equal(native_(res.body).split(os.linesep)[1][:2],
+                              '""')
 
     def test_post_nested_collection(self):
         mb, mb_url = self.__make_parent_and_link()
