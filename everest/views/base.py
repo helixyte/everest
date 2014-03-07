@@ -30,7 +30,6 @@ from everest.mime import get_registered_mime_type_for_string
 from everest.representers.utils import UpdatedRepresenterConfigurationContext
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
-from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
 from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
@@ -463,31 +462,6 @@ class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: 
         """
         return '%(code)s %(title)s' % wsgi_http_exc_class.__dict__
 
-    def _get_result(self, resource):
-        """
-        Overrides the base class method to handle the rare case where
-        the URL and representation of the modified resource are not fully
-        available yet (e.g. because the backend has not flushed the changes
-        yet). This is done by deferring setting of the location header
-        (and updating the body, if the response is converted) to a response
-        callback.
-        """
-        if provides_member_resource(resource):
-            loc_rc = resource
-        else:
-            loc_rc = self.context
-        cb_header = lambda request, response: \
-                            self._update_response_location_header(loc_rc)
-        self.request.add_response_callback(cb_header)
-        if self._convert_response:
-            cb_body = lambda request, response: \
-                            self._update_response_body(resource)
-            self.request.add_response_callback(cb_body)
-            result = self.request.response
-        else:
-            result = RepresentingResourceView._get_result(self, resource)
-        return result
-
 
 class PutOrPatchResourceView(ModifyingResourceView):
     """
@@ -498,11 +472,9 @@ class PutOrPatchResourceView(ModifyingResourceView):
         self.context.update(data)
         current_name = self.context.__name__
         self.request.response.status = self._status(HTTPOk)
-        # FIXME: add conflict detection
         if initial_name != current_name:
-            self.request.response.headerlist = \
-                [('Location',
-                  resource_to_url(self.context, request=self.request))]
+            # FIXME: add conflict detection!
+            self._update_response_location_header(self.context)
         # We return the (representation of) the updated member to
         # assist the client in doing the right thing (some clients block
         # access to the Response headers so we may not be able to find the
