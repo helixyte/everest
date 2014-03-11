@@ -140,11 +140,8 @@ class RdbSessionFactory(SessionFactory):
                             repository=self._repository)
             if not self._repository.autocommit \
                and self._repository.join_transaction:
-                # Enable the Zope transaction extension. We do not want to
-                # throw away the session so that we can still access session
-                # state after the commit (e.g. in a response callback).
-                self.__fac.configure(
-                        extension=ZopeTransactionExtension(keep_session=True))
+                # Enable the Zope transaction extension.
+                self.__fac.configure(extension=ZopeTransactionExtension())
             else:
                 # Disable extension otherwise.
                 self.__fac.configure(extension=None)
