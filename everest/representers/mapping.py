@@ -125,6 +125,8 @@ class Mapping(object):
         """
         if mapped_class is None:
             mapped_class = self.__mapped_cls
+        if key is None:
+            key = MappedAttributeKey(())
         return OrderedDict([(attr.resource_attr, attr)
                             for attr in self._attribute_iterator(mapped_class,
                                                                  key)])
