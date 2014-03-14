@@ -264,9 +264,10 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                                                             attr.value_type)
             setattr(self, q_tag, xml_value)
 
-    @property
-    def data(self):
-        data_map = OrderedDict()
+    def iterator(self):
+        id_val = self.get('id')
+        yield ('id', None) if id_val is None \
+            else ('id', self.mapping.get_attribute('id').value_type(id_val))
         for child in self.iterchildren():
             idx = child.tag.find('}')
             if idx != -1:
@@ -280,7 +281,13 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 value = XmlConverterRegistry.convert_from_representation(
                                                             child.text,
                                                             attr.value_type)
-            data_map[tag] = value
+            yield (tag, value)
+
+    @property
+    def data(self):
+        data_map = OrderedDict()
+        for (name, value) in self.iterator():
+            data_map[name] = value
         return data_map
 
     def __get_q_tag(self, attr):

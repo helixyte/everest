@@ -65,10 +65,11 @@ class MappingTestCase(ResourceTestCase):
             # The parent and children attributes are links.
             self.assert_true(isinstance(getattr(prx, parent_repr_name),
                                         LinkedDataElement))
-            children_el = getattr(prx, children_repr_name)
             if cnt_type is XmlMime:
-                self.assert_is_none(children_el)
+                self.assert_raises(AttributeError,
+                                   getattr, prx, children_repr_name)
             else:
+                children_el = getattr(prx, children_repr_name)
                 self.assert_true(isinstance(children_el, LinkedDataElement))
             # Nonexisting attribute raises error.
             self.assert_raises(AttributeError, getattr, prx, 'foo')
@@ -103,7 +104,7 @@ class MappingTestCase(ResourceTestCase):
         entity.parent = None
         de1 = mp1.map_to_data_element(mb)
         prx1 = DataElementAttributeProxy(de1)
-        self.assert_is_none(prx1.parent)
+        self.assert_raises(AttributeError, getattr, prx1, 'parent')
 
     def test_map_to_data_element_with_collection(self):
         entity = create_entity()

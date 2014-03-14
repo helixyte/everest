@@ -138,26 +138,41 @@ class IMemberDataElement(IResourceDataElement):
     converter_registry = Attribute("Registry of representation<->value "
                                    "converters.")
 
-    data = Attribute("Ordered dictionary mapping data attribute names to "
-                     "data attribute values.")
-
-    def get_mapped_terminal(attr):
+    def iterator():
         """
-        Returns the value for the given terminal mapped attribute.
+        Returns an iterator yielding (attribute repr name, attribute value)
+        pairs for every attribute set on this data element.
         """
 
-    def set_mapped_terminal(attr, value):
+    data = Attribute("Ordered dictionary constructed from the return values "
+                     "of the :method:`iterator` method.")
+
+    def get_attribute(self, name):
+        """
+        Returns the value that was set for the given attribute.
+
+        Raises an :class:`AttributeError` if the attribute was not set.
+        """
+
+    def get_terminal(attr):
+        """
+        Returns the value for the given terminal mapped attribute or `None`
+        if the data element does not have a value set for this attribute.
+        """
+
+    def set_terminal(attr, value):
         """
         Sets the given mapped terminal attribute to the given value.
         """
 
-    def get_mapped_nested(attr):
+    def get_nested(attr):
         """
         Returns the nested data element specified by the given member or
-        collection mapped attribute.
+        collection mapped attribute or `None` if the data element does not
+        have a value set for this attribute.
         """
 
-    def set_mapped_child(attr, data_element):
+    def set_nested(attr, data_element):
         """
         Sets the given mmeber or collection mapped attribute to the given
         data element.
@@ -168,14 +183,14 @@ class ICollectionDataElement(IResourceDataElement):
     """
     Interface for collection data elements.
     """
-    def get_members():
-        """
-        Returns all member data elements.
-        """
-
     def add_member(member_data_el):
         """
         Adds the given member data element to this collection data element.
+        """
+
+    def get_members():
+        """
+        Returns all member data elements.
         """
 
     def __len__():

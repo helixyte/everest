@@ -500,7 +500,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
                                               WRITE_AS_LINK_OPTION, False)
         de1 = mp.map_to_data_element(mb)
         self.assert_equal(list(de1.data.keys()),
-                          ['myentityparent', 'text', 'number', 'date_time'])
+                    ['id', 'myentityparent', 'text', 'number', 'date_time'])
         self.assert_equal(de1.data['number'], 1)
         self.assert_true(
             IMemberDataElement.providedBy(de1.data['myentityparent'])) # pylint:disable=E1101
@@ -558,7 +558,7 @@ class XmlRepresenterTestCase(ResourceTestCase):
         self.assert_equal(attr.namespace, ns)
         de = mp.map_to_data_element(mb)
         self.assert_equal(list(de.data.keys()),
-                          ['myentityparent', 'text', 'number', 'date_time'])
+                    ['id', 'myentityparent', 'text', 'number', 'date_time'])
         parent_de = de.get_nested(attr)
         self.assert_equal(parent_de.tag.find('{'), -1)
 

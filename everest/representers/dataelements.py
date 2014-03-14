@@ -7,6 +7,9 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012
 """
 from collections import OrderedDict
+
+from pyramid.compat import iteritems_
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.representers.converters import SimpleConverterRegistry
@@ -18,9 +21,9 @@ from everest.representers.utils import data_element_tree_to_string
 from everest.resources.utils import provides_collection_resource
 from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
-from pyramid.compat import iteritems_
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['CollectionDataElement',
@@ -73,6 +76,26 @@ class MemberDataElement(DataElement):
     #: Registry of representation string <-> value converters. To be set
     #: in derived classes.
     converter_registry = None
+
+    def iterator(self):
+        """
+        Returns an iterator yielding name value pairs for every attribute set
+        on this data element.
+
+        :returns: Sequence of `attribute repr name, attribute value` 2-tuples.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    @property
+    def data(self):
+        """
+        Returns an ordered dictionary constructed from the return values
+        of the :method:`iterator` method.
+
+        :returns: Ordered dictionary mapping attribute repr names to attribute
+            values.
+        """
+        raise NotImplementedError('Abstract method.')
 
     def get_terminal(self, attr):
         """
@@ -155,6 +178,9 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
     converter_registry = SimpleConverterRegistry
 
     __data = None
+
+    def iterator(self):
+        return iter(iteritems_(self.data))
 
     @property
     def data(self):
@@ -348,6 +374,9 @@ class DataElementAttributeProxy(object):
         attrs = data_element.mapping.attribute_iterator()
         self.__attr_map = dict([(attr.repr_name, attr) for attr in attrs])
         self.__data_element = data_element
+        # We keep a cached data map because for some data element
+        # implementations building it is expensive.
+        self.__data = data_element.data
 
     def get_data_element(self):
         """
@@ -358,28 +387,21 @@ class DataElementAttributeProxy(object):
 
     def __getattr__(self, name):
         try:
-            attr = self.__attr_map[name]
+            value = self.__data[name]
         except KeyError:
             raise AttributeError(name)
-        else:
-            if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
-                value = self.__data_element.get_terminal(attr)
-            else:
-                nested_data_el = self.__data_element.get_nested(attr)
-                if nested_data_el is None:
-                    value = None
-                elif ILinkedDataElement in provided_by(nested_data_el):
-                    value = nested_data_el # links are returned as-is.
-                elif attr.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER:
-                    value = DataElementAttributeProxy(nested_data_el)
-                else:
-                    value = [DataElementAttributeProxy(mb_el)
-                             for mb_el in nested_data_el.get_members()]
+        ifcs = provided_by(value)
+        if IMemberDataElement in ifcs:
+            value = DataElementAttributeProxy(value)
+        elif ICollectionDataElement in ifcs:
+            value = [DataElementAttributeProxy(mb_el)
+                     for mb_el in value.get_members()]
         return value
 
     def __setattr__(self, name, value):
         # Avoid recursion for setting instance data during constructor call.
         if name in ['_DataElementAttributeProxy__data_element',
+                    '_DataElementAttributeProxy__data',
                     '_DataElementAttributeProxy__attr_map']:
             self.__dict__[name] = value
         else:
@@ -395,3 +417,5 @@ class DataElementAttributeProxy(object):
                         raise ValueError('Need a data element or None as '
                                          'attribute value.')
                     self.__data_element.set_nested(attr, value)
+                # Also set in the cached data map.
+                self.__data[name] = value
