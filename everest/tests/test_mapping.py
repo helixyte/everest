@@ -62,7 +62,7 @@ class MappingTestCase(ResourceTestCase):
             self.assert_equal(prx.id, 0)
             self.assert_equal(prx.text, 'TEXT')
             self.assert_equal(prx.number, 1)
-            # The parent and children attributes are links.
+            # The parent attribute is a link.
             self.assert_true(isinstance(getattr(prx, parent_repr_name),
                                         LinkedDataElement))
             if cnt_type is XmlMime:

@@ -28,7 +28,6 @@ from everest.representers.converters import DateTimeConverter
 from everest.representers.dataelements import CollectionDataElement
 from everest.representers.dataelements import LinkedDataElement
 from everest.representers.dataelements import MemberDataElement
-from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import ILinkedDataElement
 from everest.representers.mapping import MappingRegistry
 from everest.representers.utils import get_mapping_registry
@@ -202,67 +201,21 @@ class _XmlDataElementMixin(object):
 
 class XmlMemberDataElement(objectify.ObjectifiedElement,
                            _XmlDataElementMixin, MemberDataElement):
+    #: This is used to identify nested attributes with None value.
+    __NONE_MARKER = '__none__'
     converter_registry = XmlConverterRegistry
 
     def get_nested(self, attr):
-        # We only allow *one* child with the given name.
-        q_tag = self.__get_q_tag(attr)
-        child_it = self.iterchildren(q_tag)
-        try:
-            child = next(child_it)
-        except StopIteration:
-            child = None
-        else:
-            try:
-                next(child_it)
-            except StopIteration:
-                pass
-            else:
-                # This should never happen.
-                raise ValueError('More than one child for member '
-                                 'attribute "%s" found.' % attr) # pragma: no cover
-            child = self.__check_for_link(child)
-        return child
+        return self.__get_attribute(attr, True)
 
     def set_nested(self, attr, data_element):
-        q_tag = self.__get_q_tag(attr)
-        if data_element is None:
-            el = getattr(self, q_tag, None)
-            if not el is None:
-                self.remove(el)
-        else:
-            data_element.tag = q_tag
-            self.append(data_element)
+        self.__set_attribute(attr, data_element)
 
     def get_terminal(self, attr):
-        if attr.repr_name == 'id':
-            # The "special" id attribute.
-            xml_val = self.get('id')
-            if not xml_val is None:
-                val = attr.value_type(xml_val)
-            else:
-                val = None
-        else:
-            q_tag = self.__get_q_tag(attr)
-            val_el = getattr(self, q_tag, None)
-            if not val_el is None:
-                val = XmlConverterRegistry.convert_from_representation(
-                                                            val_el.text,
-                                                            attr.value_type)
-            else:
-                val = None
-        return val
+        return self.__get_attribute(attr, True)
 
     def set_terminal(self, attr, value):
-        if attr.repr_name == 'id':
-            # The "special" id attribute.
-            self.set('id', str(value))
-        else:
-            q_tag = self.__get_q_tag(attr)
-            xml_value = XmlConverterRegistry.convert_to_representation(
-                                                            value,
-                                                            attr.value_type)
-            setattr(self, q_tag, xml_value)
+        self.__set_attribute(attr, value)
 
     def iterator(self):
         id_val = self.get('id')
@@ -274,10 +227,10 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
                 tag = child.tag[idx + 1:]
             else:
                 tag = child.tag
-            if IDataElement.providedBy(child): # pylint:disable=E1101
+            attr = self.mapping.get_attribute_by_repr(tag)
+            if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                 value = self.__check_for_link(child)
             else:
-                attr = self.mapping.get_attribute(tag)
                 value = XmlConverterRegistry.convert_from_representation(
                                                             child.text,
                                                             attr.value_type)
@@ -289,6 +242,20 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         for (name, value) in self.iterator():
             data_map[name] = value
         return data_map
+
+    def get_attribute(self, attr_name):
+        try:
+            attr = self.mapping.get_attribute_by_repr(attr_name)
+        except KeyError:
+            raise AttributeError(attr_name)
+        return self.__get_attribute(attr, False)
+
+    def set_attribute(self, attr_name, value):
+        try:
+            attr = self.mapping.get_attribute_by_repr(attr_name)
+        except KeyError:
+            raise AttributeError(attr_name)
+        self.__set_attribute(attr, value)
 
     def __get_q_tag(self, attr):
         # FIXME: We should cache the namespace for each attribute.
@@ -315,6 +282,73 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             else:
                 q_tag = attr.repr_name
         return q_tag
+
+    def __get_attribute(self, attr, safe):
+        if attr.repr_name == 'id':
+            # The "special" id attribute.
+            xml_val = self.get('id')
+            if not xml_val is None:
+                value = attr.value_type(xml_val)
+            else:
+                value = None
+        else:
+            q_tag = self.__get_q_tag(attr)
+            child_it = self.iterchildren(q_tag)
+            try:
+                val_el = next(child_it)
+            except StopIteration:
+                if safe:
+                    value = None
+                else:
+                    raise AttributeError(attr.repr_name)
+            else:
+                try:
+                    next(child_it)
+                except StopIteration:
+                    pass
+                else:
+                    # This should never happen.
+                    raise ValueError('More than one child for member '
+                                     'attribute "%s" found.' % attr) # pragma: no cover
+                if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
+                    if val_el.text == self.__NONE_MARKER:
+                        value = None
+                    else:
+                        value = self.__check_for_link(val_el)
+                else:
+                    value = XmlConverterRegistry.convert_from_representation(
+                                                            val_el.text,
+                                                            attr.value_type)
+#            q_tag = self.__get_q_tag(attr)
+#            val_el = getattr(self, q_tag, None)
+#            if not val_el is None:
+#                value = XmlConverterRegistry.convert_from_representation(
+#                                                            val_el.text,
+#                                                            attr.value_type)
+#            else:
+#                value = None
+        return value
+
+    def __set_attribute(self, attr, value):
+        if attr.repr_name == 'id':
+            # The "special" id attribute.
+            self.set('id', str(value))
+        else:
+            q_tag = self.__get_q_tag(attr)
+            if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
+                if value is None:
+                    setattr(self, q_tag, self.__NONE_MARKER)
+                else:
+                    if not isinstance(value, _XmlDataElementMixin):
+                        raise ValueError('Non-terminal attribute value must '
+                                         'be None or XML data element.')
+                    value.tag = q_tag
+                    self.append(value)
+            else:
+                xml_value = XmlConverterRegistry.convert_to_representation(
+                                                            value,
+                                                            attr.value_type)
+                setattr(self, q_tag, xml_value)
 
     def __check_for_link(self, child):
         # Link handling: look for wrapper tag with *one* link child.

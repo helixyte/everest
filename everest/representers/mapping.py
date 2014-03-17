@@ -93,7 +93,7 @@ class Mapping(object):
         :param dict attribute_options: Maps attribute names to dictionaries
           mapping attribute options to their values.
         """
-        attr_map = self.__get_attribute_map(self.__mapped_cls, None)
+        attr_map = self.__get_attribute_map(self.__mapped_cls, None, 0)
         for attributes in attribute_options:
             for attr_name in attributes:
                 if not attr_name in attr_map:
@@ -134,10 +134,44 @@ class Mapping(object):
     def get_attribute(self, attribute_name, mapped_class=None, key=None):
         """
         Returns the specified attribute from the map of all mapped attributes
-        for the given mapped class and attribute key.  See
+        for the given mapped class and attribute key. See
         :method:`get_attribute_map` for details.
         """
-        return self.__get_attribute_map(mapped_class, key)[attribute_name]
+        attr_map = self.__get_attribute_map(mapped_class, key, 0)
+        try:
+            return attr_map[attribute_name]
+        except KeyError:
+            raise AttributeError(attribute_name)
+
+    def has_attribute(self, attribute_name):
+        """
+        Checks if this mapping has an attribute of the given name.
+
+        :returns: Check result (Boolean)
+        """
+        return attribute_name in self.__get_attribute_map(None, None, 0)
+
+    def get_attribute_by_repr(self, attribute_repr_name, mapped_class=None,
+                              key=None):
+        """
+        Returns the attribute (specified by its representation name) from
+        the map of all mapped attributes for the given mapped class and
+        attribute key. See :method:`get_attribute_map` for details.
+        """
+        attr_map = self.__get_attribute_map(mapped_class, key, 1)
+        try:
+            return attr_map[attribute_repr_name]
+        except KeyError:
+            raise AttributeError(attribute_repr_name)
+
+    def has_attribute_repr(self, attribute_repr_name):
+        """
+        Checks if this mapping has an attribute of the given representation
+        name.
+
+        :returns: Check result (Boolean)
+        """
+        return attribute_repr_name in self.__get_attribute_map(None, None, 1)
 
     def attribute_iterator(self, mapped_class=None, key=None):
         """
@@ -296,7 +330,8 @@ class Mapping(object):
         of a custom configuration or because of the default ignore rules
         are skipped.
         """
-        for attr in itervalues_(self.__get_attribute_map(mapped_class, key)):
+        for attr in \
+          itervalues_(self.__get_attribute_map(mapped_class, key, 0)):
             if self.is_pruning:
                 do_ignore = attr.should_ignore(key)
             else:
@@ -304,16 +339,24 @@ class Mapping(object):
             if not do_ignore:
                 yield attr
 
-    def __get_attribute_map(self, mapped_class, key):
+    def __get_attribute_map(self, mapped_class, key, index):
         if mapped_class is None:
             mapped_class = self.__mapped_cls
         if key is None:
             key = MappedAttributeKey(()) # Top level access.
-        attr_map = self.__mapped_attr_cache.get((mapped_class, key))
-        if attr_map is None:
-            attr_map = self.__collect_mapped_attributes(mapped_class, key)
-            self.__mapped_attr_cache[(mapped_class, key)] = attr_map
-        return attr_map
+        attr_maps = self.__mapped_attr_cache.get((mapped_class, key))
+        if attr_maps is None:
+            attr_maps = self.__cache_attributes(mapped_class, key)
+        return attr_maps[index]
+
+    def __cache_attributes(self, mapped_class, key):
+        attr_map = self.__collect_mapped_attributes(mapped_class, key)
+        # For lookup by repr attribute name, we keep another map.
+        repr_attr_map = dict([(attr.repr_name, attr)
+                              for attr in itervalues_(attr_map)])
+        self.__mapped_attr_cache[(mapped_class, key)] = (attr_map,
+                                                         repr_attr_map)
+        return (attr_map, repr_attr_map)
 
     def __collect_mapped_attributes(self, mapped_class, key):
         if isinstance(key, MappedAttributeKey):
@@ -357,7 +400,7 @@ class Mapping(object):
                                        .get_attribute_options(attr_key))
                           if not v is None))
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
-                collected_mp_attrs[mp_attr.name] = clnd_mp_attr
+                collected_mp_attrs[mp_attr.resource_attr] = clnd_mp_attr
         return collected_mp_attrs
 
 

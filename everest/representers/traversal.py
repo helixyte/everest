@@ -445,16 +445,15 @@ class DataElementDataTraversalProxy(ConvertingDataTraversalProxyMixin,
                                 key=self.__attribute_key)
 
     def _get_relation_attribute_value(self, attribute):
-        return self._data.get_nested(attribute)
+        # We use the access by representation name here which triggers an
+        # AttributeError if the attribute was not set.
+        return self._data.get_attribute(attribute.repr_name)
 
     def _get_proxied_attribute_value(self, attribute):
         if not is_terminal_attribute(attribute):
             val = self._get_relatee(attribute)
         else:
-            try:
-                val = self._data.data[attribute.repr_name]
-            except KeyError:
-                raise AttributeError(attribute)
+            val = self._data.get_attribute(attribute.repr_name)
         return val
 
     def _make_accessor(self, value_type):

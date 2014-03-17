@@ -147,11 +147,21 @@ class IMemberDataElement(IResourceDataElement):
     data = Attribute("Ordered dictionary constructed from the return values "
                      "of the :method:`iterator` method.")
 
-    def get_attribute(self, name):
+    def get_attribute(name):
         """
-        Returns the value that was set for the given attribute.
+        Returns the value that was set for the given attribute representation
+        name.
 
         Raises an :class:`AttributeError` if the attribute was not set.
+        """
+
+    def set_attribute(name, value):
+        """
+        Sets the value for the given attribute representation name to the
+        given value.
+
+        Raises an :class:`AttributeError` if the underlying mapping does not
+        have an attribute with the given representation name.
         """
 
     def get_terminal(attr):

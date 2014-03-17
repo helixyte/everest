@@ -10,7 +10,6 @@ from collections import OrderedDict
 
 from pyramid.compat import iteritems_
 
-from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
 from everest.representers.converters import SimpleConverterRegistry
 from everest.representers.interfaces import ICollectionDataElement
@@ -23,6 +22,7 @@ from everest.resources.utils import provides_member_resource
 from everest.resources.utils import resource_to_url
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 
 
 __docformat__ = 'reStructuredText en'
@@ -97,14 +97,36 @@ class MemberDataElement(DataElement):
         """
         raise NotImplementedError('Abstract method.')
 
+    def get_attribute(self, attr_name):
+        """
+        Returns the value for the given attribute representation name.
+
+        :returns: Attribute value (of the type specified by the resource
+            attribute).
+        :raises AttributeError: If the attribute was not set on this data
+            element.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def set_attribute(self, attr_name, value):
+        """
+        Sets the value for the given attribute representation name to the
+        given value.
+
+        :raises AttributeError: if the underlying mapping does not
+            have an attribute with the given representation name.
+        """
+        raise NotImplementedError('Abstract method.')
+
     def get_terminal(self, attr):
         """
         Returns the value for the given mapped terminal resource attribute.
 
         :param attr: attribute to retrieve.
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
-        :returns: attribute value or `None` if no value is found for the given
-            attribute name.
+        :returns: Attribute value (of the type specified by the resource
+            attribute) or `None` if no value is found for the given attribute
+            name.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -113,7 +135,7 @@ class MemberDataElement(DataElement):
         Sets the value for the given mapped terminal resource attribute.
 
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
-        :param value: value of the attribute to set.
+        :param value: Value of the attribute to set.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -123,7 +145,7 @@ class MemberDataElement(DataElement):
         collection resource attribute).
 
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
-        :returns: object implementing `:class:IDataelement` or
+        :returns: Object implementing `:class:IDataelement` or
           `None` if no nested resource is found for the given attribute name.
         """
         raise NotImplementedError('Abstract method.')
@@ -134,7 +156,7 @@ class MemberDataElement(DataElement):
         a member or a collection resource attribute).
 
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
-        :param data_element: a :class:DataElement or :class:LinkedDataElement
+        :param data_element: :class:DataElement or :class:LinkedDataElement
           object containing nested resource data.
         """
         raise NotImplementedError('Abstract method.')
@@ -188,6 +210,21 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
             self.__data = OrderedDict()
         return self.__data
 
+    def get_attribute(self, attr_name):
+        try:
+            value = self.__data[attr_name]
+        except KeyError:
+            raise AttributeError(attr_name)
+        return value
+
+    def set_attribute(self, attr_name, value):
+        attr = self.mapping.get_attribute_by_repr(attr_name)
+        if attr.kind != RESOURCE_ATTRIBUTE_KINDS.TERMINAL \
+           and not (isinstance(value, DataElement) or value is None):
+            raise ValueError('Need a data element or None as attribute '
+                             'value.')
+        self.__data[attr_name] = value
+
     @property
     def terminals(self):
         if self.__data is None:
@@ -221,9 +258,9 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
         Returns the value of the specified attribute converted to a
         representation value.
 
-        :param attr: attribute to retrieve.
+        :param attr: Attribute to retrieve.
         :type attr: :class:`everest.representers.attributes.MappedAttribute`
-        :returns: representation string
+        :returns: Representation string.
         """
         value = self.data.get(attr.repr_name)
         return self.converter_registry.convert_to_representation(
@@ -235,8 +272,8 @@ class SimpleMemberDataElement(_SimpleDataElementMixin, MemberDataElement):
         Converts the given representation value and sets the specified
         attribute value to the converted value.
 
-        :param attr: attribute to set.
-        :param str repr_value: string value of the attribute to set.
+        :param attr: Attribute to set.
+        :param str repr_value: String value of the attribute to set.
         """
         value = self.converter_registry.convert_from_representation(
                                                             repr_value,
@@ -371,12 +408,7 @@ class DataElementAttributeProxy(object):
         if ILinkedDataElement in provided_by(data_element):
             raise ValueError('Do not use data element proxies with linked '
                              'data elements.')
-        attrs = data_element.mapping.attribute_iterator()
-        self.__attr_map = dict([(attr.repr_name, attr) for attr in attrs])
         self.__data_element = data_element
-        # We keep a cached data map because for some data element
-        # implementations building it is expensive.
-        self.__data = data_element.data
 
     def get_data_element(self):
         """
@@ -386,10 +418,7 @@ class DataElementAttributeProxy(object):
         return self.__data_element
 
     def __getattr__(self, name):
-        try:
-            value = self.__data[name]
-        except KeyError:
-            raise AttributeError(name)
+        value = self.__data_element.get_attribute(name)
         ifcs = provided_by(value)
         if IMemberDataElement in ifcs:
             value = DataElementAttributeProxy(value)
@@ -405,17 +434,16 @@ class DataElementAttributeProxy(object):
                     '_DataElementAttributeProxy__attr_map']:
             self.__dict__[name] = value
         else:
-            try:
-                attr = self.__attr_map[name]
-            except KeyError:
-                raise AttributeError(name)
-            else:
-                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
-                    self.__data_element.set_terminal(attr, value)
-                else:
-                    if not (isinstance(value, DataElement) or value is None):
-                        raise ValueError('Need a data element or None as '
-                                         'attribute value.')
-                    self.__data_element.set_nested(attr, value)
-                # Also set in the cached data map.
-                self.__data[name] = value
+            self.__data_element.set_attribute(name, value)
+#            try:
+#                attr = self.__attr_map[name]
+#            except KeyError:
+#                raise AttributeError(name)
+#            else:
+#                if attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
+#                    self.__data_element.set_terminal(attr, value)
+#                else:
+#                    if not (isinstance(value, DataElement) or value is None):
+#                        raise ValueError('Need a data element or None as '
+#                                         'attribute value.')
+#                    self.__data_element.set_nested(attr, value)

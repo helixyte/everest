@@ -253,6 +253,9 @@ class DataTraversalProxy(object):
         Returns the value for the given relation attribute from the proxied
         data. Depending on the implementation, a sequence of data items may
         be returned for attributes of cardinality MANY.
+
+        :raises AttributeError: If the underlying data does not have the
+            given relation attribute set.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -598,7 +601,12 @@ class SourceTargetDataTreeTraverser(object):
                 if not bool(attr.cascade & rel_op):
                     continue
                 if not source is None:
-                    attr_source = source.get_attribute_proxy(attr)
+                    try:
+                        attr_source = source.get_attribute_proxy(attr)
+                    except AttributeError:
+                        # If the source does not have the attribute set, we
+                        # do nothing (as opposed to when the value is None).
+                        continue
                 else:
                     attr_source = None
                 if not target is None:
