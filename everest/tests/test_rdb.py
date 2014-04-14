@@ -24,7 +24,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.engine import create_engine
-from sqlalchemy.sql.expression import Function
+from sqlalchemy.sql.expression import FunctionElement
 from sqlalchemy.sql.expression import cast
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
@@ -97,7 +97,7 @@ class RdbTestCase(Pep8CompliantTestCase):
                      id_attribute='my_id', slug_expression=slug_expr)
         self.assert_true(MyDerivedEntity.__dict__['slug'].expr
                          is slug_expr)
-        self.assert_true(isinstance(MyDerivedEntity.slug, Function))
+        self.assert_true(isinstance(MyDerivedEntity.slug, FunctionElement))
         mpr.dispose()
         # Test mapping polymorphic class with custom slug in the base class.
         base_mpr = mapper(MyEntityWithCustomId, t2,
