@@ -189,10 +189,6 @@ class member_attribute(_relation_attribute):
                                      cardinality=cardinality,
                                      cascade=cascade,
                                      backref=backref)
-        #: Factory for member.
-        self.__mb_fac = None
-        #: Factory for relationship.
-        self.__rel_fac = None
 
     def __get__(self, resource, resource_class):
         if not resource is None:
