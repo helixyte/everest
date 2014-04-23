@@ -24,6 +24,14 @@
         collection_root_name="my-entities"
     >
         <representer content_type='everest.mime.CsvMime'>
+            <attribute name="parent">
+                <option
+                    name="ignore"
+                    value="false" />
+                <option
+                    name="write_as_link"
+                    value="false" />                   
+            </attribute>
             <attribute name="children">
                 <option
                     name="ignore"

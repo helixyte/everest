@@ -101,6 +101,22 @@ class EverestIni(object):
         """
         return self.__ini_parser.has_option(section, key)
 
+    def get_app_url(self):
+        """
+        Returns the application URL as defined in the INI section
+        `server:main`. Defaults to `http://0.0.0.0/6543`.
+        """
+        section = 'server:main'
+        if self.has_setting(section, 'host'):
+            host = self.get_setting(section, 'host')
+        else:
+            host = '0.0.0.0'
+        if self.has_setting(section, 'port'):
+            port = int(self.get_setting(section, 'port'))
+        else:
+            port = 6543
+        return 'http://%s:%d' % (host, port)
+
     @classmethod
     def __check_ini_file(cls):
         if cls.__ini_parser is None:

@@ -165,10 +165,8 @@ class AttributesTestCase(Pep8CompliantTestCase):
 
 class _DescriptorsTestCase(ResourceTestCase):
     package_name = 'everest.tests.complete_app'
-
     TEST_TEXT = 'TEST TEXT'
     UPDATED_TEXT = 'UPDATED TEXT'
-
     PARENT_MAPPING_OPTIONS = {WRITE_AS_LINK_OPTION:False,
                               IGNORE_OPTION:False}
     CHILDREN_MAPPING_OPTIONS = {WRITE_AS_LINK_OPTION:False,
@@ -503,25 +501,25 @@ class RdbDescriptorsTestCase(RdbTestCaseMixin, _DescriptorsTestCase):
                 # Access with dotted entity name in rc attr declaration.
                 spec_fac.create_equal_to('parent_text', self.TEST_TEXT),
                 # Access to member.
-                spec_fac.create_equal_to('parent', member.parent.get_entity()),
+                spec_fac.create_equal_to('parent',
+                                         member.parent.get_entity()),
                 ]
         expecteds = [('text', MyEntity.text.__eq__(self.TEST_TEXT)),
-                     ('text_ent', MyEntity.text_ent.__eq__(
-                                                        self.TEST_TEXT)),
+                     ('text_ent', MyEntity.text_ent.__eq__(self.TEST_TEXT)),
                      ('parent.text_ent',
-                          MyEntity.parent.has(
+                      MyEntity.parent.has(
                                     MyEntityParent.text_ent.__eq__(
                                                         self.TEST_TEXT))),
                      ('children.text_ent',
-                          MyEntity.children.any(
+                      MyEntity.children.any(
                                     MyEntityChild.text_ent.__eq__(
                                                         self.TEST_TEXT))),
                      ('parent.text_ent',
-                          MyEntity.parent.has(
+                      MyEntity.parent.has(
                                     MyEntityParent.text_ent.__eq__(
                                                         self.TEST_TEXT))),
                      ('parent',
-                          MyEntity.parent.__eq__(member.parent.get_entity())),
+                      MyEntity.parent.__eq__(member.parent.get_entity())),
                      ]
         for spec, expected in zip(specs, expecteds):
             new_attr_name, expr = expected
@@ -532,6 +530,9 @@ class RdbDescriptorsTestCase(RdbTestCaseMixin, _DescriptorsTestCase):
             visitor = SqlFilterSpecificationVisitor(MyEntity)
             new_spec.accept(visitor)
             self.assert_equal(str(visitor.expression), str(expr))
+        invalid_spec = spec_fac.create_equal_to('foo', self.TEST_TEXT)
+        vst = ResourceToEntityFilterSpecificationVisitor(mb_cls)
+        self.assert_raises(AttributeError, invalid_spec.accept, vst)
 
 
 class MemoryDescriptorsTestCase(_DescriptorsTestCase):

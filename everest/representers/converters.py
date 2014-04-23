@@ -6,14 +6,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 25, 2012.
 """
-from everest.representers.interfaces import IRepresentationConverter
-from everest.rfc3339 import rfc3339
+import datetime
+
+import iso8601
 from iso8601.iso8601 import FixedOffset
 from pyramid.compat import string_types
+
+from everest.representers.interfaces import IRepresentationConverter
+from everest.rfc3339 import rfc3339
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface import provider # pylint: disable=E0611,F0401
-import datetime
-import iso8601
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BooleanConverter',

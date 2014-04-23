@@ -146,6 +146,9 @@ class BasicViewTestCase(FunctionalTestCase):
         self.assert_is_not_none(res2)
         self.assert_equal(native_(res2.body).find(',"parent",'), -1)
         self.assert_not_equal(native_(res2.body).find(',"parent.id",'), -1)
+        # Bogus refs parameters.
+        self.app.get(self.path, params=dict(refs='parent:XXX'),
+                     status=500)
 
     def test_get_member_default_content_type(self):
         coll = get_root_collection(IMyEntity)
@@ -217,14 +220,15 @@ class BasicViewTestCase(FunctionalTestCase):
         self.assert_equal(mb.number, 2)
 
     def test_post_collection(self):
-        req_body = b'"id","text","number"\n0,"abc",2\n'
-        res = self.app.post("%s" % self.path,
-                            params=req_body,
-                            content_type=CsvMime.mime_type_string,
-                            status=201)
-        self.assert_is_not_none(res)
+        new_id = 0
+        req_body = b'"id","text","number"\n%d,"abc",2\n' % new_id
+        res1 = self.app.post("%s" % self.path,
+                             params=req_body,
+                             content_type=CsvMime.mime_type_string,
+                             status=201)
+        self.assert_is_not_none(res1)
         coll = get_root_collection(IMyEntity)
-        mb = coll['0']
+        mb = coll[str(new_id)]
         self.assert_equal(mb.text, 'abc')
 
     def test_post_collection_no_id(self):
@@ -299,12 +303,51 @@ class BasicViewTestCase(FunctionalTestCase):
         ent = MyEntity(id=0)
         mb = coll.create_member(ent)
         # Make a dummy request.
-        url = self._get_app_url()
+        url = self.ini.get_app_url()
         req = DummyRequest(application_url=url, host_url=url,
                            path_url=url, url=url,
                            registry=self.config.registry)
         mb_url = resource_to_url(mb, request=req)
         return mb, mb_url
+
+
+class MessagingViewTestCase(FunctionalTestCase):
+    package_name = 'everest.tests.complete_app'
+    ini_file_path = resource_filename('everest.tests.complete_app',
+                                      'complete_app.ini')
+    app_name = 'complete_app'
+    path = '/my-entities/'
+
+    def set_up(self):
+        FunctionalTestCase.set_up(self)
+        self.config.load_zcml('everest.tests.complete_app:configure_rpr.zcml')
+        self.config.add_resource_view(IMyEntity,
+                                      renderer='csv',
+                                      request_method=RequestMethods.GET,
+                                      enable_messaging=True)
+        self.config.add_member_view(IMyEntity,
+                                    renderer='csv',
+                                    request_method=RequestMethods.PATCH,
+                                    enable_messaging=False)
+
+    def test_get_member_default_content_type(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        coll.create_member(ent)
+        res = self.app.get("%s/0" % self.path, status=200)
+        self.assert_is_not_none(res)
+
+    def test_patch_member(self):
+        coll = get_root_collection(IMyEntity)
+        ent = MyEntity(id=0)
+        mb = coll.create_member(ent)
+        self.assert_equal(mb.__name__, '0')
+        req_body = b'"number"\n2\n'
+        res = self.app.patch("%s/0" % self.path,
+                             params=req_body,
+                             content_type=CsvMime.mime_type_string,
+                             status=200)
+        self.assert_is_not_none(res)
 
 
 class PredicatedViewTestCase(FunctionalTestCase):
@@ -331,7 +374,6 @@ class PredicatedViewTestCase(FunctionalTestCase):
 
 class _ConfiguredViewsTestCase(FunctionalTestCase):
     views_config_file_name = None
-
     package_name = 'everest.tests.simple_app'
     ini_file_path = resource_filename('everest.tests.simple_app',
                                       'simple_app_views.ini')
@@ -467,7 +509,7 @@ class GetCollectionViewTestCase(ResourceTestCase):
 
     def test_get_collection_view_with_size(self):
         coll = get_root_collection(IFoo)
-        app_url = self._get_app_url()
+        app_url = self.ini.get_app_url()
         path_url = 'http://0.0.0.0:6543/foos/'
         req = DummyRequest(application_url=app_url, host_url=app_url,
                            path_url=path_url,

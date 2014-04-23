@@ -16,8 +16,13 @@ from csv import writer
 import datetime
 from itertools import product
 
+from pyramid.compat import NativeIO
+from pyramid.compat import PY3
+from pyramid.compat import binary_type
+from pyramid.compat import bytes_
 from pyramid.compat import iteritems_
 from pyramid.compat import string_types
+from pyramid.compat import text_
 from pyramid.compat import text_type
 
 from everest.compat import CsvDictReader
@@ -98,6 +103,35 @@ class CsvIntConverter(object):
     def to_representation(cls, value):
         return value
 
+
+if not PY3: # pragma: no cover
+    @provider(IRepresentationConverter)
+    class CsvTextConverter(object):
+
+        @classmethod
+        def from_representation(cls, value):
+            return text_(value, encoding='utf-8')
+
+        @classmethod
+        def to_representation(cls, value):
+            return bytes_(value, encoding='utf-8')
+
+    CsvConverterRegistry.register(text_type, CsvTextConverter)
+else: # pragma: no cover
+    @provider(IRepresentationConverter)
+    class CsvBytesConverter(object):
+
+        @classmethod
+        def from_representation(cls, value):
+            return bytes_(value, encoding='utf-8')
+
+        @classmethod
+        def to_representation(cls, value):
+            return text_(value, encoding='utf-8')
+
+    CsvConverterRegistry.register(binary_type, CsvBytesConverter)
+
+
 CsvConverterRegistry.register(datetime.datetime, DateTimeConverter)
 CsvConverterRegistry.register(bool, BooleanConverter)
 CsvConverterRegistry.register(int, CsvIntConverter)
@@ -169,7 +203,7 @@ class CsvRepresentationParser(RepresentationParser):
 
     def run(self):
         csv_rdr = CsvDictReader(self._stream,
-                                   dialect=self.get_option('dialect'))
+                                dialect=self.get_option('dialect'))
         is_member_rpr = provides_member_resource(self._resource_class)
         if is_member_rpr:
             coll_data_el = None
@@ -435,7 +469,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
             for attr, value in iteritems_(member_data):
                 new_field_name = self.__get_field_name(attribute_key.names,
                                                        attr)
-                rpr_mb_data[new_field_name] = value
+                rpr_mb_data[new_field_name] = self.__encode(value)
             mb_data = CsvData(rpr_mb_data)
         if not index is None:
             # Collection member. Store in parent data with index as key.
@@ -475,7 +509,7 @@ class CsvDataElementTreeVisitor(ResourceDataVisitor):
         return field_name # self.__encode(field_name)
 
     def __encode(self, item):
-        if isinstance(item, text_type):
+        if not PY3 and isinstance(item, text_type): # pragma: no cover
             item = item.encode(self.__encoding)
         return item
 
@@ -521,9 +555,27 @@ class CsvResourceRepresenter(MappingResourceRepresenter):
     def make_mapping_registry(cls):
         return CsvMappingRegistry()
 
+    if not PY3:
+        # Under 2.x, the CSV writer and reader operates on byte streams, so
+        # we have to override a few methods here.
+        def to_bytes(self, obj, encoding=None):
+            stream = NativeIO()
+            self.to_stream(obj, stream)
+            return stream.getvalue()
+
+        def from_bytes(self, bytes_representation, resource=None):
+            stream = NativeIO(bytes_representation)
+            return self.from_stream(stream, resource=resource)
+
+        def from_string(self, string_representation, resource=None):
+            buf = bytes_(string_representation, encoding=self.encoding)
+            stream = NativeIO(buf)
+            return self.from_stream(stream, resource=resource)
+
     def _make_representation_parser(self, stream, resource_class, mapping):
         parser = CsvRepresentationParser(stream, resource_class, mapping)
         parser.set_option('dialect', self.CSV_IMPORT_DIALECT)
+        parser.set_option('encoding', self.encoding)
         return parser
 
     def _make_representation_generator(self, stream, resource_class, mapping):

@@ -54,6 +54,7 @@
         collection_root_name="my-entities"
     >
         <representer content_type='everest.mime.CsvMime'>
+            <ref attribute="parent" kind="INLINE" />
             <ref attribute="children" kind="URL" />
         </representer>
         <representer content_type="everest.mime.XmlMime">

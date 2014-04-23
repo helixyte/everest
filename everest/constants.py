@@ -31,11 +31,11 @@ class MetaConstantGroup(type):
             if not key.startswith('_'):
                 yield key
 
-if PY3:
+if PY3: # pragma: no cover
     # PY3 compatible way of using the metaclass (__metaclass__ does not work)
     # that keeps pylint happy (no syntax error under Python 2.x).
     ConstantGroup = MetaConstantGroup('ConstantGroup', (object,), {})
-else:
+else: # pragma: no cover
     class ConstantGroup(object):
         __metaclass__ = MetaConstantGroup
 

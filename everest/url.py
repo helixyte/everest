@@ -116,7 +116,7 @@ class ResourceUrlConverter(object):
                 # If yes, we return an absolute URL, else a nested URL.
                 root_coll = get_root_collection(resource)
                 if not root_coll.has_parent:
-                    url = self.__request.resource_url(resource, **options)
+                    url = self.__request.resource_url(resource)
                 else:
                     url = self.__request.resource_url(root_coll, **options)
             else:
@@ -128,10 +128,10 @@ class ResourceUrlConverter(object):
                 # If yes, we return an absolute URL, else a nested URL.
                 root_coll = get_root_collection(resource)
                 if not root_coll.has_parent:
-                    par_url = self.__request.resource_url(resource)
+                    url = self.__request.resource_url(resource)
                 else:
                     par_url = self.__request.resource_url(root_coll)
-                url = "%s%s/" % (par_url, resource.__name__)
+                    url = "%s%s/" % (par_url, resource.__name__)
             else:
                 url = self.__request.resource_url(resource)
         if not quote:

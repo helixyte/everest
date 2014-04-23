@@ -29,7 +29,7 @@ __all__ = ['RdbAutocommittingSession',
            ]
 
 
-class RdbSession(Session, SaSession):
+class RdbSession(SaSession, Session):
     """
     Special session class adapting the SQLAlchemy session for everest.
     """
@@ -47,7 +47,7 @@ class RdbSession(Session, SaSession):
         # `None` indicates that a query should be run.
         return None
 
-    def add(self, entity_class, data):
+    def add(self, entity_class, data): # different signature pylint: disable=W0222
         if not IEntity.providedBy(data): # pylint: disable=E1101
             self.__run_traversal(entity_class, data, None,
                                  RELATION_OPERATIONS.ADD)
@@ -75,6 +75,10 @@ class RdbSession(Session, SaSession):
         # result page in one call here.
         query_cls = options.pop('query_class', Query)
         return query_cls(entities, self, **options)
+
+    def reset(self):
+        self.rollback()
+        self.expunge_all()
 
     def __run_traversal(self, entity_class, source_data, target_data, rel_op):
         agg = self.__repository.get_aggregate(entity_class)

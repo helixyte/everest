@@ -101,6 +101,18 @@ class Session(object):
     def query(self, entity_class):
         raise NotImplementedError('Abstract method.')
 
+    def begin(self):
+        raise NotImplementedError('Abstract method.')
+
+    def commit(self):
+        raise NotImplementedError('Abstract method.')
+
+    def rollback(self):
+        raise NotImplementedError('Abstract method.')
+
+    def reset(self):
+        raise NotImplementedError('Abstract method.')
+
 
 class AutocommittingSessionMixin(object):
     """
@@ -248,9 +260,22 @@ class Repository(object):
     def name(self):
         return self.__name
 
+    def reset(self):
+        if not self.__session_factory is None:
+            self.__session_factory().reset()
+        self.__cache.clear()
+        self._reset()
+        self.__is_initialized = False
+
     def _initialize(self):
         """
         Performs initialization of the repository.
+        """
+        raise NotImplementedError('Abstract method.')
+
+    def _reset(self):
+        """
+        Performs reset of the repository.
         """
         raise NotImplementedError('Abstract method.')
 

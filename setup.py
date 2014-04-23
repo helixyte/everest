@@ -57,5 +57,7 @@ setup(name='everest',
       entry_points="""\
       [nose.plugins.0.10]
       everest = everest.ini:EverestNosePlugin
+      [pytest11]
+      everest = everest.tests.fixtures
       """
       )

@@ -6,14 +6,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 26, 2013.
 """
+from functools import update_wrapper
+
+from pyramid.compat import iteritems_
+from pyramid.threadlocal import get_current_registry
+
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.repositories.rdb.utils import reset_metadata
 from everest.repositories.utils import get_engine
-from functools import update_wrapper
-from pyramid.compat import iteritems_
-from pyramid.threadlocal import get_current_registry
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RdbContextManager',

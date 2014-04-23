@@ -141,13 +141,13 @@ class XmlResourceRepresenter(MappingResourceRepresenter):
         text = self.__tmpl % (encoding, self.to_string(obj))
         return bytes_(text, encoding=encoding)
 
-    def bytes_from_data(self, data_element, encoding=None):
+    def data_to_bytes(self, data_element, encoding=None):
         """
         Overwritten so we can insert the `?xml` processing directive.
         """
         if encoding is None:
             encoding = self.encoding
-        text = self.__tmpl % (encoding, self.string_from_data(data_element))
+        text = self.__tmpl % (encoding, self.data_to_string(data_element))
         return bytes_(text, encoding=encoding)
 
     @classmethod
@@ -244,17 +244,11 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         return data_map
 
     def get_attribute(self, attr_name):
-        try:
-            attr = self.mapping.get_attribute_by_repr(attr_name)
-        except KeyError:
-            raise AttributeError(attr_name)
+        attr = self.mapping.get_attribute_by_repr(attr_name)
         return self.__get_attribute(attr, False)
 
     def set_attribute(self, attr_name, value):
-        try:
-            attr = self.mapping.get_attribute_by_repr(attr_name)
-        except KeyError:
-            raise AttributeError(attr_name)
+        attr = self.mapping.get_attribute_by_repr(attr_name)
         self.__set_attribute(attr, value)
 
     def __get_q_tag(self, attr):
@@ -280,7 +274,7 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
             if not xml_ns is None:
                 q_tag = '{%s}%s' % (xml_ns, attr.repr_name)
             else:
-                q_tag = attr.repr_name
+                q_tag = '{}%s' % attr.repr_name
         return q_tag
 
     def __get_attribute(self, attr, safe):
@@ -514,9 +508,9 @@ class XmlMappingRegistry(MappingRegistry):
                 elif xml_ns != ns:
                     raise ValueError('Prefix "%s" is already registered for '
                                      'namespace %s.' % (xml_prefix, ns))
-            # Make sure we rebuild the lookup.
-            if not self.__ns_lookup is None:
-                self.__ns_lookup = None
+        # Make sure we rebuild the lookup.
+        if not self.__ns_lookup is None:
+            self.__ns_lookup = None
         MappingRegistry.set_mapping(self, mapping)
 
     @property

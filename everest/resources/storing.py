@@ -156,12 +156,6 @@ class DecodingStream(object):
         for line in self.__stream:
             yield text_type(line, self.__encoding)
 
-    def next(self):
-        line = next(self.__stream)
-        return text_type(line, self.__encoding)
-
-    __next__ = next
-
 
 def load_into_collections_from_zipfile(collections, zipfile):
     """

@@ -54,6 +54,16 @@
         collection_root_name="my-entities"
     >
         <representer content_type='everest.mime.CsvMime'>
+            <attribute name="parent">
+                <option
+                    name="ignore"
+                    value="false"
+                    type="zope.configuration.fields.Bool" />
+                <option
+                    name="write_as_link"
+                    value="false"                   
+                    type="zope.configuration.fields.Bool" />
+            </attribute>
             <attribute name="children">
                 <option
                     name="ignore"

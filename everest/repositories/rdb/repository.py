@@ -6,6 +6,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jan 7, 2013.
 """
+from sqlalchemy.engine import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.pool import StaticPool
+
 from everest.repositories.base import Repository
 from everest.repositories.rdb.aggregate import RdbAggregate
 from everest.repositories.rdb.querying import OptimizedCountingQuery
@@ -15,13 +19,12 @@ from everest.repositories.rdb.utils import empty_metadata
 from everest.repositories.rdb.utils import get_metadata
 from everest.repositories.rdb.utils import is_metadata_initialized
 from everest.repositories.rdb.utils import map_system_entities
+from everest.repositories.rdb.utils import reset_metadata
 from everest.repositories.rdb.utils import set_metadata
 from everest.repositories.utils import get_engine
 from everest.repositories.utils import is_engine_initialized
 from everest.repositories.utils import set_engine
-from sqlalchemy.engine import create_engine
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.pool import StaticPool
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RdbRepository',
@@ -81,6 +84,13 @@ class RdbRepository(Repository):
         else:
             metadata = get_metadata(self.name)
         metadata.bind = engine
+
+    def _reset(self):
+        # It is safe to keep the engine around, even for complex unit test
+        # scenarios; the metadata, however, might change and need to be
+        # removed.
+        if is_metadata_initialized(self.name):
+            reset_metadata()
 
     def _make_session_factory(self):
         engine = get_engine(self.name)

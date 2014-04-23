@@ -58,6 +58,14 @@ class Service(Resource):
             for irc in self.__registered_interfaces:
                 self.add(irc)
 
+    def stop(self):
+        """
+        Stops the service.
+        """
+        if self.__started:
+            self.__started = False
+            self.__collections.clear()
+
     def __getitem__(self, key):
         """
         Overrides __getitem__ to return a clone of the requested collection.

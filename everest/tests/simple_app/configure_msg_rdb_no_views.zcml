@@ -1,0 +1,19 @@
+<configure
+    xmlns="http://pylonshq.com/pyramid"
+>
+
+    <!-- Include special directives. -->
+
+    <include
+        package="everest.includes" />
+
+    <!-- Messaging. -->
+
+    <messaging 
+        repository="RDB"
+        reset_on_start="true"/>
+        
+    <include
+        file="configure.zcml" />
+
+</configure>

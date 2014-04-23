@@ -1,5 +1,5 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Adapted from the ZCML unit tests in BFG.
@@ -24,8 +24,8 @@ from everest.tests.simple_app.interfaces import IBar
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooCollection
 from everest.tests.simple_app.resources import FooMember
-from pyramid.testing import setUp as testing_set_up
-from pyramid.testing import tearDown as testing_tear_down
+from pyramid.testing import setUp as set_up_testing
+from pyramid.testing import tearDown as tear_down_testing
 from pyramid.threadlocal import get_current_registry
 
 __docformat__ = 'reStructuredText en'
@@ -36,7 +36,7 @@ __all__ = ['DirectivesTestCase',
 class DirectivesTestCase(Pep8CompliantTestCase):
 
     def set_up(self):
-        testing_set_up()
+        set_up_testing()
         reg = self._registry = get_current_registry()
         self._config = Configurator(registry=reg, package=package)
         self._config.setup_registry()
@@ -44,7 +44,7 @@ class DirectivesTestCase(Pep8CompliantTestCase):
         repo_mgr.initialize_all()
 
     def tear_down(self):
-        testing_tear_down()
+        tear_down_testing()
 
     def test_configure_with_simple_zcml(self):
         # Load the configuration.

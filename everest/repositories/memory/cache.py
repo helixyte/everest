@@ -186,7 +186,7 @@ class EntityCacheMap(object):
         return self.__cache_map[entity_class]
 
     def has_key(self, entity_class):
-        return self.__cache_map.has_key(entity_class)
+        return entity_class in self.__cache_map
 
     def get_by_id(self, entity_class, entity_id):
         cache = self.__cache_map[entity_class]
@@ -222,3 +222,6 @@ class EntityCacheMap(object):
 
     def keys(self):
         return self.__cache_map.keys()
+
+    def clear(self):
+        self.__cache_map.clear()

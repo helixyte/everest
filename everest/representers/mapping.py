@@ -309,6 +309,25 @@ class Mapping(object):
         self.__configurations.pop()
         self.__mapped_attr_cache.clear()
 
+    def with_updated_configuration(self, options=None,
+                                   attribute_options=None):
+        """
+        Returns a context in which this mapping is updated with the given
+        options and attribute options.
+        """
+        new_cfg = self.__configurations[-1].copy()
+        if not options is None:
+            for o_name, o_value in iteritems_(options):
+                new_cfg.set_option(o_name, o_value)
+        if not attribute_options is None:
+            for attr_name, ao_opts in iteritems_(attribute_options):
+                for ao_name, ao_value in iteritems_(ao_opts):
+                    new_cfg.set_attribute_option(attr_name, ao_name, ao_value)
+#        upd_cfg = type(new_cfg)(options=options,
+#                                attribute_options=attribute_options)
+#        new_cfg.update(upd_cfg)
+        return MappingConfigurationContext(self, new_cfg)
+
     @property
     def mapped_class(self):
         return self.__mapped_cls
@@ -402,6 +421,18 @@ class Mapping(object):
                 clnd_mp_attr = mp_attr.clone(options=attr_mp_opts)
                 collected_mp_attrs[mp_attr.resource_attr] = clnd_mp_attr
         return collected_mp_attrs
+
+
+class MappingConfigurationContext(object):
+    def __init__(self, mapping, configuration):
+        self.__mapping = mapping
+        self.__configuration = configuration
+
+    def __enter__(self):
+        self.__mapping.push_configuration(self.__configuration)
+
+    def __exit__(self, ext_type, value, tb):
+        self.__mapping.pop_configuration()
 
 
 class PruningMapping(Mapping):

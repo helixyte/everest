@@ -6,7 +6,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 2, 2011.
 """
+import sys
+import time
+import unittest
+
+from nose.tools import make_decorator
 from pyramid.compat import configparser
+from pyramid.registry import Registry
+from pyramid.testing import DummyRequest
+import transaction
+from webtest import TestApp
+
 from everest.configuration import Configurator
 from everest.constants import RequestMethods
 from everest.entities.utils import get_root_aggregate
@@ -15,15 +25,8 @@ from everest.repositories.interfaces import IRepositoryManager
 from everest.resources.interfaces import IService
 from everest.resources.staging import create_staging_collection
 from everest.resources.utils import get_root_collection
-from nose.tools import make_decorator
 from paste.deploy import loadapp # pylint: disable=E0611,F0401
-from pyramid.registry import Registry
-from pyramid.testing import DummyRequest
-from webtest import TestApp
-import sys
-import time
-import transaction
-import unittest
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DummyContext',
@@ -84,15 +87,9 @@ class TestCaseWithIni(Pep8CompliantTestCase):
         `ini_file_path` and `ini_section_name` class variables were set up
         sensibly.
     """
-    # : The name of the package where the tests reside. May be overridden in
-    # : derived classes.
-    package_name = 'everest'
     # : The path to the application initialization (ini) file name. Override
     # : as needed in derived classes.
     ini_file_path = None
-    # : The section name in the ini file to look for settings. Override as
-    # : needed in derived classes.
-    ini_section_name = None
 
     def set_up(self):
         self.ini = EverestIni(self.ini_file_path)
@@ -104,18 +101,6 @@ class TestCaseWithIni(Pep8CompliantTestCase):
         except AttributeError:
             pass
 
-    def _get_app_url(self):
-        section = 'server:main'
-        if self.ini.has_setting(section, 'host'):
-            host = self.ini.get_setting(section, 'host')
-        else:
-            host = '0.0.0.0'
-        if self.ini.has_setting(section, 'port'):
-            port = int(self.ini.get_setting(section, 'port'))
-        else:
-            port = 6543
-        return 'http://%s:%d' % (host, port)
-
 
 class BaseTestCaseWithConfiguration(TestCaseWithIni):
     """
@@ -124,8 +109,14 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
 
     :ivar config: The registry configurator. This is set in the set_up method.
     """
+    #: The name of a package containing a configuration file to load.
+    #: Defaults to `None` indicating that no configuration applies.
+    package_name = None
     # : The name of a ZCML configuration file to use.
     config_file_name = 'configure.zcml'
+    # : The section name in the ini file to look for settings. Override as
+    # : needed in derived classes.
+    ini_section_name = None
 
     def set_up(self):
         super(BaseTestCaseWithConfiguration, self).set_up()
@@ -141,6 +132,17 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
             except configparser.NoSectionError:
                 settings = None
         self.config.setup_registry(settings=settings)
+        if not self.package_name is None:
+            if not settings is None:
+                cfg_zcml = settings.get('configure_zcml',
+                                        self.config_file_name)
+            else:
+                cfg_zcml = self.config_file_name
+            self.config.begin()
+            try:
+                self.config.load_zcml(cfg_zcml)
+            finally:
+                self.config.end()
 
     def tear_down(self):
         super(BaseTestCaseWithConfiguration, self).tear_down()
@@ -149,14 +151,6 @@ class BaseTestCaseWithConfiguration(TestCaseWithIni):
             del self.config
         except AttributeError:
             pass
-
-    def _get_config_file_name(self):
-        if self.ini.has_setting(self.ini_section_name, 'configure_zcml'):
-            cfg_zcml = self.ini.get_setting(self.ini_section_name,
-                                            'configure_zcml')
-        else:
-            cfg_zcml = self.config_file_name
-        return cfg_zcml
 
 
 class TestCaseWithConfiguration(BaseTestCaseWithConfiguration):
@@ -177,8 +171,8 @@ class EntityCreatorMixin(object):
     """
     Mixin class providing methods for test entity creation.
     """
-    def _get_entity(self, icollection, key=None):
-        agg = get_root_aggregate(icollection)
+    def _get_entity(self, iresource, key=None):
+        agg = get_root_aggregate(iresource)
         if key is None:
             agg.slice = slice(0, 1)
             entity = list(agg.iterator())[0]
@@ -196,15 +190,15 @@ class EntityTestCase(BaseTestCaseWithConfiguration, EntityCreatorMixin):
     """
     def set_up(self):
         super(EntityTestCase, self).set_up()
-        # Load config file.
-        self.config.begin()
-        self.config.load_zcml(self._get_config_file_name())
         # Set up repositories.
         repo_mgr = self.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
+        # Push registry.
+        self.config.begin()
 
     def tear_down(self):
         transaction.abort()
+        # Pop registry.
         self.config.end()
         super(EntityTestCase, self).tear_down()
 
@@ -213,12 +207,12 @@ class ResourceCreatorMixin(EntityCreatorMixin):
     """
     Mixin class providing methods for test resource creation.
     """
-    def _get_member(self, icollection, key=None):
+    def _get_member(self, iresource, key=None):
         if key is None:
-            coll = self._get_collection(icollection, slice(0, 1))
+            coll = self._get_collection(iresource, slice(0, 1))
             member = list(iter(coll))[0]
         else:
-            coll = get_root_collection(icollection)
+            coll = get_root_collection(iresource)
             member = coll.get(key)
         return member
 
@@ -244,7 +238,7 @@ class ResourceTestCase(BaseTestCaseWithConfiguration, ResourceCreatorMixin):
     def set_up(self):
         super(ResourceTestCase, self).set_up()
         # Build a dummy request.
-        base_url = app_url = self._get_app_url()
+        base_url = app_url = self.ini.get_app_url()
         self._request = DummyRequest(application_url=app_url,
                                      host_url=base_url,
                                      path_url=app_url,
@@ -252,7 +246,6 @@ class ResourceTestCase(BaseTestCaseWithConfiguration, ResourceCreatorMixin):
                                      registry=self.config.registry)
         # Load config file.
         self.config.begin(request=self._request)
-        self.config.load_zcml(self._get_config_file_name())
         self._load_custom_zcml()
         # Put the service at the request root (needed for URL resolving).
         srvc = self.config.get_registered_utility(IService)
@@ -304,13 +297,15 @@ class FunctionalTestCase(TestCaseWithIni, ResourceCreatorMixin):
 
     :ivar app: :class:`webtest.TestApp` instance wrapping our WSGI app to test.
     """
-    # : The name of the application to test.
+    #: The name of the application to test. Must be set in derived classes.
     app_name = None
+    #: The name of the package where the tests reside. Override as needed.
+    package_name = 'everest'
 
     def set_up(self):
         super(FunctionalTestCase, self).set_up()
         # Create the WSGI application and set up a configurator.
-        wsgiapp = self._load_wsgiapp()
+        wsgiapp = self.__load_wsgiapp()
         self.config = Configurator(registry=wsgiapp.registry,
                                    package=self.package_name)
         self.config.begin()
@@ -328,13 +323,17 @@ class FunctionalTestCase(TestCaseWithIni, ResourceCreatorMixin):
         except AttributeError:
             pass
 
-    def _load_wsgiapp(self):
+    def _create_extra_environment(self):
+        """
+        Returns the value for the `extra_environ` argument for the test
+        app. Override as needed.
+        """
+        return {}
+
+    def __load_wsgiapp(self):
         wsgiapp = loadapp('config:' + self.ini.ini_file_path,
                           name=self.app_name)
         return wsgiapp
-
-    def _create_extra_environment(self):
-        return {}
 
 
 class DummyModule(object):

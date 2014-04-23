@@ -119,6 +119,11 @@ class RepositoryManager(object):
             if not repo.is_initialized:
                 repo.initialize()
 
+    def reset_all(self):
+        for repo in itervalues_(self.__repositories):
+            if repo.is_initialized:
+                repo.reset()
+
     def on_app_created(self, event): # pylint: disable=W0613
         """
         Callback set up by the registry configurator to initialize all

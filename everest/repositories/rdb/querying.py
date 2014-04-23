@@ -213,7 +213,7 @@ class Query(SaQuery):
         ent_cls = entities[0]
         if isinstance(ent_cls, type) and issubclass(ent_cls, Entity):
             self._entity_class = ent_cls
-        else:
+        else: # just for compatibility pragma: no cover
             self._entity_class = None
 
     def order(self, order_expression):

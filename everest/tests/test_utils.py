@@ -160,6 +160,9 @@ class UtilsTestCase(Pep8CompliantTestCase):
         weak_list[1:2] = [obj_c]
         self.assertEqual(weak_list[1] is obj_c, True)
         self.assertEqual(weak_list[1:2], [obj_c])
+        weak_list[slice(0, 1)] = [obj_c]
+        self.assertEqual(weak_list[0] is obj_c, True)
+        self.assertEqual(weak_list[slice(0, 1)], [obj_c])
         # index().
         self.assertEqual(weak_list.index(obj_c), 0)
         # .remove().
@@ -189,6 +192,8 @@ class UtilsTestCase(Pep8CompliantTestCase):
         del obj_c1, obj_c2, obj_c3, obj_c4
         del obj_a, obj_c
         self.assertEqual(len(weak_list), 0)
+        with self.assert_raises(StopIteration):
+            next(iter(weak_list))
 
     def test_weak_ordered_set(self):
         class MyObj(object):
@@ -232,4 +237,7 @@ class RepoManagerTestCase(EntityTestCase):
 
     def test_get_repository(self):
         repo = get_repository('MEMORY')
+        self.assert_equal(repo.name, 'MEMORY')
+        # Default repo.
+        repo = get_repository()
         self.assert_equal(repo.name, 'MEMORY')

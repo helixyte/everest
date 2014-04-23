@@ -30,7 +30,7 @@ class RendererTestCase(ResourceTestCase):
             self.assert_true(isinstance(rpr_str, binary_type))
             self.assert_not_equal(rpr_str.find(exp_str), -1)
         resource = create_collection()
-        _test(resource, 'csv', b'"id","parent"')
+        _test(resource, 'csv', b'"id","parent.id"')
         _test(resource, 'atom', b'www.w3.org/2005/Atom')
         self.assert_raises(ValueError, _test, resource, 'foo', '')
         self.assert_raises(ValueError, _test, None, 'csv', '"id","parent"')

@@ -121,6 +121,9 @@ class MemorySession(Session):
         self.__unit_of_work.reset()
         self.__cache_map.clear()
 
+    def reset(self):
+        self.rollback()
+
     def load(self, entity_class, entity):
         """
         Load the given repository entity into the session and return a

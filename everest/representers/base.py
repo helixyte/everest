@@ -6,9 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on May 18, 2011.
 """
-from everest.representers.utils import get_mapping_registry
 from pyramid.compat import NativeIO
 from pyramid.compat import bytes_
+from pyramid.compat import text_
+
+from everest.representers.utils import get_mapping_registry
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['MappingResourceRepresenter',
@@ -40,14 +43,12 @@ class Representer(object):
         stream = NativeIO(string_representation)
         return self.from_stream(stream, resource=resource)
 
-    def from_bytes(self, bytes_representation, resource=None, encoding=None):
+    def from_bytes(self, bytes_representation, resource=None):
         """
         Extracts resource data from the given bytes representation and calls
         :method:`from_string` with the resulting text representation.
         """
-        if encoding is None:
-            encoding = self.encoding
-        text = bytes_representation.decode(encoding)
+        text = bytes_representation.decode(self.encoding)
         return self.from_string(text, resource=resource)
 
     def to_string(self, obj):
@@ -57,7 +58,7 @@ class Representer(object):
         """
         stream = NativeIO()
         self.to_stream(obj, stream)
-        return stream.getvalue()
+        return text_(stream.getvalue(), encoding=self.encoding)
 
     def to_bytes(self, obj, encoding=None):
         """
@@ -98,7 +99,7 @@ class ResourceRepresenter(Representer):
         return self.resource_from_data(data_el, resource=resource)
 
     def to_stream(self, resource, stream):
-        data_el = self.data_from_resource(resource)
+        data_el = self.resource_to_data(resource)
         self.data_to_stream(data_el, stream)
 
     @classmethod
@@ -117,7 +118,7 @@ class ResourceRepresenter(Representer):
 
     def data_to_stream(self, data_element, stream):
         """
-        Extracts resource data from the given stream.
+        Writes resource data to the given stream.
         """
         raise NotImplementedError('Abstract method.')
 
@@ -131,16 +132,14 @@ class ResourceRepresenter(Representer):
         stream = NativeIO(text)
         return self.data_from_stream(stream)
 
-    def data_from_bytes(self, byte_representation, encoding=None):
+    def data_from_bytes(self, byte_representation):
         """
         Converts the given bytes representation to resource data.
         """
-        if encoding is None:
-            encoding = self.encoding
-        text = byte_representation.decode(encoding)
+        text = byte_representation.decode(self.encoding)
         return self.data_from_string(text)
 
-    def string_from_data(self, data_element):
+    def data_to_string(self, data_element):
         """
         Converts the given data element into a string representation.
 
@@ -153,15 +152,15 @@ class ResourceRepresenter(Representer):
         self.data_to_stream(data_element, stream)
         return stream.getvalue()
 
-    def bytes_from_data(self, data_element, encoding=None):
+    def data_to_bytes(self, data_element, encoding=None):
         """
         Converts the given data element into a string representation using
-        the :method:`string_from_data` method and encodes the resulting
+        the :method:`data_to_string` method and encodes the resulting
         text with the given encoding.
         """
         if encoding is None:
             encoding = self.encoding
-        text = self.string_from_data(data_element)
+        text = self.data_to_string(data_element)
         return bytes_(text, encoding=encoding)
 
     def resource_from_data(self, data, resource=None):
@@ -175,7 +174,7 @@ class ResourceRepresenter(Representer):
         """
         raise NotImplementedError('Abstract method.')
 
-    def data_from_resource(self, resource):
+    def resource_to_data(self, resource):
         """
         Converts the given resource to resource data.
 
@@ -257,7 +256,7 @@ class MappingResourceRepresenter(ResourceRepresenter):
         """
         return self._mapping.map_to_resource(data_element, resource=resource)
 
-    def data_from_resource(self, resource):
+    def resource_to_data(self, resource):
         """
         Extracts managed attributes from a resource and constructs a data
         element for serialization from it.
@@ -278,8 +277,8 @@ class MappingResourceRepresenter(ResourceRepresenter):
 
     def configure(self, options=None, attribute_options=None): # pylint: disable=W0221
         """
-        Clones the mapping associated with this representer and configures
-        its options and attribute options with the given dictionaries.
+        Configures the options and attribute options of the mapping associated
+        with this representer with the given dictionaries.
 
         :param dict options: configuration options for the mapping associated
           with this representer.
@@ -291,6 +290,16 @@ class MappingResourceRepresenter(ResourceRepresenter):
 #        self._mapping = \
 #                self._mapping.clone(options=options,
 #                                    attribute_options=attribute_options)
+
+    def with_updated_configuration(self, options=None,
+                                   attribute_options=None):
+        """
+        Returns a context in which this representer is updated with the
+        given options and attribute options.
+        """
+        return self._mapping.with_updated_configuration(options=options,
+                                                        attribute_options=
+                                                            attribute_options)
 
     def _make_representation_parser(self, stream, resource_class, mapping):
         """

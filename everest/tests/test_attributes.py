@@ -4,31 +4,33 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Oct 16, 2013.
 """
+import pytest
+
 from everest.attributes import get_attribute_cardinality
+from everest.attributes import is_terminal_attribute
 from everest.constants import CARDINALITY_CONSTANTS
 from everest.resources.base import Member
 from everest.resources.descriptors import member_attribute
 from everest.resources.descriptors import terminal_attribute
-from everest.testing import Pep8CompliantTestCase
-from everest.attributes import is_terminal_attribute
+
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['AttributesTestCase',
+__all__ = ['TestAttributes',
            ]
 
 
-class AttributesTestCase(Pep8CompliantTestCase):
-    def set_up(self):
-        self.member_attr = member_attribute(Member, 'attr')
-        self.terminal_attr = terminal_attribute(int, 'attr')
+class TestAttributes(object):
+    @pytest.mark.parametrize('attr_name', ['attr'])
+    def test_get_attribute_cardinality(self, attr_name):
+        mb_attr = member_attribute(Member, attr_name)
+        assert get_attribute_cardinality(mb_attr) == CARDINALITY_CONSTANTS.ONE
+        t_attr = terminal_attribute(int, attr_name)
+        with pytest.raises(ValueError):
+            get_attribute_cardinality(t_attr)
 
-    def test_get_attribute_cardinality(self):
-        self.assert_equal(get_attribute_cardinality(self.member_attr),
-                          CARDINALITY_CONSTANTS.ONE)
-        self.assert_raises(ValueError, get_attribute_cardinality,
-                           self.terminal_attr)
-
-    def test_is_terminal_attribute(self):
-        self.assert_true(is_terminal_attribute(self.terminal_attr))
-        self.assert_false(is_terminal_attribute(self.member_attr))
-
+    @pytest.mark.parametrize('attr_name', ['attr'])
+    def test_is_terminal_attribute(self, attr_name):
+        mb_attr = member_attribute(Member, attr_name)
+        assert is_terminal_attribute(mb_attr) is False
+        t_attr = terminal_attribute(int, attr_name)
+        assert is_terminal_attribute(t_attr) is True

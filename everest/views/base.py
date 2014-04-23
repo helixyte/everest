@@ -266,7 +266,10 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         except ValueError:
             self.request.response.headerlist.append(loc_hdr)
         else:
-            self.request.response.headerlist[idx] = loc_hdr
+            # Replace existing location header.
+            # FIXME: It is not clear under which conditions this happens, so
+            #        we do not have a test for it yet.
+            self.request.response.headerlist[idx] = loc_hdr # pragma: no cover
 
     def __get_default_response_mime_type(self):
         if not self._default_response_content_type is None:

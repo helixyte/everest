@@ -7,6 +7,17 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Aug 29, 2012.
 """
 from __future__ import absolute_import # Makes the import below absolute
+
+from collections import OrderedDict
+import datetime
+from json import dumps
+from json import loads
+
+from pyramid.compat import binary_type
+from pyramid.compat import bytes_
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.mime import JsonMime
 from everest.representers.base import MappingResourceRepresenter
@@ -20,6 +31,7 @@ from everest.representers.converters import NoOpConverter
 from everest.representers.dataelements import SimpleCollectionDataElement
 from everest.representers.dataelements import SimpleLinkedDataElement
 from everest.representers.dataelements import SimpleMemberDataElement
+from everest.representers.interfaces import IRepresentationConverter
 from everest.representers.mapping import SimpleMappingRegistry
 from everest.representers.traversal import DataElementTreeTraverser
 from everest.representers.traversal import ResourceDataTreeTraverser
@@ -29,12 +41,8 @@ from everest.representers.traversal import \
 from everest.resources.utils import get_member_class
 from everest.resources.utils import get_resource_class_for_relation
 from everest.resources.utils import is_resource_url
-from json import dumps
-from json import loads
-from pyramid.compat import iteritems_
-from pyramid.compat import string_types
-import datetime
-from collections import OrderedDict
+from zope.interface import provider # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['JsonCollectionDataElement',
@@ -54,10 +62,27 @@ __all__ = ['JsonCollectionDataElement',
 class JsonConverterRegistry(ConverterRegistry):
     pass
 
+
+@provider(IRepresentationConverter)
+class JsonBytesConverter(object):
+    """
+    The JSON decoder returns text which we have to encode for byte attributes.
+    """
+
+    @classmethod
+    def from_representation(cls, value):
+        return bytes_(value, encoding='utf-8')
+
+    @classmethod
+    def to_representation(cls, value):
+        return value
+
+
 JsonConverterRegistry.register(datetime.datetime, DateTimeConverter)
 JsonConverterRegistry.register(bool, BooleanConverter)
 JsonConverterRegistry.register(int, NoOpConverter)
 JsonConverterRegistry.register(float, NoOpConverter)
+JsonConverterRegistry.register(binary_type, JsonBytesConverter)
 
 
 class JsonDataTreeTraverser(ResourceDataTreeTraverser):
@@ -118,7 +143,8 @@ class JsonRepresentationParser(RepresentationParser):
     Implementation of a representation parser for JSON.
     """
     def run(self):
-        json_data = loads(self._stream.read())
+        json_data = loads(self._stream.read(),
+                          encoding=self.get_option('encoding', 'utf-8'))
         trv = JsonDataTreeTraverser(json_data, self._mapping)
         vst = DataElementBuilderRepresentationDataVisitor(self._mapping)
         trv.run(vst)
@@ -194,10 +220,12 @@ class JsonResourceRepresenter(MappingResourceRepresenter):
 
     def _make_representation_parser(self, stream, resource_class, mapping):
         parser = JsonRepresentationParser(stream, resource_class, mapping)
+        parser.set_option('encoding', self.encoding)
         return parser
 
     def _make_representation_generator(self, stream, resource_class, mapping):
         generator = JsonRepresentationGenerator(stream, resource_class, mapping)
+        generator.set_option('encoding', self.encoding)
         return generator
 
 

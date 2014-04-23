@@ -153,6 +153,7 @@ class _ResourceIoTestCaseBase(ResourceTestCase):
 
 
 class _ZipResourceIoTestCaseBase(_ResourceIoTestCaseBase):
+
     def test_load_from_zipfile(self):
         member = _make_test_entity_member()
         strm = BytesIO()

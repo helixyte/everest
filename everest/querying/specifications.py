@@ -12,6 +12,11 @@ especially http://www.martinfowler.com/apsupp/spec.pdf
 
 Created on Jul 5, 2011.
 """
+import re
+
+from pyramid.compat import string_types
+from pyramid.threadlocal import get_current_registry
+
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import ISpecification
@@ -33,11 +38,8 @@ from everest.querying.operators import STARTS_WITH
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.utils import get_nested_attribute
-from pyramid.compat import string_types
-from pyramid.threadlocal import get_current_registry
 from zope.interface import implementer # pylint: disable=E0611,F0401
-from zope.interface import implementer # pylint: disable=E0611,F0401
-import re
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AscendingOrderSpecification',
@@ -555,7 +557,7 @@ class ConjunctionOrderSpecification(OrderSpecification):
         self.__right = right
 
     def __str__(self):
-        str_format = '<%s left: %s, right: %s>'
+        str_format = '<%s left_spec: %s, right_spec: %s>'
         params = (self.__class__.__name__, self.left, self.right)
         return str_format % params
 
@@ -608,6 +610,9 @@ class OrderSpecificationFactory(object):
 
     def create_descending(self, attr_name):
         return DescendingOrderSpecification(attr_name)
+
+    def create_natural(self, attr_name):
+        return NaturalOrderSpecification(attr_name)
 
     def create_conjunction(self, left_spec, right_spec):
         return ConjunctionOrderSpecification(left_spec, right_spec)

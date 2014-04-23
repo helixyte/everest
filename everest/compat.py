@@ -4,6 +4,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Dec 18, 2013.
 """
+import codecs
 from csv import DictReader
 from csv import reader
 
@@ -57,13 +58,27 @@ else:
     from csv import excel
     from pyramid.compat import text_type
 
+    # The following classes are used to support encodings in CSV files under
+    # Python 2.7.x . Adapted from the csv module documentation.
+
+    class Utf8Recoder:
+        def __init__(self, f, encoding):
+            self.reader = codecs.getreader(encoding)(f)
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            return self.reader.next().encode('utf-8')
+
+        def read(self, size):
+            return self.reader.read(size).encode('utf-8')
+
 
     class UnicodeReader(object):
-        """
-        A CSV reader that ensures that byte strings are read as unicode under
-        Python 2.7.
-        """
-        def __init__(self, f, dialect=excel, **kwargs):
+        def __init__(self, f, dialect=excel, encoding='utf-8', **kwargs):
+            if not encoding is None:
+                f = Utf8Recoder(f, encoding)
             self.reader = reader(f, dialect=dialect, **kwargs)
 
         def next(self):
@@ -83,20 +98,18 @@ else:
 
 
     class UnicodeDictReader(DictReader):
-        """
-        A CSV dict reader that ensures that byte strings are read as unicode
-        under Python 2.7.
-        """
         def __init__(self, f, fieldnames=None, restkey=None, restval=None,
-                     dialect="excel", *args, **kw):
+                     dialect="excel", encoding='utf-8', *args, **kw):
             DictReader.__init__(self, f, fieldnames=fieldnames,
                                 restkey=restkey, restval=restval,
                                 dialect=dialect, *args, **kw)
+            if not encoding is None:
+                f = Utf8Recoder(f, encoding=encoding)
             # Replace the reader with our unicode-enabled reader.
-            self.reader = UnicodeReader(f, dialect=dialect, *args, **kw)
+            self.reader = reader(f, dialect=dialect, *args, **kw)
 
 
-    csv_reader = UnicodeReader
-    CsvDictReader = UnicodeDictReader
+    csv_reader = reader # UnicodeReader
+    CsvDictReader = DictReader # UnicodeDictReader
 
 # pylint: enable=E0611

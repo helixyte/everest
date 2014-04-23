@@ -98,6 +98,9 @@ class MemoryRepository(Repository):
     def _initialize(self):
         pass
 
+    def _reset(self):
+        self.__cache_map.clear()
+
     def _make_session_factory(self):
         return MemorySessionFactory(self)
 
