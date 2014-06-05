@@ -5,5 +5,5 @@ pyramid>=1.4.2,<1.4.99
 pyramid_tm>=0.7
 pyramid_zcml>=1.0.0
 python-graph-core
-sqlalchemy>=0.8.1
+sqlalchemy>=0.8.1,<0.8.99
 zope.sqlalchemy>=0.7.2

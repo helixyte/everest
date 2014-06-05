@@ -31,18 +31,19 @@ Installing ``everest`` is simple. You need
 
 * A recent version of Python (2.7.x). See
   `here <http://www.python.org/download/releases/2.7.3/>`_ for instructions;
-* The pip Python package installer. Install in a shell with the command
-
-  .. code-block:: console
-
-     > easy_install pip
+* The pip Python package installer. Follow the instructions
+  `here <http://pip.readthedocs.org/en/latest/installing.html#install-pip>`_ to
+  get it;
 
 With these requirements in place, all you need to do to install ``everest`` is
 to issue the command
 
 .. code-block:: console
 
-   > pip install everest
+   > pip install --allow-external python-graph-core --allow-unverified python-graph-core everest
+   
+(the `--allow-external` and `--allow-unverified` flags are required for the
+python graph core package which has not been maintained in a while).
 
 
 Documentation

@@ -21,6 +21,7 @@ install_requirements = \
     open(os.path.join(here, 'requirements.txt'), 'rU').readlines()
 
 tests_requirements = install_requirements + [
+    'pytest',
     'nose-cov',
     'pytz',
     'webtest',
