@@ -508,9 +508,9 @@ class XmlMappingRegistry(MappingRegistry):
                 elif xml_ns != ns:
                     raise ValueError('Prefix "%s" is already registered for '
                                      'namespace %s.' % (xml_prefix, ns))
-        # Make sure we rebuild the lookup.
-        if not self.__ns_lookup is None:
-            self.__ns_lookup = None
+            # Make sure we rebuild the lookup.
+            if not self.__ns_lookup is None:
+                self.__ns_lookup = None
         MappingRegistry.set_mapping(self, mapping)
 
     @property
