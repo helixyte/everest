@@ -91,20 +91,35 @@ def pytest_collection_modifyitems(session, config, items): # pylint: disable=W06
             removed += 1
 
 
-@fixture(scope='session')
+class _IniFactory(object):
+    __inis = {}
+
+    @classmethod
+    def get_cached(cls, ini_file_path):
+        cached_ini = cls.__inis.get(ini_file_path)
+        if cached_ini is None:
+            cached_ini = EverestIni(ini_file_path)
+            cls.__inis[ini_file_path] = cached_ini
+        return cached_ini
+
+
+@fixture(scope='class')
 def ini(request):
     """
     Fixture for all tests that parse an `ini` file.
 
     The ini file name is pulled from the `--app-ini-file` command line
-    option.
+    option unless it is overridden by specifying an `ini_file_path` attribute
+    in the class name space.
     """
-    app_ini_file = request.config.getoption('--app-ini-file')
-    return EverestIni(app_ini_file)
+    ini_file_path = getattr(request.cls, 'ini_file_path', None)
+    if ini_file_path is None:
+        ini_file_path = request.config.getoption('--app-ini-file')
+    return _IniFactory.get_cached(ini_file_path)
 
 
 class _ConfiguratorFactory(object):
-    __registries = {}
+    __configurators = {}
 
     @classmethod
     def get(cls, request, ini): # redefining ini pylint: disable=W0621
@@ -116,10 +131,10 @@ class _ConfiguratorFactory(object):
         package_name, zcml_file_name, settings = cls.__get_args(request, ini)
         key = (package_name, zcml_file_name,
                _ConfiguratorFactory.__make_settings_key(settings))
-        conf = _ConfiguratorFactory.__registries.get(key)
+        conf = _ConfiguratorFactory.__configurators.get(key)
         if conf is None:
             conf = cls.__make_new(package_name, zcml_file_name, settings)
-            _ConfiguratorFactory.__registries[key] = conf
+            _ConfiguratorFactory.__configurators[key] = conf
         return conf
 
     @classmethod
@@ -279,15 +294,16 @@ def system_resource_repo(ini, configurator): # redefining ini, configurator pyli
 
 
 @yield_fixture(scope='class')
-def app_creator(request, ini): # redefining ini pylint: disable=W0621
+def app_creator(request, ini): # redefining ini, configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on applications.
     """
     app_name = getattr(request.cls, 'app_name', None)
     pkg_name = getattr(request.cls, 'package_name', 'everest')
+    config_file_name = getattr(request.cls, 'config_file_name', None)
     extra_environ = getattr(request.cls, 'extra_environ', {})
     with AppCreatorContextManager(ini.ini_file_path, app_name, pkg_name,
-                                  extra_environ) as app:
+                                  config_file_name, extra_environ) as app:
         yield app
 
 
@@ -296,14 +312,18 @@ class AppCreatorContextManager(object):
     Context manager for setting up the everest framework for application
     level (functional) operations.
     """
-    def __init__(self, ini_file_path, app_name, pkg_name, extra_environ):
+    def __init__(self, ini_file_path, app_name, pkg_name, config_file_name,
+                 extra_environ):
         wsgiapp = loadapp('config:' + ini_file_path, name=app_name)
-        self.__app = EverestTestApp(wsgiapp, extra_environ=extra_environ)
         self.__config = Configurator(registry=wsgiapp.registry,
                                      package=pkg_name)
+        self.__app = EverestTestApp(wsgiapp, extra_environ=extra_environ)
+        self.__config_file_name = config_file_name
 
     def __enter__(self):
         self.__config.begin()
+        if not self.__config_file_name is None:
+            self.__config.load_zcml(self.__config_file_name)
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
