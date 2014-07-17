@@ -78,7 +78,7 @@ def slug_from_identifier(id_string):
 
     :param str id_string: identifier string
     """
-    return id_string.replace('_', '-')
+    return id_string.lower().replace('_', '-')
 
 
 def identifier_from_slug(slug):
@@ -86,6 +86,7 @@ def identifier_from_slug(slug):
     Converts the given slug into an identifier string.
 
     :param str slug: slug string
+    :note: This does not work for identifiers containing upper case letters.
     """
     return slug.replace('-', '_')
 
