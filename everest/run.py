@@ -25,4 +25,6 @@ def app_factory(global_settings, **local_settings): # pylint: disable=W0613
     config = Configurator()
     config.setup_registry(settings=local_settings,
                           root_factory=RootFactory())
+    if 'configure.zcml' in local_settings:
+        config.load_zcml(local_settings['configure.zcml'])
     return config.make_wsgi_app()
