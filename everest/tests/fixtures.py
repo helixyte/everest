@@ -17,6 +17,7 @@ import transaction
 from everest.configuration import Configurator
 from everest.ini import EverestIni
 from everest.querying.specifications import FilterSpecificationFactory
+from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
@@ -26,7 +27,6 @@ from everest.testing import EverestTestApp
 from everest.testing import tear_down_registry
 from everest.tests.complete_app import fixtures
 from paste.deploy import loadapp
-from everest.querying.specifications import OrderSpecificationFactory
 
 
 __docformat__ = 'reStructuredText en'
@@ -70,6 +70,9 @@ def pytest_configure(config):
     """
     app_ini_file = config.getoption('--app-ini-file')
     if not app_ini_file is None:
+        #
+        if not app_ini_file is None:
+            EverestIni.ini_file_path = app_ini_file
         setup_logging(app_ini_file)
 
 
