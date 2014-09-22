@@ -23,6 +23,7 @@ from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.resources.interfaces import IService
+from everest.testing import BaseTestCaseWithConfiguration
 from everest.testing import EverestTestApp
 from everest.testing import tear_down_registry
 from everest.tests.complete_app import fixtures
@@ -31,10 +32,11 @@ from paste.deploy import loadapp
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['app_creator',
-           'configurator',
-           'entity_repo',
-           'ini',
+           'class_configurator',
+           'class_entity_repo',
+           'class_ini',
            'resource_repo',
+           'session_ini',
            ]
 
 
@@ -58,6 +60,9 @@ def pytest_addoption(parser):
     """
     parser.addoption("--app-ini-file", action="store", default=None,
                      help="everest application ini file.")
+    parser.addoption("--app-ini-section", action="store", default=None,
+                     help="ini file section to use to configure the everest "
+                          "application.")
 
 
 def pytest_configure(config):
@@ -68,12 +73,15 @@ def pytest_configure(config):
     This sets up the logging system from the "loggers" section in your
     application ini file, if configured.
     """
-    app_ini_file = config.getoption('--app-ini-file')
-    if not app_ini_file is None:
-        #
-        if not app_ini_file is None:
-            EverestIni.ini_file_path = app_ini_file
-        setup_logging(app_ini_file)
+    ini_file_path = config.getoption('--app-ini-file')
+    if not ini_file_path is None:
+        # FIXME: This is only needed if a test run uses old-style nose tests.
+        EverestIni.ini_file_path = ini_file_path
+        setup_logging(ini_file_path)
+    ini_section_name = config.getoption('--app-ini-section')
+    if not ini_section_name is None:
+        # FIXME: This is only needed if a test run uses old-style nose tests.
+        BaseTestCaseWithConfiguration.ini_section_name = ini_section_name
 
 
 def pytest_collection_modifyitems(session, config, items): # pylint: disable=W0613
@@ -106,10 +114,23 @@ class _IniFactory(object):
         return cached_ini
 
 
-@fixture(scope='class')
-def ini(request):
+@fixture(scope='session')
+def session_ini(request):
     """
-    Fixture for all tests that parse an `ini` file.
+    Session-scoped fixture for all tests that parse an `ini` file.
+
+    The ini file name is pulled from the `--app-ini-file` command line
+    option unless it is overridden by specifying an `ini_file_path` attribute
+    in the class name space.
+    """
+    ini_file_path = request.config.getoption('--app-ini-file')
+    return _IniFactory.get_cached(ini_file_path)
+
+
+@fixture(scope='class')
+def class_ini(request):
+    """
+    Class-scoped fixture for all tests that parse an `ini` file.
 
     The ini file name is pulled from the `--app-ini-file` command line
     option unless it is overridden by specifying an `ini_file_path` attribute
@@ -127,7 +148,7 @@ class _ConfiguratorFactory(object):
     @classmethod
     def get(cls, request, ini): # redefining ini pylint: disable=W0621
         package_name, zcml_file_name, settings = cls.__get_args(request, ini)
-        return cls.__make_new(package_name, zcml_file_name, settings)
+        return cls.create(package_name, zcml_file_name, settings)
 
     @classmethod
     def get_cached(cls, request, ini): # redefining ini pylint: disable=W0621
@@ -136,19 +157,38 @@ class _ConfiguratorFactory(object):
                _ConfiguratorFactory.__make_settings_key(settings))
         conf = _ConfiguratorFactory.__configurators.get(key)
         if conf is None:
-            conf = cls.__make_new(package_name, zcml_file_name, settings)
+            conf = cls.create(package_name, zcml_file_name, settings)
             _ConfiguratorFactory.__configurators[key] = conf
+        return conf
+
+    @classmethod
+    def create(cls, package_name, zcml_file_name, settings):
+        reg = Registry('testing')
+        conf = Configurator(registry=reg, package=package_name)
+        conf.setup_registry(settings=settings)
+        if not zcml_file_name is None:
+            conf.begin()
+            try:
+                conf.load_zcml(zcml_file_name)
+            finally:
+                conf.end()
         return conf
 
     @classmethod
     def __get_args(cls, request, ini): # redefining ini pylint: disable=W0621
         ini_section_name = getattr(request.cls, 'ini_section_name', None)
+        if ini_section_name is None:
+            ini_section_name = request.config.getoption('--app-ini-section')
         pkg_name = getattr(request.cls, 'package_name', None)
         if not pkg_name is None:
             def_cfg_zcml = getattr(request.cls, 'config_file_name',
                                    'configure.zcml')
         else:
-            def_cfg_zcml = None
+            if not ini_section_name is None:
+                pkg_name = ini_section_name.split(':')[-1]
+                def_cfg_zcml = 'configure.zcml'
+            else:
+                def_cfg_zcml = None
         if not ini_section_name is None:
             settings = ini.get_settings(ini_section_name)
         else:
@@ -163,19 +203,6 @@ class _ConfiguratorFactory(object):
         return pkg_name, cfg_zcml, settings
 
     @classmethod
-    def __make_new(cls, package_name, zcml_file_name, settings):
-        reg = Registry('testing')
-        conf = Configurator(registry=reg, package=package_name)
-        conf.setup_registry(settings=settings)
-        if not package_name is None:
-            conf.begin()
-            try:
-                conf.load_zcml(zcml_file_name)
-            finally:
-                conf.end()
-        return conf
-
-    @classmethod
     def __make_settings_key(cls, settings):
         if settings is None:
             key = None
@@ -184,25 +211,57 @@ class _ConfiguratorFactory(object):
         return key
 
 
+@fixture(scope='session')
+def session_configurator(request, session_ini): # redefining ini pylint: disable=W0621
+    """
+    Session-scoped fixture for all tests that set up a Pyramid configurator.
+
+    @note: If you modify this configurator, all tests in the current session
+        are affected.
+    """
+    ini_section_name = request.config.getoption('--app-ini-section')
+    if not ini_section_name is None:
+        settings = session_ini.get_settings(ini_section_name)
+    else:
+        try:
+            settings = session_ini.get_settings('DEFAULT')
+        except configparser.NoSectionError:
+            settings = None
+    def_cfg_zcml = 'configure.zcml'
+    if not settings is None:
+        cfg_zcml = settings.get('configure_zcml', def_cfg_zcml)
+    else:
+        cfg_zcml = def_cfg_zcml
+    if not ini_section_name is None:
+        pkg_name = ini_section_name.split(':')[-1]
+    else:
+        pkg_name = None
+    return _ConfiguratorFactory.create(pkg_name, cfg_zcml, settings)
+
+
 @fixture(scope='class')
-def configurator(request, ini): # redefining ini pylint: disable=W0621
+def class_configurator(request, class_ini): # redefining ini pylint: disable=W0621
     """
-    Fixture for all tests that set up a Pyramid configurator.
+    Class-scoped fixture for all tests that set up a Pyramid configurator.
+
+    @note: If you modify this configurator, all tests in all classes using the
+           same ini file + ini file section + package name combinatino are
+           affected.
     """
-    return _ConfiguratorFactory.get_cached(request, ini)
+    return _ConfiguratorFactory.get_cached(request, class_ini)
 
 
 @fixture
-def new_configurator(request, ini): # redefining ini pylint: disable=W0621
+def function_configurator(request, class_ini): # redefining ini pylint: disable=W0621
     """
-    Fixture for all tests that set up a Pyramid configurator and modify it.
+    Function-scoped fixture for all tests that set up a Pyramid configurator.
     """
-    return _ConfiguratorFactory.get(request, ini)
+    return _ConfiguratorFactory.get(request, class_ini)
 
 
 @fixture
-def mapping_registry_factory(new_configurator): # redefining new_configurator pylint: disable=W0621
-    rpr_reg = new_configurator.registry.queryUtility(IRepresenterRegistry)
+def mapping_registry_factory(function_configurator): # redefining function_configurator pylint: disable=W0621
+    rpr_reg = function_configurator.registry.queryUtility(IRepresenterRegistry)
     return rpr_reg.get_mapping_registry
 
 
@@ -227,12 +286,21 @@ class EntityCreatorContextManager(object):
         self.__config.end()
 
 
+@yield_fixture(scope='session')
+def session_entity_repo(session_configurator): # redefining session_configurator pylint: disable=W0621
+    """
+    Session-scoped fixture for all tests that perform operations on entities.
+    """
+    with EntityCreatorContextManager(session_configurator) as repo:
+        yield repo
+
+
 @yield_fixture
-def entity_repo(configurator): # redefining configurator pylint: disable=W0621
+def class_entity_repo(class_configurator): # redefining class_configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on entities.
     """
-    with EntityCreatorContextManager(configurator) as repo:
+    with EntityCreatorContextManager(class_configurator) as repo:
         yield repo
 
 
@@ -274,30 +342,30 @@ class ResourceCreatorContextManager(object):
 
 
 @yield_fixture
-def resource_repo(ini, configurator): # redefining ini, configurator pylint: disable=W0621
+def resource_repo(class_ini, class_configurator): # redefining ini, class_configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on resources.
     """
-    app_url = ini.get_app_url()
-    with ResourceCreatorContextManager(configurator, app_url) as repo:
+    app_url = class_ini.get_app_url()
+    with ResourceCreatorContextManager(class_configurator, app_url) as repo:
         yield repo
 
 
 @yield_fixture
-def system_resource_repo(ini, configurator): # redefining ini, configurator pylint: disable=W0621
+def system_resource_repo(class_ini, class_configurator): # redefining ini, class_configurator pylint: disable=W0621
     """
     Like `resource_repo`, but yields the system repository instead of the
     default repository.
     """
-    app_url = ini.get_app_url()
-    with ResourceCreatorContextManager(configurator, app_url,
+    app_url = class_ini.get_app_url()
+    with ResourceCreatorContextManager(class_configurator, app_url,
                                        repo_name=REPOSITORY_DOMAINS.SYSTEM) \
          as repo:
         yield repo
 
 
 @yield_fixture(scope='class')
-def app_creator(request, ini): # redefining ini, configurator pylint: disable=W0621
+def app_creator(request, class_ini): # redefining ini, class_configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on applications.
     """
@@ -305,7 +373,7 @@ def app_creator(request, ini): # redefining ini, configurator pylint: disable=W0
     pkg_name = getattr(request.cls, 'package_name', 'everest')
     config_file_name = getattr(request.cls, 'config_file_name', None)
     extra_environ = getattr(request.cls, 'extra_environ', {})
-    with AppCreatorContextManager(ini.ini_file_path, app_name, pkg_name,
+    with AppCreatorContextManager(class_ini.ini_file_path, app_name, pkg_name,
                                   config_file_name, extra_environ) as app:
         yield app
 

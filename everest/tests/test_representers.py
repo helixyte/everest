@@ -72,22 +72,22 @@ class TestRepresenterRegistry(object):
     package_name = 'everest.tests.complete_app'
     config_file_name = 'configure_no_rdb.zcml'
 
-    def test_register_representer_class(self, configurator):
-        configurator.begin()
+    def test_register_representer_class(self, class_configurator):
+        class_configurator.begin()
         try:
-            rpr_reg = configurator.get_registered_utility(IRepresenterRegistry)
+            rpr_reg = class_configurator.get_registered_utility(IRepresenterRegistry)
             with pytest.raises(ValueError):
                 rpr_reg.register_representer_class(CsvResourceRepresenter)
         finally:
-            configurator.end()
+            class_configurator.end()
 
-    def test_register_representer(self, configurator):
+    def test_register_representer(self, class_configurator):
         class MyMime(object):
             mime_string = 'application/mymime'
             file_extension = '.mymime'
-        configurator.begin()
+        class_configurator.begin()
         try:
-            rpr_reg = configurator.get_registered_utility(IRepresenterRegistry)
+            rpr_reg = class_configurator.get_registered_utility(IRepresenterRegistry)
             with pytest.raises(ValueError) as cm:
                 rpr_reg.register(MyEntity, CsvMime)
             exc_msg = 'Representers can only be registered for resource classes'
@@ -97,16 +97,16 @@ class TestRepresenterRegistry(object):
             exc_msg = 'No representer class has been registered for content type'
             assert str(cm.value).startswith(exc_msg)
         finally:
-            configurator.end()
+            class_configurator.end()
 
-    def test_autocreate_mapping(self, collection, configurator):
+    def test_autocreate_mapping(self, collection, class_configurator):
         # This registers a representer (factory) and creates a mapping for
         # the collection.
         coll_rpr = as_representer(collection, CsvMime)
         mb = next(iter(collection))
         # This auto-creates a mapping for the member.
         coll_rpr.resource_to_data(mb)
-        rpr_reg = configurator.get_registered_utility(IRepresenterRegistry)
+        rpr_reg = class_configurator.get_registered_utility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(CsvMime)
         mp_before = mp_reg.find_mapping(type(mb))
         # This registers a representer (factory) for the member and finds
@@ -290,10 +290,10 @@ class TestJsonRepresenter(_TestRepresenter):
     def test_json_with_two_collections_expanded(self, representer, collection):
         self._test_with_two_collections_expanded(representer, collection, None)
 
-    def test_json_data_tree_traverser(self, configurator):
-        configurator.begin()
+    def test_json_data_tree_traverser(self, class_configurator):
+        class_configurator.begin()
         try:
-            rpr_reg = configurator.registry.queryUtility(IRepresenterRegistry)
+            rpr_reg = class_configurator.registry.queryUtility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(JsonMime)
             default_mp = mp_reg.find_or_create_mapping(MyEntityMember)
             attr_opts = {('parent',):{WRITE_AS_LINK_OPTION:False}}
@@ -308,7 +308,7 @@ class TestJsonRepresenter(_TestRepresenter):
                     trv.run(vst)
                 assert str(cm.value).startswith(exc_msg)
         finally:
-            configurator.end()
+            class_configurator.end()
 
 
 class TestCsvRepresenter(_TestRepresenter):
@@ -581,11 +581,11 @@ class TestXmlRepresenter(object):
             parent_de = de.get_nested(attr)
             assert parent_de.tag.startswith('{%s}' % ns)
 
-    def test_create_with_attr_no_namespace(self, member, new_configurator):
-        new_configurator.begin()
+    def test_create_with_attr_no_namespace(self, member, function_configurator):
+        function_configurator.begin()
         try:
             rpr_reg = \
-                new_configurator.get_registered_utility(IRepresenterRegistry)
+                function_configurator.get_registered_utility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(XmlMime)
             ns = None
             options = {XML_NAMESPACE_OPTION:ns}
@@ -599,7 +599,7 @@ class TestXmlRepresenter(object):
                 assert list(de.data.keys()) == ['id', 'text', 'text_rc']
                 assert de.tag.find('{') == -1
         finally:
-            new_configurator.end()
+            function_configurator.end()
 
     def test_create_no_tag_raises_error(self, mapping):
         options = {XML_TAG_OPTION:None}
@@ -607,8 +607,8 @@ class TestXmlRepresenter(object):
             with pytest.raises(ValueError):
                 mapping.data_element_class.create()
 
-    def test_create_link(self, collection, configurator):
-        rpr_reg = configurator.get_registered_utility(IRepresenterRegistry)
+    def test_create_link(self, collection, class_configurator):
+        rpr_reg = class_configurator.get_registered_utility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_mapping(Link)
         de = mp.data_element_class.create_from_resource(collection)
@@ -618,17 +618,17 @@ class TestXmlRepresenter(object):
         assert link_el.get_title().startswith('Collection of')
         assert link_el.get_id() is None
 
-    def test_create_link_from_non_resource_raises_error(self, configurator):
-        configurator.begin()
+    def test_create_link_from_non_resource_raises_error(self, class_configurator):
+        class_configurator.begin()
         try:
             non_rc = NonResource()
-            rpr_reg = configurator.get_registered_utility(IRepresenterRegistry)
+            rpr_reg = class_configurator.get_registered_utility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(XmlMime)
             mp = mp_reg.find_mapping(Link)
             with pytest.raises(ValueError):
                 mp.data_element_class.create_from_resource(non_rc)
         finally:
-            configurator.end()
+            class_configurator.end()
 
     def test_invalid_xml(self, representer):
         with pytest.raises(SyntaxError) as cm:
@@ -739,21 +739,21 @@ class TestRepresenterConfiguration(_TestRepresenterConfiguration):
               % attr_name
         assert str(cm.value)[:len(msg)] == msg
 
-    def test_configure_existing(self, new_configurator):
-        new_configurator.begin()
+    def test_configure_existing(self, function_configurator):
+        function_configurator.begin()
         try:
             foo_namespace = 'http://bogus.org/foo'
             foo_prefix = 'foo'
             my_options = {XML_NAMESPACE_OPTION:foo_namespace,
                           XML_PREFIX_OPTION:foo_prefix}
             my_attribute_options = {('parent',):{IGNORE_OPTION:True}, }
-            new_configurator.add_resource_representer(
+            function_configurator.add_resource_representer(
                                         MyEntityMember, XmlMime,
                                         options=my_options,
                                         attribute_options=
                                                     my_attribute_options)
             rpr_reg = \
-                new_configurator.get_registered_utility(IRepresenterRegistry)
+                function_configurator.get_registered_utility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(XmlMime)
             mp = mp_reg.find_mapping(MyEntityMember)
             assert mp.configuration.get_option(XML_NAMESPACE_OPTION) \
@@ -769,31 +769,31 @@ class TestRepresenterConfiguration(_TestRepresenterConfiguration):
                     mp.configuration.set_attribute_option(('parent',),
                                                           'nonsense', True)
         finally:
-            new_configurator.end()
+            function_configurator.end()
 
-    def test_configure_derived(self, new_configurator):
-        new_configurator.begin()
+    def test_configure_derived(self, function_configurator):
+        function_configurator.begin()
         try:
-            new_configurator.add_resource(IDerived, DerivedMyEntityMember,
+            function_configurator.add_resource(IDerived, DerivedMyEntityMember,
                                           DerivedMyEntity,
                                           collection_root_name=
                                                   'my-derived-entities',
                                           expose=False)
-            new_configurator.add_resource_representer(DerivedMyEntityMember,
+            function_configurator.add_resource_representer(DerivedMyEntityMember,
                                                       XmlMime)
             rpr_reg = \
-                new_configurator.get_registered_utility(IRepresenterRegistry)
+                function_configurator.get_registered_utility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(XmlMime)
             mp = mp_reg.find_mapping(DerivedMyEntityMember)
             assert mp.data_element_class.mapping is mp
             assert mp.configuration.get_option(XML_TAG_OPTION) == 'myentity'
         finally:
-            new_configurator.end()
+            function_configurator.end()
 
-    def test_configure_derived_with_options(self, new_configurator):
-        new_configurator.begin()
+    def test_configure_derived_with_options(self, function_configurator):
+        function_configurator.begin()
         try:
-            new_configurator.add_resource(IDerived, DerivedMyEntityMember,
+            function_configurator.add_resource(IDerived, DerivedMyEntityMember,
                                           DerivedMyEntity,
                                           collection_root_name=
                                                     'my-derived-entities',
@@ -802,11 +802,11 @@ class TestRepresenterConfiguration(_TestRepresenterConfiguration):
             bogus_prefix = 'foo'
             my_options = {XML_NAMESPACE_OPTION:foo_namespace,
                           XML_PREFIX_OPTION:bogus_prefix}
-            new_configurator.add_resource_representer(DerivedMyEntityMember,
+            function_configurator.add_resource_representer(DerivedMyEntityMember,
                                                       XmlMime,
                                                       options=my_options)
             rpr_reg = \
-                new_configurator.get_registered_utility(IRepresenterRegistry)
+                function_configurator.get_registered_utility(IRepresenterRegistry)
             mp_reg = rpr_reg.get_mapping_registry(XmlMime)
             mp = mp_reg.find_mapping(DerivedMyEntityMember)
             assert mp.data_element_class.mapping is mp
@@ -822,7 +822,7 @@ class TestRepresenterConfiguration(_TestRepresenterConfiguration):
             assert orig_mp.configuration.get_option(XML_PREFIX_OPTION) \
                     != bogus_prefix
         finally:
-            new_configurator.end()
+            function_configurator.end()
 
 
 class TestUpdateResourceFromData(object):

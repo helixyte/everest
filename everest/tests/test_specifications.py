@@ -518,23 +518,23 @@ class TestSpecificationGenerator(object):
                               (dict(number_attr=(NUMBER_VALUE - 1,
                                                  NUMBER_VALUE + 1)), rng),
                                ])
-    def test_plain_generators(self, configurator,
+    def test_plain_generators(self, class_configurator,
                               specification_candidate, attrs, #pylint: disable=W0621
                               generator):
-        configurator.begin()
+        class_configurator.begin()
         try:
             spec = generator(**attrs)
             if len(attrs) > 1:
                 assert isinstance(spec, ConjunctionFilterSpecification)
             assert spec.is_satisfied_by(specification_candidate)
         finally:
-            configurator.end()
+            class_configurator.end()
 
     @pytest.mark.parametrize('attrs,generator,outcome',
                              [(('number_attr', 'text_attr'), asc, True),
                               (('number_attr', 'text_attr'), desc, False),
                               ])
-    def test_order_generators(self, configurator,
+    def test_order_generators(self, class_configurator,
                               specification_candidate_factory, #pylint: disable=W0621
                               attrs, generator, outcome):
         first_candidate = \
@@ -543,12 +543,12 @@ class TestSpecificationGenerator(object):
         second_candidate = \
              specification_candidate_factory(number_attr=NUMBER_VALUE,
                                              text_attr=GREATER_THAN_TEXT_VALUE)
-        configurator.begin()
+        class_configurator.begin()
         try:
             spec = generator(*attrs)
             assert spec.lt(first_candidate, second_candidate) is outcome
         finally:
-            configurator.end()
+            class_configurator.end()
 
     def test_instantiating_generator(self, filter_specification_factory,
                                      specification_candidate): #pylint: disable=W0621

@@ -66,14 +66,14 @@ class TestRepositoryManager(object):
             acc2 = meth(IMyEntity)
             assert id(acc1) != id(acc2)
 
-    def test_init_no_name(self, configurator):
-        configurator.begin()
+    def test_init_no_name(self, class_configurator):
+        class_configurator.begin()
         try:
             repo_mgr = get_repository_manager()
             repo = repo_mgr.new(REPOSITORY_TYPES.MEMORY)
             assert repo.name.startswith(REPOSITORY_TYPES.MEMORY)
         finally:
-            configurator.end()
+            class_configurator.end()
 
     def test_manager(self, resource_repo):
         repo_mgr = get_repository_manager()
@@ -84,8 +84,8 @@ class TestRepositoryManager(object):
         exc_msg = 'Unknown repository type'
         assert str(cm.value).startswith(exc_msg)
 
-    def test_set_collection_parent_fails(self, configurator, resource_repo):
-        configurator.add_resource(IFoo, FooMember, FooEntity, expose=False)
+    def test_set_collection_parent_fails(self, class_configurator, resource_repo):
+        class_configurator.add_resource(IFoo, FooMember, FooEntity, expose=False)
         coll = create_staging_collection(IFoo)
         srvc = get_service()
         with pytest.raises(ValueError) as cm:
@@ -254,10 +254,10 @@ class TestFileSystemRepository(object):
     def test_initialization(self, rc, resource_repo_with_data):
         assert len(resource_repo_with_data.get_collection(rc)) == 1
 
-    def test_get_read_collection_path(self, data_dir, configurator):
-        configurator.begin()
+    def test_get_read_collection_path(self, data_dir, class_configurator):
+        class_configurator.begin()
         try:
-            reg = configurator.registry
+            reg = class_configurator.registry
             orig_data_dir = os.path.join(data_dir, 'original')
             coll_cls = reg.getUtility(IMyEntity, name='collection-class')
             path = get_read_collection_path(coll_cls, CsvMime,
@@ -268,7 +268,7 @@ class TestFileSystemRepository(object):
                                                 directory=tmp_dir)
             assert tmp_path is None
         finally:
-            configurator.end()
+            class_configurator.end()
 
     def test_commit(self, data_dir, resource_repo_with_data):
         coll = resource_repo_with_data.get_collection(IMyEntity)

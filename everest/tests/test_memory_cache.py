@@ -49,8 +49,8 @@ class TestEntityCache(object):
         assert cache.get_by_id(ent.id) is None
         assert cache.get_by_slug(ent.slug) is None
 
-    def test_filter_order_slice(self, configurator):
-        configurator.begin()
+    def test_filter_order_slice(self, class_configurator):
+        class_configurator.begin()
         try:
             ent0 = MyEntity(id=0)
             ent1 = MyEntity(id=1)
@@ -67,7 +67,7 @@ class TestEntityCache(object):
                                        slice_key=slice_key)) \
                    == [ent2]
         finally:
-            configurator.end()
+            class_configurator.end()
 
     def test_allow_none_id_false(self):
         ent = MyEntity()

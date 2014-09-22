@@ -43,32 +43,33 @@ def check_attributes(test_object, attribute_map):
                                  % attr_name)
 
 
-def persist(session, entity_class, attribute_map,
+def persist(session, entity, attribute_map,
             do_attribute_check=True):
     """
     Utility function which creates an object of the given class with the
     given attribute map, commits it to the backend, reloads it from the
     backend and then tests if the attributes compare equal.
 
-    :param entity_class: class inheriting from
-      :class:`everest.entities.base.Entity`
-    :param attribute_map: a dictionary containint attribute names as keys
+    :param entity: Entity to persist.
+    :type entity: :class:`everest.entities.base.Entity`
+    :param attribute_map: Dictionary containint attribute names as keys
       and expected attribute values as values. The attribute map must
       contain all mandatory attributes required for instantiation.
     """
     # Instantiate.
-    entity = entity_class(**attribute_map)
-    session.add(entity_class, entity)
+    entity_cls = type(entity)
+    session.add(entity_cls, entity)
     session.commit()
     session.refresh(entity)
     entity_id = entity.id
     # Assure a new object is loaded to test if persisting worked.
     session.expunge(entity)
     del entity
-    query = session.query(entity_class)
+    query = session.query(entity_cls)
     fetched_entity = query.filter_by(id=entity_id).one()
     if do_attribute_check:
         check_attributes(fetched_entity, attribute_map)
+    return fetched_entity
 
 
 class RdbContextManager(object):

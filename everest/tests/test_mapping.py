@@ -152,10 +152,10 @@ class TestMapping(object):
         assert len(prx.children) == 1
         assert len(prx.children[0].children) == 1
 
-    def test_mapping_duplicate_prefix(self, new_configurator):
-        coll_cls = new_configurator.registry.getUtility(IMyEntity,
+    def test_mapping_duplicate_prefix(self, function_configurator):
+        coll_cls = function_configurator.registry.getUtility(IMyEntity,
                                                     name='collection-class')
-        rpr_reg = new_configurator.registry.queryUtility(IRepresenterRegistry)
+        rpr_reg = function_configurator.registry.queryUtility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_or_create_mapping(coll_cls)
         ns = 'foo'
@@ -165,10 +165,10 @@ class TestMapping(object):
         exc_msg = 'is already registered for namespace'
         assert str(cm.value).find(exc_msg) != -1
 
-    def test_mapping_duplicate_tag(self, new_configurator):
-        coll_cls = new_configurator.registry.getUtility(IMyEntity,
+    def test_mapping_duplicate_tag(self, function_configurator):
+        coll_cls = function_configurator.registry.getUtility(IMyEntity,
                                                 name='collection-class')
-        rpr_reg = new_configurator.registry.queryUtility(IRepresenterRegistry)
+        rpr_reg = function_configurator.registry.queryUtility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         mp = mp_reg.find_or_create_mapping(coll_cls)
         mb_mp = mp_reg.find_or_create_mapping(MyEntityMember)
@@ -179,10 +179,10 @@ class TestMapping(object):
             getattr(mp.mapping_registry, 'parsing_lookup')
         assert str(cm.value).startswith('Duplicate tag')
 
-    def test_mapping_reset_lookup(self, new_configurator):
-        coll_cls = new_configurator.registry.getUtility(IMyEntity,
+    def test_mapping_reset_lookup(self, function_configurator):
+        coll_cls = function_configurator.registry.getUtility(IMyEntity,
                                                     name='collection-class')
-        rpr_reg = new_configurator.registry.queryUtility(IRepresenterRegistry)
+        rpr_reg = function_configurator.registry.queryUtility(IRepresenterRegistry)
         mp_reg = rpr_reg.get_mapping_registry(XmlMime)
         old_lookup = mp_reg.parsing_lookup
         mp = mp_reg.find_or_create_mapping(coll_cls)
@@ -209,9 +209,9 @@ class TestMapping(object):
         link_el = next(data_el.iterchildren())
         assert link_el.get_id() == mb.id
 
-    def test_mapping_polymorhpic(self, new_configurator,
+    def test_mapping_polymorhpic(self, function_configurator,
                                  mapping_registry_factory):
-        coll_cls = new_configurator.registry.getUtility(IMyEntity,
+        coll_cls = function_configurator.registry.getUtility(IMyEntity,
                                                         name='collection-class')
         # pylint: disable=W0232
         class IMyDerivedEntity(IMyEntity):
@@ -223,16 +223,16 @@ class TestMapping(object):
         class MyDerivedEntityCollection(coll_cls):
             pass
         # pylint: enable=W0232
-        new_configurator.add_resource(IMyDerivedEntity, MyDerivedEntityMember,
+        function_configurator.add_resource(IMyDerivedEntity, MyDerivedEntityMember,
                                       MyDerivedEntity,
                                       MyDerivedEntityCollection,
                                       expose=False)
-        new_configurator.add_resource_representer(
+        function_configurator.add_resource_representer(
                                             IMyDerivedEntity,
                                             XmlMime,
                                             attribute_options=
                                             {('parent',):dict(ignore=True)})
-        new_configurator.begin()
+        function_configurator.begin()
         try:
             mp_reg = mapping_registry_factory(XmlMime)
             mp = mp_reg.find_or_create_mapping(coll_cls)
@@ -244,4 +244,4 @@ class TestMapping(object):
                 assert not attr is None
                 assert getattr(attr, IGNORE_OPTION) is True
         finally:
-            new_configurator.end()
+            function_configurator.end()

@@ -31,8 +31,8 @@ class _TestRootAggregate(object):
     package_name = 'everest.tests.complete_app'
     agg_class = None
 
-    def test_clone(self, entity_repo):
-        agg = entity_repo.get_aggregate(IMyEntity)
+    def test_clone(self, class_entity_repo):
+        agg = class_entity_repo.get_aggregate(IMyEntity)
         assert isinstance(agg, self.agg_class)
         agg_clone = agg.clone()
         for attr in ('entity_class', '_session_factory',
@@ -41,8 +41,8 @@ class _TestRootAggregate(object):
             assert getattr(agg, attr) == getattr(agg_clone, attr)
 
     @pytest.mark.parametrize('ent_id0,ent_id1', [(0, 1)])
-    def test_iterator_count(self, entity_repo, ent_id0, ent_id1):
-        agg = entity_repo.get_aggregate(IMyEntity)
+    def test_iterator_count(self, class_entity_repo, ent_id0, ent_id1):
+        agg = class_entity_repo.get_aggregate(IMyEntity)
         with pytest.raises(StopIteration):
             next(agg.iterator())
         ent0 = create_entity(entity_id=ent_id0)
@@ -71,8 +71,8 @@ class _TestRootAggregate(object):
         assert agg.count() == 1
 
     @pytest.mark.parametrize('ent_id', [0])
-    def test_get_by_id_and_slug(self, entity_repo, ent_id):
-        agg = entity_repo.get_aggregate(IMyEntity)
+    def test_get_by_id_and_slug(self, class_entity_repo, ent_id):
+        agg = class_entity_repo.get_aggregate(IMyEntity)
         ent = create_entity(entity_id=ent_id)
         agg.add(ent)
         assert agg.get_by_id(0)  is ent
@@ -89,9 +89,9 @@ class _TestRootAggregate(object):
 
     @pytest.mark.parametrize('data_ent0,data_ent1,data_ent2',
                              [((0, '222'), (1, '111'), (2, '000'))])
-    def test_nested_attribute(self, entity_repo, data_ent0, data_ent1,
+    def test_nested_attribute(self, class_entity_repo, data_ent0, data_ent1,
                               data_ent2):
-        agg = entity_repo.get_aggregate(IMyEntity)
+        agg = class_entity_repo.get_aggregate(IMyEntity)
         ent0 = create_entity(entity_id=data_ent0[0])
         ent0.parent.text_ent = data_ent0[1]
         ent1 = create_entity(entity_id=data_ent1[0])
@@ -116,8 +116,8 @@ class _TestRootAggregate(object):
         assert next(agg.iterator()) is ent0
 
     @pytest.mark.parametrize('ent_id', [0])
-    def test_add_remove(self, entity_repo, ent_id):
-        agg = entity_repo.get_aggregate(IMyEntity)
+    def test_add_remove(self, class_entity_repo, ent_id):
+        agg = class_entity_repo.get_aggregate(IMyEntity)
         ent = create_entity(entity_id=ent_id)
         agg.add(ent)
         assert len(list(agg.iterator())) == 1
@@ -138,12 +138,12 @@ class TestRdbRootAggregate(_TestRootAggregate):
 class _TestRelationshipAggregate(object):
     package_name = 'everest.tests.complete_app'
 
-    def _make_rel_agg(self, entity_repo, entity, attr_name=None):
+    def _make_rel_agg(self, class_entity_repo, entity, attr_name=None):
         if attr_name is None:
             attr_name = 'children'
         attr = get_domain_class_attribute(entity, attr_name)
         rel = attr.make_relationship(entity)
-        child_agg = entity_repo.get_aggregate(attr.attr_type)
+        child_agg = class_entity_repo.get_aggregate(attr.attr_type)
         return child_agg.make_relationship_aggregate(rel)
 
     def _make_child(self, child_agg, child_id=0):
@@ -160,16 +160,16 @@ class _TestRelationshipAggregate(object):
         new_child.id = child_id
         return new_child
 
-    def test_basics(self, entity_repo):
-        agg = entity_repo.get_aggregate(IMyEntity)
-        child_agg = entity_repo.get_aggregate(IMyEntityChild)
+    def test_basics(self, class_entity_repo):
+        agg = class_entity_repo.get_aggregate(IMyEntity)
+        child_agg = class_entity_repo.get_aggregate(IMyEntityChild)
         new_child0 = self._make_child(child_agg)
         new_parent1 = MyEntityParent()
         new_ent1 = MyEntity()
         new_ent1.parent = new_parent1
         new_child1 = MyEntityChild()
         new_child1.parent = new_ent1
-        child_rel_agg = self._make_rel_agg(entity_repo, new_ent1)
+        child_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1)
         assert len(list(child_agg.iterator())) == 1
         assert len(list(agg.iterator())) == 1
         assert len(list(child_rel_agg.iterator())) == 0
@@ -199,11 +199,11 @@ class _TestRelationshipAggregate(object):
         #        from the children container).
 #        assert new_child0.parent is None
 
-    def test_update_cascade(self, entity_repo, monkeypatch):
+    def test_update_cascade(self, class_entity_repo, monkeypatch):
         csc = DEFAULT_CASCADE & ~RELATION_OPERATIONS.UPDATE
-        child_agg = entity_repo.get_aggregate(IMyEntityChild)
+        child_agg = class_entity_repo.get_aggregate(IMyEntityChild)
         new_child = self._make_child(child_agg)
-        child_rel_agg = self._make_rel_agg(entity_repo, new_child.parent)
+        child_rel_agg = self._make_rel_agg(class_entity_repo, new_child.parent)
         children_attr = get_domain_class_attribute(MyEntity, 'children')
         monkeypatch.setattr(children_attr, 'cascade', csc)
         upd_child = MyEntityChild(id=0)
@@ -213,27 +213,27 @@ class _TestRelationshipAggregate(object):
         assert new_child.text != txt
         assert not new_child.parent is None
 
-    def test_add_one_to_one(self, entity_repo):
+    def test_add_one_to_one(self, class_entity_repo):
         new_parent1 = MyEntityParent(id=1)
         new_ent1 = MyEntity(id=1)
-        parent_rel_agg = self._make_rel_agg(entity_repo, new_ent1, 'parent')
+        parent_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1, 'parent')
         assert new_ent1.parent is None
         parent_rel_agg.add(new_parent1)
         assert new_ent1.parent == new_parent1
 
-    def test_delete_cascade(self, entity_repo, monkeypatch):
+    def test_delete_cascade(self, class_entity_repo, monkeypatch):
         new_parent1 = MyEntityParent()
         new_ent1 = MyEntity()
         new_ent1.parent = new_parent1
         new_child1 = MyEntityChild()
         new_child1.parent = new_ent1
-        child_rel_agg = self._make_rel_agg(entity_repo, new_ent1)
+        child_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1)
         child_rel_agg.add(new_child1)
         new_parent1.id = 1
         new_ent1.id = 1
         new_child1.id = 1
-        agg = entity_repo.get_aggregate(IMyEntity)
-        child_agg = entity_repo.get_aggregate(IMyEntityChild)
+        agg = class_entity_repo.get_aggregate(IMyEntity)
+        child_agg = class_entity_repo.get_aggregate(IMyEntityChild)
         assert len(list(child_agg.iterator())) == 1
         assert len(list(agg.iterator())) == 1
         assert new_ent1.children == [new_child1]
