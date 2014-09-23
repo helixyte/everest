@@ -20,11 +20,21 @@ from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
-from everest.tests.complete_app.testing import create_entity
+from everest.tests.fixtures import Fixture
 
 
 __docformat__ = 'reStructuredText en'
-__all__ = []
+__all__ = ['TestMemoryRelationshipAggregate',
+           'TestMemoryRootAggregate',
+           'TestRdbRelationshipAggregate',
+           'TestRdbRootAggregate',
+           ]
+
+
+class Fixtures(object):
+    ent0 = Fixture(MyEntity, kw=dict(id=0, text='222'))
+    ent1 = Fixture(MyEntity, kw=dict(id=1, text='111'))
+    ent2 = Fixture(MyEntity, kw=dict(id=2, text='000'))
 
 
 class _TestRootAggregate(object):
@@ -40,19 +50,16 @@ class _TestRootAggregate(object):
                      '_RootAggregate__repository'):
             assert getattr(agg, attr) == getattr(agg_clone, attr)
 
-    @pytest.mark.parametrize('ent_id0,ent_id1', [(0, 1)])
-    def test_iterator_count(self, class_entity_repo, ent_id0, ent_id1):
+    def test_iterator_count(self, class_entity_repo, ent0, ent1):
         agg = class_entity_repo.get_aggregate(IMyEntity)
         with pytest.raises(StopIteration):
             next(agg.iterator())
-        ent0 = create_entity(entity_id=ent_id0)
         agg.add(ent0)
         assert next(agg.iterator()) is ent0
         # Iterator heeds filtering.
-        agg.filter = eq(id=ent_id1)
+        agg.filter = eq(id=ent1.id)
         with pytest.raises(StopIteration):
             next(agg.iterator())
-        ent1 = create_entity(entity_id=ent_id1)
         agg.add(ent1)
         assert next(agg.iterator()) is ent1
         # Iterator heeds ordering.
@@ -70,13 +77,11 @@ class _TestRootAggregate(object):
         agg.filter = eq(id=1)
         assert agg.count() == 1
 
-    @pytest.mark.parametrize('ent_id', [0])
-    def test_get_by_id_and_slug(self, class_entity_repo, ent_id):
+    def test_get_by_id_and_slug(self, class_entity_repo, ent0):
         agg = class_entity_repo.get_aggregate(IMyEntity)
-        ent = create_entity(entity_id=ent_id)
-        agg.add(ent)
-        assert agg.get_by_id(0)  is ent
-        assert agg.get_by_slug('0') is ent
+        agg.add(ent0)
+        assert agg.get_by_id(0)  is ent0
+        assert agg.get_by_slug('0') is ent0
         assert agg.get_by_id(-1) is None
         assert agg.get_by_slug('-1') is None
         agg.filter = eq(id=1)
@@ -87,41 +92,30 @@ class _TestRootAggregate(object):
         exp_msg = 'Invalid data type for traversal'
         assert str(cm.value).startswith(exp_msg)
 
-    @pytest.mark.parametrize('data_ent0,data_ent1,data_ent2',
-                             [((0, '222'), (1, '111'), (2, '000'))])
-    def test_nested_attribute(self, class_entity_repo, data_ent0, data_ent1,
-                              data_ent2):
+    def test_nested_attribute(self, class_entity_repo, ent0, ent1, ent2):
         agg = class_entity_repo.get_aggregate(IMyEntity)
-        ent0 = create_entity(entity_id=data_ent0[0])
-        ent0.parent.text_ent = data_ent0[1]
-        ent1 = create_entity(entity_id=data_ent1[0])
-        ent1.parent.text_ent = data_ent1[1]
-        ent2 = create_entity(entity_id=data_ent2[0])
-        ent2.parent.text_ent = data_ent2[1]
         agg.add(ent0)
         agg.add(ent1)
         agg.add(ent2)
         assert len(list(agg.iterator())) == 3
-        agg.filter = eq(**{'parent.text_ent':'222'})
+        agg.filter = eq(**{'parent.text':'222'})
         assert len(list(agg.iterator())) == 1
         agg.filter = None
         assert len(list(agg.iterator())) == 3
-        agg.order = asc('parent.text_ent')
+        agg.order = asc('parent.text')
         assert next(agg.iterator()) is ent2
         # With nested filter and order.
-        agg.filter = gt(**{'parent.text_ent':'000'})
+        agg.filter = gt(**{'parent.text':'000'})
         assert next(agg.iterator()) is ent1
         # With nested filter, order, and slice.
         agg.slice = slice(1, 2)
         assert next(agg.iterator()) is ent0
 
-    @pytest.mark.parametrize('ent_id', [0])
-    def test_add_remove(self, class_entity_repo, ent_id):
+    def test_add_remove(self, class_entity_repo, ent0):
         agg = class_entity_repo.get_aggregate(IMyEntity)
-        ent = create_entity(entity_id=ent_id)
-        agg.add(ent)
+        agg.add(ent0)
         assert len(list(agg.iterator())) == 1
-        agg.remove(ent)
+        agg.remove(ent0)
         assert len(list(agg.iterator())) == 0
 
 
@@ -203,7 +197,8 @@ class _TestRelationshipAggregate(object):
         csc = DEFAULT_CASCADE & ~RELATION_OPERATIONS.UPDATE
         child_agg = class_entity_repo.get_aggregate(IMyEntityChild)
         new_child = self._make_child(child_agg)
-        child_rel_agg = self._make_rel_agg(class_entity_repo, new_child.parent)
+        child_rel_agg = self._make_rel_agg(class_entity_repo,
+                                           new_child.parent)
         children_attr = get_domain_class_attribute(MyEntity, 'children')
         monkeypatch.setattr(children_attr, 'cascade', csc)
         upd_child = MyEntityChild(id=0)
@@ -216,7 +211,8 @@ class _TestRelationshipAggregate(object):
     def test_add_one_to_one(self, class_entity_repo):
         new_parent1 = MyEntityParent(id=1)
         new_ent1 = MyEntity(id=1)
-        parent_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1, 'parent')
+        parent_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1,
+                                            'parent')
         assert new_ent1.parent is None
         parent_rel_agg.add(new_parent1)
         assert new_ent1.parent == new_parent1

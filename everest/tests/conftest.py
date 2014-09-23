@@ -14,12 +14,16 @@ from pyramid.threadlocal import get_current_registry
 import pytest
 
 from everest.configuration import Configurator
+from everest.representers.utils import as_representer
 from everest.tests import simple_app as package
+from everest.tests.complete_app.interfaces import IMyEntity
 
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['simple_config',
            ]
+
+pytest_plugins = 'everest.tests.complete_app.fixtures'
 
 
 @pytest.fixture
@@ -37,6 +41,43 @@ def data_dir(request):
     pkg_name = getattr(request.cls, 'package_name', None)
     return os.path.join(os.path.dirname(__file__), pkg_name.split('.')[-1],
                         'data')
+
+
+@pytest.fixture
+def collection(resource_repo, my_entity_fac, my_entity_id1_fac):
+    my_entity1 = my_entity_fac(text='foo0')
+    my_entity2 = my_entity_id1_fac(text='too1')
+    coll = resource_repo.get_collection(IMyEntity)
+    coll.create_member(my_entity1)
+    coll.create_member(my_entity2)
+    return coll
+
+
+@pytest.fixture
+def member(collection): # pylint: disable=W0621
+    return next(iter(collection))
+
+
+@pytest.fixture
+def representer(request, collection): # pylint: disable=W0621
+    cnt_type = request.cls.content_type
+    return as_representer(collection, cnt_type)
+
+
+@pytest.fixture
+def member_representer(request, member): # pylint: disable=W0621
+    cnt_type = request.cls.content_type
+    return as_representer(member, cnt_type)
+
+
+@pytest.fixture
+def mapping(representer): # pylint: disable=W0621
+    return representer._mapping # accessing protected pylint: disable=W0212
+
+
+@pytest.fixture
+def member_mapping(member_representer): # pylint: disable=W0621
+    return member_representer._mapping # accessing protected pylint: disable=W0212
 
 
 @pytest.yield_fixture
