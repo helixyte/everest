@@ -11,6 +11,7 @@ from everest.tests.complete_app.entities import MyEntityGrandchild
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 
+
 __docformat__ = 'reStructuredText en'
 __all__ = ['create_collection',
            'create_entity',
@@ -18,17 +19,15 @@ __all__ = ['create_collection',
 
 
 def create_entity(entity_id=0, entity_text=None):
-    my_entity = MyEntity(text=entity_text)
-    my_entity.id = entity_id
-    my_entity_parent = MyEntityParent()
-    my_entity_parent.id = entity_id
-    my_entity.parent = my_entity_parent
-    my_entity_child = MyEntityChild()
-    my_entity_child.id = entity_id
-    my_entity.children.append(my_entity_child)
-    my_entity_grandchild = MyEntityGrandchild()
-    my_entity_grandchild.id = entity_id
-    my_entity_child.children.append(my_entity_grandchild)
+    my_entity_parent = MyEntityParent(id=entity_id, text=entity_text)
+    my_entity_grandchild = MyEntityGrandchild(id=entity_id, text=entity_text)
+    my_entity_child = MyEntityChild(id=entity_id,
+                                    text=entity_text,
+                                    children=[my_entity_grandchild])
+    my_entity = MyEntity(id=entity_id,
+                         text=entity_text,
+                         parent=my_entity_parent,
+                         children=[my_entity_child])
     # If we run with the SQLAlchemy backend, the back references are populated
     # automatically.
     if my_entity_child.parent is None:

@@ -4,7 +4,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 14, 2014.
 """
-import collections
 from itertools import chain
 from unittest import TestCase
 
@@ -17,7 +16,6 @@ import pytest
 import transaction
 
 from everest.configuration import Configurator
-from everest.entities.base import Entity
 from everest.ini import EverestIni
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
@@ -33,8 +31,7 @@ from paste.deploy import loadapp
 
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['Fixture',
-           ]
+__all__ = []
 
 
 def pytest_addoption(parser):
@@ -101,15 +98,15 @@ def pytest_pycollect_makemodule(path, parent):
     mod = path.pyimport()
     fixtures = getattr(mod, 'Fixtures', None)
     if not fixtures is None:
-        fixture_map = dict([item
-                            for item in fixtures.__dict__.items()
-                            if isinstance(item[-1], Fixture)])
-        for fx_name, fx_inst in sorted(fixture_map.items(),
-                                       key=lambda item: item[-1].count):
-            fx_inst.name = fx_name
-            func = make_fixture(fx_inst)
-            # Make the newly created fixture discoverable by pytest.
-            setattr(mod, fx_name, func)
+        fixtures = [item for item in fixtures.__dict__.items()
+                    if (callable(item[1])
+                        and not item[0].startswith('_'))]
+        for (fx_name, func) in fixtures:
+            if getfixturemarker(func) is None:
+                fxt = pytest.fixture(scope='function')(func)
+            else:
+                fxt = func
+            setattr(mod, fx_name, fxt)
     return pytest.Module(path, parent)
 
 
@@ -447,66 +444,6 @@ def test_object_fac():
 # pylint: enable=W0613
 
 
-class Fixture(object):
-    """
-    Container for "lazy" fixture declarations.
-    """
-    __count = 0
-    def __init__(self, value_cls, args=None, kw=None):
-        """
-        Constructor.
-
-        :param value_cls: Value class of the fixture.
-        :param tuple args: Positional arguments to pass to the factory.
-        :param dict kw: Keyword arguments to pass to the factory.
-        :note: The positional and keyword arguments may contain references to
-            other :class:`Fixture` objects which will be resolved when the
-            fixture is used for the first time.
-        """
-        #: Counter enabling sorting of fixtures by sequence of instantiation.
-        self.count = Fixture.__count
-        self.value_cls = value_cls
-        if args is None:
-            args = ()
-        elif not isinstance(args, tuple):
-            raise ValueError('Need tuple for "args" argument.')
-        self.args = args
-        if kw is None:
-            kw = {}
-        elif not isinstance(kw, dict):
-            raise ValueError('Need dictionary for "kw" argument.')
-        self.kw = kw
-        Fixture.__count += 1
-        self.__resolved = False
-
-    def resolve_parameters(self, request):
-        if (len(self.args) > 0 or len(self.kw) > 0) and not self.__resolved:
-            self.args = self.__resolve_parameters(self.args, request)
-            self.kw = self.__resolve_parameters(self.kw, request)
-            self.__resolved = True
-
-    def __resolve_parameters(self, params, request):
-        if isinstance(params, collections.Mapping):
-            result = dict(self.__resolve_parameters(params.items(), request))
-        else:
-            new_params = []
-            for param in params:
-                if isinstance(param, Fixture):
-                    fixture_func = getattr(request.module, param.name)
-                    new_param = \
-                        request.getfuncargvalue(fixture_func.func_name)
-                else:
-                    if isinstance(param, (list, tuple, set)):
-                        new_param = self.__resolve_parameters(param, request)
-                    elif not getfixturemarker(param) is None:
-                        new_param = request.getfuncargvalue(param.func_name)
-                    else:
-                        new_param = param
-                new_params.append(new_param)
-            result = type(params)(new_params)
-        return result
-
-
 class TestObjectFactory(object):
     def __init__(self, entity_generator_func, args=None, kw=None):
         self.__entity_generator_func = entity_generator_func
@@ -548,27 +485,3 @@ class TestObjectFactory(object):
     @property
     def init_kw(self):
         return self.__init_kw.copy()
-
-
-def make_fixture(fixt):
-    @pytest.fixture(scope='function')
-    def func(request, fixture_factory_registry):
-        # Convert fixture parameters (args and kw).
-        fixt.resolve_parameters(request)
-        fac_fixture = fixture_factory_registry.get(fixt.value_cls)
-        if fac_fixture is None:
-            # If there is no factory, we use the specified value class
-            # directly (unless it is an entity subclass in which case we
-            # expect a factory to be registered).
-            if callable(fixt.value_cls) \
-               and not issubclass(fixt.value_cls, Entity):
-                value = fixt.value_cls(*fixt.args, **fixt.kw)
-            else:
-                raise RuntimeError('No factory registered for class %s.'
-                                   % fixt.value_cls)
-        else:
-            fac = request.getfuncargvalue(fac_fixture.func_name)
-            value = fac(*fixt.args, **fixt.kw)
-        return value
-    func.func_name = fixt.name
-    return func

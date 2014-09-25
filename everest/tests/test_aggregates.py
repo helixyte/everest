@@ -20,7 +20,6 @@ from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
-from everest.tests.fixtures import Fixture
 
 
 __docformat__ = 'reStructuredText en'
@@ -32,9 +31,9 @@ __all__ = ['TestMemoryRelationshipAggregate',
 
 
 class Fixtures(object):
-    ent0 = Fixture(MyEntity, kw=dict(id=0, text='222'))
-    ent1 = Fixture(MyEntity, kw=dict(id=1, text='111'))
-    ent2 = Fixture(MyEntity, kw=dict(id=2, text='000'))
+    ent0 = lambda entity_tree_fac: entity_tree_fac(id=0, text='222')
+    ent1 = lambda entity_tree_fac: entity_tree_fac(id=1, text='111')
+    ent2 = lambda entity_tree_fac: entity_tree_fac(id=2, text='000')
 
 
 class _TestRootAggregate(object):

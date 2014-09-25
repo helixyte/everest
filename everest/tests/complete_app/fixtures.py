@@ -132,10 +132,3 @@ def member_mapping(member_representer):
     return member_representer._mapping # accessing protected pylint: disable=W0212
 
 # pylint: enable=W0621
-
-
-@pytest.fixture(scope='module')
-def fixture_factory_registry():
-    fr = {}
-    fr[MyEntity] = entity_tree_fac
-    return fr
