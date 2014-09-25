@@ -26,6 +26,7 @@ __all__ = ['ICollectionResource',
 # interfaces do not provide a constructor. pylint: disable=W0232
 # interface methods do not have self pylint: disable = E0213
 # interface methods may have no arguments pylint:disable = E0211
+# interface methods may have different arguments pylint:disable = W0221
 class ILocationAware(Interface):
     """
     ILocationAware Interface
@@ -240,4 +241,4 @@ class IResourceAttribute(Interface):
                               'resource.')
 
 
-# pylint: enable=W0232,E0213,E0211
+# pylint: enable=W0232,E0213,E0211,W0221
