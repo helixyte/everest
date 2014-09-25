@@ -152,26 +152,26 @@ class _TestUrl(object):
         # ... the actual number of members in the collection is.
         assert len(list(coll_from_url)) == 1
 
-    def test_url_to_resource_with_filter(self):
-        def _test(criterion, attr, value):
-            coll_from_url = \
-                        url_to_resource(self.base_url + '?q=%s' % criterion)
-            mbs = list(coll_from_url)
-            assert len(mbs) == 1
-            assert getattr(mbs[0], attr) == value
-        _test('id:equal-to:0', 'id', 0)
-        _test('id:not-equal-to:0', 'id', 1)
-        _test('text:starts-with:"foo"', 'text', 'foo0')
-        _test('text:ends-with:"o1"', 'text', 'too1')
-        _test('text:contains:"o0"', 'text', 'foo0')
-        _test('text:not-contains:"o0"', 'text', 'too1')
-        _test('text:contained:"foo0"', 'text', 'foo0')
-        _test('text:not-contained:"foo0"', 'text', 'too1')
-        _test('id:less-than:1', 'id', 0)
-        _test('id:less-than-or-equal-to:0', 'id', 0)
-        _test('id:greater-than:0', 'id', 1)
-        _test('id:greater-than-or-equal-to:1', 'id', 1)
-        _test('id:in-range:0-0', 'id', 0)
+    @pytest.mark.parametrize('criterion,attr,value',
+                             [('id:equal-to:0', 'id', 0),
+                              ('id:not-equal-to:0', 'id', 1),
+                              ('text:starts-with:"foo"', 'text', 'foo0'),
+                              ('text:ends-with:"o1"', 'text', 'too1'),
+                              ('text:contains:"o0"', 'text', 'foo0'),
+                              ('text:not-contains:"o0"', 'text', 'too1'),
+                              ('text:contained:"foo0"', 'text', 'foo0'),
+                              ('text:not-contained:"foo0"', 'text', 'too1'),
+                              ('id:less-than:1', 'id', 0),
+                              ('id:less-than-or-equal-to:0', 'id', 0),
+                              ('id:greater-than:0', 'id', 1),
+                              ('id:greater-than-or-equal-to:1', 'id', 1),
+                              ('id:in-range:0-0', 'id', 0)
+                              ])
+    def test_url_to_resource_with_filter(self, criterion, attr, value):
+        coll_from_url = url_to_resource(self.base_url + '?q=%s' % criterion)
+        mbs = list(coll_from_url)
+        assert len(mbs) == 1
+        assert getattr(mbs[0], attr) == value
 
     def test_url_to_resource_with_filter_no_values_raises_error(self):
         pytest.raises(ValueError,
@@ -226,13 +226,6 @@ class _TestUrl(object):
         coll_from_url = url_to_resource(self.base_url + '?q=%s' % criterion)
         assert len(coll_from_url) == 1
 
-#    def test_url_to_resource_with_link_and_other(self):
-#        criterion1 = 'parent:equal-to:%s/my-entity-parents/0/' % self.app_url
-#        criterion2 = 'id:equal-to:0'
-#        coll_from_url = url_to_resource(self.base_url +
-#                                        '?q=%s~%s' % (criterion1, criterion2))
-#        assertlen(coll_from_url), 1)
-
     def test_url_to_resource_with_link_and_other(self):
         criterion1 = 'parent:equal-to:"%s/my-entity-parents/0/"' \
                      % self.app_url
@@ -257,19 +250,19 @@ class _TestUrl(object):
         coll_from_url = url_to_resource(url)
         assert len(coll_from_url) == 1
 
-    def test_url_to_resource_contained_with_complex_collection_link(self):
-        for op, crit, num in zip((' and ', '~'),
-                                 ('id:greater-than:0',
-                                  'text:not-equal-to:"foo0"'),
-                                 (1, 2)):
-            nested_url = self.app_url \
-                         + '/my-entity-parents/?q=id:less-than:2' \
-                         + op \
-                         + crit
-            url = self.app_url + '/my-entities/?q=parent:contained:' \
-                  + "'" + nested_url + "'"
-            coll_from_url = url_to_resource(url)
-            assert len(coll_from_url) == num
+    @pytest.mark.parametrize('op,crit',
+                             [(' and ', 'id:greater-than:0'),
+                              ('~', 'text:not-equal-to:"foo0"')])
+    def test_url_to_resource_contained_with_complex_collection_link(self,
+                                                                    op, crit):
+        nested_url = self.app_url \
+                     + '/my-entity-parents/?q=id:less-than:2' \
+                     + op \
+                     + crit
+        url = self.app_url + '/my-entities/?q=parent:contained:' \
+              + "'" + nested_url + "'"
+        coll_from_url = url_to_resource(url)
+        assert len(coll_from_url) == 1
 
     def test_url_to_resource_contained_with_grouped_collection_link(self):
         url = self.app_url + '/my-entities/' \

@@ -369,8 +369,8 @@ class TestCsvRepresenter(_TestRepresenter):
             row_data = lines[1].split(',')
             # Fourth field should now be "children.id" and contain 0.
             assert row_data[2] == '0'
-            # Fifth field should be "children.text" and contain "TEXT".
-            assert row_data[3] == '"TEXT"'
+            # Fifth field should be "children.text" and contain "foo0".
+            assert row_data[3] == '"foo0"'
         # Ensure unique representation names for nested attributes.
         attribute_options = {
             ('children', 'id') : {REPR_NAME_OPTION:'children.id'},

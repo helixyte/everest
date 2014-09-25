@@ -44,9 +44,9 @@ def data_dir(request):
 
 
 @pytest.fixture
-def collection(resource_repo, my_entity_fac, my_entity_id1_fac):
-    my_entity1 = my_entity_fac(text='foo0')
-    my_entity2 = my_entity_id1_fac(text='too1')
+def collection(resource_repo, entity_tree_fac):
+    my_entity1 = entity_tree_fac(id=0, text='foo0')
+    my_entity2 = entity_tree_fac(id=1, text='too1')
     coll = resource_repo.get_collection(IMyEntity)
     coll.create_member(my_entity1)
     coll.create_member(my_entity2)

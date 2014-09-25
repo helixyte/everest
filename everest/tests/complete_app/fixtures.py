@@ -37,21 +37,10 @@ def my_entity_parent_fac(test_object_fac):
 
 
 @pytest.fixture
-def my_entity_fac(test_object_fac, my_entity_parent_fac,
-                  my_entity_child_fac):
+def my_entity_grandchild_fac(test_object_fac):
     kw = dict(id=0,
-              parent=my_entity_parent_fac(),
-              children=[my_entity_child_fac()])
-    return _check_parent(test_object_fac(MyEntity, kw=kw))
-
-
-@pytest.fixture
-def my_entity_id1_fac(test_object_fac, my_entity_parent_fac,
-                      my_entity_child_id1_fac):
-    kw = dict(id=1,
-              parent=my_entity_parent_fac(id=1),
-              children=[my_entity_child_id1_fac()])
-    return _check_parent(test_object_fac(MyEntity, kw=kw))
+              )
+    return test_object_fac(MyEntityGrandchild, kw=kw)
 
 
 @pytest.fixture
@@ -62,37 +51,34 @@ def my_entity_child_fac(test_object_fac, my_entity_grandchild_fac):
 
 
 @pytest.fixture
-def my_entity_child_id1_fac(test_object_fac, my_entity_grandchild_fac):
-    kw = dict(id=1,
-              children=[my_entity_grandchild_fac(id=1)])
-    return _check_parent(test_object_fac(MyEntityChild, kw=kw))
-
-
-@pytest.fixture
-def my_entity_grandchild_fac(test_object_fac):
+def my_entity_fac(test_object_fac, my_entity_parent_fac,
+                  my_entity_child_fac):
     kw = dict(id=0,
-              )
-    return test_object_fac(MyEntityGrandchild, kw=kw)
+              parent=my_entity_parent_fac(),
+              children=[my_entity_child_fac()])
+    return _check_parent(test_object_fac(MyEntity, kw=kw))
+
+
+def create_entity_tree(id=0, text=None): # pylint: disable=W0622
+    my_entity_grandchild = MyEntityGrandchild(id=id, text=text)
+    my_entity_child = MyEntityChild(id=id, text=text,
+                                    children=[my_entity_grandchild])
+    my_entity_parent = MyEntityParent(id=id, text=text,)
+    my_entity = MyEntity(id=id, text=text,
+                         children=[my_entity_child],
+                         parent=my_entity_parent)
+    # If we run with the SQLAlchemy backend, the back references are populated
+    # automatically.
+    if my_entity_child.parent is None:
+        my_entity_child.parent = my_entity
+    if my_entity_grandchild.parent is None:
+        my_entity_grandchild.parent = my_entity_child
+    return my_entity
 
 
 @pytest.fixture
 def entity_tree_fac(test_object_fac):
-    def create_entity(id=0, text=None): # pylint: disable=W0622
-        my_entity_grandchild = MyEntityGrandchild(id=id, text=text)
-        my_entity_child = MyEntityChild(id=id, text=text,
-                                        children=[my_entity_grandchild])
-        my_entity_parent = MyEntityParent(id=id, text=text,)
-        my_entity = MyEntity(id=id, text=text,
-                             children=[my_entity_child],
-                             parent=my_entity_parent)
-        # If we run with the SQLAlchemy backend, the back references are populated
-        # automatically.
-        if my_entity_child.parent is None:
-            my_entity_child.parent = my_entity
-        if my_entity_grandchild.parent is None:
-            my_entity_grandchild.parent = my_entity_child
-        return my_entity
-    return test_object_fac(create_entity, kw=dict())
+    return test_object_fac(create_entity_tree, kw=dict())
 
 
 @pytest.fixture
