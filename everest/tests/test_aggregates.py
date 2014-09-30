@@ -36,7 +36,7 @@ class Fixtures(object):
     ent2 = lambda entity_tree_fac: entity_tree_fac(id=2, text='000')
 
 
-class _TestRootAggregate(object):
+class BaseTestRootAggregate(object):
     package_name = 'everest.tests.complete_app'
     agg_class = None
 
@@ -118,13 +118,13 @@ class _TestRootAggregate(object):
         assert len(list(agg.iterator())) == 0
 
 
-class TestMemoryRootAggregate(_TestRootAggregate):
+class TestMemoryRootAggregate(BaseTestRootAggregate):
     config_file_name = 'configure_no_rdb.zcml'
     agg_class = MemoryAggregate
 
 
 @pytest.mark.usefixtures('rdb')
-class TestRdbRootAggregate(_TestRootAggregate):
+class TestRdbRootAggregate(BaseTestRootAggregate):
     agg_class = RdbAggregate
 
 

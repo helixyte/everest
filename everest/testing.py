@@ -276,6 +276,18 @@ class EverestTestApp(TestApp):
     """
     Testing WSGI application for everest.
     """
+    def __init__(self, app, package_name, **kw):
+        TestApp.__init__(self, app, **kw)
+        self.__config = Configurator(registry=app.registry,
+                                     package=package_name)
+
+    @property
+    def config(self):
+        """
+        Returns an everest configurator for the WSGIapp's registry.
+        """
+        return self.__config
+
     def patch(self, url, params='', headers=None, extra_environ=None,
             status=None, upload_files=None, expect_errors=False,
             content_type=None):
@@ -311,6 +323,7 @@ class FunctionalTestCase(TestCaseWithIni, ResourceCreatorMixin):
         self.config.begin()
         self.app = \
             EverestTestApp(wsgiapp,
+                           self.package_name,
                            extra_environ=self._create_extra_environment())
 
     def tear_down(self):

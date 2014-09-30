@@ -11,7 +11,6 @@ from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityGrandchild
 from everest.tests.complete_app.entities import MyEntityParent
-from everest.tests.complete_app.interfaces import IMyEntity
 
 
 __docformat__ = 'reStructuredText en'
@@ -79,21 +78,6 @@ def create_entity_tree(id=0, text=None): # pylint: disable=W0622
 @pytest.fixture
 def entity_tree_fac(test_object_fac):
     return test_object_fac(create_entity_tree, kw=dict())
-
-
-@pytest.fixture
-def collection(resource_repo, my_entity_fac, my_entity_id1_fac):
-    my_entity1 = my_entity_fac(text='foo0')
-    my_entity2 = my_entity_id1_fac(text='too1')
-    coll = resource_repo.get_collection(IMyEntity)
-    coll.create_member(my_entity1)
-    coll.create_member(my_entity2)
-    return coll
-
-
-@pytest.fixture
-def member(collection):
-    return next(iter(collection))
 
 
 @pytest.fixture

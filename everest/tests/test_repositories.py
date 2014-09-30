@@ -84,8 +84,10 @@ class TestRepositoryManager(object):
         exc_msg = 'Unknown repository type'
         assert str(cm.value).startswith(exc_msg)
 
-    def test_set_collection_parent_fails(self, class_configurator, resource_repo):
-        class_configurator.add_resource(IFoo, FooMember, FooEntity, expose=False)
+    def test_set_collection_parent_fails(self, class_configurator,
+                                         resource_repo):
+        class_configurator.add_resource(IFoo, FooMember, FooEntity,
+                                        expose=False)
         coll = create_staging_collection(IFoo)
         srvc = get_service()
         with pytest.raises(ValueError) as cm:
@@ -121,10 +123,7 @@ class TestRdbSystemRepository(_SystemRepositoryBaseTestCase):
     config_file_name = 'configure_msg_rdb_no_views.zcml'
 
 
-class TestFileSystemRepository(object):
-    package_name = 'everest.tests.complete_app'
-    config_file_name = 'configure_fs.zcml'
-
+class BaseTestRepository(object):
     def test_add(self, resource_repo_with_data):
         coll = resource_repo_with_data.get_collection(IMyEntity)
         ent = MyEntity(id=2)
@@ -286,6 +285,11 @@ class TestFileSystemRepository(object):
     def test_configure(self, resource_repo_with_data):
         with pytest.raises(ValueError):
             resource_repo_with_data.configure(foo='bar')
+
+
+class TestFileSystemRepository(BaseTestRepository):
+    package_name = 'everest.tests.complete_app'
+    config_file_name = 'configure_fs.zcml'
 
 
 class TestMemoryRepoWithCacheLoader(object):

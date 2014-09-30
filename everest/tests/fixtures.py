@@ -257,21 +257,20 @@ class AppCreatorContextManager(object):
     def __init__(self, ini_file_path, app_name, pkg_name, config_file_name,
                  extra_environ):
         wsgiapp = loadapp('config:' + ini_file_path, name=app_name)
-        self.__config = Configurator(registry=wsgiapp.registry,
-                                     package=pkg_name)
-        self.__app = EverestTestApp(wsgiapp, extra_environ=extra_environ)
+        self.__app = EverestTestApp(wsgiapp, pkg_name,
+                                    extra_environ=extra_environ)
         self.__config_file_name = config_file_name
 
     def __enter__(self):
-        self.__config.begin()
+        self.__app.config.begin()
         if not self.__config_file_name is None:
-            self.__config.load_zcml(self.__config_file_name)
+            self.__app.config.load_zcml(self.__config_file_name)
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
         transaction.abort()
-        self.__config.end()
-        tear_down_registry(self.__config.registry)
+        self.__app.config.end()
+        tear_down_registry(self.__app.config.registry)
 
 
 # pylint: disable=W0613
@@ -429,23 +428,55 @@ def rdb(request):
 
 @pytest.fixture
 def filter_specification_factory():
+    """
+    Fixture creating a new
+    :class:`everest.querying.specifications.FilterSpecificationFactory`
+    instance.
+    """
     return FilterSpecificationFactory()
 
 
 @pytest.fixture
 def order_specification_factory():
+    """
+    Fixture creating a new
+    :class:`everest.querying.specifications.OrderSpecificationFactory`
+    instance.
+    """
     return OrderSpecificationFactory()
 
 
 @pytest.fixture
 def test_object_fac():
+    """
+    Test object factory fixture.
+    """
     return TestObjectFactory
 
 # pylint: enable=W0613
 
 
 class TestObjectFactory(object):
+    """
+    Test object factory managing a set of default keyword and positional
+    arguments which can be overridden at call time  for lazy object
+    initialization.
+
+    Only one instance is created for each unique combination of keyword and
+    positional arguments (memoize pattern); use the `new` method to obtain
+    a new instance for the same set of arguments.
+    """
     def __init__(self, entity_generator_func, args=None, kw=None):
+        """
+        Constructor.
+
+        :param entity_generator_func: Callable to use to create the test
+          object.
+        :param tuple args: Default positional arguments to use to create a
+          new test object.
+        :param dict kw: Default keyword arguments to use to create a
+          new test object.
+        """
         self.__entity_generator_func = entity_generator_func
         if args is None:
             args = ()
@@ -453,13 +484,20 @@ class TestObjectFactory(object):
         if kw is None:
             kw = {}
         self.__init_kw = kw
+        # Instance cache.
         self.__instances = {}
 
-    def configure(self, *args, **kw):
-        self.__init_args = args + self.__init_args[len(args):]
-        self.__init_kw.update(kw)
-
     def __call__(self, *args, **kw):
+        """
+        Returns a test object instance (possibly memoized from a previous
+        call with the same arguments). The default positional and keyword
+        arguments are overridden with the given parameters.
+
+        :param tuple args: Dynamic positional arguments to use instead of
+          the default ones.
+        :param dict kw: Dynamic keyword arguments to use instead of
+          the default ones.
+        """
         _args = args + self.__init_args[len(args):]
         _kw = self.__init_kw.copy()
         _kw.update(kw)
@@ -473,6 +511,10 @@ class TestObjectFactory(object):
         return obj
 
     def new(self, *args, **kw):
+        """
+        Always returns a new instance for the given positional and keyword
+        arguments.
+        """
         _args = args + self.__init_args[len(args):]
         _kw = self.__init_kw.copy()
         _kw.update(kw)
@@ -480,8 +522,14 @@ class TestObjectFactory(object):
 
     @property
     def init_args(self):
+        """
+        Returns the default positional arguments for this factory.
+        """
         return self.__init_args
 
     @property
     def init_kw(self):
+        """
+        Returns a copy of the default keyword arguments for this factory.
+        """
         return self.__init_kw.copy()

@@ -77,11 +77,14 @@ class MimeTypeRegistry(object):
             raise ValueError('MIME type to register must implement the '
                              'IMime interface.')
         if mime_type.mime_type_string in cls.__type_string_map:
-            raise ValueError('Duplicate MIME string detected.')
+            raise ValueError('Duplicate MIME string detected: %s.'
+                             % mime_type.mime_type_string)
         if mime_type.representer_name in cls.__rpr_name_map:
-            raise ValueError('Duplicate MIME name detected.')
+            raise ValueError('Duplicate MIME name detected: %s'
+                             % mime_type.representer_name)
         if mime_type.file_extension in cls.__file_extension_map:
-            raise ValueError('Duplicate file extension detected.')
+            raise ValueError('Duplicate file extension detected: %s.'
+                             % mime_type.file_extension)
         cls.__type_string_map[mime_type.mime_type_string] = mime_type
         cls.__rpr_name_map[mime_type.representer_name] = mime_type
         cls.__file_extension_map[mime_type.file_extension] = mime_type

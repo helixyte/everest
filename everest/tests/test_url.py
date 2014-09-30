@@ -21,7 +21,7 @@ __all__ = ['TestUrlNoRdb',
 
 
 @pytest.mark.usefixtures("collection")
-class _TestUrl(object):
+class BaseTestUrl(object):
     package_name = 'everest.tests.complete_app'
     app_url = 'http://0.0.0.0:6543'
     base_url = '%s/my-entities/' % app_url
@@ -304,10 +304,10 @@ class _TestUrl(object):
                        set(query.split('&')) # pylint: disable=E1101
 
 
-class TestUrlNoRdb(_TestUrl):
+class TestUrlNoRdb(BaseTestUrl):
     config_file_name = 'configure_no_rdb.zcml'
 
 
 @pytest.mark.usefixtures("rdb")
-class TestUrlRdb(_TestUrl):
+class TestUrlRdb(BaseTestUrl):
     config_file_name = 'configure.zcml'
