@@ -1,0 +1,4 @@
+
+      [everest.plugins]
+      everest_myplugin = everest_myplugin:load_plugin
+      

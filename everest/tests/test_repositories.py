@@ -119,6 +119,7 @@ class TestMemorySystemRepository(_SystemRepositoryBaseTestCase):
     config_file_name = 'configure_msg_mem_no_views.zcml'
 
 
+@pytest.mark.usefixtures('rdb')
 class TestRdbSystemRepository(_SystemRepositoryBaseTestCase):
     config_file_name = 'configure_msg_rdb_no_views.zcml'
 

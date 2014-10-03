@@ -1,0 +1,7 @@
+setup.py
+everest_myplugin.egg-info/PKG-INFO
+everest_myplugin.egg-info/SOURCES.txt
+everest_myplugin.egg-info/dependency_links.txt
+everest_myplugin.egg-info/entry_points.txt
+everest_myplugin.egg-info/requires.txt
+everest_myplugin.egg-info/top_level.txt

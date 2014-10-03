@@ -1,0 +1,13 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+    <include package="everest.includes" />
+
+    <resource
+        interface="everest_myplugin.interfaces.IMyEntityGrandparent"
+        member="everest_myplugin.resources.MyEntityGrandparentMember"
+        entity="everest_myplugin.entities.MyEntityGrandparent"
+        collection_root_name="my-entity-grandparents"/>
+        
+    <resource_view
+        for="everest_myplugin.interfaces.IMyEntityGrandparent"
+        request_method="GET" />
+</configure>

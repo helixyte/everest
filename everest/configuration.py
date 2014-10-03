@@ -6,6 +6,18 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 22, 2011.
 """
+from pyramid.compat import iteritems_
+from pyramid.compat import string_types
+from pyramid.config import Configurator as PyramidConfigurator
+from pyramid.config.util import action_method
+from pyramid.interfaces import IApplicationCreated
+from pyramid.interfaces import IRendererFactory
+from pyramid.interfaces import IRequest
+from pyramid.path import DottedNameResolver
+from pyramid.path import caller_package
+from pyramid.registry import Registry
+from pyramid_zcml import load_zcml
+
 from everest.constants import RequestMethods
 from everest.entities.interfaces import IEntity
 from everest.entities.system import UserMessage
@@ -18,6 +30,8 @@ from everest.interfaces import IUserMessage
 from everest.interfaces import IUserMessageNotifier
 from everest.messaging import UserMessageNotifier
 from everest.mime import get_registered_representer_names
+from everest.plugins import IPluginManager
+from everest.plugins import PluginManager
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filtering import CqlFilterSpecificationVisitor
 from everest.querying.interfaces import IFilterSpecificationFactory
@@ -70,21 +84,11 @@ from everest.views.getmember import GetMemberView
 from everest.views.patchmember import PatchMemberView
 from everest.views.postcollection import PostCollectionView
 from everest.views.putmember import PutMemberView
-from pyramid.compat import iteritems_
-from pyramid.compat import string_types
-from pyramid.config import Configurator as PyramidConfigurator
-from pyramid.config.util import action_method
-from pyramid.interfaces import IApplicationCreated
-from pyramid.interfaces import IRendererFactory
-from pyramid.interfaces import IRequest
-from pyramid.path import DottedNameResolver
-from pyramid.path import caller_package
-from pyramid.registry import Registry
-from pyramid_zcml import load_zcml
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
 from zope.interface import classImplements as class_implements # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['Configurator',
@@ -621,6 +625,9 @@ class Configurator(PyramidConfigurator):
             rpr_reg.register_representer_class(XmlResourceRepresenter)
             rpr_reg.register_representer_class(AtomResourceRepresenter)
             self._register_utility(rpr_reg, IRepresenterRegistry)
+        if self.query_registered_utilities(IPluginManager) is None:
+            plugin_mgr = PluginManager(self)
+            self._register_utility(plugin_mgr, IPluginManager)
         # Register renderer factories for registered representers.
         for reg_rnd_name in get_registered_representer_names():
             rnd = self.query_registered_utilities(IRendererFactory,

@@ -5,6 +5,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 14, 2014.
 """
 from itertools import chain
+import os
 from unittest import TestCase
 
 from _pytest.python import getfixturemarker
@@ -17,6 +18,7 @@ import transaction
 
 from everest.configuration import Configurator
 from everest.ini import EverestIni
+from everest.plugins import IPluginManager
 from everest.querying.specifications import FilterSpecificationFactory
 from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.constants import REPOSITORY_DOMAINS
@@ -28,6 +30,7 @@ from everest.testing import BaseTestCaseWithConfiguration
 from everest.testing import EverestTestApp
 from everest.testing import tear_down_registry
 from paste.deploy import loadapp
+from everest.repositories.rdb.utils import reset_metadata
 
 
 __docformat__ = 'reStructuredText en'
@@ -45,9 +48,8 @@ def pytest_addoption(parser):
     """
     parser.addoption("--app-ini-file", action="store", default=None,
                      help="everest application ini file.")
-    parser.addoption("--app-ini-section", action="store", default=None,
-                     help="ini file section to use to configure the everest "
-                          "application.")
+    parser.addoption("--app-name", action="store", default=None,
+                     help="name of the everest application to run.")
 
 
 def pytest_configure(config):
@@ -63,10 +65,10 @@ def pytest_configure(config):
         # FIXME: This is only needed if a test run uses old-style nose tests.
         EverestIni.ini_file_path = ini_file_path
         setup_logging(ini_file_path)
-    ini_section_name = config.getoption('--app-ini-section')
-    if not ini_section_name is None:
+    app_name = config.getoption('--app-name')
+    if not app_name is None:
         # FIXME: This is only needed if a test run uses old-style nose tests.
-        BaseTestCaseWithConfiguration.ini_section_name = ini_section_name
+        BaseTestCaseWithConfiguration.ini_section_name = 'app:%s' % app_name
 
 
 def pytest_collection_modifyitems(session, config, items): # pylint: disable=W0613
@@ -110,15 +112,135 @@ def pytest_pycollect_makemodule(path, parent):
     return pytest.Module(path, parent)
 
 
+class _AppIni(object):
+    __parsers = {}
+
+    def __init__(self, ini_file_path=None, app_name=None, package_name=None,
+                 config_file_name=None):
+        self.__ini_file_path = ini_file_path
+        self.__app_name = app_name
+        self.__package_name = package_name
+        self.__config_file_name = config_file_name
+        self.__app_url = None
+        self.__app_settings = None
+        self.__default_settings = None
+        self.__host = '0.0.0.0'
+        self.__port = '6543'
+        if not ini_file_path is None:
+            self.__parser = self.__parsers.get(ini_file_path)
+            if self.__parser is None:
+                defaults = {'here':os.path.dirname(ini_file_path)}
+                self.__parser = \
+                    configparser.SafeConfigParser(defaults=defaults)
+                self.__parsers[ini_file_path] = self.__parser
+        else:
+            self.__parser = None
+
+    def load(self):
+        if not self.__parser is None:
+            self.__parse_ini()
+        if self.__config_file_name is None:
+            settings = self.__app_settings or self.__default_settings
+            if not settings is None:
+                self.__config_file_name = settings.get('configure_zcml',
+                                                       'configure.zcml')
+            else:
+                self.__config_file_name = 'configure.zcml'
+        if self.__package_name is None:
+            self.__package_name = self.__app_name
+        self.__app_url = 'http://%s:%s' % (self.__host, self.__port)
+
+    def __parse_ini(self):
+        self.__parser.read(self.__ini_file_path)
+        if self.__app_name is None:
+            # If the app name was not passed in, we try to determine it as
+            # follows:
+            #  * If the ini file contains only one app:<app name> section,
+            #    use it;
+            #  * Else, if the ini file contains a pipeline:main section, use
+            #    the innermost app;
+            #  * Else raise ValueError
+            app_names = [sect.split(':')[-1]
+                         for sect in self.__parser.sections()
+                         if sect[:4] == 'app:']
+            if len(app_names) == 1:
+                self.__app_name = app_names[0]
+            else:
+                pp_sect_name = 'pipeline:main'
+                if self.__parser.has_section(pp_sect_name):
+                    pipeline_apps = \
+                        self.__parser.get(pp_sect_name, 'pipeline').split()
+                    self.__app_name = pipeline_apps[-1]
+                else:
+                    raise ValueError('Could not determine application name. '
+                                     'You need to either define exactly one '
+                                     'app:<app name> section or a '
+                                     'pipeline:main section in your ini '
+                                     'file.')
+        srv_sect_name = 'server:main'
+        if self.__parser.has_section(srv_sect_name):
+            host_opt_name = 'host'
+            if self.__parser.has_option(srv_sect_name, host_opt_name):
+                self.__host = self.__parser.get(srv_sect_name, host_opt_name)
+            port_opt_name = 'port'
+            if self.__parser.has_option(srv_sect_name, port_opt_name):
+                self.__port = self.__parser.get(srv_sect_name, port_opt_name)
+        if not self.__app_name is None:
+            app_sect_name = 'app:%s' % self.__app_name
+            if self.__parser.has_section(app_sect_name):
+                self.__app_settings = dict(self.__parser.items(app_sect_name))
+        def_sect_name = 'DEFAULT'
+        if self.__parser.has_section(def_sect_name):
+            self.__default_settings = dict(self.__parser.items(def_sect_name))
+
+    @property
+    def ini_file_path(self):
+        return self.__ini_file_path
+
+    @property
+    def app_name(self):
+        return self.__app_name
+
+    @property
+    def package_name(self):
+        return self.__package_name
+
+    @property
+    def config_file_name(self):
+        return self.__config_file_name
+
+    @property
+    def app_url(self):
+        return self.__app_url
+
+    @property
+    def app_settings(self):
+        return self.__app_settings.copy()
+
+    @property
+    def default_settings(self):
+        return self.__default_settings.copy()
+
+    @property
+    def settings(self):
+        return self.__app_settings or self.__default_settings
+
+
 class _IniFactory(object):
     __inis = {}
 
     @classmethod
-    def get_cached(cls, ini_file_path):
-        cached_ini = cls.__inis.get(ini_file_path)
+    def get_cached(cls, ini_file_path, app_name, package_name,
+                   config_file_name):
+        key = (ini_file_path, app_name, package_name, config_file_name)
+        cached_ini = cls.__inis.get(key)
         if cached_ini is None:
-            cached_ini = EverestIni(ini_file_path)
-            cls.__inis[ini_file_path] = cached_ini
+            cached_ini = _AppIni(ini_file_path=ini_file_path,
+                                 app_name=app_name,
+                                 package_name=package_name,
+                                 config_file_name=config_file_name)
+            cached_ini.load()
+            cls.__inis[key] = cached_ini
         return cached_ini
 
 
@@ -126,61 +248,31 @@ class _ConfiguratorFactory(object):
     __configurators = {}
 
     @classmethod
-    def get(cls, request, ini): # redefining ini pylint: disable=W0621
-        package_name, zcml_file_name, settings = cls.__get_args(request, ini)
-        return cls.create(package_name, zcml_file_name, settings)
+    def get(cls, ini): # redefining ini pylint: disable=W0621
+        return cls.__create(ini)
 
     @classmethod
-    def get_cached(cls, request, ini): # redefining ini pylint: disable=W0621
-        package_name, zcml_file_name, settings = cls.__get_args(request, ini)
-        key = (package_name, zcml_file_name,
-               _ConfiguratorFactory.__make_settings_key(settings))
+    def get_cached(cls, ini): # redefining ini pylint: disable=W0621
+        key = (ini.ini_file_path, ini.app_name,
+               ini.package_name, ini.config_file_name)
         conf = _ConfiguratorFactory.__configurators.get(key)
         if conf is None:
-            conf = cls.create(package_name, zcml_file_name, settings)
+            conf = cls.__create(ini)
             _ConfiguratorFactory.__configurators[key] = conf
         return conf
 
     @classmethod
-    def create(cls, package_name, zcml_file_name, settings):
+    def __create(cls, ini):
         reg = Registry('testing')
-        conf = Configurator(registry=reg, package=package_name)
-        conf.setup_registry(settings=settings)
-        if not zcml_file_name is None:
+        conf = Configurator(registry=reg, package=ini.package_name)
+        conf.setup_registry(settings=ini.settings)
+        if not ini.config_file_name is None and not ini.package_name is None:
             conf.begin()
             try:
-                conf.load_zcml(zcml_file_name)
+                conf.load_zcml(ini.config_file_name)
             finally:
                 conf.end()
         return conf
-
-    @classmethod
-    def __get_args(cls, request, ini): # redefining ini pylint: disable=W0621
-        ini_section_name = getattr(request.cls, 'ini_section_name', None)
-        if ini_section_name is None:
-            ini_section_name = request.config.getoption('--app-ini-section')
-        pkg_name = getattr(request.cls, 'package_name', None)
-        if not pkg_name is None:
-            def_cfg_zcml = getattr(request.cls, 'config_file_name',
-                                   'configure.zcml')
-        else:
-            if not ini_section_name is None:
-                pkg_name = ini_section_name.split(':')[-1]
-                def_cfg_zcml = 'configure.zcml'
-            else:
-                def_cfg_zcml = None
-        if not ini_section_name is None:
-            settings = ini.get_settings(ini_section_name)
-        else:
-            try:
-                settings = ini.get_settings('DEFAULT')
-            except configparser.NoSectionError:
-                settings = None
-        if not settings is None:
-            cfg_zcml = settings.get('configure_zcml', def_cfg_zcml)
-        else:
-            cfg_zcml = def_cfg_zcml
-        return pkg_name, cfg_zcml, settings
 
     @classmethod
     def __make_settings_key(cls, settings):
@@ -217,22 +309,25 @@ class ResourceCreatorContextManager(object):
     Context manager for setting up the everest framework for resource level
     operations.
     """
-    def __init__(self, config, app_url, repo_name=None):
+    def __init__(self, ini, config, repo_name=None):
+        self.__ini = ini
         self.__config = config
-        self.__app_url = app_url
         self.__repo_name = repo_name
 
     def __enter__(self):
-        request = DummyRequest(application_url=self.__app_url,
-                               host_url=self.__app_url,
-                               path_url=self.__app_url,
-                               url=self.__app_url,
+        request = DummyRequest(application_url=self.__ini.app_url,
+                               host_url=self.__ini.app_url,
+                               path_url=self.__ini.app_url,
+                               url=self.__ini.app_url,
                                registry=self.__config.registry)
         srvc = self.__config.get_registered_utility(IService)
         self.__config.begin(request=request)
         request.root = srvc
         repo_mgr = self.__config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
+        if not self.__ini.app_name is None:
+            plugin_mgr = self.__config.get_registered_utility(IPluginManager)
+            plugin_mgr.load_all("%s.plugins" % self.__ini.app_name)
         srvc.start()
         if self.__repo_name is None:
             repo = repo_mgr.get_default()
@@ -254,10 +349,9 @@ class AppCreatorContextManager(object):
     Context manager for setting up the everest framework for application
     level (functional) operations.
     """
-    def __init__(self, ini_file_path, app_name, pkg_name, config_file_name,
-                 extra_environ):
-        wsgiapp = loadapp('config:' + ini_file_path, name=app_name)
-        self.__app = EverestTestApp(wsgiapp, pkg_name,
+    def __init__(self, ini, config_file_name, extra_environ):
+        wsgiapp = loadapp('config:' + ini.ini_file_path, name=ini.app_name)
+        self.__app = EverestTestApp(wsgiapp, ini.package_name,
                                     extra_environ=extra_environ)
         self.__config_file_name = config_file_name
 
@@ -285,7 +379,8 @@ def session_ini(request):
     in the class name space.
     """
     ini_file_path = request.config.getoption('--app-ini-file')
-    return _IniFactory.get_cached(ini_file_path)
+    app_name = request.config.getoption('--app-name')
+    return _IniFactory.get_cached(ini_file_path, app_name, None, None)
 
 
 @pytest.fixture(scope='class')
@@ -300,40 +395,28 @@ def class_ini(request):
     ini_file_path = getattr(request.cls, 'ini_file_path', None)
     if ini_file_path is None:
         ini_file_path = request.config.getoption('--app-ini-file')
-    return _IniFactory.get_cached(ini_file_path)
-
+    app_name = getattr(request.cls, 'app_name', None)
+    if app_name is None:
+        app_name = request.config.getoption('--app-name')
+    pkg_name = getattr(request.cls, 'package_name', None)
+    config_file_name = getattr(request.cls, 'config_file_name', None)
+    return _IniFactory.get_cached(ini_file_path, app_name, pkg_name,
+                                  config_file_name)
 
 
 @pytest.fixture(scope='session')
-def session_configurator(request, session_ini): # redefining ini pylint: disable=W0621
+def session_configurator(session_ini): # redefining ini pylint: disable=W0621
     """
     Session-scoped fixture for all tests that set up a Pyramid configurator.
 
     @note: If you modify this configurator, all tests in the current session
         are affected.
     """
-    ini_section_name = request.config.getoption('--app-ini-section')
-    if not ini_section_name is None:
-        settings = session_ini.get_settings(ini_section_name)
-    else:
-        try:
-            settings = session_ini.get_settings('DEFAULT')
-        except configparser.NoSectionError:
-            settings = None
-    def_cfg_zcml = 'configure.zcml'
-    if not settings is None:
-        cfg_zcml = settings.get('configure_zcml', def_cfg_zcml)
-    else:
-        cfg_zcml = def_cfg_zcml
-    if not ini_section_name is None:
-        pkg_name = ini_section_name.split(':')[-1]
-    else:
-        pkg_name = None
-    return _ConfiguratorFactory.create(pkg_name, cfg_zcml, settings)
+    return _ConfiguratorFactory.get(session_ini)
 
 
 @pytest.fixture(scope='class')
-def class_configurator(request, class_ini): # redefining ini pylint: disable=W0621
+def class_configurator(class_ini): # redefining ini pylint: disable=W0621
     """
     Class-scoped fixture for all tests that set up a Pyramid configurator.
 
@@ -341,15 +424,15 @@ def class_configurator(request, class_ini): # redefining ini pylint: disable=W06
            same ini file + ini file section + package name combinatino are
            affected.
     """
-    return _ConfiguratorFactory.get_cached(request, class_ini)
+    return _ConfiguratorFactory.get_cached(class_ini)
 
 
 @pytest.fixture
-def function_configurator(request, class_ini): # redefining ini pylint: disable=W0621
+def function_configurator(class_ini): # redefining ini pylint: disable=W0621
     """
     Function-scoped fixture for all tests that set up a Pyramid configurator.
     """
-    return _ConfiguratorFactory.get(request, class_ini)
+    return _ConfiguratorFactory.get(class_ini)
 
 
 @pytest.fixture
@@ -381,8 +464,7 @@ def resource_repo(class_ini, class_configurator): # redefining ini, class_config
     """
     Fixture for all tests that perform operations on resources.
     """
-    app_url = class_ini.get_app_url()
-    with ResourceCreatorContextManager(class_configurator, app_url) as repo:
+    with ResourceCreatorContextManager(class_ini, class_configurator) as repo:
         yield repo
 
 
@@ -392,8 +474,7 @@ def system_resource_repo(class_ini, class_configurator): # redefining ini, class
     Like `resource_repo`, but yields the system repository instead of the
     default repository.
     """
-    app_url = class_ini.get_app_url()
-    with ResourceCreatorContextManager(class_configurator, app_url,
+    with ResourceCreatorContextManager(class_ini, class_configurator,
                                        repo_name=REPOSITORY_DOMAINS.SYSTEM) \
          as repo:
         yield repo
@@ -404,12 +485,10 @@ def app_creator(request, class_ini): # redefining ini, class_configurator pylint
     """
     Fixture for all tests that perform operations on applications.
     """
-    app_name = getattr(request.cls, 'app_name', None)
-    pkg_name = getattr(request.cls, 'package_name', 'everest')
     config_file_name = getattr(request.cls, 'config_file_name', None)
     extra_environ = getattr(request.cls, 'extra_environ', {})
-    with AppCreatorContextManager(class_ini.ini_file_path, app_name, pkg_name,
-                                  config_file_name, extra_environ) as app:
+    with AppCreatorContextManager(class_ini, config_file_name, extra_environ) \
+         as app:
         yield app
 
 
@@ -423,6 +502,8 @@ def rdb(request):
     """
     def tear_down():
         Session.remove()
+        assert not Session.registry.has()
+        reset_metadata()
     request.addfinalizer(tear_down)
 
 
