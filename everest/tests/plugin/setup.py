@@ -14,7 +14,7 @@ setup(name='everest_myplugin',
       version='0.1',
       install_requires='everest',
       entry_points="""
-      [everest.plugins]
+      [complete_app.plugins]
       everest_myplugin = everest_myplugin:load_plugin
       """
       )
