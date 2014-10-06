@@ -24,13 +24,14 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
+from everest.repositories.rdb.utils import reset_metadata
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.resources.interfaces import IService
 from everest.testing import BaseTestCaseWithConfiguration
 from everest.testing import EverestTestApp
 from everest.testing import tear_down_registry
+from everest.utils import app_name_from_ini_parser
 from paste.deploy import loadapp
-from everest.repositories.rdb.utils import reset_metadata
 
 
 __docformat__ = 'reStructuredText en'
@@ -153,30 +154,7 @@ class _AppIni(object):
     def __parse_ini(self):
         self.__parser.read(self.__ini_file_path)
         if self.__app_name is None:
-            # If the app name was not passed in, we try to determine it as
-            # follows:
-            #  * If the ini file contains only one app:<app name> section,
-            #    use it;
-            #  * Else, if the ini file contains a pipeline:main section, use
-            #    the innermost app;
-            #  * Else raise ValueError
-            app_names = [sect.split(':')[-1]
-                         for sect in self.__parser.sections()
-                         if sect[:4] == 'app:']
-            if len(app_names) == 1:
-                self.__app_name = app_names[0]
-            else:
-                pp_sect_name = 'pipeline:main'
-                if self.__parser.has_section(pp_sect_name):
-                    pipeline_apps = \
-                        self.__parser.get(pp_sect_name, 'pipeline').split()
-                    self.__app_name = pipeline_apps[-1]
-                else:
-                    raise ValueError('Could not determine application name. '
-                                     'You need to either define exactly one '
-                                     'app:<app name> section or a '
-                                     'pipeline:main section in your ini '
-                                     'file.')
+            self.__app_name = app_name_from_ini_parser(self.__parser)
         srv_sect_name = 'server:main'
         if self.__parser.has_section(srv_sect_name):
             host_opt_name = 'host'

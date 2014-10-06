@@ -7,8 +7,7 @@ Created on Jul 9, 2014.
 from everest.configuration import Configurator
 from everest.plugins import IPluginManager
 from everest.root import RootFactory
-from paste.deploy.loadwsgi import APP
-from paste.deploy.loadwsgi import ConfigLoader
+from everest.utils import app_name_from_ini_file
 
 
 __docformat__ = 'reStructuredText en'
@@ -31,15 +30,10 @@ def app_factory(global_settings, **local_settings): # pylint: disable=W0613
     if 'configure.zcml' in local_settings:
         config.load_zcml(local_settings['configure.zcml'])
     app = config.make_wsgi_app()
-    # In the absence of an application name in the settings, we use the
-    # distribution project name of the loaded application as the next best
-    # thing. Unfortunately, this requires parsing the config file again.
-    cfg = ConfigLoader(global_settings['__file__'])
-    ctxt = cfg.get_context(APP)
-    if not ctxt.app_context.distribution is None:
-        app_name = ctxt.app_context.distribution.project_name
-    else:
-        app_name = 'everest'
+    # In the absence of an application name in the settings, we have to
+    # extract the main app's name from the ini file, which unfortunately
+    # means parsing it again.
+    app_name = app_name_from_ini_file(global_settings['__file__'])
     ep_group = "%s.plugins" % app_name
     plugin_mgr = config.get_registered_utility(IPluginManager)
     plugin_mgr.load_all(ep_group)

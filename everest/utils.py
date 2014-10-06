@@ -7,19 +7,23 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Oct 7, 2011.
 """
 from collections import MutableSet
+from functools import update_wrapper
+import functools
+from logging import Formatter
+import re
+import traceback
+from weakref import WeakKeyDictionary
+from weakref import ref
+
+from pyramid.compat import NativeIO
+from pyramid.compat import configparser
+from pyramid.compat import iteritems_
+from pyramid.threadlocal import get_current_registry
+
 from everest.querying.interfaces import IFilterSpecificationVisitor
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.repositories.interfaces import IRepositoryManager
-from functools import update_wrapper
-from pyramid.compat import NativeIO
-from pyramid.compat import iteritems_
-from pyramid.threadlocal import get_current_registry
-from weakref import WeakKeyDictionary
-from weakref import ref
-import re
-import traceback
-from logging import Formatter
-import functools
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['BidirectionalLookup',
@@ -179,6 +183,50 @@ def get_repository(name=None):
     else:
         repo = repo_mgr.get(name)
     return repo
+
+
+def app_name_from_ini_file(ini_file_path):
+    """
+    Returns the name of the main application from the given ini file. See
+    :function:`app_name_from_ini_parser` for details.
+
+    :param ini_file_path: Path to the .ini file to parse.
+    """
+    parser = configparser.SafeConfigParser()
+    parser.read(ini_file_path)
+    return app_name_from_ini_parser(parser)
+
+
+def app_name_from_ini_parser(ini_parser):
+    """
+    Returns the name of the main application from the given ini file parser.
+    The name is found as follows:
+     * If the ini file contains only one app:<app name> section,
+       return this app name;
+     * Else, if the ini file contains a pipeline:main section, use
+       the name of the innermost app;
+     * Else raise ValueError.
+
+    :param ini_parser: :class:`configparser.SafeConfigParser` instance with
+        an ini file read.
+    """
+    app_names = [sect.split(':')[-1]
+                 for sect in ini_parser.sections()
+                 if sect[:4] == 'app:']
+    if len(app_names) == 1:
+        app_name = app_names[0]
+    else:
+        pp_sect_name = 'pipeline:main'
+        if ini_parser.has_section(pp_sect_name):
+            pipeline_apps = ini_parser.get(pp_sect_name, 'pipeline').split()
+            app_name = pipeline_apps[-1]
+        else:
+            raise ValueError('Could not determine application name. '
+                             'You need to either define exactly one '
+                             'app:<app name> section or a '
+                             'pipeline:main section in your ini '
+                             'file.')
+    return app_name
 
 
 class BidirectionalLookup(object):
