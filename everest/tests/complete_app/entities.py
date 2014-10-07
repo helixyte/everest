@@ -47,6 +47,8 @@ class MyEntity(_MyEntity):
 
     parent = None
     children = None
+    number = None
+    date_time = None
 
     def __init__(self, parent=None, children=None, number=None,
                  date_time=None, **kw):

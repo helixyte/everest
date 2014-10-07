@@ -137,6 +137,10 @@ class RdbSessionFactory(SessionFactory):
     def configure(self, **kw):
         self.__fac.configure(**kw)
 
+    def reset(self):
+        if self.__fac.registry.has():
+            self.__fac().reset()
+
     def __call__(self, **kw):
         if not self.__fac.registry.has():
             self.__fac.configure(

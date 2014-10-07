@@ -337,10 +337,16 @@ class AppCreatorContextManager(object):
         self.__app.config.begin()
         if not self.__config_file_name is None:
             self.__app.config.load_zcml(self.__config_file_name)
+        repo_mgr = \
+            self.__app.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.initialize_all()
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
         transaction.abort()
+        repo_mgr = \
+            self.__app.config.get_registered_utility(IRepositoryManager)
+        repo_mgr.reset_all()
         self.__app.config.end()
         tear_down_registry(self.__app.config.registry)
 
@@ -458,7 +464,7 @@ def system_resource_repo(class_ini, class_configurator): # redefining ini, class
         yield repo
 
 
-@pytest.yield_fixture(scope='class')
+@pytest.yield_fixture
 def app_creator(request, class_ini): # redefining ini, class_configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on applications.
@@ -470,18 +476,23 @@ def app_creator(request, class_ini): # redefining ini, class_configurator pylint
         yield app
 
 
-# FIXME: This should be made optional (requires rdb repository).
 @pytest.fixture(scope='class')
-def rdb(request):
-    """
-    Fixture for all tests that use the relational database backend.
-
-    This fixture has class scope.
-    """
+def _class_rdb(request):
     def tear_down():
         Session.remove()
         assert not Session.registry.has()
         reset_metadata()
+    request.addfinalizer(tear_down)
+
+
+# FIXME: This should be made optional (requires rdb repository).
+@pytest.fixture
+def rdb(request, _class_rdb): # pylint: disable=W0621
+    """
+    Fixture for all tests that use the relational database backend.
+    """
+    def tear_down():
+        Session.remove()
     request.addfinalizer(tear_down)
 
 

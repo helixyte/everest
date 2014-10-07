@@ -299,6 +299,11 @@ class MemorySessionFactory(SessionFactory):
         self.__query_class = query_class
         self.__clone_on_load = clone_on_load
 
+    def reset(self):
+        session = getattr(self.__session_registry, 'session', None)
+        if not session is None:
+            session.reset()
+
     def __call__(self):
         session = getattr(self.__session_registry, 'session', None)
         if session is None:

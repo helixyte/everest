@@ -1,0 +1,19 @@
+<configure xmlns="http://pylonshq.com/pyramid">
+
+    <!-- Include special directives. -->
+
+    <include package="everest.includes" />
+
+    <!-- Utilities -->
+
+    <!-- Repositories. -->
+
+    <rdb_repository
+        make_default="true"
+        metadata_factory="everest.tests.complete_app.rdb.create_metadata" />
+
+    <!-- Resources. -->
+    
+    <include file="configure_rpr.zcml" />
+
+</configure>

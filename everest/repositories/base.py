@@ -28,7 +28,16 @@ class SessionFactory(object):
     def __init__(self, repository):
         self._repository = repository
 
+    def reset(self):
+        """
+        Resets the session factory and its associated session.
+        """
+        raise NotImplementedError('Abstract method.')
+
     def __call__(self):
+        """
+        Returns a session.
+        """
         raise NotImplementedError('Abstract method.')
 
 
@@ -262,7 +271,7 @@ class Repository(object):
 
     def reset(self):
         if not self.__session_factory is None:
-            self.__session_factory().reset()
+            self.__session_factory.reset()
         self.__cache.clear()
         self._reset()
         self.__is_initialized = False
