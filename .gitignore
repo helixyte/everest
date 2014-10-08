@@ -6,6 +6,7 @@
 .coverage
 .project
 .pydevproject
+/build
 /dist
 .externalToolBuilders
 __pycache__
