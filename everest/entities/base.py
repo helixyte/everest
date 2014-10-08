@@ -478,9 +478,9 @@ class RelationshipAggregate(Aggregate):
     def add(self, entity):
         csc = self._relationship.descriptor.cascade
         add_to_root = csc & RELATION_OPERATIONS.ADD
+        self._relationship.add(entity, safe=True)
         if add_to_root:
             self._root_aggregate.add(entity)
-        self._relationship.add(entity, safe=True)
 
     def remove(self, entity):
         csc = self._relationship.descriptor.cascade
