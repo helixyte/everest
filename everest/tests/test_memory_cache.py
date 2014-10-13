@@ -30,7 +30,7 @@ class TestEntityCache(object):
         cache.add(ent)
         assert cache.get_by_id(ent.id) is ent
         assert cache.has_id(ent.id)
-        assert cache.get_by_slug(ent.slug) is ent
+        assert cache.get_by_slug(ent.slug)[0] is ent
         assert cache.has_slug(ent.slug)
         assert len(cache.get_all()) == 1
         # Adding the same entity twice should not have any effect.

@@ -11,6 +11,7 @@ from everest.repositories.memory.querying import MemoryQuery
 from everest.repositories.state import EntityState
 from itertools import islice
 from weakref import WeakValueDictionary
+from everest.utils import WeakList
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntityCache',
@@ -77,7 +78,8 @@ class EntityCache(object):
 
         :param entity: Entity to add.
         :type entity: Object implementing :class:`everest.interfaces.IEntity`.
-        :raises ValueError: If the ID of the entity to add is ``None``.
+        :raises ValueError: If the ID of the entity to add is ``None``
+          (unless the `allow_none_id` constructor argument was set).
         """
         do_append = self.__check_new(entity)
         if do_append:
@@ -165,13 +167,12 @@ class EntityCache(object):
         # The slug can be a lazy attribute depending on the
         # value of other (possibly not yet initialized) attributes which is
         # why we can not always assume it is available at this point.
-        if hasattr(entity, 'slug') and not entity.slug is None:
-            if entity.slug in self.__slug_map:
-                if not self.__slug_map[entity.slug] is entity:
-                    raise ValueError('Duplicate entity slug "%s".'
-                                     % entity.slug)
+        if do_append and hasattr(entity, 'slug') and not entity.slug is None:
+            ents = self.__slug_map.get(entity.slug)
+            if not ents is None:
+                ents.append(entity)
             else:
-                self.__slug_map[entity.slug] = entity
+                self.__slug_map[entity.slug] = WeakList([entity])
         return do_append
 
 

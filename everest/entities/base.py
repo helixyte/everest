@@ -386,15 +386,25 @@ class RootAggregate(Aggregate):
         return ent
 
     def get_by_slug(self, slug):
-        ent = self._session.get_by_slug(self.entity_class, slug)
-        if ent is None:
+        ents = self._session.get_by_slug(self.entity_class, slug)
+        if ents is None:
             try:
-                ent = self.query().filter_by(slug=slug).one()
+                ents = self.query().filter_by(slug=slug).all()
             except NoResultsException:
                 pass
-        if not ent is None \
-           and not self._filter_spec is None \
-           and not self._filter_spec.is_satisfied_by(ent):
+        if not ents is None:
+            ents = [ent
+                    for ent in self.query().filter_by(slug=slug).all()
+                    if self._filter_spec is None
+                       or self._filter_spec.is_satisfied_by(ent)]
+            if len(ents) == 1:
+                ent = ents[0]
+            elif len(ents) == 0:
+                ent = None
+            else:
+                raise ValueError('More than one entity found for slug "%s".'
+                                 % slug)
+        else:
             ent = None
         return ent
 
@@ -436,6 +446,27 @@ class RootAggregate(Aggregate):
         return self._session_factory()
 
 
+class FilterContext(object):
+    """
+    Helper context that provides filter specs in a root aggregate.
+    """
+    def __init__(self, root_aggregate, relation_filter_spec):
+        self.__root_aggregate = root_aggregate
+        self.__relation_filter_spec = relation_filter_spec
+        self.__old_filter = None
+
+    def __enter__(self):
+        if self.__root_aggregate.filter is None:
+            self.__root_aggregate.filter = self.__relation_filter_spec
+        else:
+            self.__old_filter = self.__root_aggregate.filter
+            self.__root_aggregate.filter = self.__relation_filter_spec \
+                                           & self.__root_aggregate.filter
+
+    def __exit__(self, ext_type, value, tb):
+        self.__root_aggregate.filter = self.__old_filter
+
+
 class RelationshipAggregate(Aggregate):
     """
     An aggregate that references a subset of a root aggregate defined through
@@ -447,16 +478,12 @@ class RelationshipAggregate(Aggregate):
         self._relationship = relationship
 
     def get_by_id(self, id_key):
-        ent = self._root_aggregate.get_by_id(id_key)
-        if not ent is None and not self.filter.is_satisfied_by(ent):
-            ent = None
-        return ent
+        with FilterContext(self._root_aggregate, self.filter):
+            return self._root_aggregate.get_by_id(id_key)
 
     def get_by_slug(self, slug):
-        ent = self._root_aggregate.get_by_slug(slug)
-        if not ent is None and not self.filter.is_satisfied_by(ent):
-            ent = None
-        return ent
+        with FilterContext(self._root_aggregate, self.filter):
+            return self._root_aggregate.get_by_slug(slug)
 
     def query(self):
         return self._root_aggregate.query()

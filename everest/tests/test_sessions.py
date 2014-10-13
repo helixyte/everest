@@ -70,7 +70,7 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         # Test loading by ID and slug.
         fetched_ent0 = self._session.get_by_id(MyEntity, ent.id)
         self.assert_equal(fetched_ent0.slug, ent.slug)
-        fetched_ent1 = self._session.get_by_slug(MyEntity, ent.slug)
+        fetched_ent1 = self._session.get_by_slug(MyEntity, ent.slug)[0]
         self.assert_equal(fetched_ent1.id, ent.id)
         # We get a clone when we load an entity from the session.
         self.assert_false(fetched_ent0 is ent)
@@ -186,7 +186,8 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
     def test_without_id_with_slug(self):
         ent = MyEntity()
         self._session.add(MyEntity, ent)
-        self.assert_true(self._session.get_by_slug(MyEntity, 'slug') is ent)
+        self.assert_true(self._session.get_by_slug(MyEntity, 'slug')[0]
+                         is ent)
 
     def test_duplicate_id_raises_error(self):
         ent_id = new_entity_id()
@@ -209,7 +210,7 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         self._session.add(MyEntity, ent)
         self.assert_equal(self._session.get_by_id(MyEntity, ent.id).id,
                           ent.id)
-        self.assert_equal(self._session.get_by_slug(MyEntity, ent.slug).id,
+        self.assert_equal(self._session.get_by_slug(MyEntity, ent.slug)[0].id,
                           ent.id)
 
     @patch('%s.entities.MyEntity.slug' %
@@ -217,13 +218,13 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
     def test_repeated_add_remove(self):
         ent1 = MyEntity()
         self._session.add(MyEntity, ent1)
-        self.assert_true(self._session.get_by_slug(MyEntity, ent1.slug)
+        self.assert_true(self._session.get_by_slug(MyEntity, ent1.slug)[0]
                          is ent1)
         self._session.remove(MyEntity, ent1)
         self.assert_is_none(self._session.get_by_slug(MyEntity, ent1.slug))
         ent2 = MyEntity()
         self._session.add(MyEntity, ent2)
-        self.assert_true(self._session.get_by_slug(MyEntity, ent2.slug)
+        self.assert_true(self._session.get_by_slug(MyEntity, ent2.slug)[0]
                          is ent2)
         self._session.remove(MyEntity, ent2)
         self.assert_is_none(self._session.get_by_slug(MyEntity, ent2.slug))
@@ -293,17 +294,6 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
 
     @patch('%s.entities.MyEntity.slug' %
            _MemorySessionTestCaseBase.package_name, 'slug')
-    def test_failing_flush_duplicate_slug(self):
-        ent1 = MyEntity()
-        self._session.add(MyEntity, ent1)
-        ent2 = MyEntity()
-        ent2.slug = None
-        self._session.add(MyEntity, ent2)
-        ent2.slug = 'slug'
-        self.assert_raises(ValueError, self._session.commit)
-
-    @patch('%s.entities.MyEntity.slug' %
-           _MemorySessionTestCaseBase.package_name, 'slug')
     def test_find_added_by_id(self):
         ent1 = MyEntity(id=0)
         self._session.add(MyEntity, ent1)
@@ -316,9 +306,9 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
     def test_find_added_by_slug(self):
         ent1 = MyEntity()
         self._session.add(MyEntity, ent1)
-        ent2 = self._session.get_by_slug(MyEntity, ent1.slug)
-        self.assert_is_not_none(ent2)
-        self.assert_equal(ent1.id, ent2.id)
+        ents = self._session.get_by_slug(MyEntity, ent1.slug)
+        self.assert_is_not_none(ents)
+        self.assert_equal(ent1.id, ents[0].id)
 
     @patch('%s.entities.MyEntity.slug' %
            _MemorySessionTestCaseBase.package_name, None)
@@ -326,9 +316,9 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         ent1 = MyEntity()
         self._session.add(MyEntity, ent1)
         ent1.slug = 'testslug'
-        ent2 = self._session.get_by_slug(MyEntity, ent1.slug)
-        self.assert_is_not_none(ent2)
-        self.assert_equal(ent1.id, ent2.id)
+        ents = self._session.get_by_slug(MyEntity, ent1.slug)
+        self.assert_is_not_none(ents)
+        self.assert_equal(ent1.id, ents[0].id)
 
     def test_update(self):
         ent1 = MyEntity(id=0)

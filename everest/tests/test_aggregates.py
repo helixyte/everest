@@ -252,6 +252,20 @@ class _TestRelationshipAggregate(object):
 class TestMemoryRelationshipAggregate(_TestRelationshipAggregate):
     config_file_name = 'configure_no_rdb.zcml'
 
+    def test_non_unique_slug(self, class_entity_repo, entity_tree_fac,
+                             monkeypatch):
+        text = 'SLUG'
+        ent0 = entity_tree_fac(id=0, text=text)
+        ent1 = entity_tree_fac(id=1, text=text)
+        root_agg = class_entity_repo.get_aggregate(IMyEntity)
+        root_agg.add(ent0)
+        root_agg.add(ent1)
+        monkeypatch.setattr(MyEntityChild, 'slug',
+                            property(lambda self: self.text))
+        child_rel_agg = self._make_rel_agg(class_entity_repo, ent1)
+        assert len(list(iter(child_rel_agg))) == 1
+        assert child_rel_agg.get_by_slug(text) == ent1.children[0]
+
 
 @pytest.mark.usefixtures('rdb')
 class TestRdbRelationshipAggregate(_TestRelationshipAggregate):

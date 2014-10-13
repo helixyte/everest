@@ -64,19 +64,19 @@ class MemorySession(Session):
         return cache.get_by_id(entity_id)
 
     def get_by_slug(self, entity_class, entity_slug):
-        # When the entity is not found in the cache, it may have been added
-        # with an undefined slug; we therefore attempt to look it up in the
-        # list of pending NEW entities.
         if self.__needs_flushing:
             self.flush()
         cache = self.__get_cache(entity_class)
-        ent = cache.get_by_slug(entity_slug)
+        ents = cache.get_by_slug(entity_slug)
+#        # When the entity is not found in the cache, it may have been added
+#        # with an undefined slug; we therefore attempt to look it up in the
+#        # list of pending NEW entities.
 #        if ent is None:
 #            for new_ent in self.__unit_of_work.get_new(entity_class):
 #                if new_ent.slug == entity_slug:
 #                    ent = new_ent
 #                    break
-        return ent
+        return ents
 
     def add(self, entity_class, data):
         self.__traverse(entity_class, data, None, RELATION_OPERATIONS.ADD)

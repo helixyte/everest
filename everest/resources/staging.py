@@ -44,7 +44,17 @@ class StagingAggregate(Aggregate):
         return self.__cache_map.get_by_id(self.entity_class, id_key)
 
     def get_by_slug(self, slug):
-        return self.__cache_map.get_by_slug(self.entity_class, slug)
+        ents = self.__cache_map.get_by_slug(self.entity_class, slug)
+        if ents is None:
+            ent = None
+        else:
+            if len(ents) > 1:
+                raise ValueError('More than one entity with slug "%s" in '
+                                 'staging aggregate.' % slug)
+            else:
+                ent = ents[0]
+        return ent
+
 
     def add(self, entity):
         trv = SourceTargetDataTreeTraverser.make_traverser(
@@ -73,6 +83,9 @@ class StagingAggregate(Aggregate):
 
     def query(self):
         return self.__cache_map.query(self.entity_class)
+
+    def sync_with_repository(self):
+        pass
 
     def __add(self, entity_class, entity):
         self.__cache_map.add(entity_class, entity)
