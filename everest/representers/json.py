@@ -143,9 +143,11 @@ class JsonRepresentationParser(RepresentationParser):
     Implementation of a representation parser for JSON.
     """
     def run(self):
-        json_data = loads(self._stream.read(),
+        in_string = self._stream.read()
+        json_data = loads(in_string,
                           encoding=self.get_option('encoding', 'utf-8'))
-        trv = JsonDataTreeTraverser(json_data, self._mapping)
+        trv = JsonDataTreeTraverser(json_data, self._mapping,
+                                    check_attribute_ignore=False)
         vst = DataElementBuilderRepresentationDataVisitor(self._mapping)
         trv.run(vst)
         return vst.data_element

@@ -7,6 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Apr 25, 2012.
 """
 from collections import OrderedDict
+
+from pyramid.compat import iteritems_
+from pyramid.threadlocal import get_current_registry
+
 from everest.attributes import is_terminal_attribute
 from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
@@ -14,7 +18,6 @@ from everest.constants import RESOURCE_KINDS
 from everest.entities.utils import get_entity_class
 from everest.interfaces import IDataTraversalProxyFactory
 from everest.representers.attributes import MappedAttributeKey
-from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import WRITE_AS_LINK_OPTION
 from everest.representers.config import WRITE_MEMBERS_AS_LINK_OPTION
 from everest.representers.interfaces import ICollectionDataElement
@@ -28,9 +31,8 @@ from everest.traversal import ConvertingDataTraversalProxyMixin
 from everest.traversal import DataTraversalProxy
 from everest.traversal import DataTraversalProxyAdapter
 from everest.utils import set_nested_attribute
-from pyramid.compat import iteritems_
-from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['DataElementBuilderRepresentationDataVisitor',
@@ -261,10 +263,12 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     """
     Abstract base class for resource data tree traversers.
     """
-    def __init__(self, root, mapping, ignore_none_values=True):
+    def __init__(self, root, mapping, ignore_none_values=True,
+                 check_attribute_ignore=True):
         DataTreeTraverser.__init__(self, root)
         self._mapping = mapping
         self.__ignore_none_values = ignore_none_values
+        self.__check_attribute_ignore = check_attribute_ignore
 
     def _traverse_member(self, attr_key, attr, member_node, parent_data,
                          visitor, index=None):
@@ -281,8 +285,9 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
                 node_type = self._get_node_type(member_node)
             for mb_attr in self._mapping.attribute_iterator(node_type,
                                                             attr_key):
-                ignore_opt = self._get_ignore_option(mb_attr)
-                if mb_attr.should_ignore(attr_key):
+                ignore_opt = self.__check_attribute_ignore \
+                             and mb_attr.should_ignore(attr_key)
+                if ignore_opt:
                     continue
                 if mb_attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
                     # Terminal attribute - extract.
@@ -321,9 +326,6 @@ class ResourceDataTreeTraverser(DataTreeTraverser):
     def _get_node_nested(self, node, attr):
         raise NotImplementedError('Abstract method.')
 
-    def _get_ignore_option(self, attr):
-        return attr.options.get(IGNORE_OPTION)
-
 
 class DataElementTreeTraverser(ResourceDataTreeTraverser):
     """
@@ -332,12 +334,6 @@ class DataElementTreeTraverser(ResourceDataTreeTraverser):
     This legacy traverser is only needed to generate a representation from
     a data element tree.
     """
-    def __init__(self, root, mapping,
-                 ignore_none_values=True):
-        ResourceDataTreeTraverser.__init__(
-                                    self, root, mapping,
-                                    ignore_none_values=ignore_none_values)
-
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
         if IMemberDataElement in ifcs:
@@ -375,11 +371,6 @@ class ResourceTreeTraverser(ResourceDataTreeTraverser):
     """
     Mapping traverser for resource trees.
     """
-    def __init__(self, root, mapping, ignore_none_values=True):
-        ResourceDataTreeTraverser.__init__(
-                                    self, root, mapping,
-                                    ignore_none_values=ignore_none_values)
-
     def _dispatch(self, attr_key, attr, node, parent_data, visitor):
         ifcs = provided_by(node)
         if IMemberResource in ifcs:

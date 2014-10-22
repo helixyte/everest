@@ -113,7 +113,13 @@ class BooleanConverter(object):
         if value is None:
             py_val = None
         else:
-            py_val = False if value == 'false' else True
+            if value.lower() == 'false':
+                py_val = False
+            elif value.lower() == 'true':
+                py_val = True
+            else:
+                raise ValueError('Can not convert "%s" to a boolean value.'
+                                 % value)
         return py_val
 
     @classmethod
