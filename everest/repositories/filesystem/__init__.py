@@ -6,5 +6,4 @@ Created on Jan 7, 2013.
 
 Package initialization file.
 """
-from .repository import FileSystemRepository as Repository
 

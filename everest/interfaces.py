@@ -36,7 +36,7 @@ __all__ = ['IAtomEntryMime',
            'IZipMime'
            ]
 
-# no self, no __init__, no args  pylint: disable=E0213,W0232,E0211
+# no self, no __init__, no args  pylint: disable=E0213,E0211,W0232,W0221
 
 class IJsonRequest(Interface):
     """Marker interface for a JSON request."""
@@ -179,19 +179,18 @@ class IDataTraversalProxyFactory(Interface):
     """
     Interface for data traversal proxy factories.
     """
-    def make_source_proxy(data, options=None):
-        """
-        Creates a source data traversal proxy.
-        """
-
-    def make_target_proxy(data, accessor,
-                          manage_back_references=True, options=None):
-        """
-        Creates a target data traversal proxy.
-        """
+#    def make_source_proxy(data, options=None):
+#        """
+#        Creates a source data traversal proxy.
+#        """
+#
+#    def make_target_proxy(data, accessor, options=None):
+#        """
+#        Creates a target data traversal proxy.
+#        """
 
     def make_proxy(self, data, accessor, relationship_direction,
-                   options=None):
+                   relation_operation, options=None):
         """
         Creates a data traversal proxy.
         """
@@ -244,4 +243,4 @@ class IRelationship(Interface):
           and :param:`safe` is not set.
         """
 
-# pylint: enable=E0213,W0232,E0211
+# pylint: enable=E0213,E0211,W0232,W0221

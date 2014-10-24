@@ -8,9 +8,16 @@ Created on Feb 4, 2011.
 """
 from collections import MutableSequence
 from collections import MutableSet
+from logging import getLogger as get_logger
+
+from pyramid.compat import itervalues_
+from pyramid.threadlocal import get_current_registry
+from pyramid.traversal import ResourceTreeTraverser
+
 from everest.attributes import get_attribute_cardinality
 from everest.attributes import is_terminal_attribute
 from everest.constants import CARDINALITY_CONSTANTS
+from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.constants import RELATION_OPERATIONS
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.constants import RESOURCE_KINDS
@@ -18,13 +25,10 @@ from everest.interfaces import IDataTraversalProxyAdapter
 from everest.interfaces import IDataTraversalProxyFactory
 from everest.resources.interfaces import IResource
 from everest.traversalpath import TraversalPath
-from logging import getLogger as get_logger
-from pyramid.compat import itervalues_
-from pyramid.threadlocal import get_current_registry
-from pyramid.traversal import ResourceTreeTraverser
 from zope.interface import implementer # pylint: disable=E0611,F0401
-#from everest.resources.staging import create_staging_collection
 
+
+#from everest.resources.staging import create_staging_collection
 __docformat__ = 'reStructuredText en'
 __all__ = ['ConvertingDataTraversalProxyMixin',
            'DataSequenceTraversalProxy',
@@ -72,8 +76,9 @@ class DataSequenceTraversalProxy(object):
     #: Constant indicating that this proxy is for collection resource data.
     proxy_for = RESOURCE_KINDS.COLLECTION
 
-    def __init__(self, proxies):
+    def __init__(self, proxies, relation_operation):
         self.__proxies = proxies
+        self.relation_operation = relation_operation
 
     def __iter__(self):
         return iter(self.__proxies)
@@ -90,17 +95,20 @@ class DataTraversalProxy(object):
     #: Constant indicating that this proxy is for member resource data.
     proxy_for = RESOURCE_KINDS.MEMBER
 
-    def __init__(self, data, accessor, relationship_direction):
+    def __init__(self, data, accessor, relationship_direction,
+                 relation_operation):
         """
-        :param data: root of the data tree to traverse.
-        :param relationship_direction: constant indicating which relation
+        :param data: Root of the data tree to traverse.
+        :param relationship_direction: Constant indicating which relation
           direction(s) to consider for managing references.
+        :param relation_operation: Constant indicating the relation operation
+          for the traversal.
         """
         super(DataTraversalProxy, self).__init__()
         self.relationship_direction = relationship_direction
+        self.relation_operation = relation_operation
         self._data = data
         self._accessor = accessor
-        self._relationships = {}
 
     def get_relationship_attributes(self):
         """
@@ -124,7 +132,8 @@ class DataTraversalProxy(object):
             prx_fac = reg.getUtility(IDataTraversalProxyFactory)
             prx = prx_fac.make_proxy(value,
                                      self._accessor,
-                                     self.relationship_direction)
+                                     self.relationship_direction,
+                                     self.relation_operation)
         else:
             prx = None
         return prx
@@ -151,20 +160,6 @@ class DataTraversalProxy(object):
                 else:
                     yield (attr, attr_val)
 
-    def set_relationship(self, attribute, relationship):
-        """
-        Sets the given domain relationship object for the given resource
-        attribute.
-        """
-        self._relationships[attribute.entity_attr] = relationship
-
-    def get_relationship(self, attribute):
-        """
-        Returns the domain relationship object for the given resource
-        attribute.
-        """
-        return self._relationships[attribute.entity_attr]
-
     def get_attribute_proxy(self, attribute):
         """
         Returns a traversal proxy (cardinality ONE) or an iterable sequence
@@ -178,13 +173,16 @@ class DataTraversalProxy(object):
             prx = None
         else:
             if not self._accessor is None:
-                acc = self._make_accessor(attribute.attr_type)
+                # FIXME: This implies that the accessor is an aggregate.
+                acc = self._accessor.get_root_aggregate(attribute.attr_type)
             else:
                 acc = None
             reg = get_current_registry()
             prx_fac = reg.getUtility(IDataTraversalProxyFactory)
-            prx = prx_fac.make_proxy(attr_val, acc,
+            prx = prx_fac.make_proxy(attr_val,
+                                     acc,
                                      self.relationship_direction,
+                                     self.relation_operation,
                                      options=
                                         self._get_proxy_options(attribute))
         return prx
@@ -202,20 +200,6 @@ class DataTraversalProxy(object):
         implementation returns an emtpy dictionary.
         """
         return {}
-
-    def _get_relatee(self, attribute):
-        """
-        Returns the relatee for the given relation attribute.
-
-        :raises AttributeError: If no relatee for the given attribute has
-          been set.
-        """
-        try:
-            rel = self._relationships[attribute.entity_attr]
-        except KeyError:
-            raise AttributeError(attribute)
-        else:
-            return rel.relatee
 
     def get_id(self):
         """
@@ -268,12 +252,6 @@ class DataTraversalProxy(object):
         """
         raise NotImplementedError('Abstract method.')
 
-    def _make_accessor(self, value_type):
-        """
-        Creates a new target accessor for the given value.
-        """
-        raise NotImplementedError('Abstract method.')
-
     def __str__(self):
         return "%s(id=%s)" % (self._data.__class__.__name__, self.get_id())
 
@@ -299,37 +277,8 @@ class DataTraversalProxyFactory(object):
     """
     Factory for data traversal proxies.
     """
-    def make_source_proxy(self, data, options=None):
-        """
-        Returns a data traversal proxy for the given source data.
-
-        This is a convenience factory function to use when manually setting
-        up a data traversal proxy for source data.
-
-        :raises ValueError: If there is no adapter for the given traversal
-          data and the data is not iterable.
-        """
-        return self.__make_proxy('make_source_proxy', data, (),
-                                 dict(options=options))
-
-    def make_target_proxy(self, data, accessor, manage_back_references=True,
-                          options=None):
-        """
-        Returns a data traversal proxy for the given target data.
-
-        This is a convenience factory function to use when manually setting
-        up a data traversal proxy for target data.
-
-        :raises ValueError: If there is no adapter for the given traversal
-          data and the data is not iterable.
-        """
-        return self.__make_proxy('make_target_proxy', data, (accessor,),
-                                 dict(manage_back_references=
-                                            manage_back_references,
-                                      options=options))
-
     def make_proxy(self, data, accessor, relationship_direction,
-                   options=None):
+                   relation_operation, options=None):
         """
         Returns a data traversal proxy for the given data.
 
@@ -339,18 +288,14 @@ class DataTraversalProxyFactory(object):
         :raises ValueError: If there is no adapter for the given traversal
           data and the data is not iterable.
         """
-        return self.__make_proxy('make_proxy', data,
-                                 (accessor, relationship_direction),
-                                 dict(options=options))
-
-    def __make_proxy(self, method_name, data, args, options):
         # We first check if we have a registered adapter for the given data;
         # if not, we assume it is a mutable sequence or set; if that fails,
         # we raise a ValueError.
         reg = get_current_registry()
         adp = reg.queryAdapter(data, IDataTraversalProxyAdapter)
         if not adp is None:
-            prx = getattr(adp, method_name)(*args, **options)
+            prx = adp.make_proxy(accessor, relationship_direction,
+                                 relation_operation, options=options)
         else:
             if not isinstance(data, (MutableSequence, MutableSet)):
                 # Assuming an iterable is not enough here.
@@ -363,9 +308,10 @@ class DataTraversalProxyFactory(object):
                     if adp is None:
                         raise ValueError('Invalid data type for traversal: '
                                          '%s.' % type(item))
-                    prx = getattr(adp, method_name)(*args, **options)
+                    prx = adp.make_proxy(accessor, relationship_direction,
+                                         relation_operation, options=options)
                     prxs.append(prx)
-                prx = DataSequenceTraversalProxy(prxs)
+                prx = DataSequenceTraversalProxy(prxs, relation_operation)
         return prx
 
 
@@ -378,32 +324,20 @@ class DataTraversalProxyAdapter(object):
     on a resource data tree node's value.
     """
     #: The data traversal proxy class used by this factory.
-    proxy_class = lambda *args: None
+    proxy_class = lambda *args: None # Avoids pylint complaint "not callable".
 
     def __init__(self, data):
         self._data = data
 
-    def make_source_proxy(self, options=None):
-        """
-        Returns a data traversal proxy for the adapted data.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def make_target_proxy(self, accessor, manage_back_references=True,
-                          options=None):
-        """
-        Returns a data traversal proxy for the adapted data.
-        """
-        raise NotImplementedError('Abstract method.')
-
-    def make_proxy(self, accessor, relationship_direction, options=None):
+    def make_proxy(self, accessor, relationship_direction,
+                   relation_operation, options=None):
         """
         Returns a data traversal proxy for the adapted data.
         """
         if options is None:
             options = {}
-        return self.proxy_class(self._data, accessor,
-                                   relationship_direction, **options)
+        return self.proxy_class(self._data, accessor, relationship_direction,
+                                relation_operation, **options)
 
 
 class ConvertingDataTraversalProxyMixin(object):
@@ -472,8 +406,7 @@ class SourceTargetDataTreeTraverser(object):
 
     @classmethod
     def make_traverser(cls, source_data, target_data, relation_operation,
-                       accessor=None, manage_back_references=True,
-                       source_proxy_options=None, target_proxy_options=None):
+                       accessor=None, manage_back_references=True):
         """
         Factory method to create a tree traverser depending on the input
         source and target data combination.
@@ -484,7 +417,8 @@ class SourceTargetDataTreeTraverser(object):
           defined in :class:`everest.constants.RELATION_OPERATIONS`.
         :param accessor: Accessor for looking up target nodes for update
           operations.
-        :param bool manage_back_references: Flag passed to the target proxy.
+        :param bool manage_back_references: If set, backreferences will
+          automatically be updated in the target data.
         """
         reg = get_current_registry()
         prx_fac = reg.getUtility(IDataTraversalProxyFactory)
@@ -494,9 +428,10 @@ class SourceTargetDataTreeTraverser(object):
                and not target_data is None:
                 raise ValueError('Must not provide target data with '
                                  'relation operation ADD.')
-            source_proxy = \
-                    prx_fac.make_source_proxy(source_data,
-                                              options=source_proxy_options)
+            source_proxy = prx_fac.make_proxy(source_data,
+                                              None,
+                                              RELATIONSHIP_DIRECTIONS.NONE,
+                                              relation_operation)
             source_is_sequence = \
                 source_proxy.proxy_for == RESOURCE_KINDS.COLLECTION
             if not source_is_sequence:
@@ -506,18 +441,17 @@ class SourceTargetDataTreeTraverser(object):
             source_is_sequence = False
         if relation_operation == RELATION_OPERATIONS.REMOVE \
            or relation_operation == RELATION_OPERATIONS.UPDATE:
-            if target_proxy_options is None:
-                target_proxy_options = {}
+            rel_dir = RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL
+            if not manage_back_references:
+                rel_dir &= ~RELATIONSHIP_DIRECTIONS.REVERSE
             if relation_operation == RELATION_OPERATIONS.REMOVE:
                 if not source_data is None:
                     raise ValueError('Must not provide source data with '
                                      'relation operation REMOVE.')
-                target_proxy = prx_fac.make_target_proxy(
-                                            target_data,
-                                            accessor,
-                                            manage_back_references=
-                                                     manage_back_references,
-                                            options=target_proxy_options)
+                target_proxy = prx_fac.make_proxy(target_data,
+                                                  accessor,
+                                                  rel_dir,
+                                                  relation_operation)
             else: # UPDATE
                 if accessor is None:
                     raise ValueError('Need to provide an accessor when '
@@ -541,12 +475,10 @@ class SourceTargetDataTreeTraverser(object):
                         if tgt_ent is None:
                             continue
                         target_root.append(tgt_ent)
-                target_proxy = prx_fac.make_target_proxy(
-                                            target_root,
-                                            accessor,
-                                            manage_back_references=
-                                                 manage_back_references,
-                                            options=target_proxy_options)
+                target_proxy = prx_fac.make_proxy(target_root,
+                                                  accessor,
+                                                  rel_dir,
+                                                  relation_operation)
             target_is_sequence = \
                     target_proxy.proxy_for == RESOURCE_KINDS.COLLECTION
         else:
@@ -594,8 +526,9 @@ class SourceTargetDataTreeTraverser(object):
         if __debug__:
             self.__log_traverse_one(self.__trv_path, attribute, source, target)
         prx = source or target
-        if prx.do_traverse():
-            rel_op = RELATION_OPERATIONS.check(source, target)
+        rel_op = RELATION_OPERATIONS.check(source, target)
+        if prx.do_traverse() \
+           and (rel_op == prx.relation_operation or attribute is None):
             for attr in prx.get_relationship_attributes():
                 # Check cascade settings.
                 if not bool(attr.cascade & rel_op):

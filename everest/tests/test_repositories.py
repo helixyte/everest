@@ -14,24 +14,25 @@ from everest.entities.system import UserMessage
 from everest.interfaces import IUserMessage
 from everest.mime import CsvMime
 from everest.repositories.constants import REPOSITORY_TYPES
-from everest.repositories.memory import Aggregate
-from everest.repositories.memory import Repository
+from everest.repositories.memory.aggregate import MemoryAggregate as Aggregate
+from everest.repositories.memory.repository \
+                            import MemoryRepository as Repository
 from everest.resources.staging import create_staging_collection
 from everest.resources.storing import get_collection_name
 from everest.resources.storing import get_read_collection_path
 from everest.resources.utils import get_service
 from everest.tests.complete_app.entities import MyEntity
+from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityGrandchild
 from everest.tests.complete_app.interfaces import IMyEntityParent
+from everest.tests.complete_app.resources import MyEntityChildMember
 from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooMember
 from everest.utils import get_repository_manager
-from everest.tests.complete_app.entities import MyEntityChild
-from everest.tests.complete_app.resources import MyEntityChildMember
 
 
 __docformat__ = 'reStructuredText en'

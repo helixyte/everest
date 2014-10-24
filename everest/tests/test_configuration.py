@@ -17,7 +17,7 @@ from everest.querying.interfaces import IOrderSpecificationFactory
 from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.repositories.constants import REPOSITORY_TYPES
 from everest.repositories.interfaces import IRepositoryManager
-from everest.repositories.memory import Aggregate
+from everest.repositories.memory.aggregate import MemoryAggregate as Aggregate
 from everest.representers.csv import CsvResourceRepresenter
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.resources.interfaces import IService

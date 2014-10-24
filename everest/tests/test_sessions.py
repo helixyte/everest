@@ -4,22 +4,25 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 13, 2012.
 """
+import gc
+
+from mock import patch
+from pyramid.threadlocal import get_current_registry
+
 from everest.entities.utils import new_entity_id
 from everest.querying.interfaces import IFilterSpecificationFactory
 from everest.querying.specifications import FilterSpecificationFactory
-from everest.repositories.memory import Aggregate
-from everest.repositories.memory import Repository
+from everest.repositories.memory.aggregate import MemoryAggregate as Aggregate
+from everest.repositories.memory.repository \
+                                        import MemoryRepository as Repository
 from everest.testing import EntityTestCase
 from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.entities import MyEntityChild
 from everest.tests.complete_app.entities import MyEntityParent
-from mock import patch
-from pyramid.threadlocal import get_current_registry
-import gc
-from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
 from everest.tests.complete_app.interfaces import IMyEntityGrandchild
+from everest.tests.complete_app.interfaces import IMyEntityParent
 
 
 __docformat__ = 'reStructuredText en'

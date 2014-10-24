@@ -1,10 +1,10 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jul 5, 2011.
 """
-from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb.querying import SqlFilterSpecificationVisitor
 from everest.querying.specifications import ValueEqualToFilterSpecification
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.simple_app.entities import FooEntity

@@ -44,8 +44,12 @@ class MappedAttributeKey(object):
         return hash(self.names)
 
     def __eq__(self, other):
-        return all((left == right for (left, right)
-                    in izip(self.names, other)))
+        if isinstance(other, MappedAttributeKey):
+            result = self.names == other.names
+        else:
+            result = all((left == right for (left, right)
+                          in izip(self.names, other)))
+        return result
 
     def __getitem__(self, index):
         return self.attributes.__getitem__(index)

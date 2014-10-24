@@ -1,17 +1,20 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Feb 4, 2011.
 """
+import random
+
+from mock import MagicMock
+
 from everest.querying.ordering import BubbleSorter
 from everest.querying.specifications import AscendingOrderSpecification
 from everest.querying.specifications import DescendingOrderSpecification
-from everest.repositories.rdb import SqlOrderSpecificationVisitor
+from everest.repositories.rdb.querying import SqlOrderSpecificationVisitor
 from everest.testing import Pep8CompliantTestCase
 from everest.tests.simple_app.entities import FooEntity
-from mock import MagicMock
-import random
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AscendingOrderSpecificationTestCase',

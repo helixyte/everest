@@ -37,6 +37,15 @@ class Relationship(object):
     def specification(self):
         return self.__make_specification()
 
+    @property
+    def relatee(self):
+        ref_attr = self._get_specification_attributes()[0]
+        try:
+            rel = get_nested_attribute(self.relator, ref_attr)
+        except AttributeError:
+            rel = None
+        return rel
+
     def add(self, related, direction=None, safe=False):
         raise NotImplementedError('Abstract method.')
 

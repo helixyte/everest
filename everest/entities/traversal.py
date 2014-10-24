@@ -6,7 +6,6 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 8, 2013.
 """
-from everest.constants import RELATIONSHIP_DIRECTIONS
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.attributes import get_domain_class_attribute_iterator
 from everest.entities.relationship import LazyDomainRelationship
@@ -128,7 +127,7 @@ class AruVisitor(ResourceDataTreeVisitor):
             # No source - REMOVE.
             entity = target.get_entity()
             if not is_root:
-                rel = self.__get_relationship(parent, attribute)
+                rel = parent.get_relationship(attribute)
                 rel.remove(entity)
             if not self.__remove_callback is None:
                 if self.__pass_path_to_callbacks:
@@ -148,7 +147,7 @@ class AruVisitor(ResourceDataTreeVisitor):
                         add_opts = dict(safe=True)
                     else:
                         add_opts = dict()
-                    rel = self.__get_relationship(parent, attribute)
+                    rel = parent.get_relationship(attribute)
                     rel.add(entity, **add_opts)
                 if not self.__add_callback is None:
                     if self.__pass_path_to_callbacks:
@@ -171,31 +170,26 @@ class AruVisitor(ResourceDataTreeVisitor):
                 if not is_root:
                     # The relationship with the old value has already been
                     # severed, so we only need to ADD here.
-                    rel = self.__get_relationship(parent, attribute)
+                    rel = parent.get_relationship(attribute)
                     rel.add(entity)
         if is_root:
             self.root = entity
-        else:
+        elif isinstance(rel, LazyDomainRelationship):
             self.__commands.append(rel)
 
     def finalize(self):
         for cmd in self.__commands:
             cmd()
 
-    def __get_relationship(self, proxy, attribute):
-        try:
-            rel = proxy.get_relationship(attribute)
-        except KeyError:
-            rel = LazyDomainRelationship(
-                                proxy, attribute,
-                                direction=proxy.relationship_direction)
-            proxy.set_relationship(attribute, rel)
-        return rel
-
 
 class DomainDataTraversalProxy(DataTraversalProxy):
     def get_id(self):
         return self._data.id
+
+    def get_relationship(self, attribute):
+        return attribute.make_relationship(self._data,
+                                           direction=
+                                                self.relationship_direction)
 
     def _get_entity_type(self):
         return type(self._data)
@@ -215,23 +209,9 @@ class DomainDataTraversalProxy(DataTraversalProxy):
     def _get_proxied_attribute_value(self, attribute):
         return get_nested_attribute(self._data, attribute.entity_attr)
 
-    def _make_accessor(self, value_type):
-        return self._accessor.get_root_aggregate(value_type)
-
 
 class DomainDataTraversalProxyAdapter(DataTraversalProxyAdapter):
     proxy_class = DomainDataTraversalProxy
-
-    def make_source_proxy(self, options=None):
-        rel_drct = RELATIONSHIP_DIRECTIONS.NONE
-        return self.make_proxy(None, rel_drct, options=options)
-
-    def make_target_proxy(self, accessor,
-                          manage_back_references=True, options=None):
-        rel_drct = RELATIONSHIP_DIRECTIONS.BIDIRECTIONAL
-        if not manage_back_references:
-            rel_drct &= ~RELATIONSHIP_DIRECTIONS.REVERSE
-        return self.make_proxy(accessor, rel_drct, options=options)
 
 
 class LinkedDomainDataTraversalProxy(DomainDataTraversalProxy):
@@ -245,11 +225,11 @@ class LinkedDomainDataTraversalProxy(DomainDataTraversalProxy):
 class LinkedDomainDataTraversalProxyAdapter(DomainDataTraversalProxyAdapter):
     proxy_class = LinkedDomainDataTraversalProxy
 
-    def make_target_proxy(self, accessor,
-                          manage_back_references=True, options=None):
-        raise NotImplementedError('Not implemented.')
+#    def make_target_proxy(self, accessor, options=None):
+#        raise NotImplementedError('Not implemented.')
 
-    def make_proxy(self, accessor, relationship_direction, options=None):
+    def make_proxy(self, accessor, relationship_direction,
+                   relation_operation, options=None):
         # Note: We ignore the options; if something was passed here,
         #       it came from a parent data element data traversal proxy.
         url = self._data.get_url()
@@ -258,10 +238,12 @@ class LinkedDomainDataTraversalProxyAdapter(DomainDataTraversalProxyAdapter):
             reg = get_current_registry()
             prx_fac = reg.getUtility(IDataTraversalProxyFactory)
             prx = prx_fac.make_proxy([mb.get_entity() for mb in rc],
-                                     accessor, relationship_direction)
+                                     accessor, relationship_direction,
+                                     relation_operation)
         else:
             prx = LinkedDomainDataTraversalProxy(rc.get_entity(),
                                                  accessor,
-                                                 relationship_direction)
+                                                 relationship_direction,
+                                                 relation_operation)
         return prx
 

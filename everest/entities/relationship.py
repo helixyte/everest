@@ -115,11 +115,13 @@ class LazyDomainRelationship(DomainRelationship):
                 self.__action(self, entity, **self.__kw)
 
     def __lazy_action(self, method, related, kw):
-#        # FIXME: These checks ought to be enabled!
+        # FIXME: These checks ought to be enabled!
 #        if not self.__action is None and method != self.__action:
 #            raise ValueError('Must use the same action for repeated use '
 #                             'of a lazy relationship.')
         self.__action = method
+        if kw['direction'] is None:
+            kw['direction'] = self.direction
 #        if not self.__kw is None and kw != self.__kw:
 #            raise ValueError('Must use the same options for repeated use '
 #                             'of a lazy relationship.')

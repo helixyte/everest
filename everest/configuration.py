@@ -48,11 +48,11 @@ from everest.repositories.filesystem.repository import FileSystemRepository
 from everest.repositories.interfaces import IRepository
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.manager import RepositoryManager
-from everest.repositories.memory import ObjectFilterSpecificationVisitor
-from everest.repositories.memory import ObjectOrderSpecificationVisitor
+from everest.repositories.memory.querying import ObjectFilterSpecificationVisitor
+from everest.repositories.memory.querying import ObjectOrderSpecificationVisitor
 from everest.repositories.memory.repository import MemoryRepository
-from everest.repositories.rdb import SqlFilterSpecificationVisitor
-from everest.repositories.rdb import SqlOrderSpecificationVisitor
+from everest.repositories.rdb.querying import SqlFilterSpecificationVisitor
+from everest.repositories.rdb.querying import SqlOrderSpecificationVisitor
 from everest.repositories.rdb.repository import RdbRepository
 from everest.representers.atom import AtomResourceRepresenter
 from everest.representers.base import MappingResourceRepresenter

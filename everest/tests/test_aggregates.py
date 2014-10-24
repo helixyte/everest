@@ -161,7 +161,6 @@ class _TestRelationshipAggregate(object):
         new_ent1 = MyEntity()
         new_ent1.parent = new_parent1
         new_child1 = MyEntityChild()
-        new_child1.parent = new_ent1
         child_rel_agg = self._make_rel_agg(class_entity_repo, new_ent1)
         assert len(list(child_agg.iterator())) == 1
         assert len(list(agg.iterator())) == 1

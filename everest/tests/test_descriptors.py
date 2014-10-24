@@ -4,9 +4,13 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2011.
 """
+import datetime
+
+from mock import patch
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.querying.specifications import FilterSpecificationFactory
-from everest.repositories.rdb import SqlFilterSpecificationVisitor
+from everest.repositories.rdb.querying import SqlFilterSpecificationVisitor
 from everest.repositories.rdb.testing import RdbTestCaseMixin
 from everest.representers.config import IGNORE_OPTION
 from everest.representers.config import RepresenterConfiguration
@@ -47,8 +51,7 @@ from everest.tests.complete_app.resources import MyEntityMember
 from everest.tests.complete_app.resources import MyEntityParentMember
 from everest.tests.complete_app.testing import create_collection
 from everest.tests.complete_app.testing import create_entity
-from mock import patch
-import datetime
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AttributesTestCase',

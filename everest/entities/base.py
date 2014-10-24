@@ -15,6 +15,9 @@ from everest.querying.utils import get_filter_specification_factory
 from everest.utils import get_filter_specification_visitor
 from everest.utils import get_order_specification_visitor
 from zope.interface import implementer # pylint: disable=E0611,F0401
+from everest.repositories.memory.querying import EvalFilterExpression
+from everest.repositories.memory.querying import EvalOrderExpression
+from everest.repositories.memory.querying import MemoryQuery
 
 
 __docformat__ = 'reStructuredText en'
@@ -537,3 +540,26 @@ class RelationshipAggregate(Aggregate):
         return filter_spec
 
     filter = property(_get_filter, Aggregate._set_filter)
+
+    def iterator(self):
+        rel = self._relationship.relatee
+        if not rel is None:
+            if not self._filter_spec is None \
+               or not self._order_spec is None \
+               or not self._slice_key is None:
+                q = MemoryQuery(self.entity_class, rel)
+                if not self._filter_spec is None:
+                    filter_expr = EvalFilterExpression(self._filter_spec)
+                    q = q.filter(filter_expr)
+                if not self._order_spec is None:
+                    order_expr = EvalOrderExpression(self._order_spec)
+                    q = q.order(order_expr)
+                if not self._slice_key is None:
+                    q.slice(self._slice_key.start, self._slice_key.stop)
+                it = iter(q)
+            else:
+                it = iter(rel)
+        else:
+            it = Aggregate.iterator(self)
+        return it
+

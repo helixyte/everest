@@ -1,19 +1,20 @@
 """
-This file is part of the everest project. 
+This file is part of the everest project.
 See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 1, 2012.
 """
-from everest.repositories.memory import Aggregate
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import get_root_aggregate
 from everest.entities.utils import identifier_from_slug
 from everest.entities.utils import slug_from_identifier
 from everest.entities.utils import slug_from_integer
 from everest.entities.utils import slug_from_string
+from everest.repositories.memory.aggregate import MemoryAggregate as Aggregate
 from everest.testing import EntityTestCase
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['EntitiesUtilsTestCase',
