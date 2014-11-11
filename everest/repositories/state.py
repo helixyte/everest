@@ -42,18 +42,8 @@ class EntityState(object):
     Not all status transitions are allowed.
     """
     # FIXME: Need a proper state diagram here or drop tracking alltogether.
-    __allowed_transitions = set([(None, ENTITY_STATUS.NEW),
-                                 (None, ENTITY_STATUS.CLEAN),
-                                 (None, ENTITY_STATUS.DELETED),
-                                 (ENTITY_STATUS.NEW, ENTITY_STATUS.CLEAN),
-                                 (ENTITY_STATUS.NEW, ENTITY_STATUS.DELETED),
-                                 (ENTITY_STATUS.DELETED, ENTITY_STATUS.CLEAN),
-                                 (ENTITY_STATUS.DELETED, ENTITY_STATUS.NEW),
-                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.DIRTY),
-                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.DELETED),
-                                 (ENTITY_STATUS.CLEAN, ENTITY_STATUS.NEW),
-                                 (ENTITY_STATUS.DIRTY, ENTITY_STATUS.CLEAN),
-                                 (ENTITY_STATUS.DIRTY, ENTITY_STATUS.DELETED),
+    __invalid_transitions = set([(ENTITY_STATUS.DELETED, ENTITY_STATUS.DIRTY),
+                                 (ENTITY_STATUS.NEW, ENTITY_STATUS.DIRTY)
                                  ])
 
     def __init__(self, entity, unit_of_work):
@@ -188,7 +178,7 @@ class EntityState(object):
         return status
 
     def __set_status(self, status):
-        if not (self.__get_status(), status) in self.__allowed_transitions:
+        if (self.__get_status(), status) in self.__invalid_transitions:
             raise ValueError('Invalid status transition %s -> %s.'
                              % (self.__status, status))
         self.__status = status
