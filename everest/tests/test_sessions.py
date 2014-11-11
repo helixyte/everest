@@ -96,6 +96,17 @@ class _MemorySessionTestCaseBase(EntityTestCase):
         self._session.remove(MyEntity, ent)
         self._session.add(MyEntity, ent)
 
+    @patch('%s.entities.MyEntity.slug' % package_name, None)
+    def test_add_same_slug(self):
+        ent0 = MyEntity(id=0)
+        ent0.slug = str(ent0.id)
+        ent1 = MyEntity(id=1)
+        ent1.slug = ent0.slug
+        self._session.add(MyEntity, ent0)
+        self._session.add(MyEntity , ent1)
+        ents = self._session.get_by_slug(MyEntity, '0')
+        self.assert_equal(len(ents), 2)
+
     def test_nested(self):
         ent = MyEntity()
         parent = MyEntityParent()
@@ -198,15 +209,6 @@ class TransactionLessMemorySessionTestCase(_MemorySessionTestCaseBase):
         self._session.add(MyEntity, ent1)
         ent2 = MyEntity(id=ent_id)
         self.assert_raises(ValueError, self._session.add, MyEntity, ent2)
-
-    @patch('%s.entities.MyEntity.slug' %
-           _MemorySessionTestCaseBase.package_name, 'slug')
-    def test_duplicate_slug_raises_error(self):
-        ent1 = MyEntity()
-        self._session.add(MyEntity, ent1)
-        ent2 = MyEntity()
-        self.assert_raises(ValueError,
-                           self._session.add, MyEntity, ent2)
 
     def test_cope_with_numeric_id(self):
         ent = MyEntity(id=0)

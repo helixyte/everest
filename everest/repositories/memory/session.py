@@ -190,9 +190,6 @@ class MemorySession(Session):
                 self.__unit_of_work.register_new(entity_class, entity)
                 if not entity.id is None and cache.has_id(entity.id):
                     raise ValueError('Duplicate entity ID "%s".' % entity.id)
-                if not entity.slug is None and cache.has_slug(entity.slug):
-                    raise ValueError('Duplicate entity slug "%s".'
-                                     % entity.slug)
             else:
                 if self.__unit_of_work.is_marked_pending(entity):
                     # The changes were not flushed yet; just mark as clean.
