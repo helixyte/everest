@@ -344,21 +344,23 @@ class AppCreatorContextManager(object):
 
     def __enter__(self):
         self.__app.config.begin(request=self.__request)
-        srvc = self.__app.config.get_registered_utility(IService)
         if not self.__request is None:
+            srvc = self.__app.config.get_registered_utility(IService)
             self.__request.root = srvc
         if not self.__config_file_name is None:
             self.__app.config.load_zcml(self.__config_file_name)
         repo_mgr = \
             self.__app.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
-        srvc.start()
+        if not self.__request is None:
+            srvc.start()
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
         transaction.abort()
-        srvc = self.__app.config.get_registered_utility(IService)
-        srvc.stop()
+        if not self.__request is None:
+            srvc = self.__app.config.get_registered_utility(IService)
+            srvc.stop()
         repo_mgr = \
             self.__app.config.get_registered_utility(IRepositoryManager)
         repo_mgr.reset_all()
