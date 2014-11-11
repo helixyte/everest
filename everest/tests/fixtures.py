@@ -327,23 +327,38 @@ class AppCreatorContextManager(object):
     Context manager for setting up the everest framework for application
     level (functional) operations.
     """
-    def __init__(self, ini, config_file_name, extra_environ):
+    def __init__(self, ini, config_file_name, extra_environ,
+                 setup_request=False):
         wsgiapp = loadapp('config:' + ini.ini_file_path, name=ini.app_name)
         self.__app = EverestTestApp(wsgiapp, ini.package_name,
                                     extra_environ=extra_environ)
         self.__config_file_name = config_file_name
+        if setup_request:
+            self.__request = DummyRequest(application_url=ini.app_url,
+                                          host_url=ini.app_url,
+                                          path_url=ini.app_url,
+                                          url=ini.app_url,
+                                          registry=self.__app.config.registry)
+        else:
+            self.__request = None
 
     def __enter__(self):
-        self.__app.config.begin()
+        self.__app.config.begin(request=self.__request)
+        srvc = self.__app.config.get_registered_utility(IService)
+        if not self.__request is None:
+            self.__request.root = srvc
         if not self.__config_file_name is None:
             self.__app.config.load_zcml(self.__config_file_name)
         repo_mgr = \
             self.__app.config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
+        srvc.start()
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
         transaction.abort()
+        srvc = self.__app.config.get_registered_utility(IService)
+        srvc.stop()
         repo_mgr = \
             self.__app.config.get_registered_utility(IRepositoryManager)
         repo_mgr.reset_all()
@@ -472,6 +487,20 @@ def app_creator(request, class_ini): # redefining ini, class_configurator pylint
     config_file_name = getattr(request.cls, 'config_file_name', None)
     extra_environ = getattr(request.cls, 'extra_environ', {})
     with AppCreatorContextManager(class_ini, config_file_name, extra_environ) \
+         as app:
+        yield app
+
+
+@pytest.yield_fixture
+def app_creator_with_request(request, class_ini): # redefining ini, class_configurator pylint: disable=W0621
+    """
+    Like `app_creator`, but with a dummy request set up (needed for URL
+    generation).
+    """
+    config_file_name = getattr(request.cls, 'config_file_name', None)
+    extra_environ = getattr(request.cls, 'extra_environ', {})
+    with AppCreatorContextManager(class_ini, config_file_name, extra_environ,
+                                  setup_request=True) \
          as app:
         yield app
 
