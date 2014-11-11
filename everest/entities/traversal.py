@@ -6,17 +6,18 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Apr 8, 2013.
 """
+from pyramid.threadlocal import get_current_registry
+
 from everest.constants import RELATION_OPERATIONS
 from everest.entities.attributes import get_domain_class_attribute_iterator
 from everest.entities.relationship import LazyDomainRelationship
-from everest.entities.utils import get_entity_class
 from everest.interfaces import IDataTraversalProxyFactory
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.utils import url_to_resource
 from everest.traversal import DataTraversalProxy
 from everest.traversal import DataTraversalProxyAdapter
 from everest.utils import get_nested_attribute
-from pyramid.threadlocal import get_current_registry
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['AruVisitor',
@@ -117,11 +118,7 @@ class AruVisitor(ResourceDataTreeVisitor):
 
     def visit(self, path, attribute, source, target):
         is_root = attribute is None
-        if is_root:
-            # Visiting the root.
-            ent_class = get_entity_class(self._rc_class)
-        else:
-            ent_class = get_entity_class(attribute.attr_type)
+        if not is_root:
             parent = path.parent
         if source is None:
             # No source - REMOVE.
@@ -131,9 +128,9 @@ class AruVisitor(ResourceDataTreeVisitor):
                 rel.remove(entity)
             if not self.__remove_callback is None:
                 if self.__pass_path_to_callbacks:
-                    args = (ent_class, entity, path)
+                    args = (entity, path)
                 else:
-                    args = (ent_class, entity)
+                    args = (entity,)
                 cmd = self.RemoveCallback(self.__remove_callback, args)
                 self.__commands.append(cmd)
         else:
@@ -151,9 +148,9 @@ class AruVisitor(ResourceDataTreeVisitor):
                     rel.add(entity, **add_opts)
                 if not self.__add_callback is None:
                     if self.__pass_path_to_callbacks:
-                        args = (ent_class, entity, path)
+                        args = (entity, path)
                     else:
-                        args = (ent_class, entity)
+                        args = (entity,)
                     cmd = self.AddCallback(self.__add_callback, args)
                     self.__commands.append(cmd)
             else:
@@ -162,9 +159,9 @@ class AruVisitor(ResourceDataTreeVisitor):
                 if not self.__update_callback is None:
                     upd_av_map = dict(source.update_attribute_value_items)
                     if self.__pass_path_to_callbacks:
-                        args = (ent_class, upd_av_map, entity, path)
+                        args = (upd_av_map, entity, path)
                     else:
-                        args = (ent_class, upd_av_map, entity)
+                        args = (upd_av_map, entity)
                     cmd = self.UpdateCallback(self.__update_callback, args)
                     self.__commands.append(cmd)
                 if not is_root:

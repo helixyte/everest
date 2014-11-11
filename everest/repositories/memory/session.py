@@ -180,7 +180,8 @@ class MemorySession(Session):
         self.__needs_flushing = True
         return vst.root
 
-    def __add(self, entity_class, entity):
+    def __add(self, entity):
+        entity_class = type(entity)
         cache = self.__get_cache(entity_class)
         # We allow adding the same entity multiple times.
         if not (not entity.id is None
@@ -201,7 +202,8 @@ class MemorySession(Session):
                     self.__unit_of_work.mark_pending(entity)
             cache.add(entity)
 
-    def __remove(self, entity_class, entity):
+    def __remove(self, entity):
+        entity_class = type(entity)
         if not self.__unit_of_work.is_registered(entity):
             if entity.id is None:
                 raise ValueError('Can not remove un-registered entity '
@@ -220,7 +222,7 @@ class MemorySession(Session):
         if entity in cache:
             cache.remove(entity)
 
-    def __update(self, entity_class, source_data, target_entity): # pylint: disable=W0613
+    def __update(self, source_data, target_entity): # pylint: disable=W0613
         EntityState.set_state_data(target_entity, source_data)
         if self.__unit_of_work.is_marked_persisted(target_entity):
             self.__unit_of_work.mark_pending(target_entity)

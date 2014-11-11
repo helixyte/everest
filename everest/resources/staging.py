@@ -87,13 +87,16 @@ class StagingAggregate(Aggregate):
     def sync_with_repository(self):
         pass
 
-    def __add(self, entity_class, entity):
+    def __add(self, entity):
+        entity_class = type(entity)
         self.__cache_map.add(entity_class, entity)
 
-    def __remove(self, entity_class, entity):
+    def __remove(self, entity):
+        entity_class = type(entity)
         self.__cache_map.remove(entity_class, entity)
 
-    def __update(self, entity_class, source_data, target_entity):
+    def __update(self, source_data, target_entity):
+        entity_class = type(target_entity)
         self.__cache_map.update(entity_class, source_data, target_entity)
 
     @property

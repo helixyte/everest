@@ -94,15 +94,15 @@ class RdbSession(SaSession, Session):
         trv.run(vst)
         return vst.root
 
-    def __add(self, entity_class, entity, path): # pylint: disable=W0613
+    def __add(self, entity, path): # pylint: disable=W0613
         if len(path) == 0:
             SaSession.add(self, entity)
 
-    def __remove(self, entity_class, entity, path): # pylint: disable=W0613
+    def __remove(self, entity, path): # pylint: disable=W0613
         if len(path) == 0:
             SaSession.delete(self, entity)
 
-    def __update(self, entity_class, source_data, target_entity, path): # pylint: disable=W0613
+    def __update(self, source_data, target_entity, path): # pylint: disable=W0613
         EntityState.set_state_data(target_entity, source_data)
 
 

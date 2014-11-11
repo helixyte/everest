@@ -104,6 +104,6 @@ class SourceTargetDataTraverserTestCase(EntityTestCase):
         trv = SourceTargetDataTreeTraverser.make_traverser(
                                                 None, [ent0, ent1],
                                                 RELATION_OPERATIONS.REMOVE)
-        vst = AruVisitor(MyEntity, remove_callback=cache.remove)
+        vst = AruVisitor(MyEntity, remove_callback=agg.remove)
         trv.run(vst)
         self.assert_equal(len(list(iter(agg))), 0)
