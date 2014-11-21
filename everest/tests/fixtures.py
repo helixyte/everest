@@ -24,6 +24,7 @@ from everest.querying.specifications import OrderSpecificationFactory
 from everest.repositories.constants import REPOSITORY_DOMAINS
 from everest.repositories.interfaces import IRepositoryManager
 from everest.repositories.rdb.session import ScopedSessionMaker as Session
+from everest.repositories.rdb.testing import RdbContextManager
 from everest.repositories.rdb.utils import reset_metadata
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.resources.interfaces import IService
@@ -266,14 +267,17 @@ class EntityCreatorContextManager(object):
     Context manager for setting up the everest framework for entity level
     operations.
     """
-    def __init__(self, config):
+    def __init__(self, config, repo_joins_transaction=True):
         self.__config = config
+        self.__repo_joins_transaction = repo_joins_transaction
 
     def __enter__(self):
         repo_mgr = self.__config.get_registered_utility(IRepositoryManager)
         repo_mgr.initialize_all()
         self.__config.begin()
-        return repo_mgr.get_default()
+        repo = repo_mgr.get_default()
+        repo.join_transaction = self.__repo_joins_transaction
+        return repo
 
     def __exit__(self, ext_type, value, tb):
         transaction.abort()
@@ -328,7 +332,7 @@ class AppCreatorContextManager(object):
     level (functional) operations.
     """
     def __init__(self, ini, config_file_name, extra_environ,
-                 setup_request=False):
+                 setup_request=False, setup_rdb_context=False):
         wsgiapp = loadapp('config:' + ini.ini_file_path, name=ini.app_name)
         self.__app = EverestTestApp(wsgiapp, ini.package_name,
                                     extra_environ=extra_environ)
@@ -341,6 +345,10 @@ class AppCreatorContextManager(object):
                                           registry=self.__app.config.registry)
         else:
             self.__request = None
+        if setup_rdb_context:
+            self.__rdb_context = RdbContextManager()
+        else:
+            self.__rdb_context = None
 
     def __enter__(self):
         self.__app.config.begin(request=self.__request)
@@ -354,10 +362,15 @@ class AppCreatorContextManager(object):
         repo_mgr.initialize_all()
         if not self.__request is None:
             srvc.start()
+        if not self.__rdb_context is None:
+            self.__rdb_context.__enter__()
         return self.__app
 
     def __exit__(self, ext_type, value, tb):
-        transaction.abort()
+        if self.__rdb_context is None:
+            transaction.abort()
+        else:
+            self.__rdb_context.__exit__(ext_type, value, tb)
         if not self.__request is None:
             srvc = self.__app.config.get_registered_utility(IService)
             srvc.stop()
@@ -452,11 +465,15 @@ def session_entity_repo(session_configurator): # redefining session_configurator
 
 
 @pytest.yield_fixture
-def class_entity_repo(class_configurator): # redefining class_configurator pylint: disable=W0621
+def class_entity_repo(request, class_configurator): # redefining class_configurator pylint: disable=W0621
     """
     Fixture for all tests that perform operations on entities.
     """
-    with EntityCreatorContextManager(class_configurator) as repo:
+    repo_joins_transaction = getattr(request.cls, 'repo_joins_transaction',
+                                     True)
+    with EntityCreatorContextManager(class_configurator,
+                                     repo_joins_transaction=
+                                            repo_joins_transaction) as repo:
         yield repo
 
 
@@ -488,22 +505,11 @@ def app_creator(request, class_ini): # redefining ini, class_configurator pylint
     """
     config_file_name = getattr(request.cls, 'config_file_name', None)
     extra_environ = getattr(request.cls, 'extra_environ', {})
-    with AppCreatorContextManager(class_ini, config_file_name, extra_environ) \
-         as app:
-        yield app
-
-
-@pytest.yield_fixture
-def app_creator_with_request(request, class_ini): # redefining ini, class_configurator pylint: disable=W0621
-    """
-    Like `app_creator`, but with a dummy request set up (needed for URL
-    generation).
-    """
-    config_file_name = getattr(request.cls, 'config_file_name', None)
-    extra_environ = getattr(request.cls, 'extra_environ', {})
+    setup_request = getattr(request.cls, 'setup_request', False)
+    setup_rdb_context = getattr(request.cls, 'setup_rdb_context', False)
     with AppCreatorContextManager(class_ini, config_file_name, extra_environ,
-                                  setup_request=True) \
-         as app:
+                                  setup_request=setup_request,
+                                  setup_rdb_context=setup_rdb_context) as app:
         yield app
 
 
