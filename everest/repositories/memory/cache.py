@@ -41,7 +41,7 @@ class EntityCache(object):
         # Dictionary mapping entity IDs to entities for fast lookup by ID.
         self.__id_map = WeakValueDictionary()
         # Dictionary mapping entity slugs to entities for fast lookup by slug.
-        self.__slug_map = WeakValueDictionary()
+        self.__slug_map = {}
 
     def get_by_id(self, entity_id):
         """

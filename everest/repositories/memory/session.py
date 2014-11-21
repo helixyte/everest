@@ -188,6 +188,11 @@ class MemorySession(Session):
                 and cache.get_by_id(entity.id) is entity):
             if not self.__unit_of_work.is_marked_deleted(entity):
                 self.__unit_of_work.register_new(entity_class, entity)
+                # FIXME: This is only necessary if the call above re-uses
+                #        an existing state, in which case it needs to be
+                #        marked as pending explicitly. Consider rewriting
+                #        this whole method.
+                self.__unit_of_work.mark_pending(entity)
                 if not entity.id is None and cache.has_id(entity.id):
                     raise ValueError('Duplicate entity ID "%s".' % entity.id)
             else:
@@ -302,6 +307,7 @@ class MemorySessionFactory(SessionFactory):
         session = getattr(self.__session_registry, 'session', None)
         if not session is None:
             session.reset()
+            self.__session_registry.session = None
 
     def __call__(self):
         session = getattr(self.__session_registry, 'session', None)

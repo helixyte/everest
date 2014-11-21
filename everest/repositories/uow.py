@@ -101,26 +101,22 @@ class UnitOfWork(object):
     def is_marked_persisted(self, entity):
         """
         Checks if the flag indicating that the state for the given entity
-        has been persisted is `True`. Returns `False` if the entity has no
-        state information.
+        has been persisted is `True`.
+
+        :note: Use only after checking if the given entity is registered.
+        :raises ValueError: If the entity has no state information.
         """
-        try:
-            result = EntityState.get_state(entity).is_persisted
-        except ValueError:
-            result = False
-        return result
+        return EntityState.get_state(entity).is_persisted
 
     def is_marked_pending(self, entity):
         """
         Checks if the flag indicating that the state for the given entity
-        has been persisted is `False`. Returns `False` if the entity has no
-        state information.
+        has been persisted is `False`.
+
+        :note: Use only after checking if the given entity is registered.
+        :raises ValueError: If the entity has no state information.
         """
-        try:
-            result = not EntityState.get_state(entity).is_persisted
-        except ValueError:
-            result = False
-        return result
+        return not EntityState.get_state(entity).is_persisted
 
     def mark_new(self, entity):
         """
