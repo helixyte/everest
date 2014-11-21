@@ -212,14 +212,17 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
                 mime_type = self.__get_default_response_mime_type()
         return mime_type
 
-    def _get_response_representer(self):
+    def _get_response_representer(self, resource):
         """
         Creates a representer for this view.
 
+        :param resource: Resource to obtain a representer for.
+        :type resource: Object implementing
+          :class:`evererst.interfaces.IResource`.
         :returns: :class:`everest.representers.base.ResourceRepresenter`
         """
         mime_type = self._get_response_mime_type()
-        return as_representer(self.context, mime_type)
+        return as_representer(resource, mime_type)
 
     def _get_result(self, resource):
         """
@@ -246,7 +249,7 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
         Creates a representer and updates the response body with the byte
         representation created for the given resource.
         """
-        rpr = self._get_response_representer()
+        rpr = self._get_response_representer(resource)
         # Set content type and body of the response.
         self.request.response.content_type = \
                                 rpr.content_type.mime_type_string
