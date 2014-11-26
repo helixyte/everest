@@ -332,17 +332,27 @@ class AppCreatorContextManager(object):
     level (functional) operations.
     """
     def __init__(self, ini, config_file_name, extra_environ,
-                 setup_request=False, setup_rdb_context=False):
+                 setup_request=False, setup_rdb_context=False,
+                 remote_user_id=None):
         wsgiapp = loadapp('config:' + ini.ini_file_path, name=ini.app_name)
+        if not remote_user_id is None:
+            extra_environ['REMOTE_USER'] = remote_user_id
         self.__app = EverestTestApp(wsgiapp, ini.package_name,
                                     extra_environ=extra_environ)
         self.__config_file_name = config_file_name
         if setup_request:
-            self.__request = DummyRequest(application_url=ini.app_url,
-                                          host_url=ini.app_url,
-                                          path_url=ini.app_url,
-                                          url=ini.app_url,
-                                          registry=self.__app.config.registry)
+            kw = dict(application_url=ini.app_url,
+                      host_url=ini.app_url,
+                      path_url=ini.app_url,
+                      url=ini.app_url,
+                      registry=self.__app.config.registry)
+            if not remote_user_id is None:
+                self.__app.config.testing_securitypolicy(remote_user_id)
+                kw['environ'] = dict(REMOTE_USER=remote_user_id)
+            self.__request = DummyRequest(**kw)
+        elif not remote_user_id is None:
+            raise ValueError('The remote_user_id argument requires the '
+                             'setup_request argument to be True.')
         else:
             self.__request = None
         if setup_rdb_context:
@@ -507,9 +517,11 @@ def app_creator(request, class_ini): # redefining ini, class_configurator pylint
     extra_environ = getattr(request.cls, 'extra_environ', {})
     setup_request = getattr(request.cls, 'setup_request', False)
     setup_rdb_context = getattr(request.cls, 'setup_rdb_context', False)
+    remote_user_id = getattr(request.cls, 'remote_user_id', None)
     with AppCreatorContextManager(class_ini, config_file_name, extra_environ,
                                   setup_request=setup_request,
-                                  setup_rdb_context=setup_rdb_context) as app:
+                                  setup_rdb_context=setup_rdb_context,
+                                  remote_user_id=remote_user_id) as app:
         yield app
 
 
