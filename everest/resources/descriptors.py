@@ -23,6 +23,7 @@ from everest.utils import set_nested_attribute
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 from zope.interface.interfaces import IInterface # pylint: disable=E0611,F0401
+from everest.utils import resolve_nested_attribute
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['attribute_alias',
@@ -66,6 +67,12 @@ class attribute_base(object):
 
     def __set__(self, resource, value):
         raise NotImplementedError('Abstract method')
+
+    def __delete__(self, resource):
+        parent, attr = resolve_nested_attribute(resource.get_entity(),
+                                                self.entity_attr)
+        if not parent is None:
+            delattr(parent, attr)
 
     def __str__(self):
         return "%s: rc attr %s, type %s" \

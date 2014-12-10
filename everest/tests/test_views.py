@@ -6,6 +6,13 @@ Created on Nov 17, 2011.
 """
 import os
 
+from pkg_resources import resource_filename # pylint: disable=E0611
+from pyramid.compat import bytes_
+from pyramid.compat import native_
+from pyramid.testing import DummyRequest
+import pytest
+import transaction
+
 from everest.constants import RequestMethods
 from everest.mime import CSV_MIME
 from everest.mime import CsvMime
@@ -20,6 +27,7 @@ from everest.tests.complete_app.entities import MyEntity
 from everest.tests.complete_app.fixtures import create_entity_tree
 from everest.tests.complete_app.interfaces import IMyEntity
 from everest.tests.complete_app.interfaces import IMyEntityChild
+from everest.tests.complete_app.interfaces import IMyEntityParent
 from everest.tests.simple_app.entities import FooEntity
 from everest.tests.simple_app.interfaces import IFoo
 from everest.tests.simple_app.resources import FooCollection
@@ -33,12 +41,6 @@ from everest.utils import get_repository_manager
 from everest.views.getcollection import GetCollectionView
 from everest.views.static import public_view
 from everest.views.utils import accept_csv_only
-from pkg_resources import resource_filename # pylint: disable=E0611
-from pyramid.compat import bytes_
-from pyramid.compat import native_
-from pyramid.testing import DummyRequest
-import pytest
-import transaction
 
 
 __docformat__ = 'reStructuredText en'
@@ -76,6 +78,13 @@ def view_app_creator(app_creator):
                                            request_method=RequestMethods.POST)
     app_creator.config.add_member_view(IMyEntity,
                                        renderer='csv',
+                                       request_method=RequestMethods.DELETE)
+    app_creator.config.add_member_view(IMyEntityParent,
+                                       renderer='csv',
+                                       request_method=RequestMethods.DELETE)
+    app_creator.config.add_member_view(IMyEntity,
+                                       renderer='csv',
+                                       name='number',
                                        request_method=RequestMethods.DELETE)
     yield app_creator
 
@@ -364,6 +373,17 @@ class _TestViewBase(object):
         finally:
             if not old_remove is None:
                 coll_cls.remove = old_remove
+
+    def test_delete_nested_member(self, view_app_creator, view_member):
+        assert not view_member.parent is None
+        view_app_creator.delete("%s/0/parent" % self.path,
+                                status=200)
+        assert view_member.parent is None
+
+    def test_delete_terminal(self, view_app_creator, view_member):
+        assert not view_member.number is None
+        view_app_creator.delete("%s/0/number" % self.path, status=200)
+        assert view_member.number is None
 
 
 class TestViewBasicsMemory(_TestViewBase):

@@ -6,6 +6,12 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Nov 3, 2011.
 """
+import uuid
+
+from pyramid.security import Allow
+from pyramid.security import Authenticated
+from pyramid.traversal import model_path
+
 from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 from everest.entities.utils import get_entity_class
 from everest.entities.utils import identifier_from_slug
@@ -24,11 +30,8 @@ from everest.resources.link import Link
 from everest.resources.utils import as_member
 from everest.resources.utils import get_collection_class
 from everest.resources.utils import get_member_class
-from pyramid.security import Allow
-from pyramid.security import Authenticated
-from pyramid.traversal import model_path
 from zope.interface import implementer # pylint: disable=E0611,F0401
-import uuid
+
 
 __docformat__ = "reStructuredText en"
 __all__ = ['Collection',
@@ -175,10 +178,20 @@ class Member(ResourceAttributeControllerMixin, Resource):
         """
         self.__parent__.update(data, target=self)
 
+    def remove(self):
+        """
+        Removes this member from the parent collection or from its
+        parent member.
+        """
+        if self._relationship is None:
+            self.__parent__.remove(self)
+        else:
+            self._relationship.remove(self)
+
     def __getitem__(self, item):
         ident = identifier_from_slug(item)
         attr = get_resource_class_attribute(self.__class__, ident)
-        if attr is None:
+        if attr is None or attr.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL:
             raise KeyError('%s' % ident)
         return getattr(self, ident)
 
