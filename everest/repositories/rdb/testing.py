@@ -39,8 +39,9 @@ def check_attributes(test_object, attribute_map):
     for attr_name, exp_val in iteritems_(attribute_map):
         obj_val = getattr(test_object, attr_name)
         if obj_val != exp_val:
-            raise AssertionError('Values for attribute %s differ!'
-                                 % attr_name)
+            raise AssertionError('Values for attribute %s differ! (expected: '
+                                 '%s, found: %s)' %
+                                 (attr_name, exp_val, obj_val))
 
 
 def persist(session, entity, attribute_map,
