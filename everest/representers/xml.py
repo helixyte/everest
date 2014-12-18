@@ -218,9 +218,14 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
         self.__set_attribute(attr, value)
 
     def iterator(self):
-        id_val = self.get('id')
-        yield ('id', None) if id_val is None \
-            else ('id', self.mapping.get_attribute('id').value_type(id_val))
+        try:
+            id_val = self.attrib['id']
+        except KeyError:
+            pass
+        else:
+            yield ('id', None) if id_val is None \
+                else ('id',
+                      self.mapping.get_attribute('id').value_type(id_val))
         for child in self.iterchildren():
             idx = child.tag.find('}')
             if idx != -1:
@@ -280,7 +285,10 @@ class XmlMemberDataElement(objectify.ObjectifiedElement,
     def __get_attribute(self, attr, safe):
         if attr.repr_name == 'id':
             # The "special" id attribute.
-            xml_val = self.get('id')
+            try:
+                xml_val = self.attrib['id']
+            except KeyError:
+                raise AttributeError(attr.repr_name)
             if not xml_val is None:
                 value = attr.value_type(xml_val)
             else:

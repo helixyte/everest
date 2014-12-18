@@ -519,7 +519,8 @@ class TestXmlRepresenter(object):
     def test_id_attr(self, member_mapping):
         id_attr = member_mapping.get_attribute_map()['id']
         de = member_mapping.data_element_class.create()
-        assert de.get_terminal(id_attr) is None
+        with pytest.raises(AttributeError):
+            de.get_terminal(id_attr)
 
     def test_terminal_attr(self, collection, member_mapping):
         mb = next(iter(collection))

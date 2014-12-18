@@ -422,8 +422,11 @@ class DataElementDataTraversalProxy(ConvertingDataTraversalProxyMixin,
         self.__mapping = mapping
 
     def get_id(self):
-        id_attr = self.__mapping.get_attribute_map()['id']
-        return self._data.get_terminal(id_attr)
+        try:
+            id_val = self._data.get_attribute('id')
+        except AttributeError:
+            id_val = None
+        return id_val
 
     def set_relationship(self, attribute, relationship):
         """
