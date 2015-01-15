@@ -12,12 +12,12 @@ from everest.entities.interfaces import IAggregate
 from everest.entities.interfaces import IEntity
 from everest.exceptions import NoResultsException
 from everest.querying.utils import get_filter_specification_factory
-from everest.utils import get_filter_specification_visitor
-from everest.utils import get_order_specification_visitor
-from zope.interface import implementer # pylint: disable=E0611,F0401
 from everest.repositories.memory.querying import EvalFilterExpression
 from everest.repositories.memory.querying import EvalOrderExpression
 from everest.repositories.memory.querying import MemoryQuery
+from everest.utils import get_filter_specification_visitor
+from everest.utils import get_order_specification_visitor
+from zope.interface import implementer # pylint: disable=E0611,F0401
 
 
 __docformat__ = 'reStructuredText en'
@@ -397,7 +397,7 @@ class RootAggregate(Aggregate):
                 pass
         if not ents is None:
             ents = [ent
-                    for ent in self.query().filter_by(slug=slug).all()
+                    for ent in ents
                     if self._filter_spec is None
                        or self._filter_spec.is_satisfied_by(ent)]
             if len(ents) == 1:
