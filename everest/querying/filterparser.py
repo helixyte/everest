@@ -93,8 +93,8 @@ false = CaselessKeyword("false").setParseAction(replaceWith(False))
 attribute = Word(alphas, alphanums + '-')
 identifier = \
     Combine(attribute + ZeroOrMore('.' + attribute)).setName('identifier')
-and_op = CaselessKeyword(AND_PAT).setParseAction(replaceWith(AND_PAT))
-or_op = CaselessKeyword(OR_PAT).setParseAction(replaceWith(OR_PAT))
+and_op = CaselessKeyword(AND_PAT)
+or_op = CaselessKeyword(OR_PAT)
 
 
 def convert_number(toks):
@@ -147,21 +147,6 @@ class CriterionConverter(object):
         # Extract attribute value.
         if len(crit.value) == 0:
             raise ValueError('Criterion does not define a value.')
-#        elif len(crit.value) == 1 and isinstance(crit.value, ParseResults):
-#            # URLs - convert to resource.
-#            url_val = crit.value
-#            try:
-#                rc = url_to_resource(url_val.resource)
-#            except:
-#                raise ValueError('Could not convert "%s" to a resource.'
-#                                 % url_val.resource)
-#            if not url_val.query == '':
-#                if not ICollectionResource.providedBy(rc): # pylint: disable=E1101
-#                    raise ValueError('Member resources can not have a '
-#                                     'query string.')
-#                rc.filter = url_val.query
-#            attr_value = rc
-#            value_is_resource = True
         elif len(crit.value) == 1 \
              and ICollectionResource.providedBy(crit.value[0]): # pylint: disable=E1101
             attr_value = crit.value[0]
@@ -284,11 +269,8 @@ criterion.setParseAction(CriterionConverter.convert)
 
 # Recursive definition of "junction" (AND or OR) clauses.
 junctions = Forward()
-junction_element = (criterion |
-                    open_paren.suppress() + junctions +
-                    close_paren.suppress())
 junctions << operatorPrecedence(# pylint: disable=W0106
-                    junction_element,
+                    criterion,
                     [(and_op, BINARY, opAssoc.LEFT, convert_conjunction),
                      (or_op, BINARY, opAssoc.LEFT, convert_disjunction),
                      ])
