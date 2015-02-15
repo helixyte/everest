@@ -97,6 +97,8 @@ class Aggregate(object):
         self._order_spec = None
         #: Key for slicing. (:type:`slice`).
         self._slice_key = None
+        #: Query loaded by a call to :method:`load`.
+        self.__loaded_query = None
 
     def clone(self):
         """
@@ -107,6 +109,7 @@ class Aggregate(object):
         clone._filter_spec = self._filter_spec
         clone._order_spec = self._order_spec
         clone._slice_key = self._slice_key
+        clone.__loaded_query = None
         # pylint: enable=W0212
         return clone
 
@@ -119,7 +122,11 @@ class Aggregate(object):
 
         :returns: An iterator for the aggregate entities.
         """
-        return iter(self._get_ordered_query(None))
+        if self.__loaded_query is None:
+            q = self._get_ordered_query(None)
+        else:
+            q = self.__loaded_query
+        return iter(q)
 
     def __iter__(self):
         return self.iterator()
@@ -132,7 +139,26 @@ class Aggregate(object):
 
         :returns: Number of aggregate members (:class:`int`).
         """
-        return self._get_filtered_query(None).count()
+        if self.__loaded_query is None:
+            q = self._get_filtered_query(None)
+        else:
+            q = self.__loaded_query
+        return q.count()
+
+    def load(self):
+        """
+        Loads the aggregate with the current filter, order, and slice
+        settings. Future changes to these settings will not change what the
+        :method:`iterator` and :method:`count` methods return.
+        """
+        self.__loaded_query = self._get_ordered_query(None)
+
+    def unload(self):
+        """
+        Discards data loaded during a previous call to :method:`load`. If
+        the aggregate is not loaded, this method has no effect.
+        """
+        self.__loaded_query = None
 
     def get_by_id(self, id_key):
         """

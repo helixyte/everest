@@ -12,8 +12,8 @@ from sqlalchemy.pool import StaticPool
 
 from everest.repositories.base import Repository
 from everest.repositories.rdb.aggregate import RdbAggregate
-from everest.repositories.rdb.querying import OptimizedCountingQuery
-from everest.repositories.rdb.querying import SimpleCountingQuery
+from everest.repositories.rdb.querying import OptimizedCountingRdbQuery
+from everest.repositories.rdb.querying import SimpleCountingRdbQuery
 from everest.repositories.rdb.session import RdbSessionFactory
 from everest.repositories.rdb.utils import empty_metadata
 from everest.repositories.rdb.utils import get_metadata
@@ -114,7 +114,7 @@ class RdbRepository(Repository):
         try:
             conn.execute("select count(1) over()")
         except OperationalError:
-            query_class = SimpleCountingQuery
+            query_class = SimpleCountingRdbQuery
         else:
-            query_class = OptimizedCountingQuery # pragma: no cover
+            query_class = OptimizedCountingRdbQuery # pragma: no cover
         return query_class

@@ -34,9 +34,9 @@ from sqlalchemy.sql.expression import over
 from zope.interface import implementer # pylint: disable=E0611,F0401
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['OptimizedCountingQuery',
+__all__ = ['OptimizedCountingRdbQuery',
            'OrderClauseList',
-           'SimpleCountingQuery',
+           'RdbQuery',
            'SqlFilterSpecificationVisitor',
            'SqlOrderSpecificationVisitor',
            ]
@@ -227,22 +227,10 @@ class Query(SaQuery):
         return vst.order_query(self)
 
 
-class CountingQuery(Query):
-    def __init__(self, entities, session, **kw):
-        Query.__init__(self, entities, session, **kw)
-        self.__count = None
-        self.__data = None
-
-    def __iter__(self):
-        if self.__data is None:
-            self.__count, self.__data = self._load()
-        return iter(self.__data)
-
-    def count(self):
-        if self.__count is None:
-            self.__count, self.__data = self._load()
-        return self.__count
-
+class RdbQuery(Query):
+    """
+    Query class for the RDB backend.
+    """
     def one(self):
         # Overwritten so we can translate exceptions.
         try:
@@ -254,40 +242,54 @@ class CountingQuery(Query):
             raise MultipleResultsException('More than one result found '
                                            'where exactly one was expected.')
 
-    def _load(self):
-        raise NotImplementedError('Abstract method.')
+
+class SimpleCountingRdbQuery(RdbQuery):
+    """
+    Simple counting query for the RDB backend.
+
+    We want the count to reflect the true size of the aggregate, without
+    slicing.
+    """
+    def count(self):
+        count_query = self.limit(None).offset(None)
+        # Avoid circular calls to by "downcasting" the new query.
+        count_query.__class__ = Query
+        return count_query.count()
+
+
+class OptimizedCountingRdbQuery(RdbQuery): # pragma: no cover
+    """
+    Optimized counting query for the RDB backend.
+
+    The optimization uses the OVER windowing SQL statement to retrieve the
+    collection data ''and'' count in ''one'' database roundtrip. Note that
+    this query object will always return the same count and data once the
+    :method:`__iter__` or :method:`count` method has been called.
+    """
+    def __init__(self, entities, session, **kw):
+        RdbQuery.__init__(self, entities, session, **kw)
+        self.__count = None
+        self.__data = None
 
     def _clone(self):
-        clone = Query._clone(self)
+        clone = RdbQuery._clone(self)
         # pylint: disable=W0212
-        clone.__data = None
         clone.__count = None
+        clone.__data = None
         # pylint: enable=W0212
         return clone
 
+    def __iter__(self):
+        if self.__data is None:
+            self.__count, self.__data = self.__load()
+        return iter(self.__data)
 
-class SimpleCountingQuery(CountingQuery):
-    """
-    Non-optimized counting query.
-    """
-    def _load(self):
-        count_query = self.limit(None).offset(None)
-        # Avoid circular calls to _load by "downcasting" the new query.
-        count_query.__class__ = Query
-        count = count_query.count()
-        return count, list(Query.__iter__(self))
+    def count(self):
+        if self.__count is None:
+            self.__count, self.__data = self.__load()
+        return self.__count
 
-
-class OptimizedCountingQuery(CountingQuery): # pragma: no cover
-    """
-    Optimized counting query.
-
-    This uses the OVER windowing SQL statement (on backends that have it) to
-    reduce the loading time of everest collections by a factor of almost two
-    (by virtue of avoiding an extra database roundtrip to obtain the count
-    of the filtered collection required for paging).
-    """
-    def _load(self):
+    def __load(self):
         query = self.add_columns(over(func.count(1)).label('_count'))
         res = [tup[0] for tup in Query.__iter__(query)]
         if len(res) > 0:

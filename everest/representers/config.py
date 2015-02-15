@@ -7,8 +7,10 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on May 8, 2012.
 """
 from collections import defaultdict
+
 from pyramid.compat import iteritems_
 from pyramid.compat import string_types
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['RepresenterConfiguration',
@@ -185,3 +187,43 @@ class RepresenterConfiguration(object):
             raise ValueError('Invalid attribute option name "%s" '
                              'for %s representer.'
                              % (name, self.__class__.__name__))
+
+
+class RepresenterConfigTraverser(object):
+    """
+    Simple traverser for a representer configuration tree.
+    """
+    def __init__(self, config, max_depth=None):
+        self.__config = config
+        self.__max_depth = max_depth
+
+    def run(self, visitor):
+        """
+        Traverses this representer configuration traverser with the given
+        visitor.
+
+        :param visitor: :class:`RepresenterConfigVisitorBase` instance.
+        """
+        attr_option_map = self.__config.get_attribute_options()
+        # Sorting the keys results in a depth-first traversal, which is just
+        # what we want.
+        for (key, key_attr_option_map) in sorted(iteritems_(attr_option_map)):
+            if not self.__max_depth is None and len(key) > self.__max_depth:
+                continue
+            visitor.visit(key, key_attr_option_map)
+
+
+class RepresenterConfigVisitorBase(object):
+    """
+    Base class for representer configuration visitors.
+    """
+    def visit(self, key, attribute_options):
+        """
+        Visits the given representer configuration key with the given
+        representer attribute configuration options.
+
+        :param key: Representer configuration key.
+        :param dict attribute_options: Representer attribute configuration
+            options.
+        """
+        raise NotImplementedError('Abstract method.')

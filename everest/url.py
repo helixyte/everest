@@ -6,25 +6,28 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 
 Created on Jun 28, 2011.
 """
+from pyparsing import ParseException
+from pyramid.compat import url_unquote
+from pyramid.compat import urlparse
+from pyramid.threadlocal import get_current_registry
+from pyramid.traversal import find_resource
+from pyramid.traversal import traversal_path
+
 from everest.compat import parse_qsl
 from everest.interfaces import IResourceUrlConverter
 from everest.querying.base import EXPRESSION_KINDS
 from everest.querying.filterparser import parse_filter
+from everest.querying.interfaces import IFilterSpecificationVisitor
+from everest.querying.interfaces import IOrderSpecificationVisitor
 from everest.querying.orderparser import parse_order
+from everest.querying.refsparser import parse_refs
 from everest.resources.interfaces import ICollectionResource
 from everest.resources.interfaces import IMemberResource
 from everest.resources.interfaces import IResource
 from everest.resources.utils import get_root_collection
-from everest.utils import get_filter_specification_visitor
-from everest.utils import get_order_specification_visitor
-from pyparsing import ParseException
-from pyramid.compat import url_unquote
-from pyramid.compat import urlparse
-from pyramid.traversal import find_resource
-from pyramid.traversal import traversal_path
 from zope.interface import implementer # pylint: disable=E0611,F0401
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
-from everest.querying.refsparser import parse_refs
+
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['ResourceUrlConverter',
@@ -159,7 +162,9 @@ class UrlPartsConverter(object):
         """
         Converts the given filter specification to a CQL filter expression.
         """
-        visitor_cls = get_filter_specification_visitor(EXPRESSION_KINDS.CQL)
+        registry = get_current_registry()
+        visitor_cls = registry.getUtility(IFilterSpecificationVisitor,
+                                          name=EXPRESSION_KINDS.CQL)
         visitor = visitor_cls()
         filter_specification.accept(visitor)
         return str(visitor.expression)
@@ -179,7 +184,9 @@ class UrlPartsConverter(object):
         """
         Converts the given order specification to a CQL order expression.
         """
-        visitor_cls = get_order_specification_visitor(EXPRESSION_KINDS.CQL)
+        registry = get_current_registry()
+        visitor_cls = registry.getUtility(IOrderSpecificationVisitor,
+                                          name=EXPRESSION_KINDS.CQL)
         visitor = visitor_cls()
         order_specification.accept(visitor)
         return str(visitor.expression)

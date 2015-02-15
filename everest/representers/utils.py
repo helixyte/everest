@@ -15,10 +15,11 @@ from pyramid.compat import iteritems_
 from pyramid.threadlocal import get_current_registry
 from zope.interface import providedBy as provided_by # pylint: disable=E0611,F0401
 import os
+from everest.repositories.utils import as_repository
 
 __docformat__ = 'reStructuredText en'
-__all__ = ['NewRepresenterConfigurationContext',
-           'UpdatedRepresenterConfigurationContext',
+__all__ = ['ReplacingRepresenterConfigurationContext',
+           'UpdatingRepresenterConfigurationContext',
            'as_representer',
            'data_element_tree_to_string',
            'get_mapping_registry',
@@ -97,60 +98,82 @@ def data_element_tree_to_string(data_element):
     return stream.getvalue()
 
 
-class _RepresenterConfigurationContext(object):
+class RepresenterConfigurationContext(object):
     """
-    Base class for context managers that configure a representer.
+    Base class for context managers hold a representer configuration.
 
     :ivar options: The representer options map to use within the context.
     :ivar attribute_options: The representer attribute options map to use
       within the context.
     """
-    def __init__(self, mapped_class, content_type,
+    def __init__(self, context, content_type,
                  options=None, attribute_options=None):
         self.options = options
         self.attribute_options = attribute_options
-        self.__mapped_class = mapped_class
+        self.configuration = None
+        self._context = context
         self.__content_type = content_type
-        self.__mapping = None
+        self._mapping = None
 
     def __enter__(self):
         mp_reg = get_mapping_registry(self.__content_type)
-        self.__mapping = mp_reg.find_or_create_mapping(self.__mapped_class)
-        cfg = self._make_configuration(self.__mapping.configuration,
-                                          self.options,
-                                          self.attribute_options)
-        self.__mapping.push_configuration(cfg)
+        if not isinstance(self._context, type):
+            mp_obj = type(self._context)
+        else:
+            mp_obj = self._context
+        self._mapping = mp_reg.find_or_create_mapping(mp_obj)
+        self.configuration = self._get_configuration()
+        self._mapping.push_configuration(self.configuration)
 
     def __exit__(self, ext_type, value, tb):
-        self.__mapping.pop_configuration()
+        self._mapping.pop_configuration()
 
-    def _make_configuration(self, current_configuration, options,
-                            attribute_options):
-        raise NotImplementedError('Abstract method.')
+    def _get_configuration(self):
+        return self._mapping.configuration
 
 
-class NewRepresenterConfigurationContext(_RepresenterConfigurationContext):
+class ReplacingRepresenterConfigurationContext(
+                                            RepresenterConfigurationContext):
     """
     A context manager that configures a representer with a newly created
     configuration.
     """
-    def _make_configuration(self, current_configuration,
-                               options, attribute_options):
-        cfg_cls = type(current_configuration)
-        cfg = cfg_cls(options=options, attribute_options=attribute_options)
+    def _get_configuration(self):
+        cfg_cls = type(self._mapping.configuration)
+        cfg = cfg_cls(options=self.options,
+                      attribute_options=self.attribute_options)
         return cfg
 
 
-class UpdatedRepresenterConfigurationContext(
-                                        _RepresenterConfigurationContext):
+class UpdatingRepresenterConfigurationContext(
+                                            RepresenterConfigurationContext):
     """
     A context manager that configures a representer with a copied and updated
     configuration.
     """
-    def _make_configuration(self, current_configuration,
-                               options, attribute_options):
-        new_cfg = current_configuration.copy()
-        upd_cfg = type(new_cfg)(options=options,
-                                attribute_options=attribute_options)
+    def _get_configuration(self):
+        new_cfg = self._mapping.configuration.copy()
+        upd_cfg = type(new_cfg)(options=self.options,
+                                attribute_options=self.attribute_options)
         new_cfg.update(upd_cfg)
         return new_cfg
+
+
+class LoadOptimizingContext(object):
+    """
+    A context manager that configures the session entity loaders for the
+    context resource and discards the configuration on exit.
+    """
+    def __init__(self, context, configuration=None):
+        self.__context = context
+        self.__configuration = configuration
+        self.__session = None
+
+    def __enter__(self):
+        repo = as_repository(self.__context)
+        self.__session = repo.session_factory()
+        self.__session.configure_loaders(self.__context, self.__configuration)
+
+    def __exit__(self, ext_type, value, tb):
+        self.__session.reset_loaders()
+
