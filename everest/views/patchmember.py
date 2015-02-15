@@ -7,7 +7,7 @@ See LICENSE.txt for licensing, CONTRIBUTORS.txt for contributor information.
 Created on Nov 29, 2013.
 """
 from everest.mime import XmlMime
-from everest.representers.utils import UpdatedRepresenterConfigurationContext
+from everest.representers.utils import UpdatingRepresenterConfigurationContext
 from everest.representers.xml import XML_VALIDATE_OPTION
 from everest.views.base import PutOrPatchResourceView
 
@@ -28,8 +28,8 @@ class PatchMemberView(PutOrPatchResourceView):
     def _extract_request_data(self):
         rpr = self._get_request_representer()
         if rpr.content_type is XmlMime:
-            ctxt = UpdatedRepresenterConfigurationContext(
-                            type(self.context),
+            ctxt = UpdatingRepresenterConfigurationContext(
+                            self.context,
                             rpr.content_type,
                             options={XML_VALIDATE_OPTION:False})
             with ctxt:

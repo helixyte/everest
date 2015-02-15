@@ -49,6 +49,22 @@ class Session(object):
     #: references.
     IS_MANAGING_BACKREFERENCES = None
 
+    def configure_loaders(self, context, representer_configuration):
+        """
+        Allows derived classes to configure entity loaders for the given
+        context and representer configuration for optimization purposes. The
+        default implementation does nothing.
+        """
+        pass
+
+    def reset_loaders(self):
+        """
+        Allows derived classes to reset the entity loader configuration set
+        up by :method:`configure_loaders`. The default implementation does
+        nothing.
+        """
+        pass
+
     def get_by_id(self, entity_class, id_key):
         """
         Retrieves the entity for the specified entity class and ID.

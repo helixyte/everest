@@ -135,7 +135,7 @@ def get_traceback():
     return buf.getvalue()
 
 
-def get_filter_specification_visitor(name):
+def get_filter_specification_visitor(name, registry=None):
     """
     Returns a the class registered as the filter specification
     visitor utility under the given name (one of the
@@ -144,11 +144,12 @@ def get_filter_specification_visitor(name):
     :returns: class implementing
         :class:`everest.interfaces.IFilterSpecificationVisitor`
     """
-    reg = get_current_registry()
-    return reg.getUtility(IFilterSpecificationVisitor, name=name)
+    if registry is None:
+        registry = get_current_registry()
+    return registry.getUtility(IFilterSpecificationVisitor, name=name)
 
 
-def get_order_specification_visitor(name):
+def get_order_specification_visitor(name, registry=None):
     """
     Returns the class registered as the order specification
     visitor utility under the given name (one of the
@@ -157,19 +158,21 @@ def get_order_specification_visitor(name):
     :returns: class implementing
         :class:`everest.interfaces.IOrderSpecificationVisitor`
     """
-    reg = get_current_registry()
-    return reg.getUtility(IOrderSpecificationVisitor, name=name)
+    if registry is None:
+        registry = get_current_registry()
+    return registry.getUtility(IOrderSpecificationVisitor, name=name)
 
 
-def get_repository_manager():
+def get_repository_manager(registry=None):
     """
     Registers the object registered as the repository manager utility.
 
     :returns: object implementing
         :class:`everest.interfaces.IRepositoryManager`
     """
-    reg = get_current_registry()
-    return reg.getUtility(IRepositoryManager)
+    if registry is None:
+        registry = get_current_registry()
+    return registry.getUtility(IRepositoryManager)
 
 
 def get_repository(name=None):

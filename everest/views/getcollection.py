@@ -40,6 +40,9 @@ class GetCollectionView(GetResourceView):
                 # to guarantee an order on the result set. This should not
                 # be reflected in the links' URLs.
                 self.context.order = deepcopy(self.context.default_order)
+            # Pre-load the collection. This allows us to perform
+            # optimizations in the backend.
+            self.context.load()
             # Build batch links.
             batch = self.__create_batch()
             self_link = Link(self.context, 'self', self.context.title)

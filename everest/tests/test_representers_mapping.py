@@ -10,8 +10,8 @@ from everest.representers.config import IGNORE_OPTION
 from everest.representers.interfaces import IDataElement
 from everest.representers.interfaces import IRepresenterRegistry
 from everest.representers.traversal import DataElementTreeTraverser
-from everest.representers.utils import NewRepresenterConfigurationContext
-from everest.representers.utils import UpdatedRepresenterConfigurationContext
+from everest.representers.utils import ReplacingRepresenterConfigurationContext
+from everest.representers.utils import UpdatingRepresenterConfigurationContext
 from everest.testing import ResourceTestCase
 from everest.tests.complete_app.resources import MyEntityMember
 from zope.interface import alsoProvides as also_provides # pylint: disable=E0611,F0401
@@ -76,8 +76,10 @@ class MappingTestCase(ResourceTestCase):
         self.assert_false(
             self.mapping.configuration.get_attribute_option('children',
                                                             IGNORE_OPTION))
-        ctx1 = NewRepresenterConfigurationContext(MyEntityMember, CsvMime,
-                                                  attribute_options=opts)
+        ctx1 = ReplacingRepresenterConfigurationContext(MyEntityMember,
+                                                        CsvMime,
+                                                        attribute_options=
+                                                                    opts)
         with ctx1:
             mp1 = self.mapping_registry.find_mapping(MyEntityMember)
             self.assert_true(
@@ -87,8 +89,9 @@ class MappingTestCase(ResourceTestCase):
             self.assert_is_none(
                     mp1.configuration.get_attribute_option('children',
                                                            IGNORE_OPTION))
-        ctx2 = UpdatedRepresenterConfigurationContext(MyEntityMember, CsvMime,
-                                                      attribute_options=opts)
+        ctx2 = UpdatingRepresenterConfigurationContext(MyEntityMember,
+                                                       CsvMime,
+                                                       attribute_options=opts)
         with ctx2:
             mp2 = self.mapping_registry.find_mapping(MyEntityMember)
             self.assert_true(

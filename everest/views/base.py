@@ -27,7 +27,7 @@ from everest.mime import TextPlainMime
 from everest.mime import get_registered_mime_strings
 from everest.mime import get_registered_mime_type_for_name
 from everest.mime import get_registered_mime_type_for_string
-from everest.representers.utils import UpdatedRepresenterConfigurationContext
+from everest.representers.utils import UpdatingRepresenterConfigurationContext
 from everest.representers.utils import as_representer
 from everest.resources.system import UserMessageMember
 from everest.resources.utils import resource_to_url
@@ -35,6 +35,10 @@ from everest.url import UrlPartsConverter
 from everest.utils import get_traceback
 from everest.views.interfaces import IResourceView
 from zope.interface import implementer # pylint: disable=E0611,F0401
+from everest.representers.utils import RepresenterConfigurationContext
+from everest.representers.utils import LoadOptimizingContext
+from everest.mime import AtomMime
+from everest.mime import XmlMime
 
 
 __docformat__ = "reStructuredText en"
@@ -212,6 +216,19 @@ class RepresentingResourceView(ResourceView): # still abstract pylint: disable=W
                 mime_type = self.__get_default_response_mime_type()
         return mime_type
 
+    def _get_response_body_mime_type(self):
+        """
+        Returns the response body MIME type. This might differ from the
+        overall response mime type e.g. in ATOM responses where the body
+        MIME type is XML.
+        """
+        mime_type = self._get_response_mime_type()
+        if mime_type is AtomMime:
+            # FIXME: This cements using XML as the representation to use in
+            #        ATOM bodies (which is perhaps not too worrisome).
+            mime_type = XmlMime
+        return mime_type
+
     def _get_response_representer(self, resource):
         """
         Creates a representer for this view.
@@ -297,23 +314,28 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
     def __call__(self):
         self._logger.debug('Request URL: %s.', self.request.url)
         try:
-            if self._enable_messaging:
-                prep_executor = \
-                    WarnAndResubmitExecutor(self._prepare_resource)
-                data = prep_executor()
-                do_continue = prep_executor.do_continue
-            else:
-                data = self._prepare_resource()
-                do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
-            if do_continue:
-                # Return a response to bypass Pyramid rendering.
-                if self._enable_messaging:
-                    res_executor = WarnAndResubmitExecutor(self._get_result)
-                    result = res_executor(data)
-                else:
-                    result = self._get_result(data)
-            else:
-                result = data
+            rpr_ctxt = self.__get_representer_context()
+            with rpr_ctxt:
+                with LoadOptimizingContext(self.context,
+                                           rpr_ctxt.configuration):
+                    if self._enable_messaging:
+                        prep_executor = \
+                            WarnAndResubmitExecutor(self._prepare_resource)
+                        data = prep_executor()
+                        do_continue = prep_executor.do_continue
+                    else:
+                        data = self._prepare_resource()
+                        do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
+                    if do_continue:
+                        # Return a response to bypass Pyramid rendering.
+                        if self._enable_messaging:
+                            res_executor = \
+                                WarnAndResubmitExecutor(self._get_result)
+                            result = res_executor(data)
+                        else:
+                            result = self._get_result(data)
+                    else:
+                        result = data
         except HTTPError as http_exc:
             result = self.request.get_response(http_exc)
         except Exception as err: # catch Exception pylint: disable=W0703
@@ -324,28 +346,20 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
     def _prepare_resource(self):
         raise NotImplementedError('Abstract method.')
 
-    def _update_response_body(self, resource):
-        """
-        Extends the base class method with links options processing.
-        """
-        links_options = self.__configure_refs()
-        if not links_options is None:
-            with UpdatedRepresenterConfigurationContext(
-                                        type(self.context),
-                                        self._get_response_mime_type(),
-                                        attribute_options=links_options):
-                RepresentingResourceView._update_response_body(self, resource)
-        else:
-            RepresentingResourceView._update_response_body(self, resource)
-
-    def __configure_refs(self):
+    def __get_representer_context(self):
+        cnt_type = self._get_response_body_mime_type()
         refs_options_string = self.request.params.get('refs')
         if not refs_options_string is None:
-            links_options = \
+            refs_options = \
                 UrlPartsConverter.make_refs_options(refs_options_string)
+            rpr_ctxt = UpdatingRepresenterConfigurationContext(
+                                        self.context,
+                                        cnt_type,
+                                        attribute_options=refs_options)
         else:
-            links_options = None
-        return links_options
+            rpr_ctxt = RepresenterConfigurationContext(self.context,
+                                                       cnt_type)
+        return rpr_ctxt
 
 
 class ModifyingResourceView(RepresentingResourceView): # still abstract pylint: disable=W0223

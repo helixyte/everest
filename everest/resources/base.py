@@ -322,6 +322,14 @@ class Collection(Resource):
         self.add(member)
         return member
 
+    def load(self):
+        """
+        Loads this collection with the current filter, order, and slice
+        settings. Future changes to these settings will not change the
+        data returned by the various access methods.
+        """
+        self.__aggregate.load()
+
     def __len__(self):
         """
         Returns the size (count) of the collection.

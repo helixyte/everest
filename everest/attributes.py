@@ -11,6 +11,8 @@ from everest.constants import RESOURCE_ATTRIBUTE_KINDS
 
 __docformat__ = 'reStructuredText en'
 __all__ = ['get_attribute_cardinality',
+           'is_collection_attribute',
+           'is_member_attribute',
            'is_terminal_attribute',
            ]
 
@@ -20,6 +22,20 @@ def is_terminal_attribute(attribute):
     Checks if the given resource attribute is a terminal attribute.
     """
     return attribute.kind == RESOURCE_ATTRIBUTE_KINDS.TERMINAL
+
+
+def is_member_attribute(attribute):
+    """
+    Checks if the given resource attribute is a member attribute.
+    """
+    return attribute.kind == RESOURCE_ATTRIBUTE_KINDS.MEMBER
+
+
+def is_collection_attribute(attribute):
+    """
+    Checks if the given resource attribute is a collection attribute.
+    """
+    return attribute.kind == RESOURCE_ATTRIBUTE_KINDS.COLLECTION
 
 
 def get_attribute_cardinality(attribute):
