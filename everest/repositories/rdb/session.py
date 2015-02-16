@@ -194,9 +194,9 @@ class QueryFactory(object):
                         # the parent attribute mapper.
                         ent_attr = None
                         if not prop is None:
-                            for cls in itervalues_(
+                            for mp in itervalues_(
                                                 prop.mapper.polymorphic_map):
-                                ent_attr = getattr(cls,
+                                ent_attr = getattr(mp.entity,
                                                    entity_attr_name_token,
                                                    None)
                                 if not ent_attr is None:
