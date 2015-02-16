@@ -314,28 +314,17 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
     def __call__(self):
         self._logger.debug('Request URL: %s.', self.request.url)
         try:
-            rpr_ctxt = self.__get_representer_context()
-            with rpr_ctxt:
-                with LoadOptimizingContext(self.context,
-                                           rpr_ctxt.configuration):
-                    if self._enable_messaging:
-                        prep_executor = \
-                            WarnAndResubmitExecutor(self._prepare_resource)
-                        data = prep_executor()
-                        do_continue = prep_executor.do_continue
-                    else:
-                        data = self._prepare_resource()
-                        do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
-                    if do_continue:
-                        # Return a response to bypass Pyramid rendering.
-                        if self._enable_messaging:
-                            res_executor = \
-                                WarnAndResubmitExecutor(self._get_result)
-                            result = res_executor(data)
-                        else:
-                            result = self._get_result(data)
-                    else:
-                        result = data
+            # If we use a representer to create the response, we can set up
+            # load optimizers using the representer configuration for the
+            # response MIME type.
+            if self._convert_response:
+                rpr_ctxt = self.__get_representer_context()
+                with rpr_ctxt:
+                    with LoadOptimizingContext(self.context,
+                                               rpr_ctxt.configuration):
+                        result = self.__call_view()
+            else:
+                result = self.__call_view()
         except HTTPError as http_exc:
             result = self.request.get_response(http_exc)
         except Exception as err: # catch Exception pylint: disable=W0703
@@ -345,6 +334,27 @@ class GetResourceView(RepresentingResourceView): # still abstract pylint: disabl
 
     def _prepare_resource(self):
         raise NotImplementedError('Abstract method.')
+
+    def __call_view(self):
+        if self._enable_messaging:
+            prep_executor = \
+                WarnAndResubmitExecutor(self._prepare_resource)
+            data = prep_executor()
+            do_continue = prep_executor.do_continue
+        else:
+            data = self._prepare_resource()
+            do_continue = not IResponse.providedBy(data) # pylint: disable=E1101
+        if do_continue:
+            # Return a response to bypass Pyramid rendering.
+            if self._enable_messaging:
+                res_executor = \
+                    WarnAndResubmitExecutor(self._get_result)
+                result = res_executor(data)
+            else:
+                result = self._get_result(data)
+        else:
+            result = data
+        return result
 
     def __get_representer_context(self):
         cnt_type = self._get_response_body_mime_type()
