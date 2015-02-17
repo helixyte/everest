@@ -182,10 +182,10 @@ class QueryFactory(object):
 
     def __process_loader_options(self, entity_attr_names, mapper, query):
         if len(entity_attr_names) > 0:
-            prop = None
             for entity_attr_name in sorted(entity_attr_names):
-                opt = None
+                prop = None
                 ent = mapper.entity
+                ent_cls_attrs = []
                 for entity_attr_name_token in entity_attr_name.split('.'):
                     try:
                         ent_attr = getattr(ent, entity_attr_name_token)
@@ -210,11 +210,11 @@ class QueryFactory(object):
                         # attribute - skip optimization.
                         break
                     ent = prop.mapper.entity
-                    if opt is None:
-                        opt = joinedload(entity_attr_name_token)
-                    else:
-                        opt = opt.joinedload(entity_attr_name_token)
-                if not opt is None:
+                    ent_cls_attrs.append(ent_attr)
+                if len(ent_cls_attrs) > 0:
+                    opt = reduce(lambda opt, ent_cls: opt.joinedload(ent_cls),
+                                 ent_cls_attrs[1:],
+                                 joinedload(ent_cls_attrs[0]))
                     query = query.options(opt)
         return query
 
